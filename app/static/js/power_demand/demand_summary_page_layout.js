@@ -331,7 +331,7 @@ if (summaryTable) {
             window.__pdPdSummaryTerritoryCompactMode = false;
         }
         if (window.__pdPdSummaryTerritoryCompactMode) {
-            /** При «Сводной таблице» — все секции на одной странице (список короткий). */
+            /** При «Сводной таблице» – все секции на одной странице (список короткий). */
             if (
                 typeof window.__pdSummaryLoadEntityPaginationPage !== "function" &&
                 pdSummaryServerEntityPaginationUrlIsPaginated()
@@ -359,7 +359,7 @@ if (summaryTable) {
             /**
              * Rerender uses last core payload and rebuilds tbody, so optional
              * segments (ЧЧИ / ЭЭ / проверка / расчётные макс.) must be loaded
-             * again after rerender — otherwise toggle buttons stay pressed
+             * again after rerender – otherwise toggle buttons stay pressed
              * but their rows are missing until the user re-clicks them.
              */
             function collectActiveOptionalSegmentsAfterCompact() {
@@ -441,7 +441,7 @@ if (summaryTable) {
             }
             function reapplyAfterCompactToggle(opts) {
                 syncPdPdTerritoryCompactToggleUi();
-                // Pagination reload already remeshed optional segments — only
+                // Pagination reload already remeshed optional segments – only
                 // refresh visibility/labels. A second tbody rebuild would drop
                 // them again and race with in-flight segment merges.
                 if (opts && opts.skipRerender) {
@@ -640,7 +640,7 @@ if (summaryTable) {
         }
     }
 
-    /** Фон видимых строк показателя на coeff — как table-striped на /summary/oes/ (по блокам entity). */
+    /** Фон видимых строк показателя на coeff – как table-striped на /summary/oes/ (по блокам entity). */
     function applyPdBlockRowBackgrounds() {
         if (summaryTable.getAttribute("data-ec-unify-block-bg") !== "1") {
             return;
@@ -678,7 +678,7 @@ if (summaryTable) {
 
     /**
      * Толстая граница между блоками энергосистем (кроме после последнего),
-     * как fuel-param-group-last — между сущностями любого уровня
+     * как fuel-param-group-last – между сущностями любого уровня
      * (ОЭС→ЭС, ЭС→город, город→область и т.п.), без линий внутри блока.
      *
      * Рисуем border-top на первой видимой строке следующего блока (все td,
@@ -902,7 +902,7 @@ if (summaryTable) {
     }
 
     /**
-     * Строки блока для rowspan — в порядке DOM (показатель, «Проверка …», k).
+     * Строки блока для rowspan – в порядке DOM (показатель, «Проверка …», k).
      * Логическая пара «показатель + k» даёт неверный firstVis, если между ними
      * вставлена проверка: ячейка «Энергосистема» не покрывает эту строку.
      */
@@ -948,7 +948,7 @@ if (summaryTable) {
         }
         var inp = target.querySelector("input, textarea");
         var t = inp ? String(inp.value || "").trim() : String(target.textContent || "").trim();
-        if (t === "" || t === "—") {
+        if (t === "" || t === "–") {
             return false;
         }
         if (parameterKey === "peak_datetime") {
@@ -1688,7 +1688,7 @@ if (summaryTable) {
         }
     });
 
-    // Кнопка «Потребление ЭЭ» — строки потребления со сводок energy_consumption (только чтение).
+    // Кнопка «Потребление ЭЭ» – строки потребления со сводок energy_consumption (только чтение).
     var pdPdEeBtn = document.getElementById("pdPdSummaryEeToggle");
     var pdPdEeStorageKey =
         "pdPdSummaryEe_" +
@@ -1773,7 +1773,7 @@ if (summaryTable) {
         });
     }
 
-    // Кнопка «ЧЧИ» — до initPdSummaryRowPicker, чтобы видимость
+    // Кнопка «ЧЧИ» – до initPdSummaryRowPicker, чтобы видимость
     // пересчитывалась вместе с фильтром строк и «Скрыть пустые».
     var pdPdChiBtn = document.getElementById("pdPdSummaryChiToggle");
     var pdPdChiStorageKey =
@@ -2073,7 +2073,7 @@ if (summaryTable) {
         ensurePdPdNtDetailRowsVisible();
     }
 
-    // Кнопка «Варианты периметра» — столбец «Варианты периметра»
+    // Кнопка «Варианты периметра» – столбец «Варианты периметра»
     var pdPdPerimeterVariantBtn = document.getElementById("pdPdSummaryPerimeterVariantToggle");
     var pdPdPerimeterVariantStorageKey =
         "pdPdSummaryPerimeterVariant_" +
@@ -2125,7 +2125,7 @@ if (summaryTable) {
         document.addEventListener("pd-summary-rows-rendered", applyPdPdPerimeterVariantColVisibility);
     }
 
-    // Кнопка «Исторические максимумы» — столбец «Исторический собственный максимум»
+    // Кнопка «Исторические максимумы» – столбец «Исторический собственный максимум»
     var pdPdHistBtn = document.getElementById("pdPdSummaryHistToggle");
     var pdPdHistStorageKey =
         "pdPdSummaryHist_" +
@@ -2316,7 +2316,7 @@ if (summaryTable) {
     if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
         window.pdSummarySyncAggregationLevelColspans();
     }
-    // После optional-сегментов и финальной видимости — финальный scroll restore после save.
+    // После optional-сегментов и финальной видимости – финальный scroll restore после save.
     window.requestAnimationFrame(function () {
         if (window.armGsPageScrollRestore) {
             var settledTable = document.getElementById("powerDemandSummaryTable");

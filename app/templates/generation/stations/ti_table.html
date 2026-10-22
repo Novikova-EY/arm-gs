@@ -45,7 +45,7 @@
                     {% for i in range(16) %}
                     <th>
                         <select class="form-select form-select-sm column-filter" data-column="{{ i }}">
-                            <option value="">— Все —</option>
+                            <option value="">– Все –</option>
                         </select>
                     </th>
                     {% endfor %}
@@ -118,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $(this).select2({
                             width: '100%',
                             allowClear: true,
-                            placeholder: '— Все —'
+                            placeholder: '– Все –'
                         });
                     }
                 });

@@ -22,11 +22,11 @@ def test_power_form_keys_include_orig():
 def test_canonical_numeric_form_value_strips_thousand_spaces():
     assert _canonical_numeric_form_value("1 234,0") == "1234.0"
     assert _canonical_numeric_form_value("1 234,5") == "1234.5"
-    assert _canonical_numeric_form_value("—") == ""
+    assert _canonical_numeric_form_value("–") == ""
     assert _canonical_numeric_form_value("") == ""
 
 
 def test_to_decimal_accepts_grouped_display():
     assert to_decimal("1 234,0") == Decimal("1234.0")
-    assert to_decimal("—") is None
+    assert to_decimal("–") is None
     assert to_decimal("90,5") == Decimal("90.5")

@@ -34,7 +34,7 @@
 {% endif %}
 {%- endmacro %}
 
-{# Названия станций «Генерации» в столбце «Электростанция» — ссылки на карточку станции.
+{# Названия станций «Генерации» в столбце «Электростанция» – ссылки на карточку станции.
    Все названия выводятся обычным начертанием, независимо от признака составной станции. #}
 {% macro station_links_label(group) -%}
 {%- if group.equipment_group is defined and group.equipment_group and group.is_composite_child|default(false) and group.show_composite_cluster|default(false) -%}
@@ -110,7 +110,7 @@
 
         {% include 'generation/stations/station_filters_first_row.html' %}
 
-        {# Строка экспорта — между строкой фильтров по станциям и строкой годов. #}
+        {# Строка экспорта – между строкой фильтров по станциям и строкой годов. #}
         <div class="col-12 mb-2">
           <div class="collapse mt-2" id="importExportCollapse">
             <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
@@ -189,7 +189,7 @@
                      class="btn {% if show_totals|default(false) %}btn-success{% else %}btn-outline-success{% endif %} text-wrap flex-shrink-0">
                 Показать суммы по регионам
               </label>
-              {% if has_reported_columns|default(false) %}
+              {% if has_reported_columns|default(false) and sheet.slug != 'zv-vse' %}
               <input type="checkbox" class="btn-check" id="show_reported_switch" autocomplete="off"
                      {% if show_reported|default(false) %}checked{% endif %}>
               <label for="show_reported_switch"
@@ -356,7 +356,7 @@
           position: sticky;
           left: var(--cmp-sticky-left, 0px);
           background-clip: padding-box;
-          /* непрозрачный фон: Bootstrap striped даёт rgba(~5%) — через него «просвечивают» соседние столбцы */
+          /* непрозрачный фон: Bootstrap striped даёт rgba(~5%) – через него «просвечивают» соседние столбцы */
           background-color: #fff !important;
           --bs-table-bg: #fff;
           --bs-table-bg-type: #fff;
@@ -403,7 +403,7 @@
           padding-left: 0.2rem;
           padding-right: 0.2rem;
         }
-        /* Все ячейки тела — по центру высоты строки. Иначе текст в нередактируемых
+        /* Все ячейки тела – по центру высоты строки. Иначе текст в нередактируемых
            ячейках прижат к верху (baseline), а input в редактируемых стоит по центру. */
         #gisTesFuelTable > tbody > tr > td {
           vertical-align: middle;
@@ -486,7 +486,7 @@
           color: var(--bs-danger, #dc3545) !important;
           font-weight: 600;
         }
-        /* Nust / E / Q / расходы топлива — данные из ТЭП (stations_equipment_group_fuel_params). */
+        /* Nust / E / Q / расходы топлива – данные из ТЭП (stations_equipment_group_fuel_params). */
         #gisTesFuelTable > thead th.cmp-fuel-tep-col {
           background-color: #dee2e6 !important;
         }
@@ -499,7 +499,7 @@
         #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-fuel-tep-col {
           background-color: #c8ced4 !important;
         }
-        /* Руст / выработка станции из «Генерации» — сверка со столбцами ТЭП. */
+        /* Руст / выработка станции из «Генерации» – сверка со столбцами ТЭП. */
         #gisTesFuelTable > thead th.cmp-station-gen-col {
           background-color: #ffe0b2 !important;
         }
@@ -513,6 +513,10 @@
           background-color: #f3cb92 !important;
         }
         #gisTesFuelTable tbody td.cmp-station-gen-col .cmp-station-gen-mismatch {
+          color: var(--bs-danger, #dc3545) !important;
+          font-weight: 600;
+        }
+        #gisTesFuelTable tbody td.cmp-zv-sum-mismatch {
           color: var(--bs-danger, #dc3545) !important;
           font-weight: 600;
         }
@@ -534,14 +538,14 @@
           /* не даём input раздувать столбец шире остальных */
           width: 6.5rem;
         }
-        /* Сохранение правки: зелёный контур при успехе, красный при ошибке — как на ee_transfers. */
+        /* Сохранение правки: зелёный контур при успехе, красный при ошибке – как на ee_transfers. */
         #gisTesFuelTable tbody td.is-save-success {
           box-shadow: inset 0 0 0 2px var(--bs-success);
         }
         #gisTesFuelTable tbody td.is-save-error {
           box-shadow: inset 0 0 0 2px var(--bs-danger);
         }
-        /* Разделительные полосы между группами оборудования — как на stations_equipment_group_fuel_params. */
+        /* Разделительные полосы между группами оборудования – как на stations_equipment_group_fuel_params. */
         #gisTesFuelTable tbody tr.fuel-param-group-last > td,
         #gisTesFuelTable tbody td.fuel-param-group-span {
           border-bottom: 2px solid #6c757d !important;
@@ -552,7 +556,7 @@
         #gisTesFuelTable.table-striped > tbody > tr.cmp-summary-row > * {
           --bs-table-accent-bg: transparent;
         }
-        /* Фильтры в шапке «Электростанция» и «Принадлежность» — у нижнего края шапки. */
+        /* Фильтры в шапке «Электростанция» и «Принадлежность» – у нижнего края шапки. */
         #gisTesFuelTable > thead th.gis-tes-filter-th {
           padding-bottom: 2.4rem;
         }
@@ -571,7 +575,7 @@
           margin-top: 0;
           z-index: 2;
         }
-        /* «Принадлежность» — не липкий столбец (position: static), поэтому абсолютный
+        /* «Принадлежность» – не липкий столбец (position: static), поэтому абсолютный
            фильтр получал в containing block всю строку шапки и растягивался почти на всю
            таблицу. Привязываем его к самому столбцу: ширина = ширине столбца. */
         #gisTesFuelTable > thead th.gis-tes-filter-th:not(.cmp-sticky) {
@@ -583,6 +587,7 @@
         <table
           class="table table-hover table-striped table-bordered power-demand-summary-table{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}"
           id="gisTesFuelTable"
+          data-sheet-slug="{{ sheet.slug }}"
           data-can-edit="{{ '1' if can_edit|default(false) else '0' }}"
           data-update-url="{% if can_edit|default(false) %}{{ url_for('ecology_bp.gis_tes_fuel_comparison_update_value', sheet_slug=sheet.slug) }}{% endif %}"
           data-rounding-digits="{{ rounding_digits }}"
@@ -616,7 +621,9 @@
                  style="cursor: help; font-size: 0.9em;"
                  aria-label="Формула"></i>
               {% endif %}
-              {% if cell.column_key in ['NAME', 'Stancia'] %}
+              {% if cell.column_key == 'ZV_normir' and norm_zv_options %}
+              {% include 'ecology/_gis_tek_norm_zv_header.html' %}
+              {% elif cell.column_key in ['NAME', 'Stancia'] %}
               <select class="form-select form-select-sm gis-tes-header-filter"
                       data-filter-param="station_header_filter"
                       aria-label="Фильтр: Электростанция"
@@ -869,9 +876,9 @@
     const updateUrl = table?.dataset.updateUrl;
     const canEdit = table?.dataset.canEdit === '1';
     const roundingDigits = table?.dataset.roundingDigits || '';
-    // «Округл (k эмис)» — только для столбцов «Коэффициент эмиссии».
+    // «Округл (k эмис)» – только для столбцов «Коэффициент эмиссии».
     const emissionRoundingDigits = table?.dataset.emissionRoundingDigits || roundingDigits;
-    // «Округл (удельные)» — только для удельных столбцов ЗВ.
+    // «Округл (удельные)» – только для удельных столбцов ЗВ.
     const specificRoundingDigits = table?.dataset.specificRoundingDigits || roundingDigits;
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
     const KCAL_PER_KWH = 859.8;
@@ -879,15 +886,15 @@
     const parseNum = function (raw) {
       if (raw == null) return null;
       let s = String(raw).trim();
-      if (!s || s === '—' || s === '-' || s === '–') return null;
+      if (!s || s === '–' || s === '-' || s === '–') return null;
       s = s.replace(/[\u2212\u2013\u2014]/g, '-')
            .replace(/[\u00a0\u202f\s]/g, '')
            .replace(',', '.');
       const n = Number(s);
       return Number.isFinite(n) ? n : null;
     };
-    // «Округл» как format_decimal_for_display на сервере: -1 — целое, 0 — без округления,
-    // 1..3 — знаки после запятой; пусто или неизвестное значение — 1 знак.
+    // «Округл» как format_decimal_for_display на сервере: -1 – целое, 0 – без округления,
+    // 1..3 – знаки после запятой; пусто или неизвестное значение – 1 знак.
     const ROUNDING_CHOICES = [-1, 0, 1, 2, 3];
     const formatNum = function (value, digitsRaw) {
       if (value == null || !Number.isFinite(value)) return '';
@@ -897,7 +904,7 @@
       const abs = Math.abs(value);
       let fixed;
       if (digits === -1) {
-        // половинки — от нуля, как ROUND_HALF_UP
+        // половинки – от нуля, как ROUND_HALF_UP
         fixed = String(Math.round(abs));
       } else if (digits === 0) {
         // без округления: только значащие цифры (15), как drop_float_noise на сервере
@@ -964,6 +971,30 @@
       }
       return has ? total : null;
     };
+    const validateZvEnergySum = function (tr) {
+      if (table?.dataset.sheetSlug !== 'zv-vse' || !tr) return;
+      const totalCell = tr.querySelector('td[data-col-key="normir_ZV_na_energ"]');
+      if (!totalCell) return;
+      // Первая строка title – полное значение; остальные строки – комментарий проверки.
+      const fullValue = function (td) {
+        return td ? parseNum(td.title.split('\n')[0] || td.textContent) : null;
+      };
+      const baseTitle = totalCell.title.split('\n')[0];
+      const total = fullValue(totalCell);
+      const parts = ['normir_TVERD_na_energ', 'normir_SO2_na_energ', 'normir_NOx_na_energ'].map(function (key) {
+        return fullValue(tr.querySelector('td[data-col-key="' + key + '"]'));
+      });
+      const sum = safeSum(...parts);
+      // Деления считаются отдельно: погрешность double не является расхождением.
+      const mismatch = total != null && sum != null &&
+        Math.abs(total - sum) > 1e-12 * Math.max(Math.abs(total), Math.abs(sum));
+      totalCell.classList.toggle('cmp-zv-sum-mismatch', mismatch);
+      totalCell.title = baseTitle;
+      if (mismatch) {
+        totalCell.title += '\nНе совпадает с суммой ингредиентов: твердое топливо + сера + азот = ' +
+          formatNum(sum, 0) + '. Разница (значение − сумма): ' + formatNum(total - sum, 0) + '.';
+      }
+    };
     const recalcDerivedRow = function (tr) {
       if (!tr || tr.classList.contains('cmp-summary-row')) return;
       const gazEst = readCellNum(tr, 'GAZ_ESTEST');
@@ -1010,7 +1041,7 @@
         const title = info.title == null ? '' : String(info.title);
         const td = tr.querySelector('td[data-col-key="' + key + '"]');
         if (!td) return;
-        // Подсказка при наведении — полное значение независимо от «Округл».
+        // Подсказка при наведении – полное значение независимо от «Округл».
         if (title) {
           td.title = title;
         } else {
@@ -1036,12 +1067,16 @@
           td.textContent = text;
         }
       });
+      validateZvEnergySum(tr);
     };
     if (table) {
-      table.querySelectorAll('tbody tr[data-row-key]').forEach(recalcDerivedRow);
+      table.querySelectorAll('tbody tr[data-row-key]').forEach(function (tr) {
+        recalcDerivedRow(tr);
+        validateZvEnergySum(tr);
+      });
     }
     if (canEdit && updateUrl) {
-      // Enter — сохранить сразу, Escape — вернуть значение, с которым клетка пришла с сервера.
+      // Enter – сохранить сразу, Escape – вернуть значение, с которым клетка пришла с сервера.
       table.addEventListener('keydown', function (event) {
         const input = event.target.closest('input.ot-edit-value');
         if (!input) return;
@@ -1078,7 +1113,8 @@
                 value: input.value,
                 rounding_digits: roundingDigits,
                 emission_rounding_digits: emissionRoundingDigits,
-                specific_rounding_digits: specificRoundingDigits
+                specific_rounding_digits: specificRoundingDigits,
+                norm_zv: {{ norm_zv_selected|default([])|tojson }}
               })
             });
             const result = await response.json().catch(function () { return {}; });
@@ -1111,7 +1147,7 @@
 
     // Общий прелоадер (base.html) показывается при уходе со страницы. Если переход
     // отменён или страница открыта из кеша, он так и остался бы висеть поверх таблицы
-    // и блокировал бы работу — скрываем его, когда страница реально показана.
+    // и блокировал бы работу – скрываем его, когда страница реально показана.
     window.addEventListener('pageshow', function () {
       const preloader = document.getElementById('preloader');
       if (preloader) preloader.style.display = 'none';
@@ -1157,6 +1193,7 @@
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 {% include 'ecology/_station_filters_toggle_script.html' %}
 <script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ecology/gis_tek_norm_zv_header_filter.js') }}?v=4"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('select.gis-tes-header-filter').forEach(function (selectEl) {

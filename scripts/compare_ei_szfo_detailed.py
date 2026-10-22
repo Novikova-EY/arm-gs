@@ -135,14 +135,14 @@ def main():
             ctx = build_electrical_intensity_page_context(**kw)
 
     block = next(b for b in ctx["territory_blocks"] if b.get("abbr") == "СЗФО")
-    print("СЗФО — сравнение фактических и расчётных точек графика\n")
+    print("СЗФО – сравнение фактических и расчётных точек графика\n")
 
     ok = mism = 0
     for section in block.get("ved_sections") or []:
         name = section.get("ved_name") or ""
         chart = section.get("scatter_chart")
         if not chart:
-            print(f"[—] {name}: график не построен на странице")
+            print(f"[–] {name}: график не построен на странице")
             continue
         matched = match_excel_block(name, excel_blocks)
         if not matched:

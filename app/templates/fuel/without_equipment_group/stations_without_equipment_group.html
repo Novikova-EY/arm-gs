@@ -516,7 +516,7 @@
                                     {% set show_rd_totals = (should_show_totals|default({})).get('regional_districts', {}).get(rd_id) %}
                                     {# Заголовок субъекта РФ:
                                        - при per_page=all показываем только если должны быть итоги по субъекту
-                                       - при постраничном режиме — по старой логике первых вхождений #}
+                                       - при постраничном режиме – по старой логике первых вхождений #}
                                     {% if (per_page == 'all' and show_rd_totals) or (per_page != 'all' and show_headers and rd_id in show_headers.get('regional_districts', [])) %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}

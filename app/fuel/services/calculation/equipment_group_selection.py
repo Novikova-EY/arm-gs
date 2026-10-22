@@ -22,7 +22,7 @@ def dedupe_equipment_group_ids_prefer_version(
     """
     Убирает задвоение: одна и та же станция (numb) часто есть и в версии БД, и с
     database_version_id=NULL. Для сумм «Базовый год» / этапов расчёта оставляем
-    строку текущей версии; NULL — только если для этого numb версии нет.
+    строку текущей версии; NULL – только если для этого numb версии нет.
 
     rows: (id, numb, database_version_id)
     """
@@ -54,7 +54,7 @@ def drop_null_groups_shadowed_by_versioned_numb(
 ) -> list[tuple[int, int | None, int | None]]:
     """
     NULL-копия станции не участвует в расчёте, если в версии БД уже есть
-    группа с тем же numb — даже если версионная строка не проходит ved>0.
+    группа с тем же numb – даже если версионная строка не проходит ved>0.
 
     Иначе в «Нет строки топлива» попадает legacy id (database_version_id IS NULL),
     а ссылка на редактирование (только текущая версия) открывает пустую выборку.
@@ -85,11 +85,11 @@ def select_equipment_group_ids_for_calculation(
     (обычно base_year и/или расчётный year параметра распределения).
 
     Это отбор *группы*: ved>0 хотя бы в одном из лет. В циклах Коэфф/Распред/Топливо
-    Access проверяет ved ещё раз на *строке года* (FindFirst filter1) — см.
+    Access проверяет ved ещё раз на *строке года* (FindFirst filter1) – см.
     ``access_ved_filter_year_row_participates``.
 
     При заданной версии в выборку попадают и versioned, и NULL-группы, но
-    одинаковый numb не суммируется дважды — приоритет у строки effective_db_version.
+    одинаковый numb не суммируется дважды – приоритет у строки effective_db_version.
     NULL-группа отбрасывается, если группа с тем же numb уже есть в версии
     (даже когда версионная копия не проходит ved>0 за base/calc год).
     """
@@ -158,7 +158,7 @@ def access_ved_filter_year_row_participates(param: EquipmentGroupFuelParam | Non
     Access: ``(ved>0)`` на конкретной строке года «Станции(Схема)».
 
     Строка с ved=0/NULL (оболочка родителя / выключенный ребёнок) не входит
-    в FindFirst/FindNext filter1 — её не пишут Коэфф/Распред/Топливо.
+    в FindFirst/FindNext filter1 – её не пишут Коэфф/Распред/Топливо.
     """
     return fuel_param_row_participates(param)
 
@@ -193,7 +193,7 @@ def participating_group_ids_for_year(
     """
     Из уже отобранных групп оставить те, у кого FuelParam за year_number с ved>0.
 
-    Access: count/цикл «Топливо» — ``filter1 and (year=cyear)``.
+    Access: count/цикл «Топливо» – ``filter1 and (year=cyear)``.
     """
     ids = [int(gid) for gid in group_ids if gid is not None]
     if not ids:

@@ -24,6 +24,7 @@ DEFAULT_TERRITORY_SLUG = "vsego"
 DEFAULT_SHEET_SLUG = "obemy"
 
 CAPACITY_LE100 = Decimal("100")
+# Ключи сохранены для совместимости с уже введёнными нормативами.
 CAPACITY_LE100_KEY = "le100"
 CAPACITY_GT100_KEY = "gt100"
 CAPACITY_CLASSES = (CAPACITY_LE100_KEY, CAPACITY_GT100_KEY)
@@ -46,150 +47,45 @@ NEW_TES_CALC_SHEETS: tuple[dict[str, Any], ...] = (
         "layout": "chars",
     },
     {
-        "slug": "zola",
-        "sheet_name": "Зола",
-        "page_title": "Выбросы твердых веществ в атмосферу",
-        "unit": "тыс. т",
-        "layout": "emission",
-    },
-    {
-        "slug": "sera",
-        "sheet_name": "Сера",
-        "page_title": "Выбросы диоксидов серы, тыс.т/год",
-        "unit": "тыс. т",
-        "layout": "emission",
-    },
-    {
-        "slug": "azot",
-        "sheet_name": "Азот",
-        "page_title": "Выбросы оксидов азота в атмосферу, тыс.т/год",
-        "unit": "тыс. т",
-        "layout": "emission",
-    },
-    {
-        "slug": "co",
-        "sheet_name": "CO",
-        "page_title": "Выбросы монооксидов углерода в атмосферу, т/год",
-        "unit": "т",
-        "layout": "emission",
-    },
-    {
-        "slug": "pg",
-        "sheet_name": "ПГ",
-        "page_title": "Выбросы парниковых газов (CO2) в атмосферу, тыс.т/год",
-        "unit": "тыс. т",
-        "layout": "emission",
-    },
-    {
         "slug": "obemy",
-        "sheet_name": "Объемы",
-        "page_title": "Ожидаемые объёмы выбросов от нового оборудования",
-        "unit": "тыс. т",
+        "sheet_name": "Объемы выбросов новых ТЭС",
+        "page_title": "Ожидаемые объемы выбросов вредных веществ и парниковых газов в атмосферу, тыс. т",
+        "unit": "т (ЗВ); тыс. т (ПГ)",
         "layout": "volumes",
-    },
-    {
-        "slug": "udel-e",
-        "sheet_name": "Удельные по привед Э",
-        "page_title": "Удельные выбросы на приведённую энергию",
-        "unit": "г/кВт·ч",
-        "layout": "specific_e",
-    },
-    {
-        "slug": "udel-fuel",
-        "sheet_name": "Удельные по топл",
-        "page_title": "Удельные выбросы на топливо",
-        "unit": "кг/т у.т.",
-        "layout": "specific_fuel",
-    },
-    {
-        "slug": "udel-ee",
-        "sheet_name": "Удельные только по ЭЭ",
-        "page_title": "Удельные выбросы на выработку электроэнергии",
-        "unit": "г/кВт·ч",
-        "layout": "specific_ee",
     },
 )
 
-NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
-    "zola": {
-        "kind": "pair",
-        "left_metric": "b",
-        "right_metric": "ash",
-        "left_title": "В, тыс. т у.т.",
-        "right_title": "М, тыс.т",
-        "left_formula_key": "nt_fuel_b",
-        "right_formula_key": "nt_zv_thous",
-        "show_unit_column": False,
-    },
-    "sera": {
-        "kind": "pair",
-        "left_metric": "b",
-        "right_metric": "so2",
-        "left_title": "В, тыс. т у.т.",
-        "right_title": "М, тыс.т",
-        "left_formula_key": "nt_fuel_b",
-        "right_formula_key": "nt_zv_thous",
-        "show_unit_column": False,
-    },
-    "azot": {
-        "kind": "pair",
-        "left_metric": "b",
-        "right_metric": "nox",
-        "left_title": "В, тыс. т у.т.",
-        "right_title": "М, тыс.т",
-        "left_formula_key": "nt_fuel_b",
-        "right_formula_key": "nt_zv_thous",
-        "show_unit_column": False,
-    },
-    "co": {
-        "kind": "pair",
-        "left_metric": "b",
-        "right_metric": "co",
-        "left_title": "В, тыс. т у.т.",
-        "right_title": "М, т",
-        "left_formula_key": "nt_fuel_b",
-        "right_formula_key": "nt_zv_tonnes",
-        "show_unit_column": False,
-    },
-    "pg": {
-        "kind": "pair",
-        "left_metric": "b",
-        "right_metric": "pg",
-        "left_title": "В, тыс. т у.т.",
-        "right_title": "М, тыс.т",
-        "left_formula_key": "nt_fuel_b",
-        "right_formula_key": "nt_pg_mass",
-        "show_unit_column": False,
-    },
-}
-
 NORM_COLUMNS: tuple[tuple[str, str], ...] = (
-    ("ash_le100", "Зола"),
-    ("so2_le100", "Сера"),
-    ("nox_le100", "Азот"),
-    ("co_le100", "CO"),
-    ("pg_le100", "ПГ"),
-    ("ash_gt100", "Зола"),
-    ("so2_gt100", "Сера"),
-    ("nox_gt100", "Азот"),
-    ("co_gt100", "CO"),
-    ("pg_gt100", "ПГ"),
+    ("ash", "твердые частицы (зола)"),
+    ("so2", "диоксид серы (SO2)"),
+    ("nox", "оксиды азота (NOx)"),
+    ("k_co2", "Парниковые газы (CO2)"),
 )
 
 NORM_HEADER_GROUPS: tuple[dict[str, Any], ...] = (
-    {
-        "title": "До 100 МВт, кг/т у.т. (ПГ — т/т у.т.)",
-        "keys": ("ash_le100", "so2_le100", "nox_le100", "co_le100", "pg_le100"),
-    },
-    {
-        "title": "Более 100 МВт, кг/т у.т. (ПГ — т/т у.т.)",
-        "keys": ("ash_gt100", "so2_gt100", "nox_gt100", "co_gt100", "pg_gt100"),
-    },
+    {"title": "Загрязняющие вещества, кг/т.у.т.", "keys": ("ash", "so2", "nox")},
+    {"title": "Парниковые газы (CO2), т/т.у.т.", "keys": ("k_co2",), "rowspan": 2},
 )
 
-NORM_FIELD_KEYS = frozenset(key for key, _label in NORM_COLUMNS)
+NEW_TES_CAPACITY_TABS = (
+    ("le100", "до 100 МВт"),
+    ("gt100", "100 МВт и более"),
+)
 
-# (ash, so2, nox, co, pg) для le100 и gt100. Источник — лист «Нормативы уд.выборосов».
+NEW_TES_VOLUME_COLUMNS = (
+    ("pollutants_total", "Всего ЗВ"),
+    ("ash", "твердые частицы (зола)"),
+    ("so2", "диоксид серы (SO2)"),
+    ("nox", "оксиды азота (NOx)"),
+    ("co", "монооксид углерода (CO)"),
+    ("co2", "Парниковые газы (CO2), тыс. т"),
+)
+
+NORM_FIELD_KEYS = frozenset(
+    f"{kind}_{capacity}" for kind in NORM_KINDS for capacity in CAPACITY_CLASSES
+)
+
+# (ash, so2, nox, co, pg) для le100 и gt100. Источник – лист «Нормативы уд.выборосов».
 _N = {
     "gas_natural": ((0, 0, 1.26, 0, 1.59), (0, 0, 1.26, 0, 1.59)),
     "gas_associated": ((0, 0, 1.26, 0, 1.695), (0, 0, 1.26, 0, 1.695)),
@@ -268,15 +164,6 @@ def _pack(pair: tuple[tuple[float, ...], tuple[float, ...]]) -> dict[str, dict[s
 
 DEFAULT_NORMS: dict[str, dict[str, dict[str, float]]] = {
     key: _pack(pair) for key, pair in _N.items()
-}
-
-VOLUME_ROW_FORMULA_KEYS: dict[str, tuple[str, ...]] = {
-    "pollutants_total": ("nt_zv_sum",),
-    "ash": ("nt_zv_thous",),
-    "so2": ("nt_zv_thous",),
-    "nox": ("nt_zv_thous",),
-    "co": ("nt_zv_tonnes",),
-    "co2": ("nt_pg_mass",),
 }
 
 

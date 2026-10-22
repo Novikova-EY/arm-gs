@@ -38,7 +38,7 @@ def upgrade():
             sa.Column(COLUMN, sa.String(255), nullable=False, server_default=""),
             schema=SCHEMA,
         )
-    # Для Таймыра — краткий дательный для итогов «Итого по Таймыру»
+    # Для Таймыра – краткий дательный для итогов «Итого по Таймыру»
     conn.execute(
         text(
             f"""

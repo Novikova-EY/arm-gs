@@ -106,21 +106,21 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       <!-- /.fuel-params-sticky-filters -->
 
       <div class="fuel-params-top-table-wrap" id="stationsTableContainer">
-        {# Метрики вне группы «Расход топлива». b — под «Расход топлива», но с
-        фиксированной подписью. Группы шапки — как на
+        {# Метрики вне группы «Расход топлива». b – под «Расход топлива», но с
+        фиксированной подписью. Группы шапки – как на
         equipment_group_fuel_params_edit_data. Столбцы h/hfix («Часы») на этой
         странице не показываем. #} {% set fuel_header_metric_cols = ('numb1120',
         'nust', 'nr', 'e', 'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk', 'nt',
         'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t') %} {# nust+nr: первая
-        строка шапки — «Электрическая мощность» (colspan=2), вторая —
+        строка шапки – «Электрическая мощность» (colspan=2), вторая –
         подписи столбцов. #} {% set fuel_power_metric_cols = ('nust', 'nr') %}
-        {# e…snk: первая строка шапки — «Электрические показатели», вторая —
+        {# e…snk: первая строка шапки – «Электрические показатели», вторая –
         подписи столбцов. #} {% set fuel_electric_metric_cols = ('e',
         'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk') %} {# nt+nt_sum: первая строка
-        шапки — «Тепловая мощность» (colspan=2), вторая — подписи
+        шапки – «Тепловая мощность» (colspan=2), вторая – подписи
         столбцов. #} {% set fuel_heat_power_metric_cols = ('nt', 'nt_sum') %} {#
-        q…sn_t: первая строка шапки — «Тепловые показатели», вторая
-        — подписи столбцов. #} {% set fuel_thermal_metric_cols = ('q', 'qotr',
+        q…sn_t: первая строка шапки – «Тепловые показатели», вторая
+        – подписи столбцов. #} {% set fuel_thermal_metric_cols = ('q', 'qotr',
         'turt', 'tust', 'sn_te', 'sn_t') %} {% set fuel_param_header_use_fixed_label =
         fuel_header_metric_cols + ('b',) %} {# Две строки шапки всегда: группы
         мощности/эл./тепл. показателей + при наличии «Расход топлива». #} {% set
@@ -156,7 +156,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         not none else {} %} {% set fuel_children_by_parent =
         _fuel_hier.get('children_by_parent') if
         _fuel_hier.get('children_by_parent') is not none else {} %} {#
-        Родительские столбцы иерархии и «Всего (b)» — только суммы, без
+        Родительские столбцы иерархии и «Всего (b)» – только суммы, без
         редактирования. #} {% set fuel_hier_sum_attrs = fuel_group_parents +
         (['b'] if 'b' not in fuel_group_parents else []) %} {% set
         fuel_extra_attrs = fuel_extra_column_attrs|default([]) %} {% set
@@ -242,7 +242,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 >
                   Электрическая<br />мощность
                 </th>
-                {% elif attr in fuel_power_metric_cols %} {# nr и др. — покрыты
+                {% elif attr in fuel_power_metric_cols %} {# nr и др. – покрыты
                 colspan группы мощности #} {% elif attr == 'e' %}
                 <th
                   colspan="{{ fuel_electric_metric_cols|length }}"
@@ -250,7 +250,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 >
                   Электрические показатели
                 </th>
-                {% elif attr in fuel_electric_metric_cols %} {# ewtp…snk —
+                {% elif attr in fuel_electric_metric_cols %} {# ewtp…snk –
                 покрыты colspan группы электрических показателей #} {% elif attr
                 == 'nt' %}
                 <th
@@ -259,7 +259,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 >
                   Тепловая<br />мощность
                 </th>
-                {% elif attr in fuel_heat_power_metric_cols %} {# nt_sum —
+                {% elif attr in fuel_heat_power_metric_cols %} {# nt_sum –
                 покрыт colspan группы тепловой мощности #} {% elif attr == 'q'
                 %}
                 <th
@@ -268,7 +268,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 >
                   Тепловые показатели
                 </th>
-                {% elif attr in fuel_thermal_metric_cols %} {# qotr…sn_t —
+                {% elif attr in fuel_thermal_metric_cols %} {# qotr…sn_t –
                 покрыты colspan группы тепловых показателей #}                 {% else %}
                 {% if attr == 'numb1120' %}
                 {{ fuel_param_numb1120_header_th(fuel_header_rowspan, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
@@ -396,7 +396,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               group_block.equipment_group %} {% set group_name =
               (group_entity.name if group_entity and group_entity.name else
               (group_entity.name_ext if group_entity and group_entity.name_ext
-              else '—')) %} {% if group_block.get('is_composite_total_row') %} {%
+              else '–')) %} {% if group_block.get('is_composite_total_row') %} {%
               set group_name = group_name ~ ', всего' %} {% endif %} {% set gid = group_entity.id if group_entity and
               group_entity.id else 0 %}               {% for row in group_block.rows %} {% set
               param = row[1] %} {% set ynum = param.year_number if param is not
@@ -517,7 +517,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                   {% if group_block.get('use_station_summary') or group_block.get('is_composite_total_row') %}
                     {% set _sum_map = station_block.station_summary_by_year or {} %}
                     {% set _row_sum = none if ynum == '' else (_sum_map.get(ynum) if ynum in _sum_map else _sum_map.get(ynum|int)) %}
-                    {% if attr == 'numb1120' %}{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}
+                    {% if attr == 'numb1120' %}{{ group_entity.numb if group_entity and group_entity.numb is not none else '–' }}
                     {% elif is_numeric and _row_sum and attr in _row_sum %}
                     <span class="fuel-hier-sum-value">{{ render_numeric_or_dash(_row_sum[attr], true) }}</span>
                     {% elif is_hier_sum %}<span class="fuel-hier-sum-value"></span>{% endif %}
@@ -550,7 +550,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               </tr>
               {% endfor %} {% endfor %} {# Жёлтая «станция, всего» отключена:
               для составных итог на строке родителя («…, всего»). #} {% endfor %} {% if res_block.group_blocks and not res_block.get('hide_res_summary') %} {# Итоги
-              по РЭС — формульные, не редактируются #}
+              по РЭС – формульные, не редактируются #}
               <tr
                 class="text-center align-middle table-info fuel-param-detail-row fuel-param-summary-row"
                 style="font-weight: bold"
@@ -597,7 +597,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               group_entity = row[0] %} {% set param = row[1] %} {% set
               group_name = (group_entity.name if group_entity and
               group_entity.name else (group_entity.name_ext if group_entity and
-              group_entity.name_ext else '—')) %} {% set gid = group_entity.id
+              group_entity.name_ext else '–')) %} {% set gid = group_entity.id
               if group_entity and group_entity.id else 0 %} {% set ynum =
               param.year_number if param is not none and param.year_number is
               not none else '' %} {% set can_row_edit = can_edit_bulk and gid %}
@@ -998,7 +998,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
     > * {
     border-color: #adb5bd;
   }
-  /* Виды топлива: с «+» группировки — жирный, входящие в группу без своих детей — обычный */
+  /* Виды топлива: с «+» группировки – жирный, входящие в группу без своих детей – обычный */
   #fuelParamsTable thead th.fuel-hier-leaf-header,
   #fuelDetailNonCoalTable thead th.fuel-hier-leaf-header,
   #fuelDetailCoalTable thead th.fuel-hier-leaf-header {
@@ -1009,7 +1009,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
   #fuelDetailCoalTable thead th.fuel-hier-parent-header {
     font-weight: 700;
   }
-  /* Шапка table-success: границы/заливка — в table_headers.css (весь проект) */
+  /* Шапка table-success: границы/заливка – в table_headers.css (весь проект) */
   #fuelParamsTable > thead.table-success > tr > th {
     vertical-align: middle !important;
     padding: 0.5rem !important;
@@ -1062,14 +1062,14 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
     overflow: hidden;
     box-sizing: border-box;
   }
-  /* Не даём широким таблицам раздувать body — скролл только у обёрток */
+  /* Не даём широким таблицам раздувать body – скролл только у обёрток */
   body:has(.fuel-params-shell) {
     overflow-x: hidden;
   }
   /*
       Верх: X+Y скролл у .fuel-params-top (как .fuel-calc-edit-top на edit_data).
       Глобальный #stationsTableContainer { max-height: 100vh } ломал layout и прятал H-скролл.
-      Кнопки/фильтры и шапка таблицы — sticky при вертикальном скролле.
+      Кнопки/фильтры и шапка таблицы – sticky при вертикальном скролле.
     */
   .fuel-params-top {
     min-width: 0;
@@ -1373,7 +1373,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       const fuelHierSumAttrList = {{ fuel_hier_sum_attrs|list|tojson }};
       const fuelHierSumAttrSet = {};
       fuelHierSumAttrList.forEach(function (a) { fuelHierSumAttrSet[a] = true; });
-      /* Столбцы Доп_угли (ExtraFuelParam) — нельзя суммировать в gaz/ugol/B из Станции. */
+      /* Столбцы Доп_угли (ExtraFuelParam) – нельзя суммировать в gaz/ugol/B из Станции. */
       const fuelExtraAttrSet = {};
       {{ fuel_extra_attrs|list|tojson }}.forEach(function (a) { fuelExtraAttrSet[a] = true; });
       const fuelTypeAttrs = [
@@ -1398,7 +1398,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       function parseFuelNum(raw) {
           if (raw == null) return null;
           var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
-          if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return null;
+          if (!s || s === '–' || s === '-' || s.toLowerCase() === 'none') return null;
           var n = Number(s);
           return isFinite(n) ? n : null;
       }
@@ -1580,7 +1580,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       function formatFuelHierSumInput(n) {
           if (n == null || !isFinite(n) || n === 0) return '';
           var text = formatFuelHierSum(n);
-          return text === '—' ? '' : text;
+          return text === '–' ? '' : text;
       }
 
       function fuelAttrDepth(attr) {
@@ -1640,7 +1640,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           if (hidden) {
               hidden.value = formatFuelHierSumInput(n);
           }
-          if (text && text !== '—') {
+          if (text && text !== '–') {
               td.title = text;
           } else {
               td.removeAttribute('title');
@@ -1653,7 +1653,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           fuelParentsDeepestFirst.forEach(function (parent) {
               var kids = fuelChildrenByParent[parent] || [];
               var parentIsExtra = !!fuelExtraAttrSet[parent];
-              /* FuelParam-родитель (gaz, ugol, …) — только дети FuelParam;
+              /* FuelParam-родитель (gaz, ugol, …) – только дети FuelParam;
                  Extra-дети (gaz_prir и т.п.) иначе затирают итог Станции и B. */
               var kidsForSum = kids.filter(function (child) {
                   return parentIsExtra ? !!fuelExtraAttrSet[child] : !fuelExtraAttrSet[child];
@@ -1689,8 +1689,8 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           clearFuelConsumptionDashes();
       }
 
-      /** В разделе «Расход топлива» прочерк не показываем — пустая ячейка.
-       *  В итоговых строках — прочерки убираем во всех числовых ячейках. */
+      /** В разделе «Расход топлива» прочерк не показываем – пустая ячейка.
+       *  В итоговых строках – прочерки убираем во всех числовых ячейках. */
       function clearFuelConsumptionDashes() {
           if (!table) return;
           table.querySelectorAll('tbody tr.fuel-param-detail-row').forEach(function (row) {
@@ -1710,7 +1710,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                   var span = td.querySelector('.fuel-hier-sum-value');
                   var node = span || td;
                   var text = (node.textContent || '').trim();
-                  if (text === '—' || text === '–' || text === '-') {
+                  if (text === '–' || text === '–' || text === '-') {
                       node.textContent = '';
                       td.removeAttribute('title');
                   }
@@ -2012,7 +2012,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       }
 
       function updateAllIndependentXScroll() {
-          /* Верхний H-скролл — у .fuel-params-top (overflow:auto), класс на обёртке не нужен */
+          /* Верхний H-скролл – у .fuel-params-top (overflow:auto), класс на обёртке не нужен */
           if (topTableWrap) {
               topTableWrap.classList.remove('has-x-scroll');
           }
@@ -2100,19 +2100,19 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           if (fuelHierSumAttrSet[attr]) {
               const span = td.querySelector('.fuel-hier-sum-value');
               const text = ((span ? span.textContent : td.textContent) || '').trim();
-              return { text: text === '—' || text === '-' || text === '–' ? '' : text, input: null, isSum: true };
+              return { text: text === '–' || text === '-' || text === '–' ? '' : text, input: null, isSum: true };
           }
           const derived = td.querySelector('.fuel-param-derived-value');
           if (derived) {
               const text = (derived.textContent || '').trim();
-              return { text: text === '—' || text === '-' || text === '–' ? '' : text, input: null, isSum: false };
+              return { text: text === '–' || text === '-' || text === '–' ? '' : text, input: null, isSum: false };
           }
           const inp = td.querySelector('input.fuel-param-input[name]');
           if (inp) {
               return { text: inp.value, input: inp, isSum: false };
           }
           const text = (td.textContent || '').trim();
-          return { text: text === '—' || text === '-' || text === '–' ? '' : text, input: null, isSum: false };
+          return { text: text === '–' || text === '-' || text === '–' ? '' : text, input: null, isSum: false };
       }
 
       function fillDetailBody(tbody, attrs, sourceRow) {
@@ -2207,7 +2207,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           });
       }
 
-      /** Как на equipment_group_fuel_params_edit_data: нижние панели — по выбранной группе. */
+      /** Как на equipment_group_fuel_params_edit_data: нижние панели – по выбранной группе. */
       function selectGroupAndLoad(gid, preferredRow) {
           if (!table || !gid) return;
           const gidStr = String(gid);
@@ -2402,7 +2402,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           if (typeof bindFuelParamCellWarnings === 'function') {
               bindFuelParamCellWarnings(table, { listen: false });
           }
-          /* Как на calculation: клик по строке группы (в т.ч. по ячейке с input) — обновить нижние панели. */
+          /* Как на calculation: клик по строке группы (в т.ч. по ячейке с input) – обновить нижние панели. */
           table.addEventListener('click', function (ev) {
               if (ev.target.closest('a') || ev.target.closest('button') || ev.target.closest('.fuel-hier-toggle')) {
                   return;
@@ -2477,7 +2477,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           });
       }
 
-      /* Enter в верхней или нижней таблице — сохранить (как на machine_details / edit_data). */
+      /* Enter в верхней или нижней таблице – сохранить (как на machine_details / edit_data). */
       function isFuelEditInput(el) {
           return !!(el && el.classList && (
               el.classList.contains('fuel-param-input') ||

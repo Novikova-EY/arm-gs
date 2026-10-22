@@ -43,9 +43,9 @@ def fuel_calculation_snapshot_for_api(
     fuel_formula_row_year_number: int | None,
 ) -> dict[str, Any]:
     """
-    Снимок строк параметров после calculate_group_year — для ответа пакетного API.
-    Числа — строки, как в Decimal.__str__, чтобы не терять точность.
-    specific_fuel_consumption_row_year_number / fuel_formula_row_year_number — годы исходных строк
+    Снимок строк параметров после calculate_group_year – для ответа пакетного API.
+    Числа – строки, как в Decimal.__str__, чтобы не терять точность.
+    specific_fuel_consumption_row_year_number / fuel_formula_row_year_number – годы исходных строк
     Seek-окна [base_year, year], как в EquipmentGroupFuelCalculationService.
     """
     energy_keys = ("ewtp", "eotp", "eust", "eurt", "tust", "b")

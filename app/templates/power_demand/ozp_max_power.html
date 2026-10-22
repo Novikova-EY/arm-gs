@@ -208,9 +208,9 @@
                                data-slice="{{ col.ozp_end }}"
                                value="{{ val }}"
                                title="{{ full }}"
-                               aria-label="{{ row_max_label }} — {{ col.label }}" />
+                               aria-label="{{ row_max_label }} – {{ col.label }}" />
                         {% else %}
-                        {{ val if val else "—" }}
+                        {{ val if val else "–" }}
                         {% endif %}
                     </td>
                     {% endfor %}
@@ -231,9 +231,9 @@
                                data-slice="{{ col.ozp_end }}"
                                value="{{ val }}"
                                title="{{ val }}"
-                               aria-label="{{ row_peak_dt_label }} — {{ col.label }}" />
+                               aria-label="{{ row_peak_dt_label }} – {{ col.label }}" />
                         {% else %}
-                        {{ val if val else "—" }}
+                        {{ val if val else "–" }}
                         {% endif %}
                     </td>
                     {% endfor %}
@@ -245,7 +245,7 @@
                     {% for col in columns %}
                     {% set val = growth_values[loop.index0] %}
                     <td class="text-center summary-year-cell">
-                        <span class="ozp-growth-value"{% if val and val != '—' %} title="{{ val|e }}"{% endif %}>{{ val }}</span>
+                        <span class="ozp-growth-value"{% if val and val != '–' %} title="{{ val|e }}"{% endif %}>{{ val }}</span>
                     </td>
                     {% endfor %}
                 </tr>

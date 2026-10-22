@@ -6,7 +6,7 @@
 - для каждого плана: min(выработка от собственника, если > 0;
   минимум положительных значений за последние 7 лет факта, без текущего года);
 - если станция введена в этом 7-летнем окне, первое ненулевое значение
-  в выборке не участвует; если выработка второго года < 50% третьего —
+  в выборке не участвует; если выработка второго года < 50% третьего –
   второй год тоже исключается;
 - если год ввода попадает в плановый период, берём выработку от собственника;
 - если собственника нет, план = установленная мощность (МВт) × 1,5 для СЭС и × 2,5 для ВЭС,
@@ -129,7 +129,7 @@ def parse_exploitation_date(value: Any) -> date | None:
     """Разбор ожидаемой даты ввода (ДД.ММ.ГГГГ / ISO / date)."""
     from app.common.services.help_services import convert_to_date
 
-    if value in (None, "", "—", "-", "–"):
+    if value in (None, "", "–", "-", "–"):
         return None
     if isinstance(value, datetime):
         return value.date()
@@ -142,7 +142,7 @@ def year_operation_days(start_date: date | None, year: int) -> tuple[int, int]:
     """
     (дней работы в году, дней в году).
 
-    День ввода включается. Без даты — полный год. До года ввода — (0, days_in_year).
+    День ввода включается. Без даты – полный год. До года ввода – (0, days_in_year).
     """
     y = int(year)
     days_in_year = 366 if calendar.isleap(y) else 365
@@ -375,7 +375,7 @@ def plan_generation_explained(
             return None, None
         fraction = year_operation_fraction(start_date, int(year))
         return value, _capacity_fallback_rule(type_key, partial_year=(fraction != 1))
-    # Нет положительного Руст в году — станция не работает (выведена / ещё не введена)
+    # Нет положительного Руст в году – станция не работает (выведена / ещё не введена)
     if capacity_by_year is not None and _positive_decimal(
         (capacity_by_year or {}).get(int(year))
     ) is None:
@@ -551,7 +551,7 @@ def expected_year_from_exploitation_date(value) -> int | None:
 
     from app.common.services.help_services import convert_to_date
 
-    if value in (None, "", "—", "-"):
+    if value in (None, "", "–", "-"):
         return None
     if isinstance(value, datetime):
         dt = value.date()
@@ -573,7 +573,7 @@ def format_exploitation_date_display(value) -> str:
 
     from app.common.services.help_services import convert_to_date
 
-    if value in (None, "", "—", "-"):
+    if value in (None, "", "–", "-"):
         return ""
     if isinstance(value, datetime):
         dt = value.date()
@@ -668,9 +668,9 @@ def save_station_exploitation_date_expected(
 
     raw = "" if raw_value is None else str(raw_value).strip()
     orig = "" if orig_value is None else str(orig_value).strip()
-    if raw in {"—", "-", "–"}:
+    if raw in {"–", "-", "–"}:
         raw = ""
-    if orig in {"—", "-", "–"}:
+    if orig in {"–", "-", "–"}:
         orig = ""
 
     display_new = format_exploitation_date_display(raw) if raw else ""
@@ -714,8 +714,8 @@ def save_station_exploitation_date_expected(
     changes: list[str] = []
     for machine in machines:
         old_date = getattr(machine, "date_exploitation_date_expected", None)
-        old_display = format_exploitation_date_display(old_date) or "—"
-        new_display = display_new or "—"
+        old_display = format_exploitation_date_display(old_date) or "–"
+        new_display = display_new or "–"
         if (old_date or None) != (stored_iso or None):
             machine.date_exploitation_date_expected = stored_iso
             changes.append(
@@ -729,7 +729,7 @@ def save_station_exploitation_date_expected(
                 machine.date_exploitation_expected = derived_year
                 changes.append(
                     f"агрегат №{machine.machine_number or machine.id}: "
-                    f"Ожидаемый год ввода в эксплуатацию: {old_year or '—'} → {derived_year}"
+                    f"Ожидаемый год ввода в эксплуатацию: {old_year or '–'} → {derived_year}"
                 )
 
     if changes:

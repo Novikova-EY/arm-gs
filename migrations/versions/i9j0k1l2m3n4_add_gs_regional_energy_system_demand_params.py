@@ -165,4 +165,4 @@ def downgrade():
     for tbl in (pd, TABLE):
         if column_utils.table_exists(conn, SCHEMA, tbl):
             op.execute(sa.text(f'DROP TABLE IF EXISTS "{SCHEMA}"."{tbl}" CASCADE'))
-    # схему gs_pd не удаляем — в ней могут появиться другие таблицы
+    # схему gs_pd не удаляем – в ней могут появиться другие таблицы

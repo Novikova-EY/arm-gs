@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    {# Липкая панель: кнопки, фильтры, импорт/экспорт, строка годов — над шапкой таблицы (как на power_demand/summary/oes) #}
+    {# Липкая панель: кнопки, фильтры, импорт/экспорт, строка годов – над шапкой таблицы (как на power_demand/summary/oes) #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
         {% include 'generation/stations/station_filters.html' %}
     </div>
@@ -57,7 +57,7 @@
     .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
         overflow: visible !important;
     }
-    /* Архивные агрегаты — светлее, в конце списка станции */
+    /* Архивные агрегаты – светлее, в конце списка станции */
     #stationsTableContainer tr.machine-archived,
     #stationsTableContainer tr.machine-archived td {
         color: #8a9096 !important;
@@ -692,7 +692,7 @@
                                     {% set show_rd_totals = (should_show_totals|default({})).get('regional_districts', {}).get(rd_id) %}
                                     {# Заголовок субъекта РФ:
                                        - при per_page=all показываем только если должны быть итоги по субъекту
-                                       - при постраничном режиме — по старой логике первых вхождений #}
+                                       - при постраничном режиме – по старой логике первых вхождений #}
                                     {% if (per_page == 'all' and show_rd_totals) or (per_page != 'all' and show_headers and rd_id in show_headers.get('regional_districts', [])) %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
@@ -782,7 +782,7 @@
                     {% include 'generation/stations/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
 
-                {# Децентрализованная зона — после ЕЭС/ТИТЭС и итога по России #}
+                {# Децентрализованная зона – после ЕЭС/ТИТЭС и итога по России #}
                 {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_stations_block.html' %}
             </tbody>
             

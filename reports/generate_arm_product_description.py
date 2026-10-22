@@ -271,7 +271,7 @@ def _add_table(
     TABLE_COUNT_ACTUAL += 1
     cap = nir.add_styled(
         doc,
-        f"Таблица {TABLE_COUNT_ACTUAL} — {caption}",
+        f"Таблица {TABLE_COUNT_ACTUAL} – {caption}",
         nir.STYLE_BODY,
     )
     for run in cap.runs:
@@ -562,7 +562,7 @@ def build() -> list[str]:
     nir.add_page_break(doc)
     nir.add_styled(doc, "ПЕРЕЧЕНЬ ТАБЛИЦ", nir.STYLE_STRUCT_TOC)
     for number, caption in enumerate(TABLE_CAPTIONS, start=1):
-        nir.add_styled(doc, f"Таблица {number} — {caption}", nir.STYLE_BODY)
+        nir.add_styled(doc, f"Таблица {number} – {caption}", nir.STYLE_BODY)
 
     # ----- Сокращения -----
     nir.add_page_break(doc)
@@ -858,7 +858,7 @@ def build() -> list[str]:
         "8.6 Нефункциональные требования",
         [
             "Нефункциональные требования определяют проверяемые ограничения "
-            "качества. Метка hard означает блокирующее условие приемки; soft — "
+            "качества. Метка hard означает блокирующее условие приемки; soft – "
             "целевой уровень, отклонение от которого требует анализа и решения "
             "владельца продукта.",
         ],
@@ -894,7 +894,7 @@ def build() -> list[str]:
         "8.9 Ограничения, зависимости и допущения",
         [
             "Ограничения фиксируют неизменяемые характеристики текущего "
-            "решения; зависимости — внешние условия функционирования; "
+            "решения; зависимости – внешние условия функционирования; "
             "допущения явно отделены от требований.",
         ],
     )

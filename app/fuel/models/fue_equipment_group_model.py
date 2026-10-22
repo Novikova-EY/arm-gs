@@ -64,25 +64,25 @@ class EquipmentGroup(db.Model):
     # Название (БД Топливо)
     name_ext = db.Column(db.String(255), nullable=True)
 
-    # Access Имена_станций.NIV — признак группы оборудования (обычно 1 у дочерней ГО).
+    # Access Имена_станций.NIV – признак группы оборудования (обычно 1 у дочерней ГО).
     niv = db.Column(db.Integer, nullable=True)
 
-    # Access Имена_станций.COMP — 1 у родителя составной станции (разбита / разбивается на ГО).
+    # Access Имена_станций.COMP – 1 у родителя составной станции (разбита / разбивается на ГО).
     comp = db.Column(db.Integer, nullable=True)
 
-    # Access Имена_станций.MAIN — numb родителя у дочерней ГО; у родителя / простой ТЭС = 0/NULL.
+    # Access Имена_станций.MAIN – numb родителя у дочерней ГО; у родителя / простой ТЭС = 0/NULL.
     main = db.Column(db.Integer, nullable=True)
 
-    # Признак действующей электростанции
+    # 1 — действующая станция, NULL — новая, 9 — демонтирована.
     d = db.Column(db.Integer, nullable=True)
 
-    # Признак расширяемой электростанции
+    # 1 — действующая ГО, 2 — новая ГО действующей станции, NULL — новая станция, 9 — демонтирована.
     r = db.Column(db.Integer, nullable=True)
 
     # Признак ФОРЭМ
     forem = db.Column(db.Integer, nullable=True)
 
-    # Access Имена_станций.Ведомство (справочник): 1 — отрасль, 2 — пром.
+    # Access Имена_станций.Ведомство (справочник): 1 – отрасль, 2 – пром.
     # Не путать с рабочим FuelParam.ved (0/1/2/3/4/99) из «Станции(Схема)».
     vedomstvo = db.Column(db.Integer, nullable=True)
 
@@ -123,6 +123,14 @@ class EquipmentGroup(db.Model):
         uselist=False,
         lazy="select",
     )
+
+    energy_unit_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_energy_units.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    energy_unit = db.relationship("EnergyUnit", foreign_keys=[energy_unit_id])
 
     # Код департамента (FK -> DepartmentExternalMapping)
     dep = db.Column(db.Integer, nullable=True, index=True)
@@ -309,9 +317,9 @@ class EquipmentGroup(db.Model):
     def _populate_regional_ids(self) -> None:
         """
         Заполняет regional_district_id и regional_energy_system_id:
-        0) для дочерней группы составной станции — с родителя (main=parent.numb);
+        0) для дочерней группы составной станции – с родителя (main=parent.numb);
         1) из Station через EquipmentGroupSet -> EquipmentGroupSetStation;
-        2) для standalone-групп (котельные) — по obl через TerritoriesEnergyExternalMapping.
+        2) для standalone-групп (котельные) – по obl через TerritoriesEnergyExternalMapping.
         """
         self.regional_district_id = None
         self.regional_energy_system_id = None
@@ -370,7 +378,7 @@ def _equipment_group_key(name, name_ext, numb, main) -> str:
     """
     Формирует стабильный ключ для генерации external_code.
     Используются только поля из исходных данных (numb, name, name_ext, main),
-    без regional_district_id и regional_energy_system_id — они зависят от версии БД.
+    без regional_district_id и regional_energy_system_id – они зависят от версии БД.
     Так группы с одинаковым numb для разных версий получают один external_code.
     """
     return (

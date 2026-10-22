@@ -188,7 +188,7 @@
 
     function yearValueMeaningful(raw) {
         var t = String(raw == null ? "" : raw).trim();
-        if (t === "" || t === "—") {
+        if (t === "" || t === "–") {
             return false;
         }
         var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -740,7 +740,7 @@
                 );
             }
             sel.title = row.pd_ec_formula_derived_row
-                ? "Расчётная строка: значения на экране по формуле; выбранный вариант — под каким кодом хранить/читать данные в БД"
+                ? "Расчётная строка: значения на экране по формуле; выбранный вариант – под каким кодом хранить/читать данные в БД"
                 : "Вариант периметра для записи и чтения данных этого блока в БД";
             var optEmpty = document.createElement("option");
             optEmpty.value = "";
@@ -776,7 +776,7 @@
             span.className = "text-wrap";
             if (row.pd_ec_formula_derived_row) {
                 span.title =
-                    "Расчётная строка — вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»";
+                    "Расчётная строка – вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»";
             }
             span.textContent =
                 row.perimeter_variant_label ||
@@ -920,7 +920,7 @@
             if (row.parent_id != null) {
                 ta.setAttribute("data-parent-id", String(row.parent_id));
             }
-            ta.setAttribute("aria-label", (row.entity_label || "") + " — примечание");
+            ta.setAttribute("aria-label", (row.entity_label || "") + " – примечание");
             td.appendChild(ta);
         } else {
             var span = document.createElement("span");
@@ -938,13 +938,13 @@
         var rowIds = row.year_row_ids || [];
         var tooltips = row.year_numeric_tooltips || [];
         var value =
-            ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+            ix < values.length && values[ix] != null ? String(values[ix]) : "–";
         var yrid = ix < rowIds.length ? rowIds[ix] : null;
         var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
         var membershipOut = yearOutOfRange(row, year);
         var gaesOut = gaesStationYearOutOfRange(row, year);
         if (membershipOut) {
-            value = "—";
+            value = "–";
         }
         if (pk === "energy_consumption_sipr_mln_kvt_ch" && yrTt) {
             yrTt = "Потребление электрической энергии, млн кВтч: " + yrTt;
@@ -977,7 +977,7 @@
             return td;
         }
         if (canEditCell(row, cfg) && !gaesOut && !membershipOut) {
-            var yv = value !== "—" ? value : "";
+            var yv = value !== "–" ? value : "";
             var inp = document.createElement("input");
             inp.type = "text";
             inp.inputMode = "decimal";
@@ -991,7 +991,7 @@
             inp.setAttribute(
                 "aria-label",
                 (row.entity_label || "") +
-                    " — " +
+                    " – " +
                     (row.parameter_label || "") +
                     ", " +
                     year +
@@ -1222,7 +1222,7 @@
             page +
             " из " +
             totalPages +
-            (titles.length ? " — " + titles.join(", ") : "");
+            (titles.length ? " – " + titles.join(", ") : "");
 
         var ul = document.createElement("ul");
         ul.className = "pagination justify-content-center mb-0 flex-wrap";

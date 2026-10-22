@@ -59,11 +59,11 @@ def test_oes_verify_row_values_after_res_aggregation() -> None:
             show_entity_cell=True,
             ues_id=10,
         ),
-        _param_row(pk="calculated_max_power_mw", year_values=["—"], ues_id=10),
+        _param_row(pk="calculated_max_power_mw", year_values=["–"], ues_id=10),
         _param_row(pk="peak_datetime", year_values=[""], ues_id=10),
         _param_row(pk="avg_temp", year_values=[""], ues_id=10),
         _param_row(pk="combined_on_ees", year_values=[""], ues_id=10),
-        _param_row(pk="calculated_combined_on_ees_mw", year_values=["—"], ues_id=10),
+        _param_row(pk="calculated_combined_on_ees_mw", year_values=["–"], ues_id=10),
         _param_row(
             pk="combined_on_oes",
             year_values=["110"],
@@ -133,14 +133,14 @@ def test_refresh_verify_row_values_uses_updated_plan_year_operands() -> None:
             show_entity_cell=True,
             ues_id=10,
         ),
-        _param_row(pk="calculated_max_power_mw", year_values=["110", "—"], ues_id=10),
+        _param_row(pk="calculated_max_power_mw", year_values=["110", "–"], ues_id=10),
     ]
     rows[0]["entity_rowspan"] = 2
     _inject_oes_summary_verification_rows(rows, years)
     verify = next(
         r for r in rows if r.get("parameter_key") == "verify_for_calculated_max_power_mw"
     )
-    assert verify["year_values"][1] == "—"
+    assert verify["year_values"][1] == "–"
 
     calc = next(r for r in rows if r.get("parameter_key") == "calculated_max_power_mw")
     calc["year_values"][1] = "210"

@@ -95,7 +95,7 @@ def test_far_east_fd_calc_max_adds_formula_eu_max_power(
 ) -> None:
     years = [2023, 2024]
     rows = [
-        _fd_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
+        _fd_row(pk="calculated_max_power_mw", year_values=["–", "–"]),
         _res_row(pk="combined_on_fo", year_values=["100", "200"], res_id=1),
         _res_row(pk="combined_on_fo", year_values=["50", "60"], res_id=2),
         _eu_max_row(
@@ -123,7 +123,7 @@ def test_far_east_fd_calc_max_adds_formula_eu_max_power(
             year_values=["5", "6"],
             label="Центральный энергорайон Магаданской области",
         ),
-        # Не из формулы Дальневосточного ФО — не должен войти.
+        # Не из формулы Дальневосточного ФО – не должен войти.
         _eu_max_row(
             eu_id=99,
             year_values=["1000", "1000"],
@@ -168,7 +168,7 @@ def test_far_east_fd_calc_max_falls_back_to_demand_eu_max(
 ) -> None:
     years = [2023, 2024]
     rows = [
-        _fd_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
+        _fd_row(pk="calculated_max_power_mw", year_values=["–", "–"]),
         _res_row(pk="combined_on_fo", year_values=["100", "200"]),
     ]
 
@@ -210,7 +210,7 @@ def test_other_fd_not_affected_by_far_east_enrich(
     rows = [
         _fd_row(
             pk="calculated_max_power_mw",
-            year_values=["—"],
+            year_values=["–"],
             fd_id=10,
             entity_label="Сибирский ФО",
         ),

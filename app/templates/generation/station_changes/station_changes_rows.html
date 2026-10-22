@@ -5,7 +5,7 @@
   {% for power_row in machine.powers_by_year %}
     <tr class="text-center align-middle{{ archived_row_class }}" style="vertical-align: middle;">
 
-      {# Субъект РФ — только один раз для первой строки агрегата #}
+      {# Субъект РФ – только один раз для первой строки агрегата #}
       {% if power_row == first_power and machine.region_rowspan > 0 %}
         {% set _rd_name = station.regional_district.name_full if station.regional_district and station.regional_district.name_full else (station.regional_district.name if station.regional_district and station.regional_district.name else 'Без субъекта') %}
         {% set _ues_name = union_energy_system_names.get(ues_id, '') %}
@@ -18,8 +18,8 @@
 
       {# Генерирующая компания #}
       {% if power_row == first_power and machine.gen_company_rowspan > 0 %}
-        <td rowspan="{{ machine.gen_company_rowspan }}" class="fw-bold align-middle col-sc-gen-company" title="{{ machine.gen_company.name if machine.gen_company else '—' }}">
-          {{ machine.gen_company.name if machine.gen_company else '—' }}
+        <td rowspan="{{ machine.gen_company_rowspan }}" class="fw-bold align-middle col-sc-gen-company" title="{{ machine.gen_company.name if machine.gen_company else '–' }}">
+          {{ machine.gen_company.name if machine.gen_company else '–' }}
         </td>
       {% endif %}
 
@@ -32,7 +32,7 @@
         </td>
       {% endif %}
 
-      {# Модернизация: номер только на «до»; при смене названия — до/после без merge #}
+      {# Модернизация: номер только на «до»; при смене названия – до/после без merge #}
       {% set _has_mod = ('before_modernization' in machine.event_types) and ('after_modernization' in machine.event_types) %}
       {% set _split_tes_name = _has_mod and machine.display_name_before and machine.display_name_after %}
 
@@ -53,11 +53,11 @@
       {% if _has_mod %}
         <td>
           {% if power_row.event == 'before_modernization' or power_row.event not in ['after_modernization', 'change_power'] %}
-            {{ _row_number if _row_number else '—' }}
+            {{ _row_number if _row_number else '–' }}
           {% endif %}
         </td>
-        <td class="col-sc-machine-type" title="{{ _row_name or '—' }}">
-          {# Имя до/после — разными строками; если название не менялось — только на «до модернизации» #}
+        <td class="col-sc-machine-type" title="{{ _row_name or '–' }}">
+          {# Имя до/после – разными строками; если название не менялось – только на «до модернизации» #}
           {% if _split_tes_name and not _has_part_name %}
             {% if _row_name %}
               <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
@@ -73,24 +73,24 @@
           {% endif %}
         </td>
       {% elif power_row == first_power %}
-        <td rowspan="{{ machine.total_rows }}">{{ _row_number if _row_number else '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}" class="col-sc-machine-type" title="{{ _row_name or '—' }}">
+        <td rowspan="{{ machine.total_rows }}">{{ _row_number if _row_number else '–' }}</td>
+        <td rowspan="{{ machine.total_rows }}" class="col-sc-machine-type" title="{{ _row_name or '–' }}">
           <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
-            {{ _row_name or '—' }}
+            {{ _row_name or '–' }}
           </a>
         </td>
       {% endif %}
 
-      {# Остальные агрегатные поля — один раз на агрегат #}
+      {# Остальные агрегатные поля – один раз на агрегат #}
       {% if power_row == first_power %}
-        <td rowspan="{{ machine.total_rows }}">{{ machine.date_exploitation or '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}">{{ machine.date_decompressing_expected or '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}">{{ machine.modernization_display or '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}">{{ machine.tes_types or '—' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.date_exploitation or '–' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.date_decompressing_expected or '–' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.modernization_display or '–' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '–' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.tes_types or '–' }}</td>
       {% endif %}
 
-      {# Тип агрегата ТЭС — справочник ПСУ/ПГУ/ГТУ/…, не дублировать название из «Тип агрегата» #}
+      {# Тип агрегата ТЭС – справочник ПСУ/ПГУ/ГТУ/…, не дублировать название из «Тип агрегата» #}
       {% if power_row == first_power %}
         <td rowspan="{{ machine.total_rows }}">
           {% if machine.tes_machine_type and machine.tes_machine_type.id != 0
@@ -98,21 +98,21 @@
               and machine.tes_machine_type.name|lower != 'не указано' %}
             {{ machine.tes_machine_type.name }}
           {% else %}
-            &mdash;
+            &ndash;
           {% endif %}
         </td>
       {% endif %}
 
       {% if power_row == first_power %}
-        <td rowspan="{{ machine.total_rows }}">{{ machine.primary_fuel_type or '—' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.primary_fuel_type or '–' }}</td>
 
         {% if machine.fuel_rowspan > 0 %}
-          <td rowspan="{{ machine.fuel_rowspan }}">{{ machine.fuel_so or '—' }}</td>
+          <td rowspan="{{ machine.fuel_rowspan }}">{{ machine.fuel_so or '–' }}</td>
         {% endif %}
       {% endif %}
 
       {# Событие #}
-      <td>{{ event_types_dict.get(power_row.event, '—') }}</td>
+      <td>{{ event_types_dict.get(power_row.event, '–') }}</td>
 
       {# Мощности по годам #}
       {% for year in range(start_year, end_year + 1) %}
@@ -136,7 +136,7 @@
         {% endif %}
       {% endfor %}
 
-      {# Итого за отображаемый период (только годы с year_feature = "план") — по каждому мероприятию, без объединения ячеек #}
+      {# Итого за отображаемый период (только годы с year_feature = "план") – по каждому мероприятию, без объединения ячеек #}
       <td class="power-column fw-bold">
         {% if power_row.event not in ns_event.seen %}
           {% set ns_event.seen = ns_event.seen + [power_row.event] %}
@@ -147,7 +147,7 @@
         {% endif %}
       </td>
 
-      {# Документ-основание — только однажды для агрегата #}
+      {# Документ-основание – только однажды для агрегата #}
       {% if power_row == first_power %}
         <td rowspan="{{ machine.total_rows }}">
           {% if machine.change_document %}

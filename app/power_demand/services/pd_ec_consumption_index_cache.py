@@ -128,7 +128,7 @@ def invalidate_pd_ec_consumption_index_cache(version_id: int | None = None) -> N
     cache.delete(_cache_key(vid))
     _request_store().pop(vid, None)
     # ЧЧИ / «Потребление ЭЭ» на сводках «Нагрузки» читаются из этого индекса,
-    # но отдаются через pd_summary_page_cache — его тоже нужно сбросить.
+    # но отдаются через pd_summary_page_cache – его тоже нужно сбросить.
     from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
 
     clear_pd_summary_page_cache()

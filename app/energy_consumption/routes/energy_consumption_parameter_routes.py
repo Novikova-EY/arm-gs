@@ -248,7 +248,7 @@ def russia_demand():
 @energy_consumption_bp.route("/russia_with_nt/", methods=["GET", "POST"])
 @login_required
 def russia_with_nt_demand():
-    """Россия с НТ — те же поля, что у /russia/, вариант периметра with_nt."""
+    """Россия с НТ – те же поля, что у /russia/, вариант периметра with_nt."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_energy_consumption(current_user):
@@ -299,7 +299,7 @@ def russia_with_nt_demand():
 @energy_consumption_bp.route("/ees_russia/", methods=["GET", "POST"])
 @login_required
 def ees_russia_demand():
-    """ЕЭС России без НТ — отдельная таблица параметров нагрузки."""
+    """ЕЭС России без НТ – отдельная таблица параметров нагрузки."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_energy_consumption(current_user):
@@ -350,7 +350,7 @@ def ees_russia_demand():
 @energy_consumption_bp.route("/ees_russia_with_nt/", methods=["GET", "POST"])
 @login_required
 def ees_russia_with_nt_demand():
-    """ЕЭС России с НТ — вариант периметра with_nt в общей таблице."""
+    """ЕЭС России с НТ – вариант периметра with_nt в общей таблице."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_energy_consumption(current_user):
@@ -401,7 +401,7 @@ def ees_russia_with_nt_demand():
 @energy_consumption_bp.route("/ees/", methods=["GET", "POST"])
 @login_required
 def ees_demand():
-    """ЭЭС — отдельная таблица параметров нагрузки (без FK на справочник)."""
+    """ЭЭС – отдельная таблица параметров нагрузки (без FK на справочник)."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_energy_consumption(current_user):
@@ -691,7 +691,7 @@ def energy_zone_list():
         "Нагрузки: энергозоны",
         "energy_consumption_bp.energy_zone_list",
         "energy_consumption_bp.energy_zone_demand",
-        lambda o: f"{o.number} — {o.name}",
+        lambda o: f"{o.number} – {o.name}",
         EnergyZone.number,
         exclude_names=("не указано", "не указано2"),
     )
@@ -707,7 +707,7 @@ def energy_zone_demand(parent_id: int):
         EnergyZone,
         parent_id,
         "Нагрузки: энергозона",
-        f"{p.number} — {p.name}",
+        f"{p.number} – {p.name}",
         "energy_consumption_bp.energy_zone_list",
     )
 

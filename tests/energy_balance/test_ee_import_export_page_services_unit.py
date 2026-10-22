@@ -66,8 +66,8 @@ def test_annual_country_transfers_group_by_oes_and_split_directions(monkeypatch)
 
     imported, exported = oes["rows"]
     assert imported["country_name"] == exported["country_name"] == "Беларусь"
-    assert imported["cell_values"] == {2024: "—", 2025: "9"}
-    assert exported["cell_values"] == {2024: "-8", 2025: "—"}
+    assert imported["cell_values"] == {2024: "–", 2025: "9"}
+    assert exported["cell_values"] == {2024: "-8", 2025: "–"}
     assert result["direction_options"] == [
         {"id": "import", "name": "Импорт"},
         {"id": "export", "name": "Экспорт"},
@@ -88,7 +88,7 @@ def test_annual_country_transfers_group_by_oes_and_split_directions(monkeypatch)
     )
     future_row = future["hierarchy"][0]["rows"][0]
     assert future_row["direction"] == "import"
-    assert future_row["cell_values"] == {2030: "—", 2031: "—"}
+    assert future_row["cell_values"] == {2030: "–", 2031: "–"}
     assert future["editable_years"] == [2030, 2031]
 
 

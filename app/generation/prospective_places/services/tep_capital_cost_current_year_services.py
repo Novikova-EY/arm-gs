@@ -45,13 +45,13 @@ TEP_CAPITAL_COST_WO_PIR_FIELD_TRIPLES: tuple[tuple[str, str, str], ...] = (
 def fmt_numeric_million_rub(val: Any) -> str:
     """Млн руб для таблицы ТЭП: целое число в отображении."""
     if val is None:
-        return "—"
+        return "–"
     try:
         d = Decimal(str(val))
         return str(int(d.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
     except (InvalidOperation, ValueError, TypeError):
         s = (str(val) or "").strip()
-        return s.replace(".", ",") if s else "—"
+        return s.replace(".", ",") if s else "–"
 
 
 def multiplier_price_year_to_current_year(
@@ -61,7 +61,7 @@ def multiplier_price_year_to_current_year(
 ) -> Decimal | None:
     """
     Произведение коэффициентов за годы (год_цены + 1) … текущий_год включительно.
-    Если какого-то коэффициента нет в справочнике — None (показываем исходную сумму).
+    Если какого-то коэффициента нет в справочнике – None (показываем исходную сумму).
     """
     if target_year is None or price_year is None:
         return None
@@ -89,10 +89,10 @@ def fmt_thousand_rub_per_kw_scaled(
     Та же цепочка коэффициентов, что для сумм в млн руб.
     """
     if raw_val is None:
-        return "—"
+        return "–"
     s0 = str(raw_val).strip()
     if not s0:
-        return "—"
+        return "–"
     m = multiplier_price_year_to_current_year(
         year_obj.number if year_obj is not None else None,
         target_year,
@@ -104,13 +104,13 @@ def fmt_thousand_rub_per_kw_scaled(
         d = Decimal(s0.replace(",", "."))
     except (InvalidOperation, ValueError, TypeError):
         t = s0.replace(".", ",")
-        return t if t else "—"
+        return t if t else "–"
     try:
         q = (d * m).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ZeroDivisionError):
         return s0.replace(".", ",")
     s = format(q, "f").rstrip("0").rstrip(".")
-    return s.replace(".", ",") if s else "—"
+    return s.replace(".", ",") if s else "–"
 
 
 def fmt_million_rub_scaled(
@@ -128,7 +128,7 @@ def fmt_million_rub_scaled(
     if m is None:
         return fmt_numeric_million_rub(raw_val)
     if raw_val is None:
-        return "—"
+        return "–"
     try:
         d = Decimal(str(raw_val)) * m
         return str(int(d.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
@@ -194,13 +194,13 @@ def fmt_specific_capital_investment_thous_rub_per_kw_derived(
     ges_m = _effective_capital_ges_with_reservoir_million_rub(r, target_year, coeff)
     mw = _parse_mw_decimal(getattr(r, installed_capacity_attr, None))
     if ges_m is None or mw is None:
-        return "—"
+        return "–"
     try:
         q = (ges_m / mw).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ZeroDivisionError):
-        return "—"
+        return "–"
     s = format(q, "f").rstrip("0").rstrip(".")
-    return s.replace(".", ",") if s else "—"
+    return s.replace(".", ",") if s else "–"
 
 
 def rows_match_for_scaled_specific_semifixed_operating_costs(
@@ -303,7 +303,7 @@ def apply_derived_specific_capital_investment_to_ges_tep_source_row(row: Any) ->
         target_year=ty,
         coeff_by_year=coeff,
     )
-    row.specific_capital_investment_thous_rub_per_kw = None if s == "—" else s
+    row.specific_capital_investment_thous_rub_per_kw = None if s == "–" else s
     row.id_year_specific_capital_investment = resolve_year_id_for_calendar_year_number(ty)
 
 
@@ -326,7 +326,7 @@ def apply_derived_specific_capital_investment_to_gaes_tep_source_row(row: Any) -
         target_year=ty,
         coeff_by_year=coeff,
     )
-    row.specific_capital_investment_thous_rub_per_kw = None if s == "—" else s
+    row.specific_capital_investment_thous_rub_per_kw = None if s == "–" else s
     row.id_year_specific_capital_investment = row.id_year_capital_cost_wo_pir_ges_with_reservoir
 
 
@@ -357,7 +357,7 @@ def merge_tep_row_full_with_capital_costs_current_year_prices(
     """
     Копия base с пересчитанными полями капзатрат без ПИР и удельными показателями в цены target_year.
 
-    ``r`` — строка ТЭП (ГЭС, ГАЭС и т.д.) с атрибутами сумм и связями ``year_*``.
+    ``r`` – строка ТЭП (ГЭС, ГАЭС и т.д.) с атрибутами сумм и связями ``year_*``.
     При ``target_year`` is None возвращается ``base`` без изменений.
     """
     if not target_year:
@@ -475,9 +475,9 @@ def get_tep_main_radio_price_year_number(
     Календарный год для подписи радиокнопки «в ценах N года» на ТЭП основных площадок.
 
     Если максимальный год в полях «год» блока «Стоимость (капзатраты без ПИР)» по
-    отображаемым строкам меньше целевого «текущего» года пересчёта — в подписи
+    отображаемым строкам меньше целевого «текущего» года пересчёта – в подписи
     используется максимальный год среди строк таблицы коэффициентов (где задан
-    коэффициент). Иначе — максимальный год из тех же полей исходных данных.
+    коэффициент). Иначе – максимальный год из тех же полей исходных данных.
     """
     from app.common.services.get_services.years.years_get_services import (
         get_ges_tep_current_price_year_number,
@@ -517,7 +517,7 @@ def tep_main_rows_have_mixed_source_price_years(tep_source_rows: Iterable[Any] |
     """
     True, если по разным строкам ТЭП в блоках «Капитальные затраты» и/или
     «Удельные условно-постоянные эксплуатационные затраты» заданы разные
-    календарные года (по каждому из полей года — более одного ненулевого значения
+    календарные года (по каждому из полей года – более одного ненулевого значения
     среди строк). Тогда пересчёт в единые «цены года» для всей таблицы недоступен.
     """
     rows = list(tep_source_rows or ())
@@ -605,7 +605,7 @@ def get_aes_tep_main_radio_price_year_number(
 def aes_tep_rows_have_mixed_source_price_years(machines: Iterable[Any] | None) -> bool:
     """
     True, если среди отображаемых энергоблоков по любому из полей «год данных»
-    встречается более одного календарного года — единый пересчёт в «цены года» недоступен.
+    встречается более одного календарного года – единый пересчёт в «цены года» недоступен.
     """
     rows = list(machines or ())
     if len(rows) <= 1:

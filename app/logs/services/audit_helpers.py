@@ -9,7 +9,7 @@ from app.logs.services.field_names_ru import (
     format_field_value,
 )
 
-# Глобальный флаг — можно выключить детальные логи централизованно
+# Глобальный флаг – можно выключить детальные логи централизованно
 AUDIT_DEBUG = True
 
 def dbg(user: Any, action: str, details: Optional[str] = None) -> None:

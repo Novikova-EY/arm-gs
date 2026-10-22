@@ -124,10 +124,10 @@
                 {% set raw_value = transfer_row.cell_raw_values.get(period_num, '') %}
                 {% set display_value = transfer_row.cell_values.get(period_num, '') %}
                 <td class="text-center align-middle ee-import-export-year-cell" data-year="{{ period_num }}" data-raw="{{ raw_value }}">
-                  <input type="text" class="form-control form-control-sm ee-import-export-value" data-year="{{ period_num }}" data-original="{{ '' if display_value == '—' else display_value }}" value="{{ '' if display_value == '—' else display_value }}" inputmode="decimal" aria-label="{{ transfer_row.direction_label }} {{ transfer_row.country_name }}, {{ period_num }}">
+                  <input type="text" class="form-control form-control-sm ee-import-export-value" data-year="{{ period_num }}" data-original="{{ '' if display_value == '–' else display_value }}" value="{{ '' if display_value == '–' else display_value }}" inputmode="decimal" aria-label="{{ transfer_row.direction_label }} {{ transfer_row.country_name }}, {{ period_num }}">
                 </td>
                 {% else %}
-                <td>{{ transfer_row.cell_values.get(period_num, '—') }}</td>
+                <td>{{ transfer_row.cell_values.get(period_num, '–') }}</td>
                 {% endif %}
                 {% endfor %}
               </tr>
@@ -367,7 +367,7 @@
       return false;
     }
 
-    // Построчная вставка из Excel: значения по годам идут в следующие строки ОЭС — страна.
+    // Построчная вставка из Excel: значения по годам идут в следующие строки ОЭС – страна.
     if (typeof window.initPowerDemandSummaryRowPaste === "function") {
       window.initPowerDemandSummaryRowPaste(table, {
         isPasteableInput: function (input) {

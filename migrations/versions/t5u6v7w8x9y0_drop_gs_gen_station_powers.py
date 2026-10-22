@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Drop gs_gen.gs_gen_station_powers — мощности станции считаются из MachinePower.
+"""Drop gs_gen.gs_gen_station_powers – мощности станции считаются из MachinePower.
 
 Revision ID: t5u6v7w8x9y0
 Revises: s4t5u6v7w8x9

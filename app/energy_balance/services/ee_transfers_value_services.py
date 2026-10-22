@@ -220,8 +220,8 @@ def update_ee_transfer_value(
         context=(
             f"Лист: перетоки ЭЭ; ОЭС: "
             f"{ues_names.get(union_energy_system_id, union_energy_system_id)}; "
-            f"источник: {getattr(record, 'from_display_name', None) or '—'}; "
-            f"получатель: {getattr(record, 'to_display_name', None) or '—'}"
+            f"источник: {getattr(record, 'from_display_name', None) or '–'}; "
+            f"получатель: {getattr(record, 'to_display_name', None) or '–'}"
         ),
     )
     return {"year": year_number, "month": month_number, "value": value}

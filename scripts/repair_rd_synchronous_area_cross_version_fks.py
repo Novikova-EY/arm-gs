@@ -22,7 +22,7 @@ def main() -> int:
         "--reference-version-id",
         type=int,
         default=None,
-        help="Версия-эталон для имени СЗ (по умолчанию — РАБОЧАЯ / id=37, если есть)",
+        help="Версия-эталон для имени СЗ (по умолчанию – РАБОЧАЯ / id=37, если есть)",
     )
     parser.add_argument("--apply", action="store_true", help="Записать исправления в БД")
     args = parser.parse_args()

@@ -9,7 +9,15 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
 import app.ecology.services.gis_tek_export_services as export_services
-from app.ecology.services.gis_tek_constants import REPORT_PG, REPORT_ZV, ZV_NORM_ATTR
+from app.ecology.services.gis_tek_constants import (
+    PG_TOTAL_COLUMNS,
+    PG_VALUE_COLUMNS,
+    PG_VALUE_COLUMN_GROUPS,
+    REPORT_PG,
+    REPORT_ZV,
+    ZV_NORM_ATTR,
+)
+from app.ecology.services.gis_tek_page_services import apply_pg_derived_metrics
 
 IDENTITY_COLUMNS = [
     ("station_numb", "№_станции", True),
@@ -72,7 +80,7 @@ def test_zv_export_headers_norm_zv_with_selected_parts(monkeypatch):
 
     ws = _export(monkeypatch, REPORT_ZV, context)
 
-    # Шапка: 3-я строка — показатели, 4-я — группы, 5-я — подписи столбцов.
+    # Шапка: 3-я строка – показатели, 4-я – группы, 5-я – подписи столбцов.
     norm_col = EXPORT_IDENTITY_COUNT + len(value_columns)
     caption = ws.cell(4, norm_col).value
     assert "Нормируемые ЗВ" in caption
@@ -96,6 +104,27 @@ def test_zv_export_marks_cleared_norm_zv_selection(monkeypatch):
 
     assert ws.cell(4, EXPORT_IDENTITY_COUNT + 2).value == "Нормируемые ЗВ (слагаемые не выбраны)"
     assert ws.cell(6, EXPORT_IDENTITY_COUNT + 2).value is None
+
+
+def test_pg_export_includes_total_group_and_calculated_values(monkeypatch):
+    metrics = apply_pg_derived_metrics({
+        "gas_consumption_tce": Decimal("1.5"),
+        "oil_fuel_consumption_tce": Decimal("2.5"),
+        "co2_from_gas_t": Decimal("10.5"),
+        "co2_from_solid_fuel_t": Decimal("20.5"),
+    })
+    context = _context(
+        PG_VALUE_COLUMNS + PG_TOTAL_COLUMNS, PG_VALUE_COLUMN_GROUPS, metrics
+    )
+    context["value_column_banner"] = ""
+    ws = _export(monkeypatch, REPORT_PG, context)
+
+    total_col = EXPORT_IDENTITY_COUNT + len(PG_VALUE_COLUMNS) + 1
+    assert ws.cell(3, total_col).value == "Всего"
+    assert ws.cell(4, total_col).value == "Расход топлива, т у.т."
+    assert ws.cell(4, total_col + 1).value == "Выбросы СО2 от сжигания топлива, т"
+    assert ws.cell(5, total_col).value == 4
+    assert ws.cell(5, total_col + 1).value == 31
 
 
 def test_pg_export_has_no_norm_zv_caption(monkeypatch):

@@ -3,6 +3,7 @@
 
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.equipment_groups.equipment_group_flags import EQUIPMENT_GROUP_FLAG_LABELS
 from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
@@ -40,7 +41,7 @@ def get_equipment_group_add_context():
     Использует те же choices, что и equipment_group_edit.
     """
     obl_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in TerritoriesEnergyExternalMapping.query.filter(
@@ -51,7 +52,7 @@ def get_equipment_group_add_context():
         ],
     ]
     dep_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in DepartmentExternalMapping.query.order_by(
@@ -60,7 +61,7 @@ def get_equipment_group_add_context():
         ],
     ]
     oes_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, (m.external_nameoes or m.external_name or m.external_id))
             for m in UnionEnergySystemExternalMapping.query.filter(
@@ -71,7 +72,7 @@ def get_equipment_group_add_context():
         ],
     ]
     er_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in EconomicRegionExternalMapping.query.filter(
@@ -82,7 +83,7 @@ def get_equipment_group_add_context():
         ],
     ]
     fo_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in FederalDistrictExternalMapping.query.filter(
@@ -94,11 +95,11 @@ def get_equipment_group_add_context():
     ]
     cities_list = CitiesExternalMapping.query.order_by(CitiesExternalMapping.name).all()
     codegor_choices = [
-        ("", "—"),
+        ("", "–"),
         *[(str(m.code), (m.name or str(m.code))) for m in cities_list],
     ]
     be_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in BusinessUnitExternalMapping.query.order_by(
@@ -107,7 +108,7 @@ def get_equipment_group_add_context():
         ],
     ]
     gk_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in GenCompanyExternalMapping.query.filter(
@@ -118,7 +119,7 @@ def get_equipment_group_add_context():
         ],
     ]
     gkf_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in GenCompanyBranchExternalMapping.query.filter(
@@ -129,11 +130,11 @@ def get_equipment_group_add_context():
         ],
     ]
 
-    d_choices = [("", "—"), ("1", "да")]
-    r_choices = [("", "—"), ("1", "да")]
-    forem_choices = [("", "—"), ("1", "да")]
+    d_choices = list(EQUIPMENT_GROUP_FLAG_LABELS["d"].items())
+    r_choices = list(EQUIPMENT_GROUP_FLAG_LABELS["r"].items())
+    forem_choices = [("", "–"), ("1", "да")]
     vedomstvo_choices = [
-        ("", "—"),
+        ("", "–"),
         ("1", "станция отрасли"),
         ("2", "пром. предприятие"),
     ]

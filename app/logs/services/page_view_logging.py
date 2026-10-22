@@ -18,7 +18,7 @@ from app.logs.services import logging_service as logging_service_mod
 from app.logs.services.logging_service import PAGE_VIEW_ACTION_PREFIX
 
 # Заголовок из base.html, если страница не задала свой {% block title %}
-_DEFAULT_DOCUMENT_TITLES = frozenset({"АРМ ГС", "АРМ ГС —"})
+_DEFAULT_DOCUMENT_TITLES = frozenset({"АРМ ГС", "АРМ ГС –"})
 
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -227,7 +227,7 @@ def _page_title_for_log(req, response) -> str:
     module = module_label_for_endpoint(req.endpoint)
     view_name = _humanize_endpoint(req.endpoint)
     if module and view_name:
-        return f"{module} — {view_name}"
+        return f"{module} – {view_name}"
     if module:
         return module
     if view_name:

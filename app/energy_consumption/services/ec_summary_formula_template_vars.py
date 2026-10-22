@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# Имена с префиксом «_pd_ec_» — сразу в контекст Jinja (без {% set %} в include).
+# Имена с префиксом «_pd_ec_» – сразу в контекст Jinja (без {% set %} в include).
 EC_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     "_pd_ec_yoy_formula": "yoy_growth",
     "_pd_ec_sipr_yoy_formula": "sipr_yoy_growth",

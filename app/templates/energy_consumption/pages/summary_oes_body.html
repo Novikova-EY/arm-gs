@@ -1,4 +1,4 @@
-{# Отдельный шаблон страницы /energy_consumption/summary/oes/ — правки здесь не затрагивают другие сводки. #}
+{# Отдельный шаблон страницы /energy_consumption/summary/oes/ – правки здесь не затрагивают другие сводки. #}
 {% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
@@ -61,7 +61,7 @@
         {% endif %}
     {% endif %}
 
-    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
+    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов – над шапкой таблицы #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
     <div class="col-12 mb-2">
         <div class="d-flex flex-wrap align-items-start gap-2 w-100">
@@ -276,7 +276,7 @@
         </div>
     </div>
 
-    <!-- Раскрывающийся блок Импорт/Экспорт (внутри липкой панели — как «Фильтры / Поиск») -->
+    <!-- Раскрывающийся блок Импорт/Экспорт (внутри липкой панели – как «Фильтры / Поиск») -->
     <div class="col-12 mb-2">
         <div class="collapse mt-2 power-demand-import-export-collapse" id="importExportCollapse">
             <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
@@ -320,7 +320,7 @@
         </div>
     </div>
 
-    <!-- «Максимумы…»: Год начала/конца + округление. «Коэффициенты…» — фиксированные годы N−9…N+18, только округление. -->
+    <!-- «Максимумы…»: Год начала/конца + округление. «Коэффициенты…» – фиксированные годы N−9…N+18, только округление. -->
     <div class="col-12 mb-2">
         <div class="d-flex align-items-center flex-wrap gap-2 w-100">
             {% if summary_route_variant != 'coeff' %}
@@ -385,7 +385,7 @@
                     id="pdEcSummaryGaesDetailToggle"
                     class="btn {% if summary_variant_toggle_default_off %}btn-outline-secondary{% else %}btn-primary{% endif %} text-nowrap flex-shrink-0"
                     aria-pressed="{% if summary_variant_toggle_default_off %}false{% else %}true{% endif %}"
-                    title="Показать строки с/без заряда ГАЭС с приписками; по умолчанию — только «с зарядом ГАЭС» без приписки">
+                    title="Показать строки с/без заряда ГАЭС с приписками; по умолчанию – только «с зарядом ГАЭС» без приписки">
                 без заряда ГАЭС
             </button>
             {% endif %}
@@ -394,7 +394,7 @@
                     id="pdEcSummaryNtDetailToggle"
                     class="btn btn-outline-secondary text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Добавить строки с вариантом «с НТ»; при выключении — строки «без НТ» без приписки">
+                    title="Добавить строки с вариантом «с НТ»; при выключении – строки «без НТ» без приписки">
                 + НТ
             </button>
             <button type="button"
@@ -419,7 +419,7 @@
                     id="pdEcSummarySiprToggle"
                     class="btn btn-outline-primary text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки по данным СиПР (значения млн кВтч — СиПР; во всплывающей подсказке ячейки — потребление без СиПР)">
+                    title="Показать строки по данным СиПР (значения млн кВтч – СиПР; во всплывающей подсказке ячейки – потребление без СиПР)">
                 СиПР
             </button>
             {% if can_edit_summary_cells and active_summary in ('oes', 'fo') %}
@@ -460,7 +460,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/energy_consumption_summary_entity_borders.css') }}">
     <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_entity_borders.js') }}"></script>
     <style>
-    /* «Сохранить», «Применить» (годы), «СиПР» — одна базовая ширина кнопки .btn */
+    /* «Сохранить», «Применить» (годы), «СиПР» – одна базовая ширина кнопки .btn */
     #demandSummarySaveBtn,
     #powerDemandSummaryYearForm button[type="submit"],
     #pdEcSummaryGaesDetailToggle,
@@ -513,10 +513,10 @@
     .pd-summary-filters-form .pd-summary-filter-field .dropdown-menu.filter-dropdown-menu {
         min-width: 100%;
         box-sizing: border-box;
-        /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important — против Popper/Bootstrap */
+        /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important – против Popper/Bootstrap */
         z-index: 1054 !important;
     }
-    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body — задаём класс в JS */
+    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body – задаём класс в JS */
     body .select2-dropdown.pd-summary-filter-select2-dd {
         z-index: 1054 !important;
     }
@@ -527,7 +527,7 @@
     .pd-summary-filters-form .pd-summary-filter-actions .btn {
         white-space: nowrap;
     }
-    /* Ширина колонок ×3 (37.5rem); высота закрытого поля — как раньше (как у кнопки «Фильтры / Поиск») */
+    /* Ширина колонок ×3 (37.5rem); высота закрытого поля – как раньше (как у кнопки «Фильтры / Поиск») */
     .pd-summary-filters-form .pd-summary-filter-field .dropdown > button.form-select {
         font-size: 1rem;
         line-height: 1.5;
@@ -608,7 +608,7 @@
         font-size: 0.95rem;
         pointer-events: none;
     }
-    /* Чукотка: Чаун-Билибинский и справочные строки — подписи слева на одном уровне (периметр / ЭС / параметр). */
+    /* Чукотка: Чаун-Билибинский и справочные строки – подписи слева на одном уровне (периметр / ЭС / параметр). */
     #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-perimeter-variant-cell,
     #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-entity-cell,
     #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-parameter-cell {
@@ -762,13 +762,13 @@
     </div>
     {% endif %}
 
-    {# «Энергосистема» и «Наименование параметров» — фиксированная ширина; столбцы годов делят остаток ширины таблицы. #}
+    {# «Энергосистема» и «Наименование параметров» – фиксированная ширина; столбцы годов делят остаток ширины таблицы. #}
     {% set summary_entity_col_w = "7cm" %}
     {% set summary_perimeter_variant_col_w = "4.5cm" %}
     {% set summary_parameter_col_w = "18rem" %}
     {% set summary_hist_col_w = "6.5rem" %}
     {% set _coeff_mixin_n = 6 %}
-    {# Для coeff ширины числовых колонок не задаём в % — см. комментарий выше. #}
+    {# Для coeff ширины числовых колонок не задаём в % – см. комментарий выше. #}
     {% if summary_route_variant == 'coeff' %}
     <style>
     .pd-coeff-year-seg-table.pd-coeff-seg-hide-reporting th[data-coeff-group="reporting"],
@@ -842,7 +842,7 @@
                {% endif %}>
             <colgroup>
                 {% if years|length > 0 %}
-                {# Фиксированные ширины: энергосистема, параметры, при необходимости «Исторический…» и миксины; годы — авто в остатке. #}
+                {# Фиксированные ширины: энергосистема, параметры, при необходимости «Исторический…» и миксины; годы – авто в остатке. #}
                 {% if summary_route_variant != 'coeff' and show_perimeter_variant_column %}
                 <col class="summary-col-perimeter-variant" style="width: {{ summary_perimeter_variant_col_w }}; min-width: {{ summary_perimeter_variant_col_w }}; max-width: {{ summary_perimeter_variant_col_w }}; box-sizing: border-box;" />
                 {% endif %}
@@ -899,9 +899,9 @@
             {% set _pd_coeff_ues_calc_combined_ees_mw = "Расчетный совмещенный на ЕЭС = сумма значений ячеек «Совмещенный на ЕЭС, МВт» всех региональных энергосистем, входящих в эту ОЭС. k = Расчетный совмещенный на ЕЭС / Максимальное потребление мощности ОЭС." %}
             <thead>
                 {% if summary_route_variant == 'coeff' and coeff_period_header_groups is defined %}
-                {% set _pd_coeff_f_gs10 = "Среднее арифметическое коэффициентов k по годам отчётного периода (10 лет: N−9…N, N — базовый год)." %}
+                {% set _pd_coeff_f_gs10 = "Среднее арифметическое коэффициентов k по годам отчётного периода (10 лет: N−9…N, N – базовый год)." %}
                 {% set _pd_coeff_f_gs10trim = "По годам отчётного периода (N−9…N): из значений k исключаются одно минимальное и одно максимальное, для остальных вычисляется среднее." %}
-                {% set _pd_coeff_f_gs5 = "Среднее арифметическое коэффициентов k по пяти годам N−4…N (N — базовый год отчётного периода)." %}
+                {% set _pd_coeff_f_gs5 = "Среднее арифметическое коэффициентов k по пяти годам N−4…N (N – базовый год отчётного периода)." %}
                 {% set _pd_coeff_f_sample = "Среднее арифметическое коэффициентов k по годам, отмеченным в выпадающем списке выборки (чекбоксы)." %}
                 <tr class="table-success power-demand-coeff-thead-top">
                     <th rowspan="2" class="text-center align-middle summary-entity-col">Энергосистема</th>
@@ -1110,7 +1110,7 @@
                 {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode and row.get('pd_ec_territory_compact_hide_row') and not summary_table_standalone %}
                     {% set row_initial_hidden = true %}
                 {% endif %}
-                {# Итог «(всего)» по ГАЭС первой СЗ не скрываем вне компактного режима — иначе при +Заряд ГАЭС нет суммарной строки. #}
+                {# Итог «(всего)» по ГАЭС первой СЗ не скрываем вне компактного режима – иначе при +Заряд ГАЭС нет суммарной строки. #}
                 {% set first_sa_gaes_variant = row.get('pd_ec_first_sa_gaes_compact_variant') %}
                 {% if summary_route_variant != 'coeff' and first_sa_gaes_variant == 'detail' and summary_initial_compact_mode %}
                     {% set row_initial_hidden = true %}
@@ -1191,7 +1191,7 @@
                                 {% if row.get('pd_ec_formula_persist_kind') %}data-formula-persist-kind="{{ row.pd_ec_formula_persist_kind|e }}"{% endif %}
                                 {% if row.get('pd_ec_formula_source_pvc') is not none %}data-formula-source-pvc="{{ row.pd_ec_formula_source_pvc or '' }}"{% endif %}
                                 {% if row.get('pd_ec_formula_persist_context') %}data-formula-persist-context='{{ row.pd_ec_formula_persist_context | tojson }}'{% endif %}
-                                title="{% if row.get('pd_ec_formula_derived_row') %}Расчётная строка: значения на экране по формуле; выбранный вариант — под каким кодом хранить/читать данные в БД{% else %}Вариант периметра для записи и чтения данных этого блока в БД{% endif %}">
+                                title="{% if row.get('pd_ec_formula_derived_row') %}Расчётная строка: значения на экране по формуле; выбранный вариант – под каким кодом хранить/читать данные в БД{% else %}Вариант периметра для записи и чтения данных этого блока в БД{% endif %}">
                             <option value="" {% if not row.perimeter_variant_code %}selected{% endif %}>не указано</option>
                             {% for opt in row.perimeter_variant_options|default(perimeter_variant_options) %}
                             <option value="{{ opt.code }}" {% if (row.perimeter_variant_code or '') == opt.code %}selected{% endif %}>{{ opt.label }}</option>
@@ -1200,7 +1200,7 @@
                         <span class="pd-ec-perimeter-variant-select-label" aria-hidden="true"></span>
                         </div>
                         {% else %}
-                        <span class="text-wrap"{% if row.get('pd_ec_formula_derived_row') %} title="Расчётная строка — вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»"{% endif %}>{{ row.perimeter_variant_label or perimeter_variant_display_label_for_entity(row.perimeter_variant_code, row.pd_ec_perimeter_entity_kind, row.pd_ec_perimeter_entity_name) or 'не указано' }}</span>
+                        <span class="text-wrap"{% if row.get('pd_ec_formula_derived_row') %} title="Расчётная строка – вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»"{% endif %}>{{ row.perimeter_variant_label or perimeter_variant_display_label_for_entity(row.perimeter_variant_code, row.pd_ec_perimeter_entity_kind, row.pd_ec_perimeter_entity_name) or 'не указано' }}</span>
                         {% endif %}
                     </td>
                     {% endif %}
@@ -1350,13 +1350,13 @@
                         {% endif %}
                     </td>
                     {% if summary_route_variant == 'coeff' %}
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-minmax-trim-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs5-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-sample-cell">—</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-minmax-trim-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs5-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-sample-cell">–</td>
                     {% if row.parameter_key in ('peak_datetime', 'max_power') or _ec_ees_russia_composite_row %}
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-manual-cell"><span class="text-muted">—</span></td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell"><span class="text-muted">—</span></td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-manual-cell"><span class="text-muted">–</span></td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell"><span class="text-muted">–</span></td>
                     {% else %}
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-manual-cell">
                         <input type="text"
@@ -1364,11 +1364,11 @@
                                autocomplete="off"
                                class="form-control form-control-sm text-center pd-coeff-manual-input"
                                value=""
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, ручной ввод коэффициента совмещения" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, ручной ввод коэффициента совмещения" />
                     </td>
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell">
                         <select class="form-select form-select-sm pd-coeff-source-select"
-                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, используемый коэффициент совмещения">
+                                aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, используемый коэффициент совмещения">
                             <option value="gs5" selected>СиПР (5 лет)</option>
                             <option value="sample">период</option>
                             <option value="manual">ручной ввод</option>
@@ -1377,7 +1377,7 @@
                     {% endif %}
                     {% endif %}
                     {% set _ec_row_is_gaes_synthetic = row.get('pd_ec_gaes_injected_row') %}
-                    {# Строки «заряд ГАЭС» по конкретной станции синтетические, но значения хранятся в карточке станции — правка разрешена. #}
+                    {# Строки «заряд ГАЭС» по конкретной станции синтетические, но значения хранятся в карточке станции – правка разрешена. #}
                     {% set _ec_gaes_charge_station_editable = row.parameter_key == 'gaes_charge_consumption_mln_kvt_ch' and row.get('gaes_station_id') %}
                     {% set _ec_with_gaes_charge_db_block = row.get('pd_ec_gaes_with_charge_db_block') and row.parameter_key != 'gaes_charge_consumption_mln_kvt_ch' and not row.get('pd_ec_formula_derived_row') %}
                     {% set _demand_name_ok = row.demand_model_name or _ec_gaes_charge_station_editable or _ec_with_gaes_charge_db_block %}
@@ -1388,12 +1388,12 @@
                     {% if show_hist_col %}
                     <td class="text-center summary-hist-cell"
                         {% if row.parameter_key == 'peak_datetime' %}
-                        title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                        title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} – {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
                         {% elif row.hist_numeric_tooltip|default('') %}
                         title="{{ row.hist_numeric_tooltip|e }}"
                         {% endif %}>
                         {% if _can_edit_hist_cell %}
-                        {% set _hv = row.hist_value if row.hist_value != '—' else '' %}
+                        {% set _hv = row.hist_value if row.hist_value != '–' else '' %}
                         {% if row.parameter_key == 'peak_datetime' %}
                         <input type="text"
                                autocomplete="off"
@@ -1402,14 +1402,14 @@
                                data-initial="{{ _hv|e }}"
                                data-slice="hist"
                                data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
-                               title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                               title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} – {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
                                {% if row.hist_numeric_tooltip %}data-db-full="{{ row.hist_numeric_tooltip|e }}"{% endif %}
                                {% if row.hist_row_id is not none %}data-row-id="{{ row.hist_row_id }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум" />
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
@@ -1424,17 +1424,17 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум" />
                         {% endif %}
                         {% else %}
                         {{ row.hist_value }}
                         {% endif %}
                     </td>
                     {% endif %}
-                    {# Итерация по years, а не по row.year_values — иначе при рассинхроне длин остаются «пустые» столбцы после среднесрочного периода. #}
+                    {# Итерация по years, а не по row.year_values – иначе при рассинхроне длин остаются «пустые» столбцы после среднесрочного периода. #}
                     {% for _yr in years %}
                     {% set ix = loop.index0 %}
-                    {% set value = row.year_values[ix] if row.year_values is defined and (row.year_values|length) > ix else '—' %}
+                    {% set value = row.year_values[ix] if row.year_values is defined and (row.year_values|length) > ix else '–' %}
                     {% set yrid = row.year_row_ids[ix] if row.year_row_ids is defined and (row.year_row_ids|length) > ix else none %}
                     {% set _is_medium_year = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _yr_in_coef_report = coeff_base_year is defined and _yr >= coeff_base_year - 9 and _yr <= coeff_base_year %}
@@ -1463,10 +1463,10 @@
                     {% set _sakha_year_out_of_range = _yr <= _sakha_through %}
                     {% endif %}
                     {% set _year_membership_out_of_range = _pv_variant_year_out_of_range or _sakha_year_out_of_range %}
-                    {% if _year_membership_out_of_range %}{% set value = '—' %}{% endif %}
+                    {% if _year_membership_out_of_range %}{% set value = '–' %}{% endif %}
                     {% set _can_edit_year_cell = _can_edit_cell and not _gaes_station_year_out_of_range and not _year_membership_out_of_range %}
                     {% if summary_route_variant == 'coeff' %}
-                    {% set k_disp = row.year_k_values[ix] if row.year_k_values is defined and (row.year_k_values|length) > ix else '—' %}
+                    {% set k_disp = row.year_k_values[ix] if row.year_k_values is defined and (row.year_k_values|length) > ix else '–' %}
                     {% set k_full_tt = (row.year_k_full_tooltips|default([]))[ix] if (row.year_k_full_tooltips|default([]))|length > ix else '' %}
                     {% set _is_medium_k = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set coeff_k_map = {
@@ -1478,7 +1478,7 @@
                     {% set coeff_k_pkey = coeff_k_map[row.parameter_key] if row.parameter_key in coeff_k_map else '' %}
                     {% set _medium_k_input = _is_medium_k and _can_edit_cell and row.parameter_key not in ('peak_datetime', 'avg_temp', 'max_power') %}
                     {% set _ycoeff = row.year_coeff_k_stored|default([], true) %}
-                    {% set _k_stored_cell = _ycoeff[ix] if _ycoeff|length > ix else '—' %}
+                    {% set _k_stored_cell = _ycoeff[ix] if _ycoeff|length > ix else '–' %}
                     <td class="text-center summary-year-cell summary-year-k-cell{% if _plan_hide %} summary-plan-empty{% endif %}"
                         data-summary-year="{{ _yr }}"
                         {% if coeff_base_year is defined %}
@@ -1490,7 +1490,7 @@
                         <input type="text" readonly tabindex="-1" lang="ru"
                                class="form-control form-control-sm text-center pd-coeff-display-k"
                                value="{{ k_disp }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k, {{ _yr }} год" />
                         {% else %}
                         {{ k_disp }}
                         {% endif %}
@@ -1500,7 +1500,7 @@
                                inputmode="decimal"
                                autocomplete="off"
                                class="form-control form-control-sm text-center pd-coeff-medium-k-input"
-                               value="{% if _k_stored_cell != '' and _k_stored_cell != '—' %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               value="{% if _k_stored_cell != '' and _k_stored_cell != '–' %}{{ _k_stored_cell }}{% elif k_disp != '–' %}{{ k_disp }}{% endif %}"
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ coeff_k_pkey }}"
                                {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
@@ -1508,17 +1508,17 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-model="{{ row.demand_model_name }}"
                                data-slice="{{ _yr }}"
-                               data-initial="{% if _k_stored_cell != '' and _k_stored_cell != '—' %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
+                               data-initial="{% if _k_stored_cell != '' and _k_stored_cell != '–' %}{{ _k_stored_cell }}{% elif k_disp != '–' %}{{ k_disp }}{% endif %}"
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
                                autocomplete="off"
                                class="form-control form-control-sm text-center pd-coeff-medium-k-input"
-                               value="{% if k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               value="{% if k_disp != '–' %}{{ k_disp }}{% endif %}"
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ row.parameter_key }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% endif %}
                         {% else %}
                         {% if _ues_readonly_coeff_display %}
@@ -1526,7 +1526,7 @@
                                class="form-control form-control-sm text-center pd-coeff-display-k"
                                value="{{ k_disp }}"
                                {% if k_full_tt %}title="{{ k_full_tt|e }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k, {{ _yr }} год" />
                         {% else %}
                         {{ k_disp }}
                         {% endif %}
@@ -1548,7 +1548,7 @@
                         {% set _cell_red_flag = (_vz_red[ix] if _vz_red and (_vz_red|length) > ix else false) %}
                         <span class="{% if _cell_red_flag %}text-danger{% endif %}">{{ value }}</span>
                         {% elif _can_edit_year_cell %}
-                        {% set _yv = value if value != '—' else '' %}
+                        {% set _yv = value if value != '–' else '' %}
                         <input type="text"
                                inputmode="decimal"
                                autocomplete="off"
@@ -1563,14 +1563,14 @@
                                {% if _ec_gaes_charge_station_editable %}data-gaes-station-id="{{ row.gaes_station_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год" />
                         {% else %}
                         {% if _ues_readonly_coeff_display %}
                         <input type="text" readonly tabindex="-1" lang="ru"
                                class="form-control form-control-lg text-center pd-coeff-display-mw"
                                value="{{ value }}"
                                {% if _cell_tt %}title="{{ _cell_tt|e }}"{% if _yr_tt %} data-db-full="{{ _yr_tt|e }}"{% endif %}{% endif %}
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год" />
                         {% else %}
                         {{ value }}
                         {% endif %}
@@ -1595,7 +1595,7 @@
                                {% if row.entity_note_row_id is not none %}data-row-id="{{ row.entity_note_row_id }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — примечание">{{ _nev }}</textarea>
+                               aria-label="{{ row.entity_label }} – примечание">{{ _nev }}</textarea>
                         {% else %}
                         <span class="text-break">{{ _nev }}</span>
                         {% endif %}
@@ -1768,7 +1768,7 @@ var PD_EC_SIPR_INTEGER_ROW_KEYS = {
 
 function pdEcParseRuDecimalToNumber(raw) {
     var s = String(raw || "").trim().replace(/\s/g, "").replace(",", ".");
-    if (!s || s === "—") {
+    if (!s || s === "–") {
         return null;
     }
     var n = Number(s);
@@ -1796,7 +1796,7 @@ function pdEcRoundHalfUpToInt(n) {
 function pdEcFormatSummaryIntegerDisplay(raw) {
     var n = pdEcParseRuDecimalToNumber(raw);
     if (n === null) {
-        return "—";
+        return "–";
     }
     return String(pdEcRoundHalfUpToInt(n));
 }
@@ -1813,7 +1813,7 @@ function pdEcSummaryYearCellDisplayTarget(cell) {
     return { el: cell, isInput: false };
 }
 
-/** В режиме СиПР — целые значения (сводная таблица целиком; иначе строки с data-pd-ec-sipr-integer-display). */
+/** В режиме СиПР – целые значения (сводная таблица целиком; иначе строки с data-pd-ec-sipr-integer-display). */
 function syncPdEcSummaryTableSiprIntegerDisplay() {
     var summaryTable = document.getElementById("powerDemandSummaryTable");
     if (!summaryTable) {
@@ -2081,7 +2081,7 @@ if (summaryTable) {
         window.__pdEcSummaryTerritoryCompactMode = pdEcTerritoryCompactForced;
     }
 
-    // Кнопка «Варианты периметра» — столбец «Варианты периметра»
+    // Кнопка «Варианты периметра» – столбец «Варианты периметра»
     var pdEcPerimeterVariantBtn = document.getElementById("pdEcSummaryPerimeterVariantToggle");
     var pdEcPerimeterVariantStorageKey =
         "pdEcSummaryPerimeterVariant_" +
@@ -2145,7 +2145,7 @@ if (summaryTable) {
     const FILTER_STORAGE_KEY = "powerDemandSummaryRowFilter";
 
     /**
-     * Одна «зебра» на блок строк под rowspan «Энергосистема»/«Примечание» (все строки блока — один фон).
+     * Одна «зебра» на блок строк под rowspan «Энергосистема»/«Примечание» (все строки блока – один фон).
      */
     function pdEcSummaryIsVerificationTr(tr) {
         return (
@@ -2186,7 +2186,7 @@ if (summaryTable) {
         }
         var inp = target.querySelector("input, textarea");
         var t = inp ? String(inp.value || "").trim() : String(target.textContent || "").trim();
-        if (t === "" || t === "—") {
+        if (t === "" || t === "–") {
             return false;
         }
         if (parameterKey === "peak_datetime") {
@@ -2642,7 +2642,7 @@ if (summaryTable) {
 
         /**
          * После смены видимости строк пересчёт rowspan дорогой на больших таблицах и блокирует вкладку.
-         * Спиннер уже показан поверх строк; tbody не прячем — иначе остаётся только шапка.
+         * Спиннер уже показан поверх строк; tbody не прячем – иначе остаётся только шапка.
          */
         function pdEcHideBusySpinner() {
             if (typeof window.__pdEcSummaryHideTableSpinner === "function") {
@@ -2998,7 +2998,7 @@ if (summaryTable) {
             try {
                 repositionEntityCellsAndRowspansAfterVisibility();
             } catch (eRepo) {
-                /* не даём исключению прервать init — иначе не создаётся __pdEcSummaryReapplyRowVisibility */
+                /* не даём исключению прервать init – иначе не создаётся __pdEcSummaryReapplyRowVisibility */
             }
             syncPdEcSummaryTableSiprIntegerDisplay();
         }
@@ -3536,7 +3536,7 @@ if (summaryTable) {
         max-width: {{ summary_parameter_col_w }};
         box-sizing: border-box;
     }
-    /* Миксины — фиксированная ширина; годы k/МВт — мин. 5.5rem и доля остатка при узком наборе столбцов
+    /* Миксины – фиксированная ширина; годы k/МВт – мин. 5.5rem и доля остатка при узком наборе столбцов
        (например, только среднесрочный период), чтобы таблица заполняла ширину экрана. */
     .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-coeff-mixin {
         width: 5.5rem;
@@ -3654,7 +3654,7 @@ if (summaryTable) {
     }
     {% endif %}
     .pd-coeff-year-seg-table {
-        /* 100% — заполняет экран при узком наборе годов (напр. только среднесрочный период); min-width — шире viewport при многих столбцах и гориз. скролл */
+        /* 100% – заполняет экран при узком наборе годов (напр. только среднесрочный период); min-width – шире viewport при многих столбцах и гориз. скролл */
         table-layout: fixed;
         width: 100%;
         min-width: max(100%, max-content);
@@ -3921,7 +3921,7 @@ if (summaryTable) {
     .pd-coeff-year-seg-table.pd-coeff-hide-k-columns th.summary-year-k-col {
         display: none !important;
     }
-    /* Без столбцов k intrinsic max-content слишком узкий — таблица «уезжает» от полной ширины экрана */
+    /* Без столбцов k intrinsic max-content слишком узкий – таблица «уезжает» от полной ширины экрана */
     .pd-coeff-year-seg-table.pd-coeff-hide-k-columns {
         width: 100%;
         min-width: 100%;
@@ -3944,7 +3944,7 @@ if (summaryTable) {
     #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-empty-block-hidden {
         display: none !important;
     }
-    /* Один фон на все видимые строки блока (под rowspan «Энергосистема» / «Примечание»); чётность — по блокам, не по tr. */
+    /* Один фон на все видимые строки блока (под rowspan «Энергосистема» / «Примечание»); чётность – по блокам, не по tr. */
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="0"] > td {
         background-color: var(--bs-table-striped-bg, rgba(0, 0, 0, 0.05)) !important;
     }
@@ -4159,7 +4159,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setTimeout(initPdSummaryFilterDropdowns, 100);
 
-    /* Автопоиск при выборе в фильтрах — как на fuel/stations_equipment_groups (station_filters_first_row.js) */
+    /* Автопоиск при выборе в фильтрах – как на fuel/stations_equipment_groups (station_filters_first_row.js) */
     setTimeout(function () {
         var filterForm = document.querySelector("#filtersCollapse form.pd-summary-filters-form");
         if (!filterForm || filterForm.dataset.pdAutoSubmitBound === "1") {
@@ -4175,7 +4175,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             /* Пока открыто (или недавно закрыто) модальное окно выбора строк таблицы, Select2 может
-               слать ложный change на фильтрах — тогда автопоиск сбрасывает территориальные фильтры. */
+               слать ложный change на фильтрах – тогда автопоиск сбрасывает территориальные фильтры. */
             if (filterForm.dataset.pdRowPickerModalGuard === "1") {
                 return;
             }
@@ -4478,7 +4478,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /** Годы «произвольной выборки»: отмеченные чекбоксы в выпадающем фильтре; если их нет в разметке — из URL. */
+        /** Годы «произвольной выборки»: отмеченные чекбоксы в выпадающем фильтре; если их нет в разметке – из URL. */
         function selectedSampleYears() {
             var out = [];
             var seen = {};
@@ -4517,7 +4517,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             var inp = td.querySelector("input, textarea");
             var t = inp ? String(inp.value || "").trim() : String(td.textContent || "").trim();
-            if (t === "" || t === "—") {
+            if (t === "" || t === "–") {
                 return null;
             }
             var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -4534,7 +4534,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return null;
             }
             var t = String(title).trim().replace(/\s/g, "");
-            if (!t || t === "—") {
+            if (!t || t === "–") {
                 return null;
             }
             if (!/^-?\d+([.,]\d+)?$/.test(t)) {
@@ -4546,7 +4546,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function formatAvg(avg, rd) {
             if (!Number.isFinite(avg)) {
-                return "—";
+                return "–";
             }
             if (rd === -1) {
                 return String(Math.round(avg));
@@ -4563,7 +4563,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return rounded.toFixed(rd).replace(".", ",");
         }
 
-        /** Строки одного блока «энергосистема + показатели» (первая строка блока — data-is-block-start). */
+        /** Строки одного блока «энергосистема + показатели» (первая строка блока – data-is-block-start). */
         function entityBlockFromRow(tr) {
             var row = tr;
             while (row && row.matches("tr.summary-row-param")) {
@@ -4606,7 +4606,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function parseManualCoeffInput(val) {
             var t = String(val || "").trim();
-            if (!t || t === "—") {
+            if (!t || t === "–") {
                 return null;
             }
             var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -4688,7 +4688,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         var tkey = uid + "\u0000" + y;
                         var total = store[tkey];
                         if (total === undefined) {
-                            inp.value = "—";
+                            inp.value = "–";
                             inp.removeAttribute("title");
                         } else {
                             inp.value = formatAvg(total, rd);
@@ -4797,7 +4797,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             kinp.value = "";
                             kinp.removeAttribute("title");
                         } else {
-                            kCell.textContent = "—";
+                            kCell.textContent = "–";
                         }
                         kCell.removeAttribute("title");
                     });
@@ -4832,7 +4832,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     } else {
                         if (coeff === null) {
-                            kCell.textContent = "—";
+                            kCell.textContent = "–";
                             kCell.removeAttribute("title");
                         } else {
                             kCell.textContent = formatAvg(coeff, rd);
@@ -4898,7 +4898,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var kinp = kCell.querySelector("input.pd-coeff-display-k");
             if (kinp) {
                 kinp.value = displayText;
-                if (displayText === "—") {
+                if (displayText === "–") {
                     kinp.removeAttribute("title");
                     kCell.removeAttribute("title");
                 } else if (fullTooltipNum !== undefined && fullTooltipNum !== null && typeof fullTooltipNum === "number" && Number.isFinite(fullTooltipNum)) {
@@ -4908,7 +4908,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             kCell.textContent = displayText;
-            if (displayText === "—") {
+            if (displayText === "–") {
                 kCell.removeAttribute("title");
             } else if (fullTooltipNum !== undefined && fullTooltipNum !== null && typeof fullTooltipNum === "number" && Number.isFinite(fullTooltipNum)) {
                 setNumericCellFullTitle(kCell, fullTooltipNum);
@@ -4950,11 +4950,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             if (seg === "medium" && pk !== "peak_datetime" && pk !== "avg_temp" && pk !== "max_power") {
                                 return;
                             }
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (pk === "peak_datetime" || pk === "avg_temp") {
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (seg === "medium" && pk !== "max_power") {
@@ -4972,15 +4972,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                         var val = parseCellNumber(mwCell);
                         if (pk === "max_power") {
-                            /* k для строки «Максимальное потребление мощности» нигде не считается — всегда прочерк. */
-                            setYearKCellDisplay(kCell, "—");
+                            /* k для строки «Максимальное потребление мощности» нигде не считается – всегда прочерк. */
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (val !== null && maxMw !== null && maxMw > 0) {
                             var rat = val / maxMw;
                             setYearKCellDisplay(kCell, formatAvg(rat, rd), rat);
                         } else {
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                         }
                     });
                 }
@@ -4997,7 +4997,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power") {
-                    gsTd.textContent = "—";
+                    gsTd.textContent = "–";
                     gsTd.removeAttribute("title");
                     return;
                 }
@@ -5012,7 +5012,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    gsTd.textContent = "—";
+                    gsTd.textContent = "–";
                     gsTd.removeAttribute("title");
                     return;
                 }
@@ -5038,7 +5038,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power") {
-                    trimTd.textContent = "—";
+                    trimTd.textContent = "–";
                     trimTd.removeAttribute("title");
                     return;
                 }
@@ -5053,7 +5053,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length < 3) {
-                    trimTd.textContent = "—";
+                    trimTd.textContent = "–";
                     trimTd.removeAttribute("title");
                     return;
                 }
@@ -5070,14 +5070,14 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N — базовый год отчётного периода. */
+        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчётного периода. */
         function refreshGs5N4toNAvg() {
             var rd = getRoundingDigits();
             var nRaw = table.getAttribute("data-coeff-base-year");
             var n = nRaw ? parseInt(String(nRaw), 10) : NaN;
             if (!Number.isFinite(n)) {
                 table.querySelectorAll("td.summary-coeff-gs5-cell").forEach(function (td) {
-                    td.textContent = "—";
+                    td.textContent = "–";
                     td.removeAttribute("title");
                 });
                 return;
@@ -5093,7 +5093,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power") {
-                    g5Td.textContent = "—";
+                    g5Td.textContent = "–";
                     g5Td.removeAttribute("title");
                     return;
                 }
@@ -5112,7 +5112,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    g5Td.textContent = "—";
+                    g5Td.textContent = "–";
                     g5Td.removeAttribute("title");
                     return;
                 }
@@ -5143,12 +5143,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power") {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
                 if (yearsSel.length === 0) {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
@@ -5167,7 +5167,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
@@ -5375,7 +5375,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return false;
                 }
             } catch (e2) { /* */ }
-            /* Как в разметке: pd-coeff-hide-k-columns — по умолчанию столбцы k скрыты. */
+            /* Как в разметке: pd-coeff-hide-k-columns – по умолчанию столбцы k скрыты. */
             return false;
         }
 

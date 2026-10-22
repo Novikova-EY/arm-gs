@@ -16,11 +16,11 @@
                     {% if current_year_split is not none and y == current_year_split %}
                         <td class="power-column"></td>
                         <td class="power-column">
-                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                            {{ yearly_data.get(y) | default('–') | format_decimal if yearly_data.get(y) is not none }}
                         </td>
                     {% else %}
                         <td class="power-column">
-                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                            {{ yearly_data.get(y) | default('–') | format_decimal if yearly_data.get(y) is not none }}
                         </td>
                     {% endif %}
                 {% endfor %}
@@ -35,7 +35,7 @@
                         {% endfor %}
                         {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                     {% else %}
-                        —
+                        –
                     {% endif %}
                 </td>
                 <td></td>

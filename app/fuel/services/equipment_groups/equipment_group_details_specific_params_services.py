@@ -22,7 +22,7 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_serv
 )
 from app.fuel.services.formula_text.fuel_formula_text_registry import iter_formula_defs
 
-# Дефолтные тексты (без учёта переопределений в БД). Эффективные — get_consumption_formulas().
+# Дефолтные тексты (без учёта переопределений в БД). Эффективные – get_consumption_formulas().
 CONSUMPTION_FORMULAS = {
     item.map_key: item.default_text
     for item in iter_formula_defs(map_name="consumption")
@@ -85,7 +85,7 @@ def build_table4_consumption_grid(
         for y in years_range:
             rec = consumption_by_year.get(y)
             values_by_year[y] = getattr(rec, attr, None) if rec else None
-        # Жирным — примечание из модели (COLUMN_LABELS)
+        # Жирным – примечание из модели (COLUMN_LABELS)
         display_label = EquipmentGroupSpecificFuelConsumption.COLUMN_LABELS.get(
             attr, label
         )

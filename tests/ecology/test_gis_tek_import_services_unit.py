@@ -46,7 +46,7 @@ def test_safe_int_and_decimal():
 
 
 def test_safe_decimal_drops_float_noise_from_excel_cells():
-    # Числовая ячейка Excel — double: 3.1300000000000003 — это 3.13 плюс шум double.
+    # Числовая ячейка Excel – double: 3.1300000000000003 – это 3.13 плюс шум double.
     assert safe_decimal(3.1300000000000003) == Decimal("3.13")
     assert safe_decimal(105.10000000000001) == Decimal("105.1")
     assert safe_decimal(9370.800000000001) == Decimal("9370.8")

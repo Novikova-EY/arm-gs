@@ -130,7 +130,7 @@ def format_ozp_period_label(ozp_start: int, ozp_end: int) -> str:
 
 
 def build_ozp_columns(start_year: int, end_year: int) -> list[dict[str, Any]]:
-    """Колонки таблицы: у каждого года один ОЗП, у года конца — два (как на образце)."""
+    """Колонки таблицы: у каждого года один ОЗП, у года конца – два (как на образце)."""
     if start_year > end_year:
         start_year, end_year = end_year, start_year
     columns: list[dict[str, Any]] = []
@@ -201,7 +201,7 @@ def format_mw_display(value: Any, rounding_digits: int) -> str:
 
 def format_growth_display(value: Any) -> str:
     if value is None:
-        return "—"
+        return "–"
     return format_decimal_for_display(value, digits=GROWTH_ROUNDING_DIGITS)
 
 
@@ -209,7 +209,7 @@ def _parse_optional_decimal(raw: Any) -> Decimal | None:
     if raw is None:
         return None
     s = str(raw).strip()
-    if s in ("", "—", "-", "–"):
+    if s in ("", "–", "-", "–"):
         return None
     try:
         return parse_decimal_from_display(raw)
@@ -221,7 +221,7 @@ def _parse_optional_text(raw: Any) -> str | None:
     if raw is None:
         return None
     s = " ".join(str(raw).replace("\u00a0", " ").replace("\u202f", " ").split())
-    if s in ("", "—", "-", "–"):
+    if s in ("", "–", "-", "–"):
         return None
     return s
 

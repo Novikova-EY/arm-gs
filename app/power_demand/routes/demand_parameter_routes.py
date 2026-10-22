@@ -343,7 +343,7 @@ def ees_russia_with_nt_demand():
 @power_demand_bp.route("/ees/", methods=["GET", "POST"])
 @login_required
 def ees_demand():
-    """ЭЭС России без НТ — отдельная таблица параметров нагрузки (без FK на справочник)."""
+    """ЭЭС России без НТ – отдельная таблица параметров нагрузки (без FK на справочник)."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_power_demand(current_user):
@@ -392,7 +392,7 @@ def ees_demand():
 @power_demand_bp.route("/ees_with_nt/", methods=["GET", "POST"])
 @login_required
 def ees_with_nt_demand():
-    """ЭЭС России с НТ — те же поля, что у /ees/, вариант периметра with_nt."""
+    """ЭЭС России с НТ – те же поля, что у /ees/, вариант периметра with_nt."""
     form = _csrf()
     if request.method == "POST":
         if not can_edit_power_demand(current_user):
@@ -691,7 +691,7 @@ def energy_zone_list():
         "Нагрузки: энергозоны",
         "power_demand_bp.energy_zone_list",
         "power_demand_bp.energy_zone_demand",
-        lambda o: f"{o.number} — {o.name}",
+        lambda o: f"{o.number} – {o.name}",
         EnergyZone.number,
         exclude_names=("не указано", "не указано2"),
     )
@@ -707,7 +707,7 @@ def energy_zone_demand(parent_id: int):
         EnergyZone,
         parent_id,
         "Нагрузки: энергозона",
-        f"{p.number} — {p.name}",
+        f"{p.number} – {p.name}",
         "power_demand_bp.energy_zone_list",
     )
 
@@ -839,7 +839,7 @@ def union_energy_system_demand(parent_id: int):
         suffix = ""
         pdefs = perimeter_variant_definitions()
         if spv and spv in pdefs:
-            suffix = f" — {variant_label_for_entity(binding, pdefs[spv])}"
+            suffix = f" – {variant_label_for_entity(binding, pdefs[spv])}"
     else:
         spv = ""
         suffix = ""

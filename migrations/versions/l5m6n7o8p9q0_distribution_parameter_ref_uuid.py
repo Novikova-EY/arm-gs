@@ -53,7 +53,7 @@ def upgrade():
     if not _index_exists(conn, SCHEMA, idx):
         op.create_index(idx, TABLE, ["ref_uuid"], unique=False, schema=SCHEMA)
 
-    # Каждой существующей строке — свой ref_uuid (копии по версиям появятся при импорте/сохранении).
+    # Каждой существующей строке – свой ref_uuid (копии по версиям появятся при импорте/сохранении).
     conn.execute(
         text(
             f"""

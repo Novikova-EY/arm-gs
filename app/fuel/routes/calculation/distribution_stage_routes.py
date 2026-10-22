@@ -98,7 +98,7 @@ def _distribution_result_message(run, *, e_target, apply_restrictions: bool) -> 
     if e_tgt > 0 and not converged:
         converge_note = (
             f"; не сошлось с Ераспред={e_tgt:.1f} "
-            f"(Δ={delta_e:.1f}, допуск 0.3) — «Топливо» будет недоступно"
+            f"(Δ={delta_e:.1f}, допуск 0.3) – «Топливо» будет недоступно"
         )
     message = (
         f"Этап «Распред»: групп в фильтре {len(run.selected_group_ids)}; "

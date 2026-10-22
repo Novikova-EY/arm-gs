@@ -268,24 +268,24 @@ content %} {% if current_user.is_authenticated %}
 {% endmacro %}
 {% macro fr_cell_value(row, attr) %}
 {% set v = row|attr(attr) if row else none %}
-{% if v is none %}—
+{% if v is none %}–
 {% elif attr == 'year' %}
-  {% set ys = _code_str(v)|trim %}{{ ys if ys else '—' }}
+  {% set ys = _code_str(v)|trim %}{{ ys if ys else '–' }}
 {% elif attr == 'oes' %}
   {% set ok = _code_str(v)|trim %}
   {% set oname = _oes_name_map.get(ok) if ok else none %}
-  <span title="oes={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}—{% endif %}</span>
+  <span title="oes={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}–{% endif %}</span>
 {% elif attr == 'obl' %}
   {% set ok = _code_str(v)|trim %}
   {% set oes_ok = _code_str(row.oes)|trim if row and row.oes is not none else '' %}
   {% if ok and oes_ok and (ok|int) == ((oes_ok|int) + 100) %}
-  <span title="obl={{ ok }} (прочие)">—</span>
+  <span title="obl={{ ok }} (прочие)">–</span>
   {% else %}
   {% set oname = _obl_name_map.get(ok) if ok else none %}
-  <span title="obl={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}—{% endif %}</span>
+  <span title="obl={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}–{% endif %}</span>
   {% endif %}
 {% elif attr in ('restriction_name', 'kcur') %}
-  {% if v == '' %}—{% else %}{{ v }}{% endif %}
+  {% if v == '' %}–{% else %}{{ v }}{% endif %}
 {% else %}
   {{ v|format_decimal_trim(rounding_digits) }}
 {% endif %}
@@ -299,7 +299,7 @@ content %} {% if current_user.is_authenticated %}
   name="fr_{{ suffix }}_year"
   aria-label="Год"
 >
-  <option value="" {% if not ysel %}selected{% endif %}>—</option>
+  <option value="" {% if not ysel %}selected{% endif %}>–</option>
   {% if ysel and ysel not in (_filter_years|map('string')|list) %}
   <option value="{{ ysel }}" selected>{{ ysel }}</option>
   {% endif %}
@@ -313,7 +313,7 @@ content %} {% if current_user.is_authenticated %}
   name="fr_{{ suffix }}_oes"
   aria-label="ОЭС"
 >
-  <option value="" selected>—</option>
+  <option value="" selected>–</option>
   {% for ues in _ues_list if ues.name|lower == 'не указано' %}
   <option value="{{ ues.id }}">{{ ues.name }}</option>
   {% endfor %}
@@ -327,7 +327,7 @@ content %} {% if current_user.is_authenticated %}
   name="fr_{{ suffix }}_obl"
   aria-label="Региональная энергосистема"
 >
-  <option value="" selected>—</option>
+  <option value="" selected>–</option>
   {% for res in _res_list if res.name|lower == 'не указано' %}
   <option value="{{ res.id }}">{{ res.name }}</option>
   {% endfor %}
@@ -578,7 +578,7 @@ content %} {% if current_user.is_authenticated %}
           name="rounding_digits"
           class="form-select"
           style="min-width: 140px"
-          title="Только таблица просмотра. В полях ввода и при сохранении — все знаки из БД."
+          title="Только таблица просмотра. В полях ввода и при сохранении – все знаки из БД."
         >
           <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>
             Не округлять

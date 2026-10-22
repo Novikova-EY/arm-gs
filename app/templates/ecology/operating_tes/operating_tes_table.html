@@ -1,7 +1,32 @@
-{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+{% extends 'base.html' %} {% block title %}{{ document_title|default(page_title) }}{% endblock %} {%
 block content %}
 {% set table_endpoint = table_endpoint|default('ecology_bp.operating_tes_table') %}
 {% set value_endpoint = value_endpoint|default('ecology_bp.operating_tes_update_value') %}
+{% macro emission_row_label(row) %}
+  {{ row.label_html if row.label_html else row.label }}
+  {% if row.formula_tooltip_html %}
+  <button type="button" class="btn btn-link p-0 text-primary ms-1"
+          data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+          data-bs-custom-class="ot-summary-tooltip"
+          title="{{ row.formula_tooltip_html|forceescape }}" aria-label="Описание: {{ row.label }}">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+  </button>
+  {% elif row.formula_tooltip %}
+  <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip"
+     data-bs-placement="top" title="{{ row.formula_tooltip|e }}"
+     style="cursor: help; font-size: 0.9em" aria-label="Формула"></i>
+  {% endif %}
+{% endmacro %}
+{% macro rounding_control(id, label, digits) %}
+<div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem">
+  <label for="{{ id }}" class="mb-0 flex-shrink-0 text-nowrap">{{ label }}:</label>
+  <select id="{{ id }}" name="{{ id }}_ui" class="form-select" style="min-width: 140px">
+    {% for value, title in [(0, 'Не округлять'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (-1, 'Целое число')] %}
+    <option value="{{ value }}"{% if digits == value %} selected{% endif %}>{{ title }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
  {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
@@ -12,41 +37,87 @@ block content %}
             class="d-flex flex-column gap-2 flex-grow-1"
             style="min-width: 0"
           >
+            {% if fuel_exchange_source %}
+            <div class="d-flex align-items-center gap-2 w-100">
+              <nav class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1" style="min-width: 0" aria-label="Категории ТЭС">
+                <a class="btn {{ 'btn-primary' if fuel_scope == 'operating' else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0"
+                   {% if fuel_scope == 'operating' %}aria-current="page"{% endif %}
+                   data-bs-toggle="tooltip" data-bs-placement="bottom"
+                   title="{{ fuel_summary_criteria['operating'] }}"
+                   href="{{ url_for(table_endpoint, scope='operating', start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">Действующие ТЭС</a>
+                <a class="btn {{ 'btn-primary' if fuel_scope != 'operating' else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0"
+                   {% if fuel_scope != 'operating' %}aria-current="page"{% endif %}
+                   href="{{ url_for(table_endpoint, scope=fuel_scope if fuel_scope != 'operating' else 'new_lt100', start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">Новые ТЭС</a>
+              </nav>
+              <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5 ms-auto text-nowrap flex-shrink-0">Модуль «Топливо»</a>
+            </div>
+            {% if fuel_scope != 'operating' %}
+            <nav class="d-flex flex-wrap gap-2" aria-label="Категории новых ТЭС">
+              {% for scope_key, scope_label in fuel_summary_scopes if scope_key != 'operating' %}
+              <a class="btn {{ 'btn-primary' if fuel_scope == scope_key else 'btn-outline-primary' }}"
+                 {% if fuel_scope == scope_key %}aria-current="page"{% endif %}
+                 data-bs-toggle="tooltip" data-bs-placement="bottom"
+                 title="{{ fuel_summary_criteria[scope_key] }}"
+                 href="{{ url_for(table_endpoint, scope=scope_key, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">{{ scope_label }}</a>
+              {% endfor %}
+            </nav>
+            {% endif %}
+            {% else %}
             {% include 'ecology/operating_tes/_sheet_nav.html' %}
+            {% if new_tes_capacity_tabs %}
+            <nav class="d-flex flex-wrap gap-2" aria-label="Категории новых ТЭС">
+              {% for capacity_key, capacity_label in new_tes_capacity_tabs %}
+              <a class="btn {{ 'btn-primary' if capacity_class == capacity_key else 'btn-outline-primary' }}"
+                 {% if capacity_class == capacity_key %}aria-current="page"{% endif %}
+                 href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, capacity_class=capacity_key, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">{{ capacity_label }}</a>
+              {% endfor %}
+            </nav>
+            {% endif %}
+            {% endif %}
           </div>
         </div>
       </div>
 
+      {% if fuel_summary_errors %}
+      <div class="alert alert-warning" role="alert">
+        <details>
+          <summary>Передача недоступна: требуется уточнить состав групп оборудования ({{ fuel_summary_errors|length }}).</summary>
+          <ul class="mb-0 mt-2 overflow-auto" style="max-height: 12rem">{% for error in fuel_summary_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </details>
+      </div>
+      {% endif %}
+      {% if sheet.layout == 'chars' and not new_tes_capacity_tabs %}
+      <p class="text-muted mb-2">Характеристики топлива едины для всех уровней: всего, ОЭС и принадлежностей. Данные различаются только по годам.</p>
+      {% endif %}
+
       <div class="col-12 mb-2 text-center">
         <h1 class="mb-2">
-          {{ page_title }}{% if formula_text %}
+          {{ page_title_html|default(page_title) }}{% if formula_text and not formula_html and sheet.layout != 'volumes' and sheet.slug != 'spravochnik' %}
           <i
             class="bi bi-info-circle text-primary ms-2"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"
-            title="{{ formula_text|e }}"
+            {% if formula_tooltip_html %}data-bs-html="true" title="{{ formula_tooltip_html|forceescape }}"{% else %}title="{{ formula_text|e }}"{% endif %}
             style="cursor: help; font-size: 0.7em; vertical-align: 0.15em"
             aria-label="Расчетная формула"
           ></i>
           {% endif %}
-        </h2>
-        {% if sheet.layout == 'spravochnik' %}
-        <div
-          class="d-flex flex-wrap justify-content-center gap-2 ot-source-legend"
-          aria-label="Источники характеристик"
-        >
-          {% for opt in source_options %}
-          <span class="ot-source-legend-item" title="{{ opt.label }}">
-            <span
-              class="ot-source-swatch"
-              style="background-color: {{ opt.color }};"
-            ></span>
-            {{ opt.short }}
-          </span>
-          {% endfor %}
+        </h1>
+        {% if formula_html %}
+        <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+          <span>{{ formula_html }}</span>
+          <button type="button" class="btn btn-link p-0 text-primary"
+                  data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
+                  title="{{ formula_html|forceescape }}" aria-label="Расчетная формула {{ {'zola': 'золы', 'sera': 'серы', 'co': 'CO', 'azot': 'азота', 'pg': 'ПГ', 'pg-tj': 'ПГ через ТДж'}[sheet.slug] }}">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+          </button>
         </div>
         {% endif %}
       </div>
+
+      {% if sheet.layout == 'coeff' %}
+      {% include 'ecology/operating_tes/_coefficient_filters.html' %}
+      {% endif %}
 
       <div class="col-12 mb-2">
         <div class="d-flex align-items-center flex-wrap gap-2 w-100">
@@ -57,11 +128,14 @@ block content %}
             id="operatingTesYearForm"
           >
             {% for key, values in request.args.lists() %} {% if key !=
-            'start_year' and key != 'end_year' and key != 'view_year' %} {% for
+            'start_year' and key != 'end_year' and key != 'view_year' and key != 'affiliation' %} {% for
             value in values %}
             <input type="hidden" name="{{ key }}" value="{{ value }}" />
-            {% endfor %} {% endif %} {% endfor %} {% if view_year %}
+            {% endfor %} {% endif %} {% endfor %} {% if view_year and not year_columns_mode %}
             <input type="hidden" name="view_year" value="{{ view_year }}" />
+            {% endif %}
+            {% if sheet.layout == 'coeff' %}
+            <input type="hidden" name="affiliation" value="{{ affiliation }}" />
             {% endif %}
             <label for="start_year" class="mb-0" style="white-space: nowrap"
               >Год начала:</label
@@ -101,12 +175,12 @@ block content %}
               Применить
             </button>
             <a
-              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug) }}"
+              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, scope=fuel_scope|default(none), capacity_class=capacity_class|default(none)) }}"
               class="btn btn-outline-danger"
               >Сбросить</a
             >
           </form>
-          {% if range_years %}
+          {% if range_years and not year_columns_mode %}
           <div
             class="d-flex flex-wrap gap-1 align-items-center flex-grow-1"
             style="min-width: 0"
@@ -118,121 +192,123 @@ block content %}
             set year_btn_label = (year ~ ' (' ~ year_feature ~ ')') if
             year_feature else year %} {% if view_year == year %}
             <span class="btn btn-success text-nowrap" aria-current="true"
-              >{{ year_btn_label }}</span
+              >{{ year_btn_label }}{% if fuel_pending_by_year is defined and year in fuel_pending_by_year %} <span class="badge bg-warning text-dark">Новые данные</span>{% endif %}</span
             >
             {% else %}
             <a
-              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, view_year=year) }}"
+              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), view_year=year, scope=fuel_scope|default(none), capacity_class=capacity_class|default(none), affiliation=affiliation if sheet.layout == 'coeff' else none) }}"
               class="btn btn-outline-success text-nowrap"
               title="Показать данные за {{ year }} год"
-              >{{ year_btn_label }}</a
+              >{{ year_btn_label }}{% if fuel_pending_by_year is defined and year in fuel_pending_by_year %} <span class="badge bg-warning text-dark">Новые данные</span>{% endif %}</a
             >
             {% endif %} {% endfor %}
           </div>
           {% endif %}
           <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+            {% if fuel_exchange_source %}
+            <form method="POST" class="d-flex align-items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{% if csrf_token is string %}{{ csrf_token }}{% else %}{{ csrf_token() }}{% endif %}">
+              <button type="submit" class="btn btn-danger btn-lg fw-bold text-nowrap" {% if not can_send or fuel_summary_errors|default([]) %}disabled{% endif %}
+                      title="Передать данные за {{ view_year }} год на акцепт; принятые данные экологии не изменятся">
+                Передать данные в Модуль «Экология»
+              </button>
+            </form>
+            {% else %}
+            {% if sheet.layout != 'coeff' %}
             <button
               type="button"
               id="otShowEmptyRowsToggle"
-              class="btn btn-outline-primary text-nowrap flex-shrink-0"
-              aria-pressed="false"
-              title="Скрыть строки, у которых все значения пусты или равны нулю"
+              class="btn {% if sheet.layout == 'fuel' %}btn-primary{% else %}btn-outline-primary{% endif %} text-nowrap flex-shrink-0"
+              aria-pressed="{{ 'true' if sheet.layout == 'fuel' else 'false' }}"
+              title="Показать или скрыть строки, у которых все значения пусты или равны нулю"
             >
               Пустые строки
             </button>
-            <div
-              class="d-flex align-items-center gap-1 flex-shrink-0"
-              style="min-width: 11rem"
-            >
-              <label
-                for="rounding_digits"
-                class="mb-0 flex-shrink-0"
-                style="white-space: nowrap"
-                >Округл:</label
-              >
-              <select
-                id="rounding_digits"
-                name="rounding_digits_ui"
-                class="form-select"
-                style="min-width: 140px"
-              >
-                {% if rounding_digits == 0 %}
-                <option value="0" selected>Не округлять</option>
-                {% else %}
-                <option value="0">Не округлять</option>
-                {% endif %}
-                {% if rounding_digits == 1 %}
-                <option value="1" selected>1 знак</option>
-                {% else %}
-                <option value="1">1 знак</option>
-                {% endif %}
-                {% if rounding_digits == 2 %}
-                <option value="2" selected>2 знака</option>
-                {% else %}
-                <option value="2">2 знака</option>
-                {% endif %}
-                {% if rounding_digits == 3 %}
-                <option value="3" selected>3 знака</option>
-                {% else %}
-                <option value="3">3 знака</option>
-                {% endif %}
-                {% if rounding_digits == -1 %}
-                <option value="-1" selected>Целое число</option>
-                {% else %}
-                <option value="-1">Целое число</option>
-                {% endif %}
-              </select>
-            </div>
+            {% endif %}
+            {% if new_fuel_pending is defined %}
+              {% for pending in new_fuel_pending %}
+              <a href="{{ url_for('ecology_bp.operating_tes_fuel_review', submission_id=pending.id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+                 class="btn btn-warning fw-bold border-danger shadow">Новые данные: {{ fuel_summary_labels[pending.scope] }}, {{ pending.year_number }}</a>
+              {% else %}
+              <button type="button" class="btn btn-outline-secondary" disabled>Нет новых данных из модуля Топливо</button>
+              {% endfor %}
+            {% endif %}
+            {% if sheet.layout == 'fuel' and fuel_pending_by_year is defined %}
+              {% if year_columns_mode %}
+                {% for year, pending in fuel_pending_by_year|dictsort %}
+                <a href="{{ url_for('ecology_bp.operating_tes_fuel_review', submission_id=pending.id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+                   class="btn btn-warning fw-bold border-danger shadow">Новые данные из модуля Топливо за {{ year }} год</a>
+                {% endfor %}
+                {% if not fuel_pending_by_year %}<button type="button" class="btn btn-outline-secondary" disabled>Нет новых данных из модуля Топливо</button>{% endif %}
+              {% elif fuel_pending %}
+              <a href="{{ url_for('ecology_bp.operating_tes_fuel_review', submission_id=fuel_pending.id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+                 class="btn btn-warning fw-bold border-danger shadow" role="button">Имеются новые данные из модуля Топливо</a>
+              {% else %}
+              <button type="button" class="btn btn-outline-secondary" disabled title="Нет неакцептованных данных за {{ view_year }} год">Имеются новые данные из модуля Топливо</button>
+              {% endif %}
+            {% endif %}
+            {% endif %}
+            {% if sheet.layout in ('emission', 'emission_tj') and coefficient_rounding_digits is defined %}
+            {{ rounding_control('coefficient_rounding_digits', 'Округл (КПД/КП)', coefficient_rounding_digits) }}
+            {% endif %}
+            {{ rounding_control('rounding_digits', 'Округл', rounding_digits) }}
           </div>
         </div>
       </div>
     </div>
 
     <style>
+      .ot-summary-tooltip .tooltip-inner {
+        max-width: min(42rem, calc(100vw - 2rem));
+        text-align: left;
+      }
       .page-table-scroll > .pd-ec-summary-sticky-stack {
         left: 0;
       }
       /* Горизонтальный скролл перекрывает последнюю строку; padding на wrapper
          не схлопывается (в отличие от margin у table) и даёт доскроллить строку. */
-      .page-table-scroll:has(#operatingTesTable) {
+      .page-table-scroll:has(.ot-calculation-table) {
         --page-table-scroll-bottom-gap: 1.5rem;
+        max-width: 100%;
+        overflow: auto;
         padding-bottom: 2rem;
       }
-      #operatingTesTable.power-demand-summary-table {
+      .ot-calculation-table.power-demand-summary-table {
         width: max-content;
         min-width: 100%;
         max-width: none;
         table-layout: fixed;
         font-size: 1.15rem;
         --ot-label-col-w: 14rem;
-        --ot-unit-col-w: 5.2rem;
         --ot-terr-col-min: 8.5rem;
         margin-bottom: 0;
       }
-      .page-table-scroll #operatingTesTable thead th {
+      .page-table-scroll .ot-calculation-table thead {
         position: sticky;
         top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+      }
+      .page-table-scroll .ot-calculation-table thead th {
+        position: sticky;
+        top: auto;
         z-index: 50;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
         box-shadow: inset 0 -1px 0
           var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
         font-size: 1.15rem;
       }
-      #operatingTesTable col.ot-col-label {
+      .ot-calculation-table col.ot-col-label {
         width: var(--ot-label-col-w);
       }
-      #operatingTesTable col.ot-col-unit {
-        width: var(--ot-unit-col-w);
-      }
-      #operatingTesTable col.ot-col-year,
-      #operatingTesTable col.ot-col-terr {
+      .ot-calculation-table col.ot-col-year,
+      .ot-calculation-table col.ot-col-terr {
         width: var(--ot-terr-col-min);
       }
-      #operatingTesTable col.ot-col-terr-half {
+      .ot-calculation-table col.ot-col-terr-half {
         width: calc(var(--ot-terr-col-min) / 2);
       }
-      #operatingTesTable th.ot-label-col,
-      #operatingTesTable td.ot-row-label {
+      .ot-calculation-table th.ot-label-col,
+      .ot-calculation-table td.ot-row-label {
         width: var(--ot-label-col-w);
         min-width: var(--ot-label-col-w);
         max-width: var(--ot-label-col-w);
@@ -244,42 +320,20 @@ block content %}
         background-clip: padding-box;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
-      #operatingTesTable thead th.ot-label-col {
+      .ot-calculation-table thead th.ot-label-col {
         z-index: 52;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
       }
-      #operatingTesTable tbody td.ot-row-label {
+      .ot-calculation-table tbody td.ot-row-label {
         z-index: 4;
-        background-color: var(--bs-body-bg, #fff);
+        background-color: var(--bs-table-bg);
+        /* Сохраняем заливку Bootstrap поверх непрозрачного фона sticky-ячейки. */
+        box-shadow: inset 0 0 0 9999px
+            var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg))),
+          4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
-      #operatingTesTable th.ot-unit-col,
-      #operatingTesTable td.ot-unit-cell {
-        width: var(--ot-unit-col-w);
-        min-width: var(--ot-unit-col-w);
-        max-width: var(--ot-unit-col-w);
-        position: sticky;
-        left: var(--ot-label-sticky-w, var(--ot-label-col-w, 0px));
-        background-clip: padding-box;
-        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
-      }
-      #operatingTesTable th.ot-unit-col {
-        white-space: nowrap;
-      }
-      #operatingTesTable td.ot-unit-cell {
-        white-space: nowrap;
-        overflow-wrap: normal;
-        overflow: hidden;
-      }
-      #operatingTesTable thead th.ot-unit-col {
-        z-index: 51;
-        background-color: var(--bs-success-bg-subtle, #d1e7dd);
-      }
-      #operatingTesTable tbody td.ot-unit-cell {
-        z-index: 3;
-        background-color: var(--bs-body-bg, #fff);
-      }
-      #operatingTesTable th.ot-year-col,
-      #operatingTesTable td.ot-year-cell {
+      .ot-calculation-table th.ot-year-col,
+      .ot-calculation-table td.ot-year-cell {
         white-space: nowrap;
         width: var(--ot-terr-col-min);
         min-width: var(--ot-terr-col-min);
@@ -287,7 +341,7 @@ block content %}
         padding-left: 0.2rem;
         padding-right: 0.2rem;
       }
-      .page-table-scroll #operatingTesTable thead th.ot-terr-col {
+      .page-table-scroll .ot-calculation-table thead th.ot-terr-col {
         white-space: normal;
         width: var(--ot-terr-col-min);
         min-width: var(--ot-terr-col-min);
@@ -301,33 +355,19 @@ block content %}
         padding-left: 0.2rem;
         padding-right: 0.2rem;
       }
-      #operatingTesTable th.ot-year-col .power-demand-year-feature-caption {
+      .ot-calculation-table th.ot-year-col .power-demand-year-feature-caption {
         white-space: nowrap;
       }
-      #operatingTesTable td.ot-indent-1 {
+      .ot-calculation-table td.ot-indent-1 {
         padding-left: 1.1rem !important;
       }
-      #operatingTesTable td.ot-indent-2 {
+      .ot-calculation-table td.ot-indent-2 {
         padding-left: 2rem !important;
       }
-      #operatingTesTable.ot-hide-empty tbody tr.ot-row-empty-hidden {
+      .ot-calculation-table.ot-hide-empty tbody tr.ot-row-empty-hidden {
         display: none !important;
       }
-      #operatingTesTable.table-striped
-        > tbody
-        > tr:nth-of-type(odd)
-        > td.ot-row-label,
-      #operatingTesTable.table-striped
-        > tbody
-        > tr:nth-of-type(odd)
-        > td.ot-unit-cell {
-        background-color: var(--bs-table-striped-bg, #f8f9fa);
-      }
-      #operatingTesTable tbody tr.table-info > td.ot-row-label,
-      #operatingTesTable tbody tr.table-info > td.ot-unit-cell {
-        background-color: var(--bs-table-info-bg, #cff4fc);
-      }
-      #operatingTesTable input.ot-edit-value {
+      .ot-calculation-table input.ot-edit-value {
         width: 100%;
         min-width: 0;
         max-width: 100%;
@@ -338,106 +378,25 @@ block content %}
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
-      #operatingTesTable td.is-save-success {
+      .ot-calculation-table td.is-save-success {
         box-shadow: inset 0 0 0 2px var(--bs-success);
       }
-      #operatingTesTable td.is-save-error {
+      .ot-calculation-table td.is-save-error {
         box-shadow: inset 0 0 0 2px var(--bs-danger);
       }
       .page-table-scroll .ot-table-scroll-end-spacer {
         height: 2.5rem;
       }
-      #operatingTesTable.ot-chars-table {
+      .ot-calculation-table.ot-chars-table {
         --ot-label-col-w: 14rem;
       }
-      #operatingTesTable.ot-chars-table col.ot-col-note {
-        width: 16rem;
-      }
-      #operatingTesTable.ot-chars-table col.ot-col-source {
-        width: 18rem;
-      }
-      #operatingTesTable.ot-chars-table th.ot-note-col,
-      #operatingTesTable.ot-chars-table td.ot-note-cell {
-        min-width: 16rem;
-        max-width: 22rem;
-        white-space: normal;
-        overflow-wrap: anywhere;
-        word-break: normal;
-        vertical-align: top;
-      }
-      #operatingTesTable.ot-chars-table td.ot-note-cell .ot-note-text {
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-      #operatingTesTable.ot-chars-table th.ot-source-col,
-      #operatingTesTable.ot-chars-table td.ot-source-cell {
-        min-width: 18rem;
-        max-width: 28rem;
-        white-space: normal;
-      }
-      #operatingTesTable.ot-chars-table select.ot-edit-source {
-        width: 100%;
-        min-width: 0;
-        font-size: inherit;
-        background-color: var(--ot-source-bg, #fff);
-      }
-      #operatingTesTable.ot-chars-table td.ot-note-cell textarea.ot-edit-value {
-        display: block;
-        min-height: 0;
-        padding-top: 0.1rem;
-        padding-bottom: 0.1rem;
-        line-height: 1.2;
-        overflow-y: hidden;
-        resize: none;
-        text-align: left;
-        padding-left: 0.4rem;
-        padding-right: 0.4rem;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-      #operatingTesTable tbody td.ot-row-label.ot-fuel-colored {
-        background-color: var(--ot-fuel-bg) !important;
-      }
-      #operatingTesTable tbody td.ot-row-label.ot-fuel-adopted {
-        color: #c00000;
-      }
-      .ot-source-legend-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.95rem;
-        color: var(--bs-body-color);
-        background: var(--bs-body-bg, #fff);
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 0.35rem;
-        padding: 0.15rem 0.55rem;
-      }
-      .ot-source-swatch {
-        display: inline-block;
-        width: 0.9rem;
-        height: 0.9rem;
-        border-radius: 0.15rem;
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        flex-shrink: 0;
-      }
-      .page-table-scroll #operatingTesTable.ot-chars-table thead th {
+      .page-table-scroll .ot-calculation-table.ot-chars-table thead th {
         font-size: 1.15rem;
       }
-      #operatingTesTable.ot-chars-table thead tr:first-child th {
-        top: var(--pd-summary-controls-sticky-height, 0px);
-        z-index: 50;
-      }
-      #operatingTesTable.ot-chars-table thead tr:nth-child(2) th {
-        top: calc(
-          var(--pd-summary-controls-sticky-height, 0px) +
-            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
-        );
-        z-index: 49;
-      }
-      #operatingTesTable.ot-chars-table thead th.ot-label-col {
+      .ot-calculation-table.ot-chars-table thead th.ot-label-col {
         z-index: 53;
       }
-      #operatingTesTable.ot-chars-table th.ot-char-title {
+      .ot-calculation-table.ot-chars-table th.ot-char-title {
         white-space: normal;
         min-width: 0;
         max-width: none;
@@ -450,49 +409,33 @@ block content %}
         padding-left: 0.2rem;
         padding-right: 0.2rem;
       }
-      #operatingTesTable.ot-chars-table th.ot-char-title-span {
-        max-width: none;
-        min-width: 0;
-      }
-      #operatingTesTable.ot-chars-table th.ot-char-col,
-      #operatingTesTable.ot-chars-table td.ot-char-cell {
+      .ot-calculation-table.ot-chars-table td.ot-char-cell {
         white-space: nowrap;
         min-width: 0;
         overflow: visible;
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
-      #operatingTesTable.ot-emission-pair-table,
-      #operatingTesTable.ot-emission-single-table {
+      .ot-calculation-table.ot-emission-pair-table,
+      .ot-calculation-table.ot-emission-single-table {
         --ot-label-col-w: 14rem;
         table-layout: fixed;
         width: max-content;
         min-width: 100%;
         max-width: none;
       }
-      .page-table-scroll #operatingTesTable.ot-emission-pair-table thead th,
-      .page-table-scroll #operatingTesTable.ot-emission-single-table thead th {
+      .page-table-scroll .ot-calculation-table.ot-emission-pair-table thead th,
+      .page-table-scroll .ot-calculation-table.ot-emission-single-table thead th {
         font-size: 1.15rem;
       }
-      #operatingTesTable.ot-emission-pair-table thead tr:first-child th {
-        top: var(--pd-summary-controls-sticky-height, 0px);
-        z-index: 50;
-      }
-      #operatingTesTable.ot-emission-pair-table thead tr:nth-child(2) th {
-        top: calc(
-          var(--pd-summary-controls-sticky-height, 0px) +
-            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
-        );
-        z-index: 49;
-      }
-      #operatingTesTable.ot-emission-pair-table thead th.ot-label-col {
+      .ot-calculation-table.ot-emission-pair-table thead th.ot-label-col {
         z-index: 53;
       }
-      #operatingTesTable.ot-emission-pair-table th.ot-terr-col {
+      .ot-calculation-table.ot-emission-pair-table th.ot-terr-col {
         width: var(--ot-terr-col-min);
         min-width: var(--ot-terr-col-min);
       }
-      #operatingTesTable.ot-emission-pair-table th.ot-pair-sub {
+      .ot-calculation-table.ot-emission-pair-table th.ot-pair-sub {
         white-space: normal;
         width: calc(var(--ot-terr-col-min) / 2);
         min-width: calc(var(--ot-terr-col-min) / 2);
@@ -506,7 +449,7 @@ block content %}
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
-      #operatingTesTable.ot-emission-pair-table td.ot-pair-cell {
+      .ot-calculation-table.ot-emission-pair-table td.ot-pair-cell {
         white-space: nowrap;
         width: calc(var(--ot-terr-col-min) / 2);
         min-width: calc(var(--ot-terr-col-min) / 2);
@@ -514,51 +457,104 @@ block content %}
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
+      .ot-calculation-table.ot-fit-table {
+        width: 100%;
+        min-width: 56rem;
+        --ot-label-col-w: clamp(11rem, 20vw, 15rem);
+        --ot-terr-col-min: 0;
+      }
+      .ot-calculation-table.ot-fit-table col.ot-col-terr,
+      .ot-calculation-table.ot-fit-table col.ot-col-year {
+        width: auto;
+      }
+      .ot-calculation-table.ot-fit-table th.ot-label-col,
+      .ot-calculation-table.ot-fit-table td.ot-row-label {
+        white-space: normal;
+        overflow-wrap: break-word;
+      }
+      .ot-calculation-table.ot-fit-table td.ot-year-cell {
+        width: auto;
+        min-width: 0;
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: normal;
+      }
+      .page-table-scroll .ot-calculation-table.ot-fit-table thead th {
+        font-size: inherit;
+      }
+      .page-table-scroll .ot-calculation-table.ot-fit-table thead th.ot-terr-col,
+      .page-table-scroll .ot-calculation-table.ot-fit-table thead th.ot-year-col {
+        width: auto;
+        min-width: 0;
+        overflow: visible;
+        overflow-wrap: anywhere;
+      }
+      .ot-calculation-table.ot-new-tes-volumes-table td.ot-year-cell,
+      .page-table-scroll .ot-calculation-table.ot-new-tes-volumes-table thead th.ot-year-col {
+        min-width: 8.5rem;
+        white-space: normal;
+      }
     </style>
 
     <table
-      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-hide-empty{% if sheet.layout in ('chars', 'spravochnik') %} ot-chars-table{% elif emission_view and emission_view.kind == 'pair' %} ot-emission-pair-table{% elif emission_view %} ot-emission-single-table{% endif %}"
+      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table{% if new_tes_volume_columns %} ot-new-tes-volumes-table{% endif %}{% if sheet.layout not in ('fuel', 'coeff') %} ot-hide-empty{% endif %}{% if sheet.layout in ('fuel', 'coeff', 'volumes') %} ot-fit-table{% elif sheet.layout == 'chars' %} ot-chars-table{% elif emission_view and emission_view.kind == 'pair' %} ot-emission-pair-table{% elif emission_view %} ot-emission-single-table{% endif %}"
       id="operatingTesTable"
-      data-update-url="{{ url_for(value_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug) }}"
+      {% if new_tes_volume_columns %}style="min-width: {{ 15 + value_columns|length * 8.5 }}rem;"{% endif %}
+      data-update-url="{{ url_for(value_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, capacity_class=capacity_class|default(none)) }}"
       data-can-edit="{{ 1 if can_edit else 0 }}"
+      data-affiliation="{{ affiliation|default('all') }}"
+      data-autosave="{{ 1 if sheet.layout in ('coeff', 'chars', 'emission', 'emission_tj') or year_columns_mode else 0 }}"
+      data-rounding-digits="{{ rounding_digits }}"
+      data-coefficient-rounding-digits="{{ coefficient_rounding_digits|default(0) }}"
     >
-      {% if sheet.layout in ('chars', 'spravochnik') %}
+      {% if new_tes_volume_columns %}
+      {% include 'ecology/operating_tes/_new_tes_volume_table.html' %}
+      {% elif year_columns_mode %}
+      {% include 'ecology/operating_tes/_range_table.html' %}
+      {% elif sheet.layout == 'chars' %}
       <colgroup>
         <col class="ot-col-label" />
         {% for col in char_columns %}
         <col />
-        {% endfor %} {% if sheet.layout == 'spravochnik' %}
-        <col class="ot-col-note" />
-        <col class="ot-col-source" />
-        {% endif %}
+        {% endfor %}
       </colgroup>
       <thead class="table-success">
         <tr class="text-center align-middle">
-          <th rowspan="2" class="text-center align-middle ot-label-col">
+          <th rowspan="2" scope="col" class="text-center align-middle ot-label-col">
             Вид топлива
           </th>
           {% for group in char_header_groups %}
-          <th
-            class="text-center align-middle ot-char-title{% if group.colspan > 1 %} ot-char-title-span{% endif %}"
-            colspan="{{ group.colspan }}"
-            rowspan="{{ group.rowspan }}"
-            title="{{ group.title }}"
-          >
+          <th colspan="{{ group['keys']|length }}" scope="{{ 'colgroup' if group['keys']|length > 1 else 'col' }}"{% if group.rowspan %} rowspan="{{ group.rowspan }}"{% endif %} class="text-center align-middle ot-char-title">
             {{ group.title }}
+            {% if new_tes_capacity_tabs and 'k_co2' in group['keys'] %}
+            <button type="button" class="btn btn-link p-0 text-primary ms-1"
+                    data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Коэффициент ПГ общий с KCO2 действующих ТЭС."
+                    aria-label="Информация о коэффициенте ПГ">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+            </button>
+            {% endif %}
           </th>
-          {% endfor %} {% if sheet.layout == 'spravochnik' %}
-          <th rowspan="2" class="text-center align-middle ot-note-col">
-            Примечание
-          </th>
-          <th rowspan="2" class="text-center align-middle ot-source-col">
-            Источник
-          </th>
-          {% endif %}
+          {% endfor %}
         </tr>
         <tr class="text-center align-middle">
-          {% for col in char_columns %} {% if not col.hide_short %}
-          <th class="text-center align-middle ot-char-col">{{ col.short }}</th>
-          {% endif %} {% endfor %}
+          {% set char_symbols = {
+            'ash': 'A<sup>р</sup>, %',
+            'ash_share': 'a<sub>ун</sub>',
+            'q_mech': 'q<sub>4</sub>, %',
+            'sulfur': 'S<sup>р</sup>, %',
+            'qh_kj': 'Q<sub>н</sub>, кДж/кг',
+            'qh_kcal': 'Q<sub>н</sub>, ккал/кг',
+            'bj': 'b<sub>j</sub>',
+            'k_co2': 'K<sub>CO<sub>2</sub></sub>',
+            'q_chem': 'q<sub>3</sub>, %',
+            't_co2_per_tj': 'т CO<sub>2</sub>/ТДж'
+          } %}
+          {% for col in char_columns if not col.hide_short %}
+          <th scope="col" class="text-center align-middle ot-char-title">
+            {% if col.key in char_symbols and not new_tes_capacity_tabs %}{{ char_symbols[col.key]|safe }}{% else %}{{ col.short }}{% endif %}
+          </th>
+          {% endfor %}
         </tr>
       </thead>
       <tbody>
@@ -568,15 +564,7 @@ block content %}
           data-row-key="{{ row.key }}"
         >
           <td
-            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}{% if row.label_bg %} ot-fuel-colored{% endif %}{% if row.adopted %} ot-fuel-adopted{% endif %}"
-            {%
-            if
-            row.label_bg
-            %}style="--ot-fuel-bg: {{ row.label_bg }};"
-            {%
-            endif
-            %}
-            data-default-bg="{{ row.label_fallback_bg or '' }}"
+            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
           >
             {{ row.label }}
           </td>
@@ -584,78 +572,19 @@ block content %}
           <td
             class="text-center ot-char-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
           >
-            {% if row.editable_values and can_edit %}
+            {% if row.editable_values and can_edit and (row.editable_fields is not defined or col.key in row.editable_fields) %}
             <input
               type="text"
               class="form-control form-control-sm ot-edit-value"
-              data-year="{{ row.year }}"
+              data-year="{{ view_year }}"
               data-field="{{ col.key }}"
-              value="{{ row.char_values[col.key] if row.char_values is defined and col.key in row.char_values else '' }}"
+              value="{{ row.char_values[view_year][col.key] }}"
               inputmode="decimal"
               aria-label="{{ col.short }}"
             />
-            {% else %} {{ row.char_values[col.key] if row.char_values is defined
-            and col.key in row.char_values else '' }} {% endif %}
+            {% else %} {{ row.char_values[view_year][col.key] }} {% endif %}
           </td>
-          {% endfor %} {% if sheet.layout == 'spravochnik' %}
-          <td class="text-start ot-note-cell">
-            {% if row.editable_values and can_edit %}
-            <textarea
-              class="form-control form-control-sm ot-edit-value"
-              data-year="{{ row.year }}"
-              data-field="note"
-              aria-label="Примечание"
-              rows="1"
-            >{{ row.note or '' }}</textarea>
-            {% else %}
-            <span class="ot-note-text">{{ row.note or '' }}</span>
-            {% endif %}
-          </td>
-          <td class="text-start ot-source-cell">
-            {% if row.editable_values and can_edit %}
-            <select
-              class="form-select form-select-sm ot-edit-source"
-              data-year="{{ row.year }}"
-              data-field="source_key"
-              aria-label="Источник"
-              {%
-              if
-              row.label_bg
-              %}style="--ot-source-bg: {{ row.label_bg }};"
-              {%
-              endif
-              %}
-            >
-              {% if not row.source_key %}
-              <option value="" selected></option>
-              {% else %}
-              <option value=""></option>
-              {% endif %}
-              {% for opt in source_options %}
-              {% if row.source_key == opt.key %}
-              <option
-                value="{{ opt.key }}"
-                data-color="{{ opt.color }}"
-                title="{{ opt.label }}"
-                selected
-              >
-                {{ opt.short }}
-              </option>
-              {% else %}
-              <option
-                value="{{ opt.key }}"
-                data-color="{{ opt.color }}"
-                title="{{ opt.label }}"
-              >
-                {{ opt.short }}
-              </option>
-              {% endif %}
-              {% endfor %}
-            </select>
-            {% else %} {% for opt in source_options %} {% if row.source_key ==
-            opt.key %}{{ opt.short }}{% endif %} {% endfor %} {% endif %}
-          </td>
-          {% endif %}
+          {% endfor %}
         </tr>
         {% endfor %}
       </tbody>
@@ -671,6 +600,7 @@ block content %}
         <tr class="text-center align-middle">
           <th rowspan="2" class="text-center align-middle ot-label-col">
             Вид топлива
+            {% include 'ecology/operating_tes/_territory_filter.html' %}
           </th>
           {% for col in territory_columns %}
           <th class="text-center align-middle ot-terr-col" colspan="2">
@@ -681,7 +611,13 @@ block content %}
         <tr class="text-center align-middle">
           {% for col in territory_columns %}
           <th class="text-center align-middle ot-pair-sub">
-            {{ emission_view.left_title }}{% if loop.first and emission_view.left_formula %}
+            {{ emission_view.left_title }}{% if emission_view.left_title == 'Перевод в натур.' %} (B<sup>H</sup>){% endif %}{% if emission_view.left_formula_html %}
+            <button type="button" class="btn btn-link p-0 text-primary ms-1"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                    title="{{ emission_view.left_formula_html|forceescape }}" aria-label="{% if sheet.slug == 'pg-tj' %}Формула МДж{% else %}Формула перевода в натур. для {{ {'zola': 'золы', 'sera': 'серы', 'co': 'CO'}[sheet.slug] }}{% endif %}">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+            </button>
+            {% elif loop.first and emission_view.left_formula %}
             <i
               class="bi bi-info-circle text-primary ms-1"
               data-bs-toggle="tooltip"
@@ -693,7 +629,13 @@ block content %}
             {% endif %}
           </th>
           <th class="text-center align-middle ot-pair-sub">
-            {{ emission_view.right_title }}{% if loop.first and emission_view.right_formula %}
+            {% if emission_view.right_title == 'Мотх.' %}М<sub>отх</sub>.{% else %}{{ emission_view.right_title }}{% endif %}{% if emission_view.right_formula_html %}
+            <button type="button" class="btn btn-link p-0 text-primary ms-1"
+                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                    title="{{ emission_view.right_formula_html|forceescape }}" aria-label="Формула Мотх {{ {'zola': 'золы', 'sera': 'серы', 'co': 'CO', 'azot': 'азота', 'pg': 'ПГ', 'pg-tj': 'ПГ через ТДж'}[sheet.slug] }}">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+            </button>
+            {% elif loop.first and emission_view.right_formula %}
             <i
               class="bi bi-info-circle text-primary ms-1"
               data-bs-toggle="tooltip"
@@ -716,18 +658,15 @@ block content %}
           <td
             class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
           >
-            {{ row.label }} {% if row.formula_tooltip %}
-            <i
-              class="bi bi-info-circle text-primary ms-1"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="{{ row.formula_tooltip|e }}"
-              style="cursor: help; font-size: 0.9em"
-              aria-label="Формула"
-            ></i>
-            {% endif %}
+            {{ emission_row_label(row) }}
           </td>
-          {% for col in territory_columns %} {% set pair =
+          {% for col in value_columns %}
+          {% if row.span_pair %}
+          <td colspan="2" class="text-center ot-pair-cell fw-bold" data-column="{{ col.slug }}">
+            {% include 'ecology/operating_tes/_emission_summary_value.html' %}
+          </td>
+          {% else %}
+          {% set pair =
           row.pair_values[col.slug] if row.pair_values is defined and col.slug
           in row.pair_values else none %}
           <td
@@ -740,6 +679,7 @@ block content %}
           >
             {{ pair.right if pair else '' }}
           </td>
+          {% endif %}
           {% endfor %}
         </tr>
         {% endfor %}
@@ -753,10 +693,23 @@ block content %}
       </colgroup>
       <thead class="table-success">
         <tr class="text-center align-middle">
-          <th class="text-center align-middle ot-label-col">Вид топлива</th>
+          <th class="text-center align-middle ot-label-col">
+            Вид топлива
+            {% include 'ecology/operating_tes/_territory_filter.html' %}
+          </th>
           {% for col in territory_columns %}
           <th class="text-center align-middle ot-terr-col">
             {{ col.sheet_name }}
+            {% if emission_view.metric_formula_html %}
+            <div class="fw-normal">М<sub>отх</sub>.
+              <button type="button" class="btn btn-link p-0 text-primary ms-1"
+                      data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                      data-bs-custom-class="ot-summary-tooltip"
+                      title="{{ emission_view.metric_formula_html|forceescape }}" aria-label="Формула Мотх {{ 'азота' if sheet.slug == 'azot' else 'ПГ' }}">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+              </button>
+            </div>
+            {% endif %}
           </th>
           {% endfor %}
         </tr>
@@ -770,34 +723,40 @@ block content %}
           <td
             class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
           >
-            {{ row.label }}
+            {{ emission_row_label(row) }}
           </td>
-          {% for col in territory_columns %}
+          {% for col in value_columns %}
           <td
             class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+            data-column="{{ col.slug }}"
           >
-            {{ row.col_values[col.slug] if row.col_values is defined and
-            col.slug in row.col_values else '' }}
+            {% include 'ecology/operating_tes/_emission_summary_value.html' %}
           </td>
           {% endfor %}
         </tr>
         {% endfor %}
       </tbody>
+      {% elif sheet.layout == 'volumes' %}
+      {% include 'ecology/operating_tes/_volume_table_content.html' %}
       {% else %}
       <colgroup>
         <col class="ot-col-label" />
-        <col class="ot-col-unit" />
         {% for col in territory_columns %}
         <col class="ot-col-terr" />
         {% endfor %}
       </colgroup>
       <thead class="table-success">
         <tr class="text-center align-middle">
-          <th class="text-center align-middle ot-label-col">Наименование</th>
-          <th class="text-center align-middle ot-unit-col">Ед.изм.</th>
+          <th class="text-center align-middle ot-label-col">Наименование
+            {% if territory_filter_storage_key %}
+            {% include 'ecology/operating_tes/_territory_filter.html' %}
+            {% endif %}
+          </th>
           {% for col in territory_columns %}
           <th class="text-center align-middle ot-terr-col">
-            {{ col.sheet_name }}
+            {{ col.sheet_name }}{% if sheet.layout == 'coeff' %}
+            <div class="small">{% if affiliation == 'minen' %}Станции отрасли{% elif affiliation == 'prompred' %}Промпредприятия{% else %}Все принадлежности{% endif %}, {{ view_year }}</div>
+            {% endif %}
           </th>
           {% endfor %}
         </tr>
@@ -812,23 +771,18 @@ block content %}
           <td
             class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
           >
-            {{ row.label }} {% if row.formula_tooltip %}
+            {{ row.label }}{% if row.key in ('ee_generation', 'heat_output') and row.unit %}, {{ row.unit }}{% endif %} {% if row.formula_tooltip %}
             <i
               class="bi bi-info-circle text-primary ms-1"
               data-bs-toggle="tooltip"
               data-bs-placement="top"
-              title="{{ row.formula_tooltip|e }}"
+              {% if row.formula_tooltip_html %}data-bs-html="true" title="{{ row.formula_tooltip_html|forceescape }}"{% else %}title="{{ row.formula_tooltip|e }}"{% endif %}
               style="cursor: help; font-size: 0.9em"
               aria-label="Формула"
             ></i>
             {% endif %}
           </td>
-          <td
-            class="text-center align-middle ot-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
-          >
-            {{ row.unit }}
-          </td>
-          {% for col in territory_columns %}
+          {% for col in value_columns %}
           <td
             class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
           >
@@ -836,8 +790,8 @@ block content %}
             <input
               type="text"
               class="form-control form-control-sm ot-edit-value"
-              data-year="{{ view_year }}"
-              data-territory="{{ col.slug }}"
+              data-year="{{ col.year }}"
+              data-territory="{{ col.territory_slug }}"
               value="{{ row.col_values[col.slug] if row.col_values is defined and col.slug in row.col_values else '' }}"
               inputmode="decimal"
               aria-label="{{ col.sheet_name }}"
@@ -851,18 +805,36 @@ block content %}
       </tbody>
       {% endif %}
     </table>
+    {% for specific_table in specific_emission_tables %}
+    <h2 class="h3 fw-bold mt-4 mb-3" id="ot-specific-{{ specific_table.key }}-title">
+      {{ specific_table.title }}
+    </h2>
+    <table class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table ot-fit-table ot-specific-table ot-hide-empty"
+           id="ot-specific-{{ specific_table.key }}" aria-labelledby="ot-specific-{{ specific_table.key }}-title">
+      {% with rows = specific_table.rows %}
+      {% include 'ecology/operating_tes/_volume_table_content.html' %}
+      {% endwith %}
+    </table>
+    {% endfor %}
     <div class="ot-table-scroll-end-spacer" aria-hidden="true"></div>
   </div>
 </div>
+{% if emission_view or new_tes_volume_columns or territory_filter_storage_key %}
+{% include 'ecology/operating_tes/_territory_filter_menu.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ecology_territory_filter.css') }}">
+<script src="{{ url_for('static', filename='js/ecology/tes_territory_filter.js') }}"></script>
+{% endif %}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.page-table-scroll [data-bs-toggle="tooltip"]').forEach(function (el) {
       new bootstrap.Tooltip(el);
     });
-    document.getElementById('rounding_digits')?.addEventListener('change', function () {
-      const url = new URL(window.location.href);
-      url.searchParams.set('rounding_digits', this.value);
-      window.location.href = url.toString();
+    ['rounding_digits', 'coefficient_rounding_digits'].forEach(function (id) {
+      document.getElementById(id)?.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set(id, this.value);
+        window.location.href = url.toString();
+      });
     });
     const table = document.getElementById('operatingTesTable');
     const labelTh = table?.querySelector('thead th.ot-label-col');
@@ -906,34 +878,19 @@ block content %}
       return width;
     };
     const measureFitColumns = function () {
-      if (!table || !labelTh) return;
+      if (!table || !labelTh || table.classList.contains('ot-fit-table')) return;
       let labelW = 0;
       table.querySelectorAll('th.ot-label-col, td.ot-row-label').forEach(function (el) {
         labelW = Math.max(labelW, measureNowrapWidth(el, el.innerHTML));
       });
-      const unitTh = table.querySelector('th.ot-unit-col');
-      let unitW = 0;
-      if (unitTh) {
-        unitW = measureNowrapWidth(unitTh, unitTh.textContent || '');
-        table.querySelectorAll('td.ot-unit-cell').forEach(function (el) {
-          unitW = Math.max(unitW, measureNowrapWidth(el, el.textContent || ''));
-        });
-      }
       const labelPx = labelW > 0 ? Math.ceil(labelW + 4) : 0;
-      const unitPx = unitW > 0 ? Math.ceil(unitW + 2) : 0;
       if (labelPx > 0) {
         table.style.setProperty('--ot-label-col-w', labelPx + 'px');
-        table.style.setProperty('--ot-label-sticky-w', labelPx + 'px');
-      }
-      if (unitPx > 0) {
-        table.style.setProperty('--ot-unit-col-w', unitPx + 'px');
-      } else {
-        table.style.removeProperty('--ot-unit-col-w');
       }
       const isPair = table.classList.contains('ot-emission-pair-table');
-      const dataCols = table.querySelectorAll(
+      const dataCols = Array.from(table.querySelectorAll(
         isPair ? 'col.ot-col-terr-half' : 'col.ot-col-terr, col.ot-col-year'
-      );
+      )).filter(function (col) { return !col.hidden; });
       let minCol = 0;
       if (isPair) {
         table.querySelectorAll('th.ot-pair-sub').forEach(function (el) {
@@ -957,13 +914,14 @@ block content %}
       if (n) {
         const wrap = table.closest('.page-table-scroll');
         const avail = wrap ? wrap.clientWidth : 0;
-        const remaining = Math.max(0, avail - labelPx - unitPx);
-        const colW = Math.ceil(Math.max(minCol + 8, remaining / n));
+        const remaining = Math.max(0, avail - labelPx);
+        const minYearWidth = 8.5 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const colW = Math.ceil(Math.max(minYearWidth, minCol + 8, remaining / n));
         table.style.setProperty('--ot-terr-col-min', (isPair ? colW * 2 : colW) + 'px');
         dataCols.forEach(function (col) {
           col.style.width = colW + 'px';
         });
-        const total = labelPx + unitPx + colW * n;
+        const total = labelPx + colW * n;
         table.style.width = Math.max(avail, total) + 'px';
         table.style.minWidth = table.style.width;
         table.style.maxWidth = 'none';
@@ -986,11 +944,39 @@ block content %}
     const emptyBtn = document.getElementById('otShowEmptyRowsToggle');
     emptyBtn?.addEventListener('click', function () {
       const hide = table.classList.toggle('ot-hide-empty');
+      document.querySelectorAll('.ot-specific-table').forEach(function (specificTable) {
+        specificTable.classList.toggle('ot-hide-empty', hide);
+      });
       const shown = !hide;
       emptyBtn.setAttribute('aria-pressed', shown ? 'true' : 'false');
       emptyBtn.classList.toggle('btn-primary', shown);
       emptyBtn.classList.toggle('btn-outline-primary', !shown);
     });
+    const getFieldValue = function (field) {
+      return field.dataset.rawValue ?? field.value;
+    };
+    const formatNumber = function (value, digits) {
+      return new Intl.NumberFormat('ru-RU', {
+        useGrouping: true,
+        maximumFractionDigits: digits === 0 ? 15 : Math.max(0, digits)
+      }).format(value).replace(/\u00a0|\u202f/g, ' ');
+    };
+    const recalculateEmitted = function (field) {
+      if (!field.dataset.emittedKey) return;
+      const target = table.querySelector(
+        'tr[data-row-key="' + field.dataset.emittedKey + '"] td[data-column="' + field.dataset.column + '"]'
+      );
+      if (!target) return;
+      const raw = getFieldValue(field).replace(/\s/g, '').replace(',', '.');
+      const coefficient = raw === '' ? Number(field.dataset.defaultCoefficient) : Number(raw);
+      const total = field.dataset.captureTotal;
+      if (!total || !Number.isFinite(coefficient)) {
+        target.textContent = '–';
+        return;
+      }
+      const digits = Number(table.dataset.roundingDigits);
+      target.textContent = formatNumber(Number(total) * (1 - coefficient), digits);
+    };
     const updateUrl = table?.dataset.updateUrl;
     const canEdit = table?.dataset.canEdit === '1';
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
@@ -1002,13 +988,17 @@ block content %}
         el.classList.remove('is-invalid');
         el.removeAttribute('aria-invalid');
       };
+      const saveStates = new WeakMap();
       const saveField = async function (el) {
+        const state = saveStates.get(el);
+        if (state.saving || getFieldValue(el) === state.savedValue) return;
+        const value = getFieldValue(el);
         const tr = el.closest('tr');
         const cell = el.closest('td');
         clearSaveState(el);
-        el.disabled = true;
+        state.saving = true;
         try {
-          const response = await fetch(updateUrl, {
+          const response = await fetch(el.dataset.updateUrl || updateUrl, {
             method: 'PATCH',
             credentials: 'same-origin',
             headers: {
@@ -1019,15 +1009,18 @@ block content %}
             body: JSON.stringify({
               year: el.dataset.year,
               territory: el.dataset.territory,
+              affiliation: el.dataset.affiliation || table.dataset.affiliation,
               row_key: tr?.dataset.rowKey,
               field: el.dataset.field || tr?.dataset.editableField,
-              value: el.value
+              value: value
             })
           });
           const data = await response.json();
           if (!response.ok || !data.ok) {
             throw new Error(data.error || 'Не удалось сохранить значение');
           }
+          state.savedValue = value;
+          if (getFieldValue(el) !== value) return;
           el.classList.remove('is-invalid');
           el.removeAttribute('aria-invalid');
           if (cell) {
@@ -1035,6 +1028,7 @@ block content %}
             cell.title = 'Сохранено';
           }
         } catch (error) {
+          if (getFieldValue(el) !== value) return;
           el.classList.add('is-invalid');
           el.setAttribute('aria-invalid', 'true');
           if (cell) {
@@ -1042,49 +1036,42 @@ block content %}
             cell.title = error.message || 'Не удалось сохранить значение';
           }
         } finally {
-          el.disabled = false;
+          state.saving = false;
+          if (getFieldValue(el) !== value) saveField(el);
         }
       };
-      table.querySelectorAll('.ot-edit-value, .ot-edit-source').forEach(function (field) {
-        field.addEventListener('input', function () { clearSaveState(field); });
-        field.addEventListener('change', function () { saveField(field); });
-      });
-      const noteFields = table.querySelectorAll('td.ot-note-cell textarea.ot-edit-value');
-      noteFields.forEach(function (textarea) {
-        const resizeNote = function () {
-          textarea.style.height = 'auto';
-          if (textarea.scrollHeight > textarea.clientHeight) {
-            textarea.style.height = textarea.scrollHeight + 'px';
-          }
+      table.querySelectorAll('.ot-edit-value').forEach(function (field) {
+        const state = { saving: false, savedValue: getFieldValue(field), timer: null };
+        saveStates.set(field, state);
+        const coefficientField = field.dataset.rawValue !== undefined;
+        const updateRawValue = function () {
+          if (coefficientField) field.dataset.rawValue = field.value;
         };
-        requestAnimationFrame(resizeNote);
-        textarea.addEventListener('input', resizeNote);
-      });
-      const applySourceColor = function (select) {
-        const tr = select.closest('tr');
-        const label = tr?.querySelector('td.ot-row-label');
-        const opt = select.options[select.selectedIndex];
-        const color = (opt && opt.dataset.color) || label?.dataset.defaultBg || '';
-        if (label) {
-          if (color) {
-            label.style.setProperty('--ot-fuel-bg', color);
-            label.classList.add('ot-fuel-colored');
-          } else {
-            label.style.removeProperty('--ot-fuel-bg');
-            label.classList.remove('ot-fuel-colored');
+        if (coefficientField) {
+          field.addEventListener('focus', function () {
+            field.value = field.dataset.rawValue;
+          });
+          field.addEventListener('blur', function () {
+            const raw = field.dataset.rawValue.replace(/\s/g, '').replace(',', '.');
+            const digits = Number(table.dataset.coefficientRoundingDigits);
+            field.value = raw !== '' && Number.isFinite(Number(raw)) && digits !== 0
+              ? formatNumber(Number(raw), digits) : field.dataset.rawValue;
+          });
+        }
+        field.addEventListener('input', function () {
+          updateRawValue();
+          clearSaveState(field);
+          recalculateEmitted(field);
+          clearTimeout(state.timer);
+          if (table.dataset.autosave === '1') {
+            state.timer = setTimeout(function () { saveField(field); }, 400);
           }
-        }
-        if (color) {
-          select.style.setProperty('--ot-source-bg', color);
-        } else {
-          select.style.removeProperty('--ot-source-bg');
-        }
-        select.title = (opt && opt.title) || '';
-      };
-      table.querySelectorAll('select.ot-edit-source').forEach(function (select) {
-        applySourceColor(select);
-        select.addEventListener('change', function () {
-          applySourceColor(select);
+        });
+        field.addEventListener('change', function () {
+          updateRawValue();
+          recalculateEmitted(field);
+          clearTimeout(state.timer);
+          saveField(field);
         });
       });
     }

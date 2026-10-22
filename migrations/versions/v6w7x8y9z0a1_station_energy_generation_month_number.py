@@ -30,7 +30,7 @@ OLD_STATION_YEAR_INDEX = "ix_station_energy_gen_station_year"
 NEW_STATION_YEAR_MONTH_INDEX = "ix_station_energy_gen_station_year_month"
 MONTH_INDEX = "ix_station_energy_gen_month_number"
 
-# 0 — годовое значение («год»); 1–12 — номер месяца
+# 0 – годовое значение («год»); 1–12 – номер месяца
 PERIOD_YEAR = 0
 
 

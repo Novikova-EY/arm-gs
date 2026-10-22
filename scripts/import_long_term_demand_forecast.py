@@ -90,7 +90,7 @@ def _decimal(value: Any, *, row_number: int, year: int) -> Decimal | None:
         raise ValueError(f"Строка {row_number}, {year}: вместо числа найдено логическое значение {value!r}.")
     if isinstance(value, str):
         raw = value.strip().replace("\xa0", "").replace(" ", "").replace(",", ".")
-        if raw in {"-", "—", "–"}:
+        if raw in {"-", "–", "–"}:
             return None
     else:
         raw = str(value)

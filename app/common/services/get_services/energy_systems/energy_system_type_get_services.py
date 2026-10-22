@@ -18,7 +18,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_energy_system_type_list_full():
-    """Получает полный список типов энергосистем. Без кэша — версия из текущего запроса."""
+    """Получает полный список типов энергосистем. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = EnergySystemType.query
     if current_version:
@@ -50,7 +50,7 @@ def get_energy_system_type_list():
 
 
 def get_energy_system_type_map():
-    """Возвращает отображение {id: name} для всех типов энергосистем. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {id: name} для всех типов энергосистем. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(EnergySystemType.id, EnergySystemType.name)
     if current_version:

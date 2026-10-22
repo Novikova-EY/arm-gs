@@ -10,7 +10,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_ust_value = total_energy_system_types_yearly_p_ust.get(year, 0) %}
                 {% if p_ust_value is none or p_ust_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_ust_value | format_decimal }}
                 {% endif %}
@@ -27,7 +27,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_ogr_value = total_energy_system_types_yearly_p_ogr.get(year, 0) %}
                 {% if p_ogr_value is none or p_ogr_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_ogr_value | format_decimal }}
                 {% endif %}
@@ -44,7 +44,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_rasp_value = total_energy_system_types_yearly_p_rasp.get(year, 0) %}
                 {% if p_rasp_value is none or p_rasp_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_rasp_value | format_decimal }}
                 {% endif %}

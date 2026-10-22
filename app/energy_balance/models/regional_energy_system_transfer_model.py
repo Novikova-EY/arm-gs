@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-RegionalEnergySystemTransfer — перетоки электроэнергии между энергосистемами (млн кВтч).
+RegionalEnergySystemTransfer – перетоки электроэнергии между энергосистемами (млн кВтч).
 
-Источник перетока — RegionalEnergySystem или RegionalDistrict (субъект РФ), ровно одна связь.
-Получатель — RegionalEnergySystem, ForeignBorderCountry, RegionalDistrict или EnergyUnit
+Источник перетока – RegionalEnergySystem или RegionalDistrict (субъект РФ), ровно одна связь.
+Получатель – RegionalEnergySystem, ForeignBorderCountry, RegionalDistrict или EnergyUnit
 (энергорайон), ровно одна связь.
 
-- year_number — календарный год;
-- month_number = 0 — годовое значение («год»);
-- month_number = 1..12 — значение за соответствующий месяц года.
+- year_number – календарный год;
+- month_number = 0 – годовое значение («год»);
+- month_number = 1..12 – значение за соответствующий месяц года.
 """
 from sqlalchemy.sql import func
 from sqlalchemy import Numeric, Index, text, CheckConstraint
@@ -215,23 +215,23 @@ class RegionalEnergySystemTransfer(db.Model, AuditMixin):
     def from_display_name(self) -> str:
         res = self.from_regional_energy_system
         if res is not None:
-            return res.name or "—"
+            return res.name or "–"
         rd = self.from_regional_district
         if rd is not None:
-            return rd.name or rd.name_full or "—"
-        return "—"
+            return rd.name or rd.name_full or "–"
+        return "–"
 
     @property
     def to_display_name(self) -> str:
         if self.to_regional_energy_system is not None:
-            return self.to_regional_energy_system.name or "—"
+            return self.to_regional_energy_system.name or "–"
         if self.to_foreign_border_country is not None:
-            return self.to_foreign_border_country.name or "—"
+            return self.to_foreign_border_country.name or "–"
         if self.to_regional_district is not None:
-            return self.to_regional_district.name or self.to_regional_district.name_full or "—"
+            return self.to_regional_district.name or self.to_regional_district.name_full or "–"
         if self.to_energy_unit is not None:
-            return self.to_energy_unit.name or "—"
-        return "—"
+            return self.to_energy_unit.name or "–"
+        return "–"
 
     def __repr__(self) -> str:
         period = "год" if self.is_annual else f"мес.{self.month_number}"

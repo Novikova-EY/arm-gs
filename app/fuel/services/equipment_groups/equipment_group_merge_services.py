@@ -13,6 +13,7 @@ from app.common.services.database_version_filter import set_db_version_on_create
 from app.generation.models.station.station_model import Station
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.fuel.models.fue_equipment_group_set_station_model import (
     EquipmentGroupSetStation,
 )
@@ -49,7 +50,7 @@ def _filter_groups_by_version(
 
 
 def _strict_equipment_group_version_criterion(version_id: Optional[int]):
-    """Только группы этой версии БД — без подмешивания legacy (version_id is None)."""
+    """Только группы этой версии БД – без подмешивания legacy (version_id is None)."""
     if version_id is None:
         return EquipmentGroup.database_version_id.is_(None)
     return EquipmentGroup.database_version_id == version_id
@@ -94,7 +95,7 @@ def _choose_primary_group(groups: list[EquipmentGroup]) -> Optional[EquipmentGro
 
 
 def equipment_groups_must_not_merge(left, right) -> bool:
-    """Разные Access-строки (numb) и пара родитель/ребёнок составной станции — не дубликаты."""
+    """Разные Access-строки (numb) и пара родитель/ребёнок составной станции – не дубликаты."""
     if left is None or right is None:
         return False
     from app.fuel.services.equipment_groups.composite_station_semantics import _as_int
@@ -457,18 +458,18 @@ def rename_or_merge_equipment_group_for_station(
 ) -> dict:
     """
     При переименовании группы оборудования: если уже есть группа с таким именем
-    на электростанции — объединяем (EquipmentGroupSetStation → одна EquipmentGroup,
-    параметры сливаем, дубликат удаляем). Иначе — просто обновляем name.
+    на электростанции – объединяем (EquipmentGroupSetStation → одна EquipmentGroup,
+    параметры сливаем, дубликат удаляем). Иначе – просто обновляем name.
 
     Returns:
         dict с полями:
         - merged: bool
-        - primary_id: int|None — id оставшейся группы
-        - old_name: str — старое имя переименовываемой группы
+        - primary_id: int|None – id оставшейся группы
+        - old_name: str – старое имя переименовываемой группы
         - new_name: str
-        - deleted_group_id: int|None — id удаленной группы (при merge)
-        - merged_fields: list[str] — список объединенных полей (при merge)
-        - reassigned_set_ids: list[int] — id переназначенных EquipmentGroupSet (при merge)
+        - deleted_group_id: int|None – id удаленной группы (при merge)
+        - merged_fields: list[str] – список объединенных полей (при merge)
+        - reassigned_set_ids: list[int] – id переназначенных EquipmentGroupSet (при merge)
     """
     empty_result = {
         "merged": False,
@@ -488,7 +489,7 @@ def rename_or_merge_equipment_group_for_station(
 
     old_name = (current_group.name or "").strip()
 
-    # Ищем другую EquipmentGroup с таким же именем (без учета регистра и пробелов) — по всей БД,
+    # Ищем другую EquipmentGroup с таким же именем (без учета регистра и пробелов) – по всей БД,
     # чтобы объединять дубликаты даже если они привязаны к разным станциям.
     # Только в той же database_version_id, что у редактируемой группы: иначе versioned EG
     # может слиться в legacy (ver=None) и исчезнуть из текущей версии сессии.
@@ -519,7 +520,7 @@ def rename_or_merge_equipment_group_for_station(
     primary_group = _choose_primary_group(candidates) if candidates else None
 
     if primary_group is None:
-        # Дубликата нет — просто переименовываем
+        # Дубликата нет – просто переименовываем
         current_group.name = new_name
         return {
             **empty_result,
@@ -535,7 +536,7 @@ def rename_or_merge_equipment_group_for_station(
     ).all()
     reassigned_set_ids = [s.id for s in sets_to_reassign]
 
-    # Есть дубликат — объединяем: current_group → primary_group
+    # Есть дубликат – объединяем: current_group → primary_group
     merged_fields = _merge_group_fields_return_list(primary_group, current_group)
     _reassign_group_detail_rows_to_primary([equipment_group_id], primary_group.id)
     _reassign_sets_to_primary([equipment_group_id], primary_group.id)
@@ -645,6 +646,13 @@ def _clone_equipment_group_into_version(
     values["regional_energy_system_id"] = coerce_regional_energy_system_id_for_db_version(
         values.get("regional_energy_system_id"), version_id
     )
+    from app.common.services.version_entity_resolve_services import (
+        resolve_refdata_fk_id_for_version,
+    )
+
+    values["energy_unit_id"] = resolve_refdata_fk_id_for_version(
+        EnergyUnit, values.get("energy_unit_id"), version_id
+    )
     clone = EquipmentGroup(**values)
     db.session.add(clone)
     clone.database_version_id = version_id
@@ -657,7 +665,7 @@ def _find_or_clone_group_in_version(
     source: EquipmentGroup,
     version_id: Optional[int],
 ) -> EquipmentGroup:
-    """Группа этой версии с тем же external_code; если нет — клон source."""
+    """Группа этой версии с тем же external_code; если нет – клон source."""
     if _is_group_in_version(source, version_id):
         return source
     external_code = (source.external_code or "").strip()
@@ -734,7 +742,7 @@ def _localize_linked_groups_to_version(
     station_ids: list[int],
 ) -> list[EquipmentGroup]:
     """
-    Если связь версии V указывает на группу другой версии — клонирует её в V
+    Если связь версии V указывает на группу другой версии – клонирует её в V
     и переносит связи/агрегаты этой версии (всех станций, не только текущей).
     Исходная группа других версий не удаляется.
     """
@@ -776,7 +784,7 @@ def rename_or_merge_equipment_group_all_versions(
 
     В каждой версии БД отдельно:
     - находим группу этой станции/типа;
-    - если связь указывает на карточку другой версии — клонируем её в текущую;
+    - если связь указывает на карточку другой версии – клонируем её в текущую;
     - переименовываем;
     - объединяем только дубликаты с тем же именем в ЭТОЙ версии
       (две станции → одна группа этой версии).
@@ -807,7 +815,7 @@ def rename_or_merge_equipment_group_all_versions(
 
     new_name_norm = new_name.strip().lower()
 
-    # ref_uuid и name текущего типа — для поиска эквивалента в других версиях
+    # ref_uuid и name текущего типа – для поиска эквивалента в других версиях
     current_type = EquipmentGroupType.query.get(equipment_group_type_id)
     type_ref_uuid = getattr(current_type, "ref_uuid", None) if current_type else None
     type_name = (current_type.name or "").strip() if current_type else ""
@@ -878,7 +886,7 @@ def rename_or_merge_equipment_group_all_versions(
         if not link_ids:
             continue
 
-        # Группы по связям этой версии — без фильтра по версии самой группы:
+        # Группы по связям этой версии – без фильтра по версии самой группы:
         # связь могла указывать на карточку другой версии после ошибочного merge.
         linked_groups = (
             db.session.query(EquipmentGroup)
@@ -899,7 +907,7 @@ def rename_or_merge_equipment_group_all_versions(
         if not all_station_groups:
             continue
 
-        # Дубликаты по имени — только в этой же версии БД (не legacy + не другие версии)
+        # Дубликаты по имени – только в этой же версии БД (не legacy + не другие версии)
         name_expr = func.lower(func.trim(func.coalesce(EquipmentGroup.name, "")))
         same_name_in_version = (
             db.session.query(EquipmentGroup)
@@ -960,7 +968,7 @@ def rename_or_merge_equipment_group_all_versions(
             if g.id != primary.id:
                 _merge_group_fields_return_list(primary, g)
         _reassign_group_detail_rows_to_primary(candidate_ids, primary.id)
-        # Кандидаты уже той же версии — переносим все их связи, включая вторую станцию.
+        # Кандидаты уже той же версии – переносим все их связи, включая вторую станцию.
         _reassign_sets_to_primary(candidate_ids, primary.id)
         removed = _remove_orphan_groups(merge_sources + [primary], primary.id)
         removed_count += removed
@@ -1052,7 +1060,7 @@ def _equipment_group_type_skip_message(version_id: Optional[int]) -> str:
         f"Режим «Сохранить во всех версиях»: тип группы оборудования не обновлён для {scope}. "
         "В справочнике «Типы групп оборудования» нет строки с тем же типом (по коду/имени) "
         "и с той же версией БД, что ожидается для этих групп. "
-        "Остальные поля могли сохраниться. Если нужна только текущая версия — нажмите «Сохранить», "
+        "Остальные поля могли сохраниться. Если нужна только текущая версия – нажмите «Сохранить», "
         "без «во всех версиях»."
     )
 
@@ -1089,6 +1097,7 @@ _EQUIPMENT_GROUP_FIELD_LABELS = {
     "k": "Коэффициент k",
     "regional_district_id": "Субъект РФ",
     "regional_energy_system_id": "Региональная энергосистема",
+    "energy_unit_id": "Энергорайон",
     "equipment_group_type_id": "Тип группы оборудования (связь со станцией)",
     "grouping_station_id": "Привязка к станции (Модуль «Генерация»)",
 }
@@ -1097,16 +1106,16 @@ _EQUIPMENT_GROUP_FIELD_LABELS = {
 def _format_val_for_log(val) -> str:
     """Форматирует значение для отображения в логе."""
     if val is None:
-        return "—"
+        return "–"
     if isinstance(val, str):
-        return val.strip() or "—"
+        return val.strip() or "–"
     return str(val)
 
 
 def _format_fk_for_log(field: str, pk_id) -> str:
     """Форматирует FK (regional_district_id, regional_energy_system_id) для лога: название или ID."""
     if pk_id is None:
-        return "—"
+        return "–"
     if field == "regional_district_id":
         from app.refdata.models.territories.regional_district_model import RegionalDistrict
         obj = RegionalDistrict.query.get(pk_id)
@@ -1117,6 +1126,10 @@ def _format_fk_for_log(field: str, pk_id) -> str:
         obj = RegionalEnergySystem.query.get(pk_id)
         if obj and hasattr(obj, "name"):
             return (obj.name or "").strip() or str(pk_id)
+    elif field == "energy_unit_id":
+        obj = db.session.get(EnergyUnit, pk_id)
+        if obj:
+            return obj.name
     elif field == "grouping_station_id":
         obj = Station.query.get(pk_id)
         if obj and hasattr(obj, "name"):
@@ -1139,8 +1152,8 @@ def _apply_egt_anchor_to_groups(
     equipment_group_type_skip_warnings: list[str],
 ) -> tuple[Optional[str], bool]:
     """
-    Применяет тип группы из формы. new_egt_anchor_id is None — снять тип (прочерк).
-    Returns (error, applied_any). Если тип не сопоставился со справочником версии —
+    Применяет тип группы из формы. new_egt_anchor_id is None – снять тип (прочерк).
+    Returns (error, applied_any). Если тип не сопоставился со справочником версии –
     warning и applied_any=False.
     """
     from app.fuel.services.equipment_groups.equipment_group_edit_services import (
@@ -1174,7 +1187,7 @@ def update_equipment_group_all_versions(
     Применяет данные формы редактирования группы оборудования ко всем эквивалентным
     группам во всех версиях БД.
 
-    form_data — словарь полей (name, name_ext, niv, comp, main, d, r, forem, vedomstvo, obl, dep,
+    form_data – словарь полей (name, name_ext, niv, comp, main, d, r, forem, vedomstvo, obl, dep,
     oes, er, fo, numb, tm, n1, n2, p1, p2, ordnumb, addr, note, codegor, be, gk, gkf,
     regional_district_id, regional_energy_system_id, equipment_group_type_id,
     grouping_station_id).
@@ -1193,6 +1206,7 @@ def update_equipment_group_all_versions(
         form_has_grouping_station_sync,
         grouping_station_ids_from_form,
         persist_equipment_group_grouping_station_if_in_form,
+        resolve_equipment_group_energy_unit,
     )
     from app.fuel.services.equipment_groups.equipment_group_set_services import (
         apply_auto_equipment_group_name,
@@ -1249,7 +1263,7 @@ def update_equipment_group_all_versions(
         "gk",
         "gkf",
     ]
-    int_fk_fields = ["regional_district_id", "regional_energy_system_id"]
+    int_fk_fields = ["regional_district_id", "regional_energy_system_id", "energy_unit_id"]
 
     def _parse_decimal_form_val(val):
         from decimal import Decimal, InvalidOperation
@@ -1289,7 +1303,7 @@ def update_equipment_group_all_versions(
         if not grouping_sync and "grouping_station_id" not in form_data:
             return {"versions_touched": 0, "updated_count": 0}
 
-    # ID из формы — для текущей версии; в других версиях ищем соответствие по ref_uuid / external_code
+    # ID из формы – для текущей версии; в других версиях ищем соответствие по ref_uuid / external_code
     new_rd_id = _parse_int_form_val(form_data.get("regional_district_id"))
     new_res_id = _parse_int_form_val(form_data.get("regional_energy_system_id"))
     from app.refdata.models.territories.regional_district_model import RegionalDistrict
@@ -1315,7 +1329,15 @@ def update_equipment_group_all_versions(
         group: EquipmentGroup, values_to_apply: dict | None = None
     ) -> tuple[bool, list[tuple[str, str, str]]]:
         """Применяет значения к группе. Возвращает (changed, [(field_label, old_val, new_val), ...])."""
-        v = values_to_apply if values_to_apply is not None else values
+        v = dict(values_to_apply if values_to_apply is not None else values)
+        if "energy_unit_id" in v and v["energy_unit_id"] is not None:
+            resolved_unit_id = resolve_refdata_fk_id_for_version(
+                EnergyUnit, v["energy_unit_id"], group.database_version_id
+            )
+            if resolved_unit_id is None:
+                v.pop("energy_unit_id")
+            else:
+                v["energy_unit_id"] = resolved_unit_id
         changes: list[tuple[str, str, str]] = []
         for field, val in v.items():
             if hasattr(group, field):
@@ -1323,7 +1345,7 @@ def update_equipment_group_all_versions(
                 if old_val != val:
                     setattr(group, field, val)
                     label = _EQUIPMENT_GROUP_FIELD_LABELS.get(field, field)
-                    if field in ("regional_district_id", "regional_energy_system_id"):
+                    if field in int_fk_fields:
                         old_str = _format_fk_for_log(field, old_val)
                         new_str = _format_fk_for_log(field, val)
                     else:
@@ -1334,6 +1356,15 @@ def update_equipment_group_all_versions(
             verr = _validate_and_sync_composite_fields(group)
             if verr:
                 raise ValueError(verr)
+        if group.energy_unit_id is not None:
+            unit = db.session.get(EnergyUnit, group.energy_unit_id)
+            if unit is None or unit.id_regional_district != group.regional_district_id:
+                changes.append((
+                    "Энергорайон",
+                    _format_fk_for_log("energy_unit_id", group.energy_unit_id),
+                    "–",
+                ))
+                group.energy_unit_id = None
         return bool(changes), changes
 
     def _grouping_ids_for_group(group: EquipmentGroup) -> list[int]:
@@ -1403,6 +1434,15 @@ def update_equipment_group_all_versions(
     current_group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
     if not current_group:
         return {"versions_touched": 0, "updated_count": 0}
+    if "energy_unit_id" in form_data:
+        district_id = current_group.regional_district_id
+        if "regional_district_id" in form_data:
+            district_id = _resolve_rd_id_for_version(current_group.database_version_id)
+        _, unit_error = resolve_equipment_group_energy_unit(
+            form_data.get("energy_unit_id"), district_id, current_group.database_version_id
+        )
+        if unit_error:
+            return {"versions_touched": 0, "updated_count": 0, "error": unit_error}
     external_code = (current_group.external_code or "").strip()
     if not external_code:
         # Fallback: обновить только текущую группу
@@ -1623,7 +1663,7 @@ def update_equipment_group_all_versions(
                                 "equipment_group_type_id",
                                 "Тип группы оборудования (связь со станцией)",
                             ),
-                            "—",
+                            "–",
                             _format_fk_for_log(
                                 "equipment_group_type_id", new_egt_anchor_id
                             ),
@@ -1727,7 +1767,7 @@ def update_equipment_group_all_versions(
                                     "equipment_group_type_id",
                                     "Тип группы оборудования (связь со станцией)",
                                 ),
-                                "—",
+                                "–",
                                 _format_fk_for_log(
                                     "equipment_group_type_id", new_egt_anchor_id
                                 ),

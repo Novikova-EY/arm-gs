@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupElectricityProductionCost — затраты ТЭС на производство ЭЭ и ТЭ.
+EquipmentGroupElectricityProductionCost – затраты ТЭС на производство ЭЭ и ТЭ.
 Поля из Excel: NAME, NUMB1120, Year, code_zatr, ZATRATY_SUM, Zatr_E, Zatr_P, Zatr_Q.
 """
 from sqlalchemy import UniqueConstraint

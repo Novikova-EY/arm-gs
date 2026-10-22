@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Таблица gs_russia_federation_with_nt_demand_params — РФ с новыми территориями (НТ).
+"""Таблица gs_russia_federation_with_nt_demand_params – РФ с новыми территориями (НТ).
 
 Revision ID: n9o0p1q2r3s4
 Revises: k1l2m3n4o5p6

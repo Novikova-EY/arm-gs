@@ -133,7 +133,7 @@ defined and fk_column == 'id_energy_zone' %}
                   endif
                   %}
                 >
-                  —
+                  –
                 </option>
                 {% for yn in year_options %}
                 <option
@@ -268,7 +268,7 @@ defined and fk_column == 'id_energy_zone' %}
                 name="slice_year[]"
                 class="form-select form-select-sm text-center"
               >
-                <option value="" selected>—</option>
+                <option value="" selected>–</option>
                 {% for yn in year_options %}
                 <option value="{{ yn }}">{{ yn }}</option>
                 {% endfor %}
@@ -318,7 +318,7 @@ defined and fk_column == 'id_energy_zone' %}
               ></textarea>
             </td>
             <td class="text-center align-middle text-muted">
-              —
+              –
               <input type="hidden" name="row_id[]" value="" />
             </td>
           </tr>
@@ -334,7 +334,7 @@ defined and fk_column == 'id_energy_zone' %}
   </form>
   {% else %}
   <div class="alert alert-info">
-    Просмотр доступен. Редактирование — только для ролей «Нагрузки-админ» и
+    Просмотр доступен. Редактирование – только для ролей «Нагрузки-админ» и
     «Нагрузки-редактор».
   </div>
   <div class="table-responsive">
@@ -364,7 +364,7 @@ defined and fk_column == 'id_energy_zone' %}
           </td>
           {% endif %}
           <td class="text-center align-middle">
-            {{ row.year_number if row.year_number is not none else '—' }}
+            {{ row.year_number if row.year_number is not none else '–' }}
           </td>
           <td
             class="text-center align-middle"
@@ -380,7 +380,7 @@ defined and fk_column == 'id_energy_zone' %}
             %}
           >
             {{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) if
-            row.energy_consumption_mln_kvt_ch is not none else '—' }}
+            row.energy_consumption_mln_kvt_ch is not none else '–' }}
           </td>
           <td
             class="text-center align-middle"
@@ -396,10 +396,10 @@ defined and fk_column == 'id_energy_zone' %}
             %}
           >
             {{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) if
-            row.energy_consumption_sipr_mln_kvt_ch is not none else '—' }}
+            row.energy_consumption_sipr_mln_kvt_ch is not none else '–' }}
           </td>
           <td class="text-center align-middle text-break">
-            {{ row.note if row.note is not none else '—' }}
+            {{ row.note if row.note is not none else '–' }}
           </td>
         </tr>
         {% else %}

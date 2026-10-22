@@ -115,7 +115,7 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
     )
     
     try:
-        # ВАЖНО: не используем commit() внутри по умолчанию — вызывающий код может
+        # ВАЖНО: не используем commit() внутри по умолчанию – вызывающий код может
         # собирать всю операцию создания версии в одну транзакцию.
         #
         # Также важно сохранить порядок соответствия old_id -> new_id:
@@ -205,7 +205,7 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
 
             db.session.execute(years_query, params)
         else:
-            # Исходная версия без year_features — копируем годы с id_year_feature=NULL
+            # Исходная версия без year_features – копируем годы с id_year_feature=NULL
             # (старый id_year_feature указывал бы на чужую версию)
             years_no_features_query = text(f"""
                 INSERT INTO {SCHEMA_REFDATA}.gs_sys_years (number, id_year_feature, database_version_id)

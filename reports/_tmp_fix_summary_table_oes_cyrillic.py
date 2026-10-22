@@ -30,7 +30,7 @@ TARGETS = {
 }
 
 SOFT_DROP = re.compile(
-    r"[\u0400-\u04FF\uFFFD«»“”\"—–−…?\s]+|"
+    r"[\u0400-\u04FF\uFFFD«»“”\"––−…?\s]+|"
     r"[\U0001F300-\U0001FAFF\u2600-\u27BF]"
 )
 
@@ -86,7 +86,7 @@ def fix_file(path: Path, preferred_source_index: int) -> None:
     # Hand-fix remaining comment / unique lines still containing FFFD.
     hand = {
         "{# \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd /summary_table/oes/ \ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd. #}\n":
-        "{# Отдельный контур сводной /summary_table/oes/ — корень и ОЭС без детализации ниже уровня ОЭС. #}\n",
+        "{# Отдельный контур сводной /summary_table/oes/ – корень и ОЭС без детализации ниже уровня ОЭС. #}\n",
     }
     # Generic: replace any first-line comment for each target variant
     out_lines = out.splitlines(True)
@@ -95,7 +95,7 @@ def fix_file(path: Path, preferred_source_index: int) -> None:
         if "oes" in name:
             out_lines[0] = (
                 "{# Отдельный контур сводной /summary_table/oes/ "
-                "— корень и ОЭС без детализации ниже уровня ОЭС. #}\n"
+                "– корень и ОЭС без детализации ниже уровня ОЭС. #}\n"
             )
         elif "fo" in name:
             out_lines[0] = (

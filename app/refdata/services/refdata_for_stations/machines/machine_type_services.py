@@ -140,7 +140,7 @@ def update_machine_type_service(data, user):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "machine_type"))
                 obj.name = name
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -403,7 +403,7 @@ def repair_machine_types_sequence_hard(user: str) -> None:
     Работает и для SERIAL, и для IDENTITY, т.к. имя берем через pg_get_serial_sequence.
     """
     try:
-        with db.engine.begin() as conn:  # <— отдельная транзакция, гарантированный commit
+        with db.engine.begin() as conn:  # <– отдельная транзакция, гарантированный commit
             seq_name = conn.execute(
                 text("SELECT pg_get_serial_sequence(:tbl, :col)"),
                 {"tbl": f"{SCHEMA_REFDATA}.machine_types", "col": "id"}

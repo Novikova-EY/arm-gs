@@ -224,7 +224,7 @@
         if (hasSkipClass(inp)) {
             return false;
         }
-        if (inp.closest(".summary-entity-note-cell, .ot-note-cell, .ot-source-cell")) {
+        if (inp.closest(".summary-entity-note-cell")) {
             return false;
         }
         var td = inp.closest("td");

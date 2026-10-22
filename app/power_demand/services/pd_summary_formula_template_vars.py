@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# Имена с префиксом «_pd_» — сразу в контекст Jinja (без {% set %} в include).
+# Имена с префиксом «_pd_» – сразу в контекст Jinja (без {% set %} в include).
 PD_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     "_pd_coeff_res_oes_k_formula": "coeff_res_oes_k",
     "_pd_coeff_res_ees_k_formula": "coeff_res_ees_k",

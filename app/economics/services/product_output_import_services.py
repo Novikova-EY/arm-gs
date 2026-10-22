@@ -63,7 +63,7 @@ def _parse_cell_value(cell_value: Any) -> Decimal | None:
     if isinstance(cell_value, (int, float)):
         return Decimal(str(cell_value))
     s = str(cell_value).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:
@@ -110,10 +110,10 @@ def _build_ved_lookup(version_id: int | None) -> dict[str, int]:
 
 
 def _territory_label_tokens(label: str) -> list[str]:
-    """Варианты подписи территории (экспорт «РФ — …», файл «РОССИЯ» в отдельном столбце)."""
+    """Варианты подписи территории (экспорт «РФ – …», файл «РОССИЯ» в отдельном столбце)."""
     n = _normalize_label(label)
     tokens = [n]
-    for sep in (" — ", " - ", "–", "—"):
+    for sep in (" – ", " - ", "–", "–"):
         if sep in label:
             left, right = label.split(sep, 1)
             for part in (left, right):
@@ -161,7 +161,7 @@ def _detect_import_columns(
     *,
     max_scan_rows: int = 40,
 ) -> tuple[int, int]:
-    """(столбец территории, столбец ВЭД): экспорт — (1, 1), шаблон «Структура…» — (2, 3)."""
+    """(столбец территории, столбец ВЭД): экспорт – (1, 1), шаблон «Структура…» – (2, 3)."""
     territory_hits_col1 = 0
     territory_hits_col2 = 0
     ved_rows_col3 = 0
@@ -221,7 +221,7 @@ def import_product_output_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
     version_ids = all_database_version_ids_for_import()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — импорт невозможен."
+            "В системе нет зарегистрированных версий БД – импорт невозможен."
         )
 
     user = _username()

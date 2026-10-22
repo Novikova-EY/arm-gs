@@ -3,7 +3,7 @@
 Параметры нагрузки (demand) для Российской Федерации в целом.
 
 Отдельной строки в справочнике refdata нет: в таблице только срезы «исторический максимум» и по годам,
-без FK на gs_* (уникальность — по версии БД и году, см. миграцию).
+без FK на gs_* (уникальность – по версии БД и году, см. миграцию).
 """
 from sqlalchemy import CheckConstraint, Numeric, text
 from sqlalchemy.sql import func
@@ -22,7 +22,7 @@ class RussiaFederationDemandParameter(db.Model, AuditMixin, PerimeterVariantColu
             "(is_historical_maximum = false AND year_number IS NOT NULL)",
             name="ck_gs_russia_federation_demand_params_year_vs_hist",
         ),
-        # Частичные уникальные индексы без id сущности — в миграции
+        # Частичные уникальные индексы без id сущности – в миграции
         {"schema": SCHEMA_POWER_DEMAND},
     )
 

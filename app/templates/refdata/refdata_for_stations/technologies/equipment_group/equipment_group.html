@@ -590,7 +590,7 @@
 
                         <!-- Строки таблицы. Столбец "Порядок отображения" -->
                         <td class="text-center">
-                            {{ equipment_group.display_order if equipment_group.display_order is not none else '—' }}
+                            {{ equipment_group.display_order if equipment_group.display_order is not none else '–' }}
                         </td>
 
                         <!-- Строки таблицы. Столбец "Группа оборудования" -->
@@ -598,12 +598,12 @@
 
                         <!-- Строки таблицы. Столбец "Тип технологии" -->
                         <td class="text-center">
-                            {{ equipment_group.technology_type.name if equipment_group.technology_type else '—' }}
+                            {{ equipment_group.technology_type.name if equipment_group.technology_type else '–' }}
                         </td>
 
                         <!-- Строки таблицы. Столбец "Доступность технологии" -->
                         <td class="text-center">
-                            {{ equipment_group.technology_availability.name if equipment_group.technology_availability else '—' }}
+                            {{ equipment_group.technology_availability.name if equipment_group.technology_availability else '–' }}
                         </td>
                     </tr>
                     {% else %}

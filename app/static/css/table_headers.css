@@ -1,7 +1,7 @@
 /*
   Шапка таблиц (.table-success / .table-light / .table-primary):
   непрозрачный фон, тонкие светло-серые границы, без прозрачных щелей у sticky-th.
-  border-collapse: separate — иначе у sticky границы «ломаются».
+  border-collapse: separate – иначе у sticky границы «ломаются».
 */
 
 .table:has(> thead.table-success),
@@ -34,7 +34,7 @@
 .table > thead > tr.table-light > th,
 .table > thead > tr.table-primary > th {
     background-clip: border-box !important;
-    /* Сетка 1px: правая + нижняя; левый/верхний край — у крайних ячеек */
+    /* Сетка 1px: правая + нижняя; левый/верхний край – у крайних ячеек */
     border-style: solid !important;
     border-color: #adb5bd !important;
     border-width: 0 1px 1px 0 !important;

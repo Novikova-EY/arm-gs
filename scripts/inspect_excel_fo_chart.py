@@ -24,8 +24,8 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
             acc, inten = r, r + 1
             b_int = str(ws_f.cell(inten, 2).value or "")
             print("\n[Свод ФО / ВРП]")
-            print(f"  R{acc}: X — накопленные инвестиции (сумма по ВЭД)")
-            print(f"  R{inten}: Y — {b_int}")
+            print(f"  R{acc}: X – накопленные инвестиции (сумма по ВЭД)")
+            print(f"  R{inten}: Y – {b_int}")
             print(f"  2010: X={ws_v.cell(acc, 4).value}, Y={ws_v.cell(inten, 4).value}")
             print(f"  2024: X={ws_v.cell(acc, 18).value}, Y={ws_v.cell(inten, 18).value}")
             # check calc row after summary
@@ -40,7 +40,7 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
             break
 
     # 2) Typical VED block
-    print("\n[Типовой блок ВЭД — структура строк]")
+    print("\n[Типовой блок ВЭД – структура строк]")
     for r in range(lo, min(lo + 100, hi)):
         if str(ws_f.cell(r, 2).value or "") != "А=":
             continue
@@ -67,8 +67,8 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
                 acc = r2
                 inten = r2 + 1
                 calc = r2 + 3
-                print(f"  R{acc}: X графика — накопленные инвестиции")
-                print(f"  R{inten}: Y факт — электроёмкость, formula 2011: {ws_f.cell(inten, 5).value}")
+                print(f"  R{acc}: X графика – накопленные инвестиции")
+                print(f"  R{inten}: Y факт – электроёмкость, formula 2011: {ws_f.cell(inten, 5).value}")
                 # graph points row
                 gp = None
                 for r3 in range(inten + 1, calc):

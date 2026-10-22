@@ -88,7 +88,7 @@ def test_fo_coeff_plan_year_calculated_max_sums_res_combined_on_fo(
         _fo_row(pk="max_power", year_values=["1000", "1100"], show_entity_cell=True),
         _fo_row(
             pk="calculated_max_power_mw",
-            year_values=["900", "—"],
+            year_values=["900", "–"],
             show_entity_cell=False,
         ),
         _res_row(
@@ -139,7 +139,7 @@ def test_ez_coeff_plan_year_calculated_max_sums_res_combined_on_ez(_ues_mock) ->
         _ez_row(pk="max_power", year_values=["800", "900"], show_entity_cell=True),
         _ez_row(
             pk="calculated_max_power_mw",
-            year_values=["700", "—"],
+            year_values=["700", "–"],
             show_entity_cell=False,
         ),
         _res_row(
@@ -208,7 +208,7 @@ def test_fo_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _fo_row(
             pk="calculated_max_power_mw",
-            year_values=_rep5("800") + ["—"],
+            year_values=_rep5("800") + ["–"],
             show_entity_cell=False,
         ),
         _res_row(
@@ -220,7 +220,7 @@ def test_fo_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _res_row(
             pk="combined_on_fo",
-            year_values=_rep5("400") + ["—"],
+            year_values=_rep5("400") + ["–"],
             res_id=11,
             fd_id=7,
         ),
@@ -233,7 +233,7 @@ def test_fo_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _res_row(
             pk="combined_on_fo",
-            year_values=_rep5("200") + ["—"],
+            year_values=_rep5("200") + ["–"],
             res_id=12,
             fd_id=7,
         ),
@@ -274,7 +274,7 @@ def test_ez_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _ez_row(
             pk="calculated_max_power_mw",
-            year_values=_rep5("640") + ["—"],
+            year_values=_rep5("640") + ["–"],
             show_entity_cell=False,
         ),
         _res_row(
@@ -286,7 +286,7 @@ def test_ez_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _res_row(
             pk="combined_on_ez",
-            year_values=_rep5("240") + ["—"],
+            year_values=_rep5("240") + ["–"],
             res_id=21,
             ez_id=3,
         ),
@@ -299,7 +299,7 @@ def test_ez_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
         ),
         _res_row(
             pk="combined_on_ez",
-            year_values=_rep5("120") + ["—"],
+            year_values=_rep5("120") + ["–"],
             res_id=22,
             ez_id=3,
         ),

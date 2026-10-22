@@ -111,7 +111,7 @@ def test_resolve_ees_russia_aggregate_binding_uses_ees_russia_model(monkeypatch)
 
 
 def test_aggregate_sheet_labels_skips_kaliningrad_sync_zone_in_variant_column_mode():
-    """СЗ Калининграда — расчётная строка; без кода варианта не должна попадать в импорт."""
+    """СЗ Калининграда – расчётная строка; без кода варианта не должна попадать в импорт."""
     matrix = [
         ("perimeter-variants", "Наименование", 2024, 2025),
         ("", "Синхронная зона Калининградской области", 100, 5141),
@@ -122,7 +122,7 @@ def test_aggregate_sheet_labels_skips_kaliningrad_sync_zone_in_variant_column_mo
 
 
 def test_aggregate_sheet_labels_keeps_both_none_and_o1_variant_rows():
-    """Две строки с одним наименованием: без варианта (NULL) и с o1 — обе в аккумулятор."""
+    """Две строки с одним наименованием: без варианта (NULL) и с o1 – обе в аккумулятор."""
     matrix = [
         ("perimeter-variants", "Наименование", 2024, 2025),
         ("", "ЭС Камчатского края", 100, 110),
@@ -137,7 +137,7 @@ def test_aggregate_sheet_labels_keeps_both_none_and_o1_variant_rows():
 
 
 def test_aggregate_sheet_labels_imports_none_variant_row_when_o1_row_is_zero_placeholder():
-    """Шаблон «млн. кВт.ч»: данные в строке без варианта, o1 — нулевая заглушка."""
+    """Шаблон «млн. кВт.ч»: данные в строке без варианта, o1 – нулевая заглушка."""
     matrix = [
         ("perimeter-variants", "Наименование", 2026, 2027),
         ("", "ЭС Камчатского края", 1822, 1925),

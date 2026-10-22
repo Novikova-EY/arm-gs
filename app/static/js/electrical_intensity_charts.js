@@ -1,6 +1,6 @@
 /**
 
- * Scatter-графики электроёмкости — стиль как в Excel «Таблица 1».
+ * Scatter-графики электроёмкости – стиль как в Excel «Таблица 1».
 
  * Фактическая: маркеры accent5 (#4BACC6), без линии.
 
@@ -111,7 +111,7 @@
   }
 
   function formatNum(n) {
-    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    if (n === null || n === undefined || Number.isNaN(n)) return "–";
 
     var abs = Math.abs(n);
 
@@ -130,7 +130,7 @@
       .replace(/\u00a0/g, "")
       .replace(/\s/g, "");
 
-    if (!s || s === "—" || s === "-" || s === "–") return null;
+    if (!s || s === "–" || s === "-" || s === "–") return null;
 
     s = s.replace(",", ".");
 

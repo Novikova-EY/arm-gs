@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница «Выработка ЭЭ» — список электростанций с помесячной выработкой."""
+"""Страница «Выработка ЭЭ» – список электростанций с помесячной выработкой."""
 
 from __future__ import annotations
 
@@ -69,8 +69,8 @@ from sqlalchemy.orm import joinedload, selectinload
 EE_PERIOD_MODE_YEARS = "years"
 EE_PERIOD_MODE_MONTHS = "months"
 
-# До 2018 включительно выработка ЭСПП в источниках — одной суммой по РЭС (свод);
-# с 2019 — по отдельным станциям с признаком ЭСПП.
+# До 2018 включительно выработка ЭСПП в источниках – одной суммой по РЭС (свод);
+# с 2019 – по отдельным станциям с признаком ЭСПП.
 ESPP_SVOD_THROUGH_YEAR = 2018
 
 
@@ -144,7 +144,7 @@ def _format_station_sign_display(station_sign: str | None) -> str:
         return "да"
     if station_sign == "true":
         return STATION_SIGN_ESPP
-    return "—"
+    return "–"
 
 
 def _resolve_station_sign(station: Station) -> str:
@@ -164,7 +164,7 @@ def _build_sign_groups_for_stations(
     """Группы станций по признаку: сначала «не указано», затем «ЭСПП».
 
     Для ЭСПП в периоды ≤ ESPP_SVOD_THROUGH_YEAR значения берутся из свода по РЭС
-    и объединяются rowspan по станциям группы; с 2019 — по каждой станции.
+    и объединяются rowspan по станциям группы; с 2019 – по каждой станции.
     """
     by_sign: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in station_rows or []:
@@ -205,7 +205,7 @@ def _build_sign_groups_for_stations(
 
 
 def _join_unique(values: list[str]) -> str:
-    return ", ".join(values) if values else "—"
+    return ", ".join(values) if values else "–"
 
 
 def ensure_stations_machines_for_display(stations: list[Station]) -> None:
@@ -233,7 +233,7 @@ def ensure_stations_machines_for_display(stations: list[Station]) -> None:
 
 def format_station_machine_attributes(station: Station) -> dict[str, str]:
     """Агрегированные значения колонок по агрегатам электростанции (как на station_list)."""
-    station_type_name = "—"
+    station_type_name = "–"
     if station.station_type and station.station_type.name:
         station_type_name = station.station_type.name
 
@@ -350,7 +350,7 @@ def _resolve_station_placement(station: Station) -> tuple[int, int, int, int, in
 
 
 def _resolve_station_synchronous_area_id(station: Station) -> int:
-    """Синхронная зона станции — с субъекта РФ (regional_district)."""
+    """Синхронная зона станции – с субъекта РФ (regional_district)."""
     district = getattr(station, "regional_district", None)
     raw = getattr(district, "id_synchronous_area", None) if district is not None else None
     if raw is None:
@@ -382,15 +382,15 @@ CONTROL_TOOLTIP = (
     "можно заполнить или изменить вручную"
 )
 TOTAL_TOOLTIP_UES = (
-    "Сумма выработки по станциям ОЭС (до 2018 включительно — без станций ЭСПП, "
+    "Сумма выработки по станциям ОЭС (до 2018 включительно – без станций ЭСПП, "
     "плюс своды ЭСПП по РЭС)"
 )
 TOTAL_TOOLTIP_RUSSIA = (
-    "Сумма выработки по станциям (до 2018 включительно — без станций ЭСПП, "
+    "Сумма выработки по станциям (до 2018 включительно – без станций ЭСПП, "
     "плюс своды ЭСПП по РЭС)"
 )
 VERIFICATION_TOOLTIP = (
-    "Сумма выработки по станциям (до 2018 включительно — без станций ЭСПП, "
+    "Сумма выработки по станциям (до 2018 включительно – без станций ЭСПП, "
     "плюс свод ЭСПП по РЭС) минус контрольный итог"
 )
 
@@ -405,7 +405,7 @@ def build_generation_aggregates(
 ) -> dict[str, dict]:
     """Суммы выработки ЭЭ по уровням иерархии.
 
-    До ESPP_SVOD_THROUGH_YEAR включительно станции ЭСПП в сумму не входят —
+    До ESPP_SVOD_THROUGH_YEAR включительно станции ЭСПП в сумму не входят –
     вместо них добавляется свод ЭСПП по РЭС (espp_by_res).
     Контрольные значения сводов РЭС отображаются отдельной редактируемой
     строкой «…, всего» по РЭС и в эти агрегаты не входят.
@@ -907,8 +907,8 @@ def build_station_ee_generation_hierarchy(
         hierarchy[est_id][ues_id][res_id][rd_id][eu_id].append(
             {
                 "station_id": station.id,
-                "station_name": station.name or "—",
-                "kto_display": station.kto or "—",
+                "station_name": station.name or "–",
+                "kto_display": station.kto or "–",
                 "station_sign": _resolve_station_sign(station),
                 "station_sign_display": _format_station_sign_display(station.station_sign),
                 "station_type_display_order": station_type_display_order,
@@ -956,7 +956,7 @@ def build_station_ee_generation_hierarchy(
                         eu_list.append(
                             {
                                 "eu_id": eu_id,
-                                "eu_name": eu_names.get(eu_id, f"id={eu_id}") if eu_id else "—",
+                                "eu_name": eu_names.get(eu_id, f"id={eu_id}") if eu_id else "–",
                                 "sign_groups": sign_groups,
                             }
                         )
@@ -1010,17 +1010,17 @@ def _load_stations_for_aggregation(station_ids: list[int]) -> list[Station]:
 
 def format_generation_cell(value, rounding_digits: int, *, show_zero: bool = False) -> str:
     if value is None:
-        return "—"
+        return "–"
     try:
         if Decimal(str(value)) == 0:
-            return "0" if show_zero else "—"
+            return "0" if show_zero else "–"
     except Exception:
         pass
     return format_decimal_for_display(value, digits=rounding_digits)
 
 
 def format_generation_input_value(value, rounding_digits: int) -> str:
-    """Значение для input: пустая строка вместо «—»."""
+    """Значение для input: пустая строка вместо «–»."""
     if value is None:
         return ""
     return format_decimal_for_display(value, digits=rounding_digits)

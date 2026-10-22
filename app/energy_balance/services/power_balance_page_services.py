@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Страницы «Расчет балансов мощности» по макету БМ_ЕЭС.
 
-Формулы строк взяты из БМ_ЕЭС_макет.xlsx. Входные ячейки пока пустые —
+Формулы строк взяты из БМ_ЕЭС_макет.xlsx. Входные ячейки пока пустые –
 данные из других модулей будут сопоставлены строкам по ключу ``key``.
 """
 
@@ -129,7 +129,7 @@ SYNCHRONOUS_ZONES_SLUG = "synchronous-zones"
 SYNCHRONOUS_ZONES_NAME = "Синхронные зоны"
 SHEET_GROUP_ORDER = (GROUP_EES, GROUP_SZ, GROUP_OES)
 ALL_SHEET_GROUP_ORDER = (*SHEET_GROUP_ORDER, GROUP_RES, GROUP_EU)
-# Энергорайоны ТИТЭС Востока (сводка /power_demand/summary/oes/) — порядок кнопок.
+# Энергорайоны ТИТЭС Востока (сводка /power_demand/summary/oes/) – порядок кнопок.
 # Чукотка: два энергорайона вместо одного листа «ЭС Чукотского АО».
 _TITES_EAST_EU_NAME_SPECS: tuple[tuple[str, ...], ...] = (
     ("центральный", "камчат"),
@@ -459,7 +459,7 @@ def _sz_layout_and_slug(
     name_full: str | None = None,
     number: str | None = None,
 ) -> tuple[str, str]:
-    """Макет листа СЗ по наименованию / полному имени / номеру — не только с начала строки."""
+    """Макет листа СЗ по наименованию / полному имени / номеру – не только с начала строки."""
     n = _sz_haystack(name, name_full, number)
     compact = _compact_label(n)
     num = _norm_label(number)
@@ -765,7 +765,7 @@ def _res_ids_for_ues(ues_id: int) -> set[int]:
 
 
 def _tites_east_eu_sheets_for_ues(ues_id: int, parent_slug: str) -> list[dict[str, Any]]:
-    """Листы энергорайонов ТИТЭС Востока: Чукотка — Чаун-Билибинский и Анадырский."""
+    """Листы энергорайонов ТИТЭС Востока: Чукотка – Чаун-Билибинский и Анадырский."""
     from app.common.services.get_services.energy_systems.energy_unit_get_services import (
         get_energy_unit_list_full,
     )
@@ -899,7 +899,7 @@ def _append_station_type_group_rows(
     indent: int = 1,
     parent_sums_children: bool = True,
 ) -> None:
-    """Строки типов станций; «СЭС, ВЭС» — группа с подстроками СЭС и ВЭС."""
+    """Строки типов станций; «СЭС, ВЭС» – группа с подстроками СЭС и ВЭС."""
     key_map = map_key or (lambda key: key)
     for group in type_groups:
         key = key_map(group["key"])
@@ -997,7 +997,7 @@ def _row(
 
 
 def is_power_balance_flow_block_row(row: dict[str, Any]) -> bool:
-    """Строки перетока и дефицита с учётом перетока — скрываются кнопкой «+Перетоки»."""
+    """Строки перетока и дефицита с учётом перетока – скрываются кнопкой «+Перетоки»."""
     if row.get("is_flow_block"):
         return True
     key = str(row.get("key") or "")
@@ -2113,7 +2113,7 @@ def group_power_balance_sheets(
 
 
 def tites_east_hub_redirect_slug(sheet: dict[str, Any] | None) -> str | None:
-    """Первый энергорайон ТИТЭС Востока, если лист самой ТИТЭС — только навигационный хаб."""
+    """Первый энергорайон ТИТЭС Востока, если лист самой ТИТЭС – только навигационный хаб."""
     if not sheet or not sheet.get("skip_table"):
         return None
     child = str(sheet.get("first_child_slug") or "").strip()
@@ -2279,7 +2279,7 @@ def format_power_balance_cell(value: Any, digits: int | None = None) -> str:
 
 
 def _cell_is_effectively_empty(value: Any) -> bool:
-    if value in (None, "", "—", "-", "–"):
+    if value in (None, "", "–", "-", "–"):
         return True
     try:
         return _to_decimal(value) == 0
@@ -2382,7 +2382,7 @@ def _raw_cell(row: dict[str, Any], year: int) -> Decimal:
     if raw is not None:
         return _to_decimal(raw)
     display = (row.get("year_values") or {}).get(year)
-    if display in (None, "", "—"):
+    if display in (None, "", "–"):
         return Decimal("0")
     return _to_decimal(display)
 
@@ -2655,7 +2655,7 @@ def _format_ego_hover_line(
         parts.append(station)
     elif station and not machine:
         parts.append(station)
-    return " — ".join(parts)
+    return " – ".join(parts)
 
 
 def _top_ego_units_by_year(
@@ -2704,7 +2704,7 @@ def _set_ego_hover_tooltip_lines(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Подсказки ячеек: 1-я ЕГО на n1, 1-я и 2-я — на n2."""
+    """Подсказки ячеек: 1-я ЕГО на n1, 1-я и 2-я – на n2."""
     n1["year_cell_tooltip_lines"] = {}
     n2["year_cell_tooltip_lines"] = {}
     for year in years:
@@ -2818,7 +2818,7 @@ def apply_kaliningrad_ego_hover_tooltips(
     station_breakdown: dict[str, dict[str, Any]] | None,
     rounding_digits: int | None = None,
 ) -> None:
-    """Калининград: в подсказках 1-й и 2-й ЕГО — фактические агрегаты по Ррасп."""
+    """Калининград: в подсказках 1-й и 2-й ЕГО – фактические агрегаты по Ррасп."""
     digits = resolve_power_balance_rounding_digits(rounding_digits)
     for slug, payload in tables.items():
         sheet = payload.get("sheet") or {}

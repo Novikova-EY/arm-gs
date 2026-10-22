@@ -112,7 +112,7 @@ def sum_attr_from_records(records: Iterable[Any], attr: str) -> Decimal:
 
 
 def access_ratio_or_zero(numerator: Any, denominator: Any) -> Decimal:
-    """Access IIf(denom>0, num/denom*1000, 0) — EURT / TURT."""
+    """Access IIf(denom>0, num/denom*1000, 0) – EURT / TURT."""
     denom = _to_decimal(denominator)
     if denom <= 0:
         return Decimal("0")

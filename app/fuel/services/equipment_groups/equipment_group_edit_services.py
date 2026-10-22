@@ -3,6 +3,10 @@
 
 from app.generation.models.station.station_model import Station
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.equipment_groups.equipment_group_flags import (
+    EQUIPMENT_GROUP_FLAG_LABELS,
+    equipment_group_flag_label,
+)
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 from app.fuel.models.fue_equipment_group_set_station_model import (
     EquipmentGroupSetStation,
@@ -37,6 +41,7 @@ from sqlalchemy.orm import joinedload
 
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
     EquipmentGroupType,
 )
@@ -84,7 +89,7 @@ def _load_composite_member_groups(group: EquipmentGroup) -> list[dict]:
     effective_vid = _effective_group_database_version_id(group)
     child_q = EquipmentGroup.query.filter(EquipmentGroup.main == parent_numb)
     if effective_vid is not None:
-        # Сначала строки текущей версии; если пусто — legacy NULL (как у связей SetStation).
+        # Сначала строки текущей версии; если пусто – legacy NULL (как у связей SetStation).
         versioned = (
             child_q.filter(EquipmentGroup.database_version_id == effective_vid)
             .order_by(
@@ -168,7 +173,7 @@ def _load_composite_member_groups(group: EquipmentGroup) -> list[dict]:
         result.append(
             {
                 "equipment_group": child,
-                "types_display": ", ".join(type_names) if type_names else "—",
+                "types_display": ", ".join(type_names) if type_names else "–",
                 "machines_count": machine_counts.get(child.id, 0),
             }
         )
@@ -181,7 +186,7 @@ def _display_relevant_set_station_links(set_rows, preferred_version_id):
 
     Для станции берётся связь текущей/эффективной версии, иначе legacy NULL,
     иначе любая. Раньше при наличии хотя бы одной «точной» версии остальные
-    станции (legacy) пропадали с карточки — сохранение numb снимало их с группы.
+    станции (legacy) пропадали с карточки – сохранение numb снимало их с группы.
     """
     by_station: dict[int, object] = {}
     no_station = []
@@ -274,7 +279,7 @@ def get_equipment_group_edit_context(equipment_group_id):
 def _station_id_from_group_set_rows(set_rows, group_version_id) -> int | None:
     """
     Станция(и), с которыми группа связана через EquipmentGroupSet → EquipmentGroupSetStation.
-    При нескольких связях — первая по порядку обхода (для логики сохранения).
+    При нескольких связях – первая по порядку обхода (для логики сохранения).
     """
     ids = _station_ids_from_group_set_rows(set_rows, group_version_id)
     return ids[0] if ids else None
@@ -298,9 +303,9 @@ def _station_bindings_from_set_station_links(links) -> list[dict]:
         if sid is None or sid in by_id:
             continue
         st = getattr(lnk, "station", None)
-        name = "—"
+        name = "–"
         if st is not None:
-            name = ((getattr(st, "name", None) or "—").strip() or "—")
+            name = ((getattr(st, "name", None) or "–").strip() or "–")
         by_id[int(sid)] = {"id": int(sid), "name": name}
     return sorted(
         by_id.values(),
@@ -310,11 +315,11 @@ def _station_bindings_from_set_station_links(links) -> list[dict]:
 
 def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
     # Для групп с legacy NULL database_version_id связи EquipmentGroupSetStation
-    # обычно хранят явную версию — совпадаем с сессией/эффективной версией (как у типов ЕГО).
+    # обычно хранят явную версию – совпадаем с сессией/эффективной версией (как у типов ЕГО).
     effective_vid = _effective_group_database_version_id(group)
     # Справочники для выпадающих списков (external_id -> display_name)
     obl_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in TerritoriesEnergyExternalMapping.query.filter(
@@ -325,7 +330,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     dep_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in DepartmentExternalMapping.query.order_by(
@@ -334,7 +339,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     oes_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, (m.external_nameoes or m.external_name or m.external_id))
             for m in UnionEnergySystemExternalMapping.query.filter(
@@ -345,7 +350,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     er_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in EconomicRegionExternalMapping.query.filter(
@@ -356,7 +361,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     fo_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in FederalDistrictExternalMapping.query.filter(
@@ -369,11 +374,11 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
     # codegor -> CitiesExternalMapping.code (Integer), EquipmentGroup.codegor - string
     cities_list = CitiesExternalMapping.query.order_by(CitiesExternalMapping.name).all()
     codegor_choices = [
-        ("", "—"),
+        ("", "–"),
         *[(str(m.code), (m.name or str(m.code))) for m in cities_list],
     ]
     be_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in BusinessUnitExternalMapping.query.order_by(
@@ -382,7 +387,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     gk_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in GenCompanyExternalMapping.query.filter(
@@ -393,7 +398,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     gkf_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
             (m.external_id, m.external_name or m.external_id)
             for m in GenCompanyBranchExternalMapping.query.filter(
@@ -405,11 +410,11 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
     ]
 
     # Как на странице stations_equipment_groups
-    d_choices = [("", "—"), ("1", "да")]
-    r_choices = [("", "—"), ("1", "да")]
-    forem_choices = [("", "—"), ("1", "да")]
+    d_choices = list(EQUIPMENT_GROUP_FLAG_LABELS["d"].items())
+    r_choices = list(EQUIPMENT_GROUP_FLAG_LABELS["r"].items())
+    forem_choices = [("", "–"), ("1", "да")]
     vedomstvo_choices = [
-        ("", "—"),
+        ("", "–"),
         ("1", "станция отрасли"),
         ("2", "пром. предприятие"),
     ]
@@ -419,19 +424,29 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         RegionalDistrict.query, RegionalDistrict, group_version_id
     )
     regional_district_choices = [
-        ("", "—"),
+        ("", "–"),
         *[(str(r.id), r.name or str(r.id)) for r in rd_query.order_by(RegionalDistrict.name).all()],
     ]
     res_query = filter_by_explicit_db_version(
         RegionalEnergySystem.query, RegionalEnergySystem, group_version_id
     )
     regional_energy_system_choices = [
-        ("", "—"),
+        ("", "–"),
         *[(str(r.id), r.name or str(r.id)) for r in res_query.order_by(RegionalEnergySystem.name).all()],
     ]
-    # Станция для группировки: выпадающий список — все Station текущей версии БД.
-    # Подпись для выбранного id: приоритет — Station.name по связке
-    # EquipmentGroupSet -> EquipmentGroupSetStation -> Station; иначе — из справочника Station.
+    energy_units_query = filter_by_explicit_db_version(
+        EnergyUnit.query, EnergyUnit, group_version_id
+    )
+    energy_units_by_regional_district = {}
+    for unit in energy_units_query.order_by(EnergyUnit.name, EnergyUnit.id).all():
+        district_key = str(unit.id_regional_district)
+        energy_units_by_regional_district.setdefault(district_key, []).append(
+            {"id": unit.id, "name": unit.name}
+        )
+
+    # Станция для группировки: выпадающий список – все Station текущей версии БД.
+    # Подпись для выбранного id: приоритет – Station.name по связке
+    # EquipmentGroupSet -> EquipmentGroupSetStation -> Station; иначе – из справочника Station.
     set_rows = (
         EquipmentGroupSet.query.filter_by(equipment_group_id=group.id)
         .options(
@@ -481,7 +496,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
             _station_ids.add(st_e.id)
     grouping_station_choices = [
         ("", "не указано"),
-        *[(str(s.id), ((s.name or "").strip() or "—")) for s in all_stations],
+        *[(str(s.id), ((s.name or "").strip() or "–")) for s in all_stations],
     ]
 
     # Отображаемые значения для режима чтения (по choices)
@@ -504,13 +519,13 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
             if c == v:
                 return clabel
 
-        # Если метка не найдена — возвращаем исходное значение или "—"
-        return str(val) if val not in (None, "") else "—"
+        # Если метка не найдена – возвращаем исходное значение или "–"
+        return str(val) if val not in (None, "") else "–"
 
     def _label_for_id(choices, val):
         """Для integer FK (regional_district_id, regional_energy_system_id)."""
         if val is None:
-            return "—"
+            return "–"
         return _label_for(choices, str(val))
 
     # Типы групп оборудования (refdata): та же эффективная версия, что и при сохранении
@@ -520,9 +535,9 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         _effective_group_database_version_id(group),
     )
     equipment_group_type_choices = [
-        ("", "—"),
+        ("", "–"),
         *[
-            (str(t.id), ((t.name or str(t.id)).strip() or "—"))
+            (str(t.id), ((t.name or str(t.id)).strip() or "–"))
             for t in eg_type_query.order_by(
                 EquipmentGroupType.display_order.asc().nullslast(),
                 EquipmentGroupType.name,
@@ -563,8 +578,8 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         "be": _label_for(be_choices, group.be),
         "gk": _label_for(gk_choices, group.gk),
         "gkf": _label_for(gkf_choices, group.gkf),
-        "d": _label_for(d_choices, group.d),
-        "r": _label_for(r_choices, group.r),
+        "d": equipment_group_flag_label("d", group.d),
+        "r": equipment_group_flag_label("r", group.r),
         "forem": _label_for(forem_choices, group.forem),
         "vedomstvo": _label_for(vedomstvo_choices, group.vedomstvo),
     }
@@ -623,6 +638,7 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         "grouping_station_choices": grouping_station_choices,
         "regional_district_choices": regional_district_choices,
         "regional_energy_system_choices": regional_energy_system_choices,
+        "energy_units_by_regional_district": energy_units_by_regional_district,
         "obl_choices": obl_choices,
         "dep_choices": dep_choices,
         "oes_choices": oes_choices,
@@ -713,7 +729,7 @@ def _apply_equipment_group_type_change_from_form(
 ) -> str | None:
     """
     Меняет equipment_group_type_id у связей EquipmentGroupSetStation,
-    ведущих к данной equipment group, на new_type_id (None — прочерк / без типа).
+    ведущих к данной equipment group, на new_type_id (None – прочерк / без типа).
     При необходимости переносит EquipmentGroupSet на существующую запись
     (station, type, version) и снимает дубликат.
 
@@ -747,7 +763,7 @@ def _apply_equipment_group_type_change_from_form(
             set_row.equipment_group_set_station_id
         )
         if not old_link:
-            return "Связь станция — тип группы оборудования (EquipmentGroupSetStation) не найдена."
+            return "Связь станция – тип группы оборудования (EquipmentGroupSetStation) не найдена."
         v_id = (
             group_version_id
             if group_version_id is not None
@@ -780,7 +796,7 @@ def _apply_equipment_group_type_change_from_form(
             st_id, type_id, v_id
         )
         if target is None:
-            return "Не удалось создать связь станция — тип группы оборудования."
+            return "Не удалось создать связь станция – тип группы оборудования."
         if target.id == old_link.id:
             if old_link.equipment_group_type_id != type_id:
                 old_link.equipment_group_type_id = type_id
@@ -823,7 +839,7 @@ def _apply_grouping_station_on_type_station_links(
             set_row.equipment_group_set_station_id
         )
         if not old_link:
-            return "Связь станция — тип группы оборудования (EquipmentGroupSetStation) не найдена."
+            return "Связь станция – тип группы оборудования (EquipmentGroupSetStation) не найдена."
         type_id = old_link.equipment_group_type_id
         v_id = version_id if version_id is not None else old_link.database_version_id
         resolved_station_id, resolved_type_id = resolve_station_and_type_for_version(
@@ -850,7 +866,7 @@ def _apply_grouping_station_on_type_station_links(
             new_station_id, type_id, v_id
         )
         if target is None:
-            return "Не удалось создать связь станция — тип группы оборудования."
+            return "Не удалось создать связь станция – тип группы оборудования."
         if target.id == old_link.id:
             continue
 
@@ -875,7 +891,7 @@ def _resolve_grouping_station_id_for_db_version(
 ) -> int | None:
     """
     ID станции для группировки в версии version_id.
-    Якорь — id из формы (обычно текущая версия); в других версиях — по external_code.
+    Якорь – id из формы (обычно текущая версия); в других версиях – по external_code.
   """
     if anchor_station_id is None:
         return None
@@ -1028,7 +1044,7 @@ def sync_equipment_group_grouping_stations(
     """
     Приводит набор станций группы к desired_station_ids: добавляет недостающие
     связи. Снимает только те станции, которые были на карточке (loaded) и
-    пользователь убрал. Станции, которых не было в форме, не трогает —
+    пользователь убрал. Станции, которых не было в форме, не трогает –
     иначе сохранение numb отвязывало ТЭС-3, если её чипа не было на карточке.
     """
     from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
@@ -1096,7 +1112,7 @@ def _bind_equipment_group_grouping_station(
     Привязывает группу к станции Generation: обновляет существующие связи
     EquipmentGroupSet или создаёт новую, если связей ещё нет.
 
-    Для составной станции (ребёнок берёт Station родителя) — замена на одну
+    Для составной станции (ребёнок берёт Station родителя) – замена на одну
     станцию. Для карточки группы используйте sync_equipment_group_grouping_stations.
     """
     has_sets = (
@@ -1137,11 +1153,11 @@ def persist_equipment_group_grouping_station_if_in_form(
     version_id=None,
 ) -> str | None:
     """
-    Если в form_data задан набор станций (grouping_station_ids) — синхронизирует
+    Если в form_data задан набор станций (grouping_station_ids) – синхронизирует
     связи группы со станциями Generation. Устаревший ключ grouping_station_id
     без списка только добавляет станцию, не снимая уже привязанные.
 
-    version_id — версия БД целевой группы (для «сохранить во всех версиях»);
+    version_id – версия БД целевой группы (для «сохранить во всех версиях»);
     станции из формы разрешаются по external_code.
     """
     if not form_data:
@@ -1236,10 +1252,31 @@ def persist_equipment_group_grouping_station_if_in_form(
     return None
 
 
+def resolve_equipment_group_energy_unit(raw_value, regional_district_id, version_id):
+    """Проверяет выбор энергорайона и сопоставляет его с версией группы."""
+    from app.extensions import db
+    from app.common.services.version_entity_resolve_services import (
+        resolve_refdata_fk_id_for_version,
+    )
+
+    if raw_value is None or not str(raw_value).strip():
+        return None, None
+    unit_id = _parse_int_form_id(raw_value)
+    if unit_id is None:
+        return None, "Выберите энергорайон из выпадающего списка."
+    resolved_id = resolve_refdata_fk_id_for_version(EnergyUnit, unit_id, version_id)
+    if resolved_id is None:
+        return None, "Выбранный энергорайон недоступен в версии БД этой группы оборудования."
+    unit = db.session.get(EnergyUnit, resolved_id)
+    if unit.id_regional_district != regional_district_id:
+        return None, "Выбранный энергорайон не относится к субъекту РФ группы оборудования."
+    return resolved_id, None
+
+
 def update_equipment_group_from_form(equipment_group_id, form_data):
     """
     Обновляет EquipmentGroup из данных формы.
-    При совпадении наименования с другой группой — объединяет дубликаты (как на station_details).
+    При совпадении наименования с другой группой – объединяет дубликаты (как на station_details).
     Возвращает
     (success: bool, message: str, change_details: list[(field_label, old_val, new_val)], target_group_id: int|None).
     """
@@ -1268,7 +1305,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
     new_name = (form_data.get("name") or "").strip()
     current_version_id = get_current_db_version_id()
 
-    # Слияние по имени — только при переименовании. Иначе голова составной станции
+    # Слияние по имени – только при переименовании. Иначе голова составной станции
     # с тем же автоименем, что у дочерней группы, съедает ребёнка при смене типа.
     name_changed = bool(new_name) and new_name != old_name_before
     if name_changed:
@@ -1324,21 +1361,6 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
             new_res_id = resolved_res
     else:
         new_res_id = target_group.regional_energy_system_id
-
-    if new_rd_id is not None:
-        rd_obj = filter_by_explicit_db_version(
-            RegionalDistrict.query,
-            RegionalDistrict,
-            group_version_id,
-        ).filter(RegionalDistrict.id == new_rd_id).first()
-        if rd_obj:
-            allowed_res_ids = {
-                res.id
-                for res in (getattr(rd_obj, "regional_energy_systems", None) or [])
-                if res.id is not None
-            }
-            if allowed_res_ids and new_res_id is not None and new_res_id not in allowed_res_ids:
-                new_res_id = sorted(allowed_res_ids)[0]
 
     change_details = []
 
@@ -1408,9 +1430,9 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
         return False, verr, [], None
 
     def _format_fk_for_log(model_class, pk_id, name_attr="name"):
-        """Форматирует FK для лога: название или ID, или —."""
+        """Форматирует FK для лога: название или ID, или –."""
         if pk_id is None:
-            return "—"
+            return "–"
         obj = model_class.query.get(pk_id)
         if obj and hasattr(obj, name_attr):
             return getattr(obj, name_attr) or str(pk_id)
@@ -1473,6 +1495,30 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
                     _format_val_for_log(target_group.obl),
                 ))
 
+    old_unit_id = target_group.energy_unit_id
+    if "energy_unit_id" in form_data:
+        new_unit_id, unit_error = resolve_equipment_group_energy_unit(
+            form_data.get("energy_unit_id"),
+            target_group.regional_district_id,
+            group_version_id,
+        )
+        if unit_error:
+            db.session.rollback()
+            return False, unit_error, [], None
+    else:
+        new_unit_id = old_unit_id
+        if old_unit_id is not None:
+            unit = db.session.get(EnergyUnit, old_unit_id)
+            if unit is None or unit.id_regional_district != target_group.regional_district_id:
+                new_unit_id = None
+    if new_unit_id != old_unit_id:
+        target_group.energy_unit_id = new_unit_id
+        change_details.append((
+            "Энергорайон",
+            _format_fk_for_log(EnergyUnit, old_unit_id),
+            _format_fk_for_log(EnergyUnit, new_unit_id),
+        ))
+
     egt_key = "equipment_group_type_id"
     if egt_key in form_data:
         egt_raw = form_data.get(egt_key)
@@ -1502,7 +1548,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
             old_egt_labels = " / ".join(
                 _format_fk_for_log(EquipmentGroupType, t)
                 for t in sorted(set(old_egt_ids), key=lambda x: (x is None, x))
-            ) or "—"
+            ) or "–"
             change_details.append((
                 "Тип группы оборудования (связь со станцией)",
                 old_egt_labels,

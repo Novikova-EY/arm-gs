@@ -21,14 +21,14 @@
     {{ eg_name_label(group_entity, group_name, _gb) }}
 </td>
 {% endif %}
-<td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if ynum != '' %}{{ ynum }}{% else %}—{% endif %}</td>
+<td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if ynum != '' %}{{ ynum }}{% else %}–{% endif %}</td>
 {% for attr, label, is_numeric in formula_value_columns %}
 <td{% if nust_highlight_row %} class="table-warning{% if attr == 'formtxt' %} fuel-formula-formtxt-cell{% endif %}"{% elif attr == 'formtxt' %} class="fuel-formula-formtxt-cell"{% endif %}>
     {% if attr == 'numb1120' %}
         {# Как на ТЭП: показ numb1120 строки, иначе EquipmentGroup.numb; при сохранении всегда numb группы #}
         {% set v = param|get_attr('numb1120') if param is not none and param else none %}
         {% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}
-        {{ v if v is not none else '—' }}
+        {{ v if v is not none else '–' }}
     {% elif attr == 'formtxt' %}
         {% if can_formtxt_edit %}
             {% set raw_ft = param.formtxt if param and param.formtxt is not none else '' %}
@@ -41,18 +41,18 @@
                    value="{{ raw_ft }}"
                    form="fuelFormulaBulkEditForm">
         {% elif param is none or not param %}
-            —
+            –
         {% else %}
-            <pre class="mb-0 text-start fuel-formula-formtxt-pre">{{ param.formtxt or '—' }}</pre>
+            <pre class="mb-0 text-start fuel-formula-formtxt-pre">{{ param.formtxt or '–' }}</pre>
         {% endif %}
     {% elif param is none or not param %}
-        —
+        –
     {% elif is_numeric %}
         {% set v = param|get_attr(attr) %}
-        {% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}
+        {% if v is none or v == 0 %}–{% else %}{{ v|format_decimal }}{% endif %}
     {% else %}
         {% set v = param|get_attr(attr) %}
-        {{ v if v is not none else '—' }}
+        {{ v if v is not none else '–' }}
     {% endif %}
 </td>
 {% endfor %}

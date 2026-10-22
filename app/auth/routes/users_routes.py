@@ -37,7 +37,7 @@ def list_users():
     """
     GET: вывод страницы.
     POST: массовое сохранение (логины/email + роли) и/или удаление.
-    После POST — редирект на GET с теми же args (PRG).
+    После POST – редирект на GET с теми же args (PRG).
     """
     form = UsersBulkForm()
     # Общие параметры
@@ -148,7 +148,7 @@ def add_user():
     """
     Простая форма создания пользователя.
     Шаблон можно сделать минимальным (username, email, password, роли[]).
-    После успешного создания — редирект на список с сохранением args.
+    После успешного создания – редирект на список с сохранением args.
     """
     # Параметры для возврата на список
     q = (request.values.get("q") or "").strip()
@@ -181,7 +181,7 @@ def add_user():
             db.session.rollback()
             log_to_db(current_user, "Ошибка создания пользователя", str(e))
             flash(str(e), "danger")
-            # падать не будем — снова отрисуем форму
+            # падать не будем – снова отрисуем форму
 
     roles = fetch_roles_all(current_user)
     return render_template(

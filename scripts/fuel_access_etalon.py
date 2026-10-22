@@ -315,7 +315,7 @@ def cmd_list() -> list[dict]:
         "Ручной прогон эталона (если COM недоступен).",
         f"Файл: {ETALON_MDB}",
         "Откройте форму «Расчет». Форму «Анализ_по_областям» не открывать.",
-        "Для каждой строки ниже: Коэфф → Распред → Топливо. MsgBox NR — Нет.",
+        "Для каждой строки ниже: Коэфф → Распред → Топливо. MsgBox NR – Нет.",
         "",
     ]
     for r in rows:
@@ -588,7 +588,7 @@ $db = $dbe.OpenDatabase($path)
 foreach ($name in @("StartupForm", "StartUpForm")) {{
   try {{
     # Не "(none)": Access 2007 ищет форму с таким именем и падает при открытии.
-    # Пустая строка DAO не принимает — ставим форму «Расчет».
+    # Пустая строка DAO не принимает – ставим форму «Расчет».
     $db.Properties($name).Value = [string]([char]0x0420) + [char]0x0430 + [char]0x0441 + [char]0x0447 + [char]0x0435 + [char]0x0442
     Write-Output "updated $name"
   }} catch {{

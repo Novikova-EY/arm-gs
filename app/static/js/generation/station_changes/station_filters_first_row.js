@@ -6,7 +6,7 @@ function initializeStationFilters() {
     window.stationFiltersInitialized = true;
 
     // Важно для production/deb: фильтры должны работать без CDN-зависимостей.
-    // Если jQuery/Select2 есть — проинициализируем, но зависимость не обязательна.
+    // Если jQuery/Select2 есть – проинициализируем, но зависимость не обязательна.
     const hasJQuery = typeof window.$ !== 'undefined';
     const hasSelect2 = hasJQuery && window.$.fn && window.$.fn.select2;
 
@@ -109,7 +109,7 @@ function initializeStationFilters() {
 
             Array.from(selectEl.options).forEach(opt => {
                 const value = (opt.value ?? '').toString();
-                // пустой option используем как placeholder/allowClear — в меню не показываем
+                // пустой option используем как placeholder/allowClear – в меню не показываем
                 if (value === '') return;
 
                 const item = document.createElement('label');
@@ -125,7 +125,7 @@ function initializeStationFilters() {
                 });
                 cb.addEventListener('change', (e) => {
                     e.stopPropagation();
-                    // Пользователь меняет поле вручную — разрешаем автоподстановку снова.
+                    // Пользователь меняет поле вручную – разрешаем автоподстановку снова.
                     delete selectEl.dataset.skipAutoselect;
                     // находим option по value (opt может быть пересоздан при updateSelectOptions)
                     const found = Array.from(selectEl.options).find(o => String(o.value) === value);
@@ -214,7 +214,7 @@ function initializeStationFilters() {
         initializeSelect2IfAvailable('#federal_district', 'Федеральный округ');
         initializeSelect2IfAvailable('#regional_district', 'Субъект РФ');
 
-        // Если Select2 нет — делаем "сворачиваемые" dropdown-поля
+        // Если Select2 нет – делаем "сворачиваемые" dropdown-поля
         if (!hasSelect2) {
             ensureDropdownMultiSelect('#energy_system_type', 'Тип энергосистемы');
             ensureDropdownMultiSelect('#union_energy_system', 'ОЭС');
@@ -325,7 +325,7 @@ function initializeStationFilters() {
         return result.size > 0 ? result : null;
     }
 
-    // Если разрешен ровно один id — возвращаем его, иначе null.
+    // Если разрешен ровно один id – возвращаем его, иначе null.
     // Служебный id=0 ("не указано") автоподставлять не будем.
     function getSingleAllowedId(allowedIds) {
         if (!allowedIds || !(allowedIds instanceof Set)) return null;
@@ -370,7 +370,7 @@ function initializeStationFilters() {
         emptyOpt.value = '';
         frag.appendChild(emptyOpt);
 
-        // UX: "не указано" всегда первым, остальное — в том порядке, как пришло с бэка
+        // UX: "не указано" всегда первым, остальное – в том порядке, как пришло с бэка
         const items = [...(allItems || [])];
         const naItems = [];
         const otherItems = [];
@@ -400,7 +400,7 @@ function initializeStationFilters() {
         el.innerHTML = '';
         el.appendChild(frag);
         setSelectValues(selector, newSelected);
-        // если select "завернут" в dropdown — пересобираем меню
+        // если select "завернут" в dropdown – пересобираем меню
         refreshDropdownMultiSelect(selector);
 
         if (!skipTrigger) {
@@ -476,7 +476,7 @@ function initializeStationFilters() {
     document.getElementById('union_energy_system')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_energy_system')?.addEventListener('change', function() {
         // "Как в Excel": выбранная РЭС однозначно задает ФО, ОЭС и тип энергосистемы.
-        // Если выбрана ровно одна РЭС — синхронизируем связанные поля автоматически.
+        // Если выбрана ровно одна РЭС – синхронизируем связанные поля автоматически.
         if (isUpdating) return;
         const currentRes = getSelectValues('#regional_energy_system');
         if (currentRes.length === 1) {
@@ -538,7 +538,7 @@ function initializeStationFilters() {
     document.getElementById('federal_district')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_district')?.addEventListener('change', () => updateAllFilters());
 
-    // Автоотправка формы при изменении фильтров — таблица обновляется с учетом выбранных фильтров.
+    // Автоотправка формы при изменении фильтров – таблица обновляется с учетом выбранных фильтров.
     const filtersForm = document.querySelector('#filtersCollapse form');
     if (filtersForm) {
         const filterSelectors = [

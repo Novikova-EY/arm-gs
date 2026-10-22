@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница «Импорт/Экспорт ЭЭ» — годовые перетоки ЭЭ с зарубежными странами по ОЭС."""
+"""Страница «Импорт/Экспорт ЭЭ» – годовые перетоки ЭЭ с зарубежными странами по ОЭС."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _country_sort_key(
     country_name: str,
     display_orders: dict[int, int | None],
 ) -> tuple:
-    """Порядок справочника стран, при равных значениях — по наименованию."""
+    """Порядок справочника стран, при равных значениях – по наименованию."""
     return display_order_sort_key(
         display_orders.get(country_id), country_name, country_id
     )
@@ -90,7 +90,7 @@ def get_ee_import_export_page_data(
     names[-1] = "Не указано"
     display_orders = get_union_energy_system_display_order_map()
 
-    # Сложить источники-РЭС в одну пару «ОЭС — страна» до определения направления.
+    # Сложить источники-РЭС в одну пару «ОЭС – страна» до определения направления.
     foreign_countries = transfer_data.get("foreign_border_country_list") or []
     country_names_by_id = {item["id"]: item["name"] for item in foreign_countries}
     country_display_orders_by_id = {

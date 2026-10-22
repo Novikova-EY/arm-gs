@@ -32,7 +32,7 @@ def test_restriction_live_payload_serializes_rows_and_k():
     assert payload["type"] == "pass"
     assert payload["outer"] == 2
     assert payload["rows"][0]["id"] == 11
-    assert payload["rows"][0]["emax"]["text"] == "—"
+    assert payload["rows"][0]["emax"]["text"] == "–"
     assert payload["rows"][0]["kobl"]["raw"] == "0.988"
     assert payload["totals"]["ecur"]["raw"] == "6313.05"
     assert payload["totals"]["etp"]["raw"] == "100"

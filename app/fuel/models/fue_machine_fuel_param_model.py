@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-MachineFuelParam model — привязка топливных данных агрегата к Machine.
+MachineFuelParam model – привязка топливных данных агрегата к Machine.
 Схема gs_fue, связь один-к-одному с машиной (Machine).
 """
 from sqlalchemy import UniqueConstraint

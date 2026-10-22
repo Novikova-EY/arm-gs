@@ -190,7 +190,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Выполнить перенос (без флага — только план).",
+        help="Выполнить перенос (без флага – только план).",
     )
     parser.add_argument(
         "--yes",

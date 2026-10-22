@@ -91,7 +91,7 @@ def test_ez_res_fully_in_zone_ignores_placeholder_outside_district() -> None:
     )
     assert fully is True
 
-    # Тюмень: субъект в другой реальной зоне — частичная.
+    # Тюмень: субъект в другой реальной зоне – частичная.
     zone8 = SimpleNamespace(name="Урал без Тюмени", number="8")
     zone9 = SimpleNamespace(name="Тюменская ЭС", number="9")
     khmao = SimpleNamespace(id=716, energy_zone=zone8)

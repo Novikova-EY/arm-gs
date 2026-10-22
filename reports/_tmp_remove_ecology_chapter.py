@@ -47,7 +47,7 @@ def main() -> None:
         shutil.copy2(DOCX, BACKUP)
         print("backup", BACKUP)
     else:
-        # если уже патчили — работаем от свежего бэкапа
+        # если уже патчили – работаем от свежего бэкапа
         shutil.copy2(BACKUP, DOCX)
         print("restored", BACKUP)
 
@@ -134,7 +134,7 @@ def main() -> None:
     # --- индекс / FR: убрать строки про экологию ---
     for para in list(doc.paragraphs):
         t = (para.text or "").strip()
-        if t.startswith("экология —") or t.startswith("экология -"):
+        if t.startswith("экология –") or t.startswith("экология -"):
             delete_paragraph(para)
             print("removed index ecology")
         elif "FR-024" in t and "Экология" in t:
@@ -150,7 +150,7 @@ def main() -> None:
                 "Экология:" in joined and "ГИС ТЭК" in joined
             ):
                 remove_idxs.append(ri)
-            if "экология — раздел" in joined.lower():
+            if "экология – раздел" in joined.lower():
                 remove_idxs.append(ri)
         for ri in reversed(remove_idxs):
             row = table.rows[ri]
@@ -170,7 +170,7 @@ def main() -> None:
         t = (para.text or "").strip()
         if t.startswith("электроемкость по субъектам"):
             # вставим после этого пункта упоминание экологии как 2 этапа
-            # проще заменить/дописать рядом через новый run в соседнем пустом — skip if complex
+            # проще заменить/дописать рядом через новый run в соседнем пустом – skip if complex
             pass
         if (
             not inserted

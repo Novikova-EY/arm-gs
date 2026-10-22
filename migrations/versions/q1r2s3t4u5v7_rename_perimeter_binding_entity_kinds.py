@@ -3,7 +3,7 @@
 
 - russia → russia_federation
 - energy_system_type + «ЭЭС России» (агрегат, ошибочно заведённый как ЕЭС) → ees_russia
-- energy_system_type + «ЭЭС России» (справочник) — не трогаем
+- energy_system_type + «ЭЭС России» (справочник) – не трогаем
 
 Revision ID: q1r2s3t4u5v7
 Revises: p0q1r2s3t4u6
@@ -22,7 +22,7 @@ TABLE_BINDINGS = "gs_sys_entity_perimeter_bindings"
 
 # Каноническое имя агрегата ЭЭС (электроэнергетические системы России).
 _EES_RUSSIA_AGGREGATE_NAME = "ЭЭС России"
-# Опечатка «ЕЭС» в старых сидах (l6/m7) — те же привязки агрегата, не справочник ЕЭС.
+# Опечатка «ЕЭС» в старых сидах (l6/m7) – те же привязки агрегата, не справочник ЕЭС.
 _LEGACY_EES_AGGREGATE_NAMES = ("ЕЭС России", "ЭЭС России")
 
 

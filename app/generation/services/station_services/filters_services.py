@@ -43,7 +43,7 @@ from app.common.services.get_services.years.years_get_services import (
 def build_machine_note_search_condition(machine_cls, pgu_cls, note_filter_value):
     """
     Примечание агрегата (Machine) или вложенного ПГУ содержит подстроку (без учёта регистра).
-    Не включает примечание самой электростанции — только машины и ПГУ.
+    Не включает примечание самой электростанции – только машины и ПГУ.
     """
     raw = (note_filter_value or "").strip()
     if not raw:
@@ -203,7 +203,7 @@ def _choose_current_version_id(src, current_rows, current_version_id):
     """
     id той же сущности в текущей версии БД.
 
-    Если исходный id уже из текущей версии — его и оставляем: при битых
+    Если исходный id уже из текущей версии – его и оставляем: при битых
     дубликатах ref_uuid (Забайкальский край / Калининградская область)
     словарь last-wins подменял субъект.
     """
@@ -235,7 +235,7 @@ def _choose_current_version_id(src, current_rows, current_version_id):
 
 
 def _expand_identity_ids(src, all_rows):
-    """Все id той же сущности во всех версиях БД (ref_uuid, при коллизии — имя)."""
+    """Все id той же сущности во всех версиях БД (ref_uuid, при коллизии – имя)."""
     matched = []
     if src["ref_uuid"]:
         uuid_hits = [row for row in all_rows if row["ref_uuid"] == src["ref_uuid"]]
@@ -316,7 +316,7 @@ def _resolve_territorial_ids_by_ref_uuid(model_cls, uuid_strings):
         if len(hits) == 1:
             chosen = hits[0]
         elif len(hits) > 1:
-            # Несколько субъектов с одним uuid — не схлопываем в один id.
+            # Несколько субъектов с одним uuid – не схлопываем в один id.
             for hit in hits:
                 cid = hit.id
                 if cid not in seen:
@@ -338,7 +338,7 @@ def _remap_territorial_ids_for_current_version(model_cls, id_list):
     Подменяет id из URL (другой версии БД) на id той же сущности в текущей версии
     через стабильный ref_uuid.
 
-    Если исходный id уже принадлежит текущей версии — оставляем его. Иначе при
+    Если исходный id уже принадлежит текущей версии – оставляем его. Иначе при
     нескольких строках с одним ref_uuid выбираем совпадение по name, чтобы
     Забайкальский край не превращался в Калининградскую область.
     """
@@ -450,7 +450,7 @@ def _remap_versioned_ref_list_filters(filters, args):
 
 
 def _remap_condition_type_filter(filters, args):
-    """Состояние агрегата: одно значение; в URL — condition_type_ref или condition_type_filter."""
+    """Состояние агрегата: одно значение; в URL – condition_type_ref или condition_type_filter."""
     ref_raw = _args_getlist_raw(args, "condition_type_ref")
     if ref_raw:
         ids = _resolve_territorial_ids_by_ref_uuid(ConditionType, ref_raw)
@@ -493,6 +493,8 @@ def extract_filters_from_args(args):
         "note_filter": args.get("note_filter", "").strip(),
         "equipment_group_name_filter": args.get("equipment_group_name_filter", "").strip(),
         "numb1120_filter": _parse_int_list_filter(_args_getlist_raw(args, "numb1120_filter")),
+        "equipment_group_d_filter": _parse_int_list_filter(_args_getlist_raw(args, "equipment_group_d_filter")),
+        "equipment_group_r_filter": _parse_int_list_filter(_args_getlist_raw(args, "equipment_group_r_filter")),
         "station_type_filter": args.getlist("station_type_filter", type=int),
         "station_sign_filter": args.getlist("station_sign_filter"),
         "fuel_type_filter": _fuel_type_filter,
@@ -541,7 +543,7 @@ def _build_year_filter_clause(column_or_pair, values, include_null_cond=None):
     """
     Строит условие фильтра по годам с поддержкой «не указано».
     column_or_pair: одна колонка или or_(col1, col2) для OR по двум полям.
-    values: список [2020, None, 2021] — года и/или None для «не указано».
+    values: список [2020, None, 2021] – года и/или None для «не указано».
     include_null_cond: условие для «не указано» (and_(col1.is_(None), col2.is_(None))).
     """
     years_only = [y for y in values if y is not None]
@@ -688,7 +690,7 @@ def build_date_modernization_no_power_filter(machine_cls, filters):
 
 
 def build_relabing_outcome_filter(machine_cls, filters):
-    """Фильтр «Вид изменений»: значения Machine.relabing_outcome; пустое значение — «не указано»."""
+    """Фильтр «Вид изменений»: значения Machine.relabing_outcome; пустое значение – «не указано»."""
     raw = filters.get("relabing_outcome_filter") or []
     if not raw:
         return None
@@ -710,7 +712,7 @@ def build_relabing_outcome_filter(machine_cls, filters):
 def build_machines_without_equipment_group_filter(machine_cls):
     """Агрегаты без явной топливной группы на карточке в текущей версии БД.
 
-    «Группа оборудования» — MachineFuelParam.equipment_group_id, не тип
+    «Группа оборудования» – MachineFuelParam.equipment_group_id, не тип
     Machine.id_equipment_group. Явная привязка: группа текущей версии,
     связанная с электростанцией агрегата (в том числе общая на две станции).
     """
@@ -774,7 +776,7 @@ def build_machines_without_equipment_group_filter(machine_cls):
 
 
 def build_station_sign_sql_filter(filters):
-    """Фильтр по Station.station_sign; __unspecified__ — пустое значение."""
+    """Фильтр по Station.station_sign; __unspecified__ – пустое значение."""
     raw = filters.get("station_sign_filter") or []
     if not raw:
         return None
@@ -1082,7 +1084,7 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
     ).filter(Machine.id_station.in_(station_ids))
 
-    # Фильтрация по типу ТЭС — по диапазону годов фильтров (ввод/вывод в периоде)
+    # Фильтрация по типу ТЭС – по диапазону годов фильтров (ввод/вывод в периоде)
     if filters.get("tes_type_filter"):
         _sy = int(filters.get("start_year") or get_filter_start_year())
         _ey = int(filters.get("end_year") or get_filter_end_year())
@@ -1292,7 +1294,7 @@ def get_filtered_station_ids(
             union_energy_system_filter = [union_energy_system_filter]
 
         # Как Station.union_energy_system: прямая РЭС, иначе fallback через субъект
-        # (только если РЭС не задана — иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
+        # (только если РЭС не задана – иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
         query = query.filter(
             or_(
                 Station.regional_energy_system_obj.has(
@@ -1403,7 +1405,7 @@ def get_stations_all(
             union_energy_system_filter = [union_energy_system_filter]
 
         # Как Station.union_energy_system: прямая РЭС, иначе fallback через субъект
-        # (только если РЭС не задана — иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
+        # (только если РЭС не задана – иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
         query = query.filter(
             or_(
                 Station.regional_energy_system_obj.has(
@@ -1485,6 +1487,8 @@ def has_any_filters(args):
         args.get('note_filter'),
         args.get('equipment_group_name_filter'),
         args.getlist('numb1120_filter'),
+        args.getlist('equipment_group_d_filter'),
+        args.getlist('equipment_group_r_filter'),
         # Фильтры по типам
         args.getlist('station_type_filter'),
         args.getlist('station_sign_filter'),

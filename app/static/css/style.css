@@ -2,6 +2,26 @@ body {
     font-family: 'Roboto', sans-serif !important;
 }
 
+/* Shared theme for Bootstrap hints, including page-specific formula tooltips. */
+body .tooltip {
+    --bs-tooltip-bg: #fff;
+    --bs-tooltip-color: #212529;
+    --bs-tooltip-opacity: 1;
+    --bs-tooltip-font-size: 1.125rem;
+    --bs-tooltip-max-width: min(28rem, calc(100vw - 2rem));
+    --bs-tooltip-padding-x: 0.875rem;
+    --bs-tooltip-padding-y: 0.625rem;
+}
+
+body .tooltip .tooltip-inner {
+    font-size: var(--bs-tooltip-font-size) !important;
+    line-height: 1.45;
+    text-align: left;
+    overflow-wrap: anywhere;
+    border: 1px solid #ced4da;
+    box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 15%);
+}
+
 /* Единый адаптивный размер заголовков страниц во всех разделах АРМ,
    как у заголовка сводки нагрузок (Bootstrap h1). */
 body h1 {
@@ -91,7 +111,7 @@ html.has-page-table-scroll {
 /* Единая логика для страниц с таблицами:
    скроллим весь контент страницы, а шапка таблицы остается sticky */
 .page-table-scroll {
-    /* Высота: от фактической позиции wrapper (задаётся JS), fallback — topbar + отступ */
+    /* Высота: от фактической позиции wrapper (задаётся JS), fallback – topbar + отступ */
     max-height: calc(100vh - var(--page-table-scroll-top, var(--app-topbar-height, 0px)) - var(--page-table-scroll-bottom-gap, 8px));
     overflow-y: auto;
     /* На Windows при "always show scrollbars" любой overflow-x:auto рисует полосу даже без переполнения.
@@ -116,7 +136,7 @@ html.has-page-table-scroll {
 }
 
 /* Горизонтальный скролл только у сводной таблицы: панель над шапкой не уезжает вбок.
-   Вертикальная прокрутка остаётся на .page-table-scroll; липкая шапка — top от wrapper, left — от host. */
+   Вертикальная прокрутка остаётся на .page-table-scroll; липкая шапка – top от wrapper, left – от host. */
 .page-table-scroll:has(.pd-summary-table-x-scroll-host) {
     overflow-x: hidden !important;
 }
@@ -282,7 +302,7 @@ tfoot {
     top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px)));
 }
 
-/* Коэффициенты: шапка липнет к верху scroll-host (панель фильтров — снаружи) */
+/* Коэффициенты: шапка липнет к верху scroll-host (панель фильтров – снаружи) */
 .page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(1) th {
     top: var(--sticky-thead-row1-top, 0px);
 }
@@ -319,7 +339,7 @@ tfoot {
     white-space: nowrap;
 }
 
-/* Изменения установленной мощности: годы и «Итого» — без переноса значения в ячейке */
+/* Изменения установленной мощности: годы и «Итого» – без переноса значения в ячейке */
 #stationChangesTableContainer td.power-column {
     white-space: nowrap;
 }

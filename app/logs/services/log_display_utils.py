@@ -84,9 +84,9 @@ def format_logs_for_display(logs):
                 "action_lower": (log.action or "").lower(),
                 "details": details_clean,
                 "details_lower": details_clean.lower(),
-                "database_version": versions_map.get(log.database_version_id, "—")
+                "database_version": versions_map.get(log.database_version_id, "–")
                 if log.database_version_id
-                else "—",
+                else "–",
             }
         )
     return formatted_logs

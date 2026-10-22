@@ -32,7 +32,7 @@ def machine_not_archived_clause():
 
 
 def partition_machines_archived_last(machines: Iterable[Any]) -> list[Any]:
-    """Активные агрегаты сначала, архивные — в конце списка (порядок внутри групп сохраняется)."""
+    """Активные агрегаты сначала, архивные – в конце списка (порядок внутри групп сохраняется)."""
     active: list[Any] = []
     archived: list[Any] = []
     for machine in machines or []:

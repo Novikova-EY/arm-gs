@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupSpecificFuelCost model — стоимость для групп оборудования.
+EquipmentGroupSpecificFuelCost model – стоимость для групп оборудования.
 Поля из Excel: NAME, YEAR, GAZ, gaz_prir, gazpp, MAZUT, disel, maztop и т.д.
 """
 from sqlalchemy import UniqueConstraint

@@ -286,7 +286,7 @@
         max-width: var(--pd-summary-entity-col-w);
         box-sizing: border-box;
     }
-    /* Горизонтальный скролл — только здесь (см. style.css .has-x-scroll); панель над шапкой не скроллится */
+    /* Горизонтальный скролл – только здесь (см. style.css .has-x-scroll); панель над шапкой не скроллится */
     .pd-coeff-summary-scroll-wrap {
         width: 100%;
         max-width: 100%;
@@ -314,8 +314,8 @@
     }
     /*
      * Шапка: липкие «Энергосистема»/«Наименование» выше period/year th.
-     * Важно: не ставить transform на thead th — ломает порядок отрисовки sticky.
-     * Специфичность с tr:nth-child — чтобы перебить style.css (z-index 50/49).
+     * Важно: не ставить transform на thead th – ломает порядок отрисовки sticky.
+     * Специфичность с tr:nth-child – чтобы перебить style.css (z-index 50/49).
      * Подписи без rowspan + пустые cont-ячейки во 2-й строке (иначе Chrome рисует period поверх).
      * z-index ≤ 1051: ниже .pd-ec-summary-sticky-stack (1052) и Select2/фильтров (1054),
      * иначе при раскрытии «Фильтры» шапка таблицы наезжает на панель (как на /coeff/federal_districts/).
@@ -350,7 +350,7 @@
         padding-bottom: 0 !important;
         overflow: hidden;
         background-color: #d1e7dd !important;
-        /* Не схлопывать sticky-box (line-height:0 + overflow:hidden) — иначе тело просвечивает во 2-й строке. */
+        /* Не схлопывать sticky-box (line-height:0 + overflow:hidden) – иначе тело просвечивает во 2-й строке. */
         vertical-align: top;
         font-size: 0;
         line-height: normal;
@@ -481,7 +481,7 @@
         /* separate: иначе sticky-столбцы в collapse плохо перекрывают ячейки справа (Chrome). */
         border-collapse: separate;
         border-spacing: 0;
-        /* auto — столбцы годов по содержимому; min-width — горизонтальный скролл при широкой таблице */
+        /* auto – столбцы годов по содержимому; min-width – горизонтальный скролл при широкой таблице */
         table-layout: auto;
         width: max-content;
         min-width: 100%;
@@ -495,7 +495,7 @@
         border-top-width: var(--bs-border-width);
         border-bottom-width: var(--bs-border-width);
     }
-    /* Внутри блока сущности — без горизонтальных линий (только стык блоков). */
+    /* Внутри блока сущности – без горизонтальных линий (только стык блоков). */
     #powerDemandSummaryTable.power-demand-summary-table > tbody > tr > td {
         border-top-width: 0 !important;
         border-bottom-width: 0 !important;
@@ -719,7 +719,7 @@
         flex: 0 1 auto;
         align-self: center;
     }
-    /* Как #fuelParamsTable: поле на всю ячейку; k — в отдельной строке таблицы */
+    /* Как #fuelParamsTable: поле на всю ячейку; k – в отдельной строке таблицы */
     #powerDemandSummaryTable.fuel-params-edit-table tbody td.pd-summary-control-cell {
         padding: 0 !important;
         vertical-align: middle;

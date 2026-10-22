@@ -12,7 +12,7 @@ def _c(**kwargs):
 
 
 def test_hb_above_7000_still_caps_at_7000():
-    """СЗ ТЭЦ: Hбаз=7186, формула гонит выше — Access Else ставит 7000, не оставляет 7186."""
+    """СЗ ТЭЦ: Hбаз=7186, формула гонит выше – Access Else ставит 7000, не оставляет 7186."""
     hb = Decimal("7186.09")
     hours = hb * Decimal("1.03")
     assert hours > hb

@@ -106,7 +106,7 @@ def get_fuel_restrictions_list(
     """
     Список ограничений. Сортировка как в Access Form_Open: OrderBy = \"obl\".
 
-    - year_number / year_numbers: фильтр по полю year (год расчёта); None — все.
+    - year_number / year_numbers: фильтр по полю year (год расчёта); None – все.
     - oes_codes / union_energy_system_ids: фильтр по ОЭС (код Access или id справочника).
     - obl_codes / regional_energy_system_ids: фильтр по РЭС (код Access или id справочника).
     """
@@ -130,7 +130,7 @@ def get_fuel_restrictions_list(
         )
     oes_vals = _codes_from_values(resolved_oes)
     if union_energy_system_ids and not oes_vals:
-        # Выбраны ОЭС без маппинга — пустая выборка, а не «все».
+        # Выбраны ОЭС без маппинга – пустая выборка, а не «все».
         q = q.filter(FuelRestriction.id == -1)
     elif oes_vals:
         q = q.filter(FuelRestriction.oes.in_(oes_vals))

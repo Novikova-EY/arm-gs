@@ -135,7 +135,7 @@ def update_condition_type_service(data: list[dict], user: str):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "condition_type"))
                 obj.name = name
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 

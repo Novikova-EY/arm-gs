@@ -131,7 +131,7 @@ def test_totals_rows_nest_res_inside_ues():
     assert visible[0]["level"] == "est"
     assert visible[1]["level"] == "ues"
     assert visible[2]["level"] == "res"
-    assert visible[2]["cells"][0] != "—"
+    assert visible[2]["cells"][0] != "–"
 
 
 def test_totals_rows_insert_sync_areas_between_ees_and_oes():

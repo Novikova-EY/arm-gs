@@ -3,7 +3,7 @@
 Контроль составных станций на этапах Коэфф / Распред / Топливо.
 
 Типичный промах: родитель в фильтре (ved>0) без E, а энергия посчитана
-на дочерней группе с ved=0 — ребёнок не входит в (ved>0), ΣE дырявая.
+на дочерней группе с ved=0 – ребёнок не входит в (ved>0), ΣE дырявая.
 """
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def _child_payload(equipment_group: Any, param: Any | None) -> dict:
 
 
 def oes_code_from_groups(groups: Sequence[Any]) -> int | None:
-    """Единственный oes среди групп; None — пусто или несколько ОЭС."""
+    """Единственный oes среди групп; None – пусто или несколько ОЭС."""
     codes: set[int] = set()
     for group in groups:
         code = _as_int(getattr(group, "oes", None))
@@ -101,9 +101,9 @@ def classify_composite_cluster_energy_level(
     children: Sequence[tuple[Any, Any | None]],
 ) -> dict | None:
     """
-    Промах уровня учёта за один год. None — кластер согласован с фильтром ved>0.
+    Промах уровня учёта за один год. None – кластер согласован с фильтром ved>0.
 
-    parent_param — FuelParam расчётного года. Участие смотрим по ved этой строки,
+    parent_param – FuelParam расчётного года. Участие смотрим по ved этой строки,
     не по попаданию в фильтр из‑за базового года.
     """
     if parent_group is None or not is_composite_parent_group(parent_group):
@@ -136,7 +136,7 @@ def classify_composite_cluster_energy_level(
             "children": [_child_payload(g, p) for g, p in active_children],
             "child_e_sum": child_e_sum,
             "message": (
-                "Родитель и дочерние группы одновременно с ved>0 — риск двойного счёта. "
+                "Родитель и дочерние группы одновременно с ved>0 – риск двойного счёта. "
                 "У родителя составной станции должен быть ved=0."
             ),
         }
@@ -153,7 +153,7 @@ def classify_composite_cluster_energy_level(
             "children": [_child_payload(g, p) for g, p in inactive_with_energy],
             "child_e_sum": child_e_sum,
             "message": (
-                "Родитель в фильтре (ved>0) без E, энергия на дочерней группе с ved=0 — "
+                "Родитель в фильтре (ved>0) без E, энергия на дочерней группе с ved=0 – "
                 "в сумму Распреда не входит."
             ),
         }
@@ -213,7 +213,7 @@ def _parents_participating_in_year(
     Родители составных станций с ved>0 за год на любой строке FuelParam.
 
     Не фильтруем FuelParam.database_version_id: строка года часто остаётся
-    с vid другой версии, хотя EquipmentGroup уже в текущей — иначе Распред
+    с vid другой версии, хотя EquipmentGroup уже в текущей – иначе Распред
     молча выкидывает станцию из (ved>0).
 
     oes_code ограничивает поиск той же ОЭС, что и текущий расчёт: иначе
@@ -260,7 +260,7 @@ def find_composite_energy_level_issues(
     """
     Составные родители, у которых энергия на «не том» уровне за год.
 
-    Смотрим группы фильтра Распреда и родителей той же ОЭС с ved>0 за год —
+    Смотрим группы фильтра Распреда и родителей той же ОЭС с ved>0 за год –
     даже если они не попали в отбор из‑за database_version_id на строке топлива.
     Родителей чужой ОЭС не трогаем (Липецк не должен всплывать на Средней Волге).
     """
@@ -341,7 +341,7 @@ def find_composite_energy_level_issues(
         if not issue["in_filter"] and issue["kind"] == KIND_ENERGY_ON_INACTIVE_CHILD:
             issue["message"] = (
                 "Родитель с ved>0 без E не попал в отбор Распреда, энергия на "
-                "дочерней группе с ved=0 — в сумму не входит."
+                "дочерней группе с ved=0 – в сумму не входит."
             )
         issues.append(issue)
 

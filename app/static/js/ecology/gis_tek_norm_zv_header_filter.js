@@ -1,7 +1,7 @@
 /**
  * Выбор слагаемых столбца «Нормируемые ЗВ» в шапке таблицы ГИС ТЭК.
  * Выпадающий список без Select2 (как фильтр по numb1120): кнопка, чекбоксы, «По умолчанию» / «Ок».
- * Применение — переход по ссылке с параметром norm_zv: суммы считает сервер.
+ * Применение – переход по ссылке с параметром norm_zv: суммы считает сервер.
  */
 (function () {
     "use strict";
@@ -110,7 +110,7 @@
         return parseList(selectEl.getAttribute("data-default")).sort();
     }
 
-    /** Набор, который сейчас показан в столбце: из ссылки, иначе — по умолчанию. */
+    /** Набор, который сейчас показан в столбце: из ссылки, иначе – по умолчанию. */
     function appliedValues(selectEl) {
         return hasUrlParam() ? urlValues() : defaultValues(selectEl);
     }
@@ -144,7 +144,7 @@
                 url.searchParams.append(PARAM, value);
             });
         } else {
-            // Пустое значение — сознательно очищенный выбор: в столбце прочерки.
+            // Пустое значение – сознательно очищенный выбор: в столбце прочерки.
             url.searchParams.set(PARAM, "");
         }
         var overlay = document.getElementById("loading-overlay");
@@ -239,7 +239,7 @@
                 .map(optionLabel);
         }
 
-        /** Подпись кнопки в шапке — по уже применённому набору (его и считает сервер). */
+        /** Подпись кнопки в шапке – по уже применённому набору (его и считает сервер). */
         function updateButton() {
             var labels = labelsFor(appliedValues(selectEl));
             btn.textContent = "";
@@ -256,13 +256,13 @@
                 : "Сумма не считается: не выбран ни один показатель";
         }
 
-        /** Подсказка и кнопка «Ок» — по отмеченным сейчас галочкам. */
+        /** Подсказка и кнопка «Ок» – по отмеченным сейчас галочкам. */
         function updateHint() {
             var checked = checkedValues(selectEl);
             var total = selectableOptions().length;
             hintCount.textContent = checked.length
-                ? "Отмечено " + checked.length + " из " + total + " — нажмите «Ок»"
-                : "Ничего не отмечено — сумма не считается";
+                ? "Отмечено " + checked.length + " из " + total + " – нажмите «Ок»"
+                : "Ничего не отмечено – сумма не считается";
             var dirty = !sameValues(checked, appliedValues(selectEl));
             // Подпись всегда «Ок»; не применённые галочки выделяются цветом кнопки.
             okBtn.textContent = "Ок";
@@ -297,7 +297,7 @@
             });
         }
 
-        /** Галочки списка при загрузке страницы — по набору из ссылки (или по умолчанию). */
+        /** Галочки списка при загрузке страницы – по набору из ссылки (или по умолчанию). */
         function syncFromApplied() {
             var applied = appliedValues(selectEl);
             Array.prototype.forEach.call(selectEl.options, function (opt) {

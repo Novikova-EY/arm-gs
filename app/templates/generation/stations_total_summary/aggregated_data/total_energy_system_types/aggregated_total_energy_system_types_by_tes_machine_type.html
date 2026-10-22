@@ -16,7 +16,7 @@
                     <td class="power-column" style="font-weight: bold;">
                         {% set p_ust_value = total_energy_system_types_by_tes_machine_types_yearly_p_ust.get(tes_type_id, {}).get(tm_id, {}).get(y, 0) %}
                         {% if p_ust_value is none or p_ust_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_ust_value | format_decimal }}
                         {% endif %}
@@ -31,7 +31,7 @@
                     <td class="power-column" style="font-weight: bold;">
                         {% set p_ogr_value = total_energy_system_types_by_tes_machine_types_yearly_p_ogr.get(tes_type_id, {}).get(tm_id, {}).get(y, 0) %}
                         {% if p_ogr_value is none or p_ogr_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_ogr_value | format_decimal }}
                         {% endif %}
@@ -46,7 +46,7 @@
                     <td class="power-column" style="font-weight: bold;">
                         {% set p_rasp_value = total_energy_system_types_by_tes_machine_types_yearly_p_rasp.get(tes_type_id, {}).get(tm_id, {}).get(y, 0) %}
                         {% if p_rasp_value is none or p_rasp_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_rasp_value | format_decimal }}
                         {% endif %}
@@ -54,7 +54,7 @@
                 {% endfor %}
             </tr>
 
-            {# Разбивка по топливу под типами агрегатов (ПСУ, ПГУ, ГТУ, ГПА) — для всех типов ТЭС #}
+            {# Разбивка по топливу под типами агрегатов (ПСУ, ПГУ, ГТУ, ГПА) – для всех типов ТЭС #}
             {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_machine_type_with_fuel.html' %}
 
         {% endif %}

@@ -57,7 +57,7 @@ def parse_rounding_digits() -> int:
 
 
 def parse_ei_export_years_list(full_years: list[int]) -> list[int] | None:
-    """GET export_years=2015,2016,... — подмножество full_years, порядок как в запросе."""
+    """GET export_years=2015,2016,... – подмножество full_years, порядок как в запросе."""
     raw = request.args.get("export_years")
     if raw is None or str(raw).strip() == "":
         return None

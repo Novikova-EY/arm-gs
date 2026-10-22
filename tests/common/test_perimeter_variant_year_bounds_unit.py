@@ -39,7 +39,7 @@ def test_mask_power_demand_summary_hides_years_before_with_nt_from_year() -> Non
     mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
     row = rows[0]
     assert row["perimeter_variant_from_year"] == 2023
-    assert row["year_values"] == ["—", "200", "300"]
+    assert row["year_values"] == ["–", "200", "300"]
     assert row["year_row_ids"] == [None, 2, 3]
 
 
@@ -121,7 +121,7 @@ def test_mask_power_demand_kaliningrad_sa_null_variant_from_2025() -> None:
     mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
     row = rows[0]
     assert row["perimeter_variant_from_year"] == 2025
-    assert row["year_values"] == ["—", "200", "300"]
+    assert row["year_values"] == ["–", "200", "300"]
     assert row["year_row_ids"] == [None, 2, 3]
 
 
@@ -148,7 +148,7 @@ def test_mask_power_demand_summary_keeps_2025_for_first_sa_with_kaliningrad() ->
     assert with_kal["year_values"] == ["100", "200", "300"]
     assert with_kal["year_row_ids"] == [1, 2, 3]
     assert without_kal["perimeter_variant_from_year"] == 2025
-    assert without_kal["year_values"] == ["—", "20", "30"]
+    assert without_kal["year_values"] == ["–", "20", "30"]
     assert without_kal["year_row_ids"] == [None, 5, 6]
 
 

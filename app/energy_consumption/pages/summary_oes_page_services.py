@@ -77,7 +77,7 @@ def build_summary_oes_page_context(
         context["coeff_base_year"] = coeff_base_year
         context["summary_include_medium_years"] = include_medium_years
         return context
-    # Значения ЦЗ/ЕЭС в режиме «Сводная таблица» — как на /summary_table/.
+    # Значения ЦЗ/ЕЭС в режиме «Сводная таблица» – как на /summary_table/.
     context["skip_oes_ees_unified_consumption_formula"] = True
     context = apply_max_summary_page_variant_behaviour(context)
     context["page_title"] = "Потребление ЭЭ по энергосистемам"

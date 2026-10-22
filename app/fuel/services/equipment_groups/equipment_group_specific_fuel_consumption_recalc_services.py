@@ -59,9 +59,9 @@ def recalculate_all_specific_fuel_consumption_calc(
     :param equipment_group_id: если задан, ограничить группу оборудования
         (year не должен быть задан; можно задать start_year/end_year)
     :param equipment_group_ids: несколько групп (объединяется с equipment_group_id)
-    :param start_year, end_year: вместе с equipment_group_id — диапазон лет
+    :param start_year, end_year: вместе с equipment_group_id – диапазон лет
     :param commit: False при вызове из orchestrator до общего commit
-    :param all_versions: если True — пересчёт по всем версиям БД (без фильтра
+    :param all_versions: если True – пересчёт по всем версиям БД (без фильтра
         текущей версии); иначе только текущая активная версия
     :return: количество созданных/обновленных записей
     """
@@ -117,7 +117,7 @@ def recalculate_all_specific_fuel_consumption_calc(
     if not params:
         return 0
 
-    # UQ: (equipment_group_id, year_number) — без database_version_id
+    # UQ: (equipment_group_id, year_number) – без database_version_id
     by_key = defaultdict(list)
     for p in params:
         key = (p.equipment_group_id, p.year_number)
@@ -139,7 +139,7 @@ def recalculate_all_specific_fuel_consumption_calc(
     with db.session.no_autoflush:
         for (eg_id, year_number), param_list in by_key.items():
             param = param_list[0]
-            # В режиме текущей версии пишем штамп активной версии; иначе — из param.
+            # В режиме текущей версии пишем штамп активной версии; иначе – из param.
             version_id = (
                 current_version_id
                 if not all_versions

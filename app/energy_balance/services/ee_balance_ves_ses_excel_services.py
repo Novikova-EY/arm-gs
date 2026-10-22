@@ -60,7 +60,7 @@ def _metric_values(row: dict[str, Any], metric: str, years: list[int]) -> list[A
         "chiim": "chiim_display",
     }[metric]
     values = row.get(display_key) or {}
-    return [values.get(year) or "—" for year in years]
+    return [values.get(year) or "–" for year in years]
 
 
 OWNER_TITLE = "Выработка электроэнергии электростанцией (от собственника), млн кВтч"
@@ -146,24 +146,24 @@ def export_ves_ses_to_excel(**context_kwargs: Any) -> BytesIO:
                 ws,
                 excel_row,
                 col,
-                source.get("exploitation_date_expected") or "—",
+                source.get("exploitation_date_expected") or "–",
                 fill=fill,
                 bold=bold,
             )
             col += 1
-            _cell(ws, excel_row, col, source.get("min_display") or "—", fill=fill, bold=bold)
+            _cell(ws, excel_row, col, source.get("min_display") or "–", fill=fill, bold=bold)
             col += 1
             owner = source.get("owner_display") or {}
             for year in owner_years:
-                _cell(ws, excel_row, col, owner.get(year) or "—", fill=fill, bold=bold)
+                _cell(ws, excel_row, col, owner.get(year) or "–", fill=fill, bold=bold)
                 col += 1
         else:
-            _cell(ws, excel_row, col, "—", fill=fill, bold=bold)
+            _cell(ws, excel_row, col, "–", fill=fill, bold=bold)
             col += 1
-            _cell(ws, excel_row, col, "—", fill=fill, bold=bold)
+            _cell(ws, excel_row, col, "–", fill=fill, bold=bold)
             col += 1
             for _year in owner_years:
-                _cell(ws, excel_row, col, "—", fill=fill, bold=bold)
+                _cell(ws, excel_row, col, "–", fill=fill, bold=bold)
                 col += 1
         excel_row += 1
 

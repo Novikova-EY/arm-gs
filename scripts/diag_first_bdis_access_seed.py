@@ -158,8 +158,8 @@ def _print_ecur(label, ecur, access_obl):
         d_acc = arm - acc_e
         d_emin = (arm - emin) if emin is not None else None
         tsv = access_obl.get(obl, Decimal(0))
-        emin_s = f"{emin:.0f}" if emin is not None else "—"
-        d_emin_s = f"{d_emin:+.4f}" if d_emin is not None else "—"
+        emin_s = f"{emin:.0f}" if emin is not None else "–"
+        d_emin_s = f"{d_emin:+.4f}" if d_emin is not None else "–"
         print(
             f"{obl:4d} {name:<14} {arm:16.6f} {acc_e:16.6f} {d_acc:+12.4f} "
             f"{emin_s:>8} {d_emin_s:>10} {tsv:14.4f}"

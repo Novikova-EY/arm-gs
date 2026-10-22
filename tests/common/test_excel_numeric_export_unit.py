@@ -22,7 +22,7 @@ def test_excel_number_format_matches_ee_pattern():
 
 def test_parse_excel_numeric_accepts_display_strings():
     assert parse_excel_numeric("1 796,65") == 1796.65
-    assert parse_excel_numeric("—") is None
+    assert parse_excel_numeric("–") is None
     assert parse_excel_numeric(12.3456) == 12.3456
 
 
@@ -87,7 +87,7 @@ def test_pd_summary_excel_writes_full_precision_float_with_number_format():
                 "entity_label": "ОЭС Центра",
                 "parameter_key": "max_power",
                 "parameter_label": "Максимум потребления, МВт",
-                "hist_value": "—",
+                "hist_value": "–",
                 "hist_numeric_tooltip": "",
                 "year_values": ["1 234,6"],
                 "year_numeric_tooltips": ["1 234,56789"],
@@ -116,7 +116,7 @@ def test_pd_summary_excel_integer_rounding_format():
                 "entity_label": "ОЭС Центра",
                 "parameter_key": "max_power",
                 "parameter_label": "Максимум потребления, МВт",
-                "hist_value": "—",
+                "hist_value": "–",
                 "year_values": ["100"],
                 "year_numeric_tooltips": ["100,4"],
             }

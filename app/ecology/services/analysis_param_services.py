@@ -8,6 +8,13 @@ from typing import Any
 from app.ecology.services.ecology_decimal_helpers import (
     decimal_from_loose_text as _as_decimal,
 )
+from app.ecology.services.ecology_logging_services import (
+    analysis_field_label,
+    change_lines,
+    comparison_sheet_title,
+    context_lines,
+    log_changes,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -133,9 +140,21 @@ def upsert_param_values(
             **values_payload(report_q.first(), fields),
         )
         db.session.add(row)
+    edited: list[tuple[str, Any, Any]] = []
     for field, raw in values.items():
         if field not in fields:
             continue
-        setattr(row, field, _as_decimal(raw))
+        previous_value = getattr(row, field, None)
+        new_value = _as_decimal(raw)
+        setattr(row, field, new_value)
+        edited.append((analysis_field_label(field), previous_value, new_value))
     db.session.commit()
+    log_changes(
+        f"Анализ {label}, {comparison_sheet_title(slug)}",
+        change_lines(edited),
+        context=context_lines(
+            ("год", int(year_number)),
+            ("группа оборудования (numb1120)", int(station_numb)),
+        ),
+    )
     return row

@@ -801,7 +801,7 @@
                             </td>
 
                             <!-- Строки таблицы. Столбец "Код" -->
-                            <td class="text-center align-middle"> {{ fuel.kod if fuel.kod is not none else '—' }} </td>
+                            <td class="text-center align-middle"> {{ fuel.kod if fuel.kod is not none else '–' }} </td>
 
                             <!-- Строки таблицы. Столбец "Вид топлива" -->
                             <td> {{ fuel.name }} </td>
@@ -810,7 +810,7 @@
                             <td class="text-center align-middle"> {{ fuel.fuel_type.name }} </td>
 
                             <!-- Строки таблицы. Столбец "Родительский вид" -->
-                            <td class="text-center align-middle"> {{ fuel.parent.name if fuel.parent else '—' }} </td>
+                            <td class="text-center align-middle"> {{ fuel.parent.name if fuel.parent else '–' }} </td>
 
                             <!-- Строки таблицы. Столбец "Короткое наименование" -->
                             <td> {{ fuel.nazvl or '' }} </td>

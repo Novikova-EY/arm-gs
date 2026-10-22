@@ -24,14 +24,12 @@ def test_default_slugs_exist():
     assert get_territory(DEFAULT_TERRITORY_SLUG) is not None
     assert get_calc_sheet(DEFAULT_SHEET_SLUG) is not None
     assert get_calc_sheet("toplivo")["sheet_name"] == "Данные по модулю Топливо"
-    assert get_calc_sheet("toplivo")["page_title"] == "Топливные показатели (модуль Топливо)"
+    assert get_calc_sheet("toplivo")["page_title"] == "Количество сжигаемого топлива по действующим тепловым электростанциям, тыс.т у.т./год"
     assert get_calc_sheet("toplivo")["layout"] == "fuel"
     assert get_calc_sheet("zola")["layout"] == "emission"
     assert get_calc_sheet("khar-topl")["layout"] == "chars"
     assert get_calc_sheet("khar-topl")["sheet_name"] == "Характеристики"
     assert get_calc_sheet("khar-topl")["page_title"].startswith("Характеристика топлив")
-    assert get_calc_sheet("spravochnik")["layout"] == "spravochnik"
-    assert get_calc_sheet("spravochnik")["sheet_name"] == "Справочник"
     assert get_calc_sheet("koeff")["sheet_name"] == "Коэффициенты"
 
 
@@ -39,7 +37,6 @@ def test_excel_sheets_are_tabs():
     slugs = [item["slug"] for item in CALC_SHEETS]
     assert slugs == [
         "toplivo",
-        "spravochnik",
         "khar-topl",
         "koeff",
         "zola",
@@ -49,20 +46,17 @@ def test_excel_sheets_are_tabs():
         "pg",
         "pg-tj",
         "obemy",
-        "udel-e",
-        "udel-fuel",
-        "udel-ee",
     ]
 
 
-def test_territory_tabs_follow_excel_column_order():
+def test_territory_tabs_keep_default_order_without_reference_entries():
     from app.ecology.services.operating_tes_constants import TERRITORIES
 
     sheets = group_territories()[0]["sheets"]
     slugs = [item["slug"] for item in sheets]
     assert slugs == [item["slug"] for item in TERRITORIES]
     assert slugs[0:3] == ["vsego", "minen", "prompred"]
-    assert slugs[-1] == "norilsk"
+    assert slugs[-3:] == ["norilsk", "isolated-dv", "nikolaevsky"]
 
 
 def test_fuel_tree_has_coal_children():
@@ -114,13 +108,15 @@ def test_char_columns_follow_excel_khar_topl():
         "tut_per_t",
         "tj_per_kt",
         "t_co2_per_tj",
-        "k_natural",
     ]
     assert dict(CHAR_COLUMNS)["k_co2"] == "КСО2"
 
 
-def test_char_header_groups_merge_excel_cells():
-    from app.ecology.services.operating_tes_constants import CHAR_HEADER_GROUPS
+def test_char_header_groups_cover_all_columns():
+    from app.ecology.services.operating_tes_constants import (
+        CHAR_COLUMNS,
+        CHAR_HEADER_GROUPS,
+    )
 
     by_title = {item["title"]: item["keys"] for item in CHAR_HEADER_GROUPS}
     assert by_title["Низшая теплота сгорания"] == ("qh_kj", "qh_kcal")
@@ -129,51 +125,26 @@ def test_char_header_groups_merge_excel_cells():
         "tj_per_kt",
         "t_co2_per_tj",
     )
-    k_group = next(item for item in CHAR_HEADER_GROUPS if item["keys"] == ("k_natural",))
-    assert k_group.get("rowspan") == 2
+    grouped = {key for item in CHAR_HEADER_GROUPS for key in item["keys"]}
+    assert grouped == {key for key, _short in CHAR_COLUMNS}
 
 
-def test_spravochnik_columns_and_sources_follow_excel():
+def test_characteristic_source_options_and_defaults():
     from app.ecology.services.operating_tes_constants import (
-        CHAR_SOURCE_COLORS,
         CHAR_SOURCE_OPTIONS,
         DEFAULT_CHAR_SOURCES,
-        SPR_COLUMNS,
-        SPR_HEADER_GROUPS,
-        fuel_label_bg,
     )
 
-    assert [key for key, _label in SPR_COLUMNS] == [
-        "ash",
-        "ash_share",
-        "q_mech",
-        "sulfur",
-        "sulfur_share",
-        "qh_kj",
-        "qh_kcal",
-        "bj",
-        "k_co2",
-        "r_chem",
-        "q_chem",
-    ]
-    spr_keys = tuple(key for group in SPR_HEADER_GROUPS for key in group["keys"])
-    assert spr_keys == tuple(key for key, _label in SPR_COLUMNS)
     keys = [item["key"] for item in CHAR_SOURCE_OPTIONS]
     assert keys == ["thermal", "method", "industry", "table21", "rosstat"]
-    assert CHAR_SOURCE_COLORS["thermal"] == "#b7e8e8"
-    assert CHAR_SOURCE_COLORS["method"] == "#d58d53"
-    assert CHAR_SOURCE_COLORS["rosstat"] == "#44d89b"
     assert DEFAULT_CHAR_SOURCES["kuzn_t"] == "thermal"
     assert DEFAULT_CHAR_SOURCES["kuzn_other"] == "method"
     assert DEFAULT_CHAR_SOURCES["zyryan"] == "industry"
     assert DEFAULT_CHAR_SOURCES["other_solid"] == "rosstat"
     assert DEFAULT_CHAR_SOURCES["gas_natural"] == "rosstat"
-    assert fuel_label_bg("kuzn_t", "thermal") == "#b7e8e8"
-    assert fuel_label_bg("kuzn_other", "method") == "#d58d53"
-    assert fuel_label_bg("donetsk", None) == "#bfbfbf"
 
 
-def test_resolve_chars_fills_spravochnik_note_and_source():
+def test_resolve_chars_preserves_note_and_source():
     from app.ecology.services.operating_tes_page_services import resolve_chars
 
     chars = resolve_chars("kuzn_t", 2024, {})
@@ -183,7 +154,7 @@ def test_resolve_chars_fills_spravochnik_note_and_source():
     chars = resolve_chars(
         "kuzn_t",
         2024,
-        {("kuzn_t", 2024): {"source_key": "method", "note": ""}},
+        {("vsego", "kuzn_t", 2024): {"source_key": "method", "note": ""}},
     )
     assert chars["source_key"] == "method"
     assert chars["note"] == ""
@@ -263,7 +234,8 @@ def test_emission_sheet_view_follows_excel():
     from app.ecology.services.operating_tes_constants import EMISSION_SHEET_VIEW
 
     assert EMISSION_SHEET_VIEW["zola"]["kind"] == "pair"
-    assert EMISSION_SHEET_VIEW["zola"]["left_metric"] == "bn"
+    assert EMISSION_SHEET_VIEW["zola"]["left_metric"] == "heat_bn"
+    assert EMISSION_SHEET_VIEW["sera"]["left_metric"] == "heat_bn"
     assert EMISSION_SHEET_VIEW["zola"]["right_metric"] == "ash_motkh"
     assert EMISSION_SHEET_VIEW["sera"]["right_metric"] == "so2_motkh"
     assert EMISSION_SHEET_VIEW["co"]["right_metric"] == "co_motkh"
@@ -272,7 +244,7 @@ def test_emission_sheet_view_follows_excel():
     assert EMISSION_SHEET_VIEW["pg"]["metric"] == "pg_motkh"
     assert EMISSION_SHEET_VIEW["pg-tj"]["left_metric"] == "energy_tj"
     assert EMISSION_SHEET_VIEW["pg-tj"]["right_metric"] == "pg_tj_motkh"
-    assert get_calc_sheet("pg")["page_title"].startswith("Выбросы ПАРНИКОВЫХ ГАЗОВ")
+    assert get_calc_sheet("pg")["page_title"].startswith("Выбросы парниковых газов")
 
 
 def test_motkh_kept_before_capture():
@@ -309,7 +281,7 @@ def test_operating_tes_formula_registry_covers_excel_sheets():
         assert get_formula_def(key) is not None
         text = formula_text_for_sheet(slug)
         assert text
-    assert "Мотх=0,01*ВН" in formula_text_for_sheet("zola")
+    assert "Мотх = 0,01 · BH" in formula_text_for_sheet("zola")
     assert formula_text_for_sheet("toplivo") == ""
 
 
@@ -396,3 +368,29 @@ def test_gaseous_and_liquid_formula_is_on_gis_tek_pollutants_page():
     assert "GAZ_6tp" in fuel_item.default_text
     assert "MAZUT_6tp" in fuel_item.default_text
 
+
+def test_removed_sheets_are_unavailable(monkeypatch):
+    from app.ecology.services import operating_tes_page_services as services
+    from app.ecology.services.formula_text.operating_tes_formula_text_services import (
+        formula_text_for_sheet,
+    )
+
+    def unexpected_year_lookup(*args, **kwargs):
+        raise AssertionError("Removed sheets must not load data")
+
+    monkeypatch.setattr(services, "get_year_columns", unexpected_year_lookup)
+    for slug in ("spravochnik", "udel-e", "udel-fuel", "udel-ee"):
+        assert get_calc_sheet(slug) is None
+        assert services.build_operating_tes_table_context("vsego", slug) is None
+        assert formula_text_for_sheet(slug) == ""
+
+
+def test_formula_labels_do_not_link_to_removed_operating_sheets():
+    from app.ecology.services.operating_tes_formula_registry import iter_formula_defs
+
+    for definition in iter_formula_defs():
+        for label in definition.page_label_lines():
+            for slug in ("spravochnik", "udel-e", "udel-fuel", "udel-ee"):
+                assert f"/ecology/operating_tes/vsego/{slug}/" not in label
+            for slug in ("udel-e", "udel-fuel", "udel-ee"):
+                assert f"/ecology/new_tes/vsego/{slug}/" not in label

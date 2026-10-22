@@ -86,7 +86,7 @@ def test_inherit_does_not_replace_explicit_zero():
 
 
 def test_inherit_skips_empty_year_then_uses_earlier_as_is():
-    """Нет payload в 2026 — как Access без этой строки: берём 2025 целиком."""
+    """Нет payload в 2026 – как Access без этой строки: берём 2025 целиком."""
     empty_2026 = _row(2026)
     row_2025 = _row(2025, snk=Decimal("13"), bk=None)
     picked = resolve_specific_consumption_for_fuel([empty_2026, row_2025])
@@ -96,7 +96,7 @@ def test_inherit_skips_empty_year_then_uses_earlier_as_is():
 
 
 def test_access_seek_last_year_in_window_even_if_empty():
-    """Пустой 2026 в окне — Match; 2024 не подставляем (нет шага назад)."""
+    """Пустой 2026 в окне – Match; 2024 не подставляем (нет шага назад)."""
     old = _row(2021, bk=Decimal("400"))
     base = _row(2024, y=Decimal("599.65"), bk=Decimal("310"))
     empty_2026 = _row(2026)
@@ -116,7 +116,7 @@ def test_access_seek_explicit_cyear_payload_wins():
 
 
 def test_access_seek_empty_only_row_is_match():
-    """УТЭЦ 1330: y=0, Bk Null — Access Match, не Bookmark предыдущей станции."""
+    """УТЭЦ 1330: y=0, Bk Null – Access Match, не Bookmark предыдущей станции."""
     empty_2024 = _row(2024, y=Decimal("0"))
     picked = pick_specific_consumption_access_seek(
         [empty_2024], byear=2024, cyear=2026

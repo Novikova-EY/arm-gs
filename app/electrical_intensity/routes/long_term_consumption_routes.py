@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Маршруты электроёмкости (долгосрочный спрос) — legacy-редиректы под /energy_consumption."""
+"""Маршруты электроёмкости (долгосрочный спрос) – legacy-редиректы под /energy_consumption."""
 
 from __future__ import annotations
 

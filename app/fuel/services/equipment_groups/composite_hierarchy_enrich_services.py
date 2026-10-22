@@ -8,7 +8,7 @@
   - отдельная жёлтая «станция, всего» не рисуется;
   - значения родителя = сумма детей (station_summary).
 
-Составность только при наличии детей (main>0). Одиночный comp=1 без детей —
+Составность только при наличии детей (main>0). Одиночный comp=1 без детей –
 обычная строка.
 """
 from __future__ import annotations
@@ -40,7 +40,7 @@ def _res_from_obl_or_district(eg):
     РЭС по obl → TerritoriesEnergyExternalMapping или по субъекту группы.
 
     Как на stations_equipment_groups: у части standalone-групп (Калининградская
-    ГРЭС-2, ТЭЦ-1 и др.) obl заполнен, а regional_energy_system_id пуст — без
+    ГРЭС-2, ТЭЦ-1 и др.) obl заполнен, а regional_energy_system_id пуст – без
     этого они уходят в «Не указано» отдельно от остальных станций области.
     """
     if eg is None:
@@ -80,8 +80,8 @@ def territorial_ids_for_equipment_group(
     Приоритет:
     1) РЭС самой группы (FK);
     2) obl-маппинг / субъект группы (standalone без FK, Калининград и др.);
-    3) у дочерней составной без своего РЭС — территория родителя (main),
-       иначе кластер рвётся: родитель в настоящей РЭС, а вторая копия имени —
+    3) у дочерней составной без своего РЭС – территория родителя (main),
+       иначе кластер рвётся: родитель в настоящей РЭС, а вторая копия имени –
        в «Не указано». Свою РЭС ребёнка не подменяем.
     """
     res = _res_for_equipment_group_territory(eg)
@@ -173,8 +173,8 @@ def _default_rows_for_summary(group_blocks: list[dict]) -> list:
 def _fuel_param_rows_for_summary(group_blocks: list[dict]) -> list:
     """
     Строки для суммы станции:
-    - при заполненном ved — только ved>0;
-    - если у всех ved пуст (legacy) — все строки.
+    - при заполненном ved – только ved>0;
+    - если у всех ved пуст (legacy) – все строки.
     """
     all_rows = _default_rows_for_summary(group_blocks)
     has_any_ved = any(
@@ -202,7 +202,7 @@ def enrich_station_blocks_composite_display(
     """
     Проставляет флаги составности и кладёт итог на строку родителя.
 
-    fuel_params_detail_mode=True — режим ved / by_groups / edit_allowed
+    fuel_params_detail_mode=True – режим ved / by_groups / edit_allowed
     (как на stations_equipment_group_fuel_params).
     Иначе «всего» на родителе, если в кластере есть хотя бы один ребёнок.
     """
@@ -235,7 +235,7 @@ def enrich_station_blocks_composite_display(
                     and not any(is_composite_parent_group(eg) for eg in egs if eg)
                 )
             )
-        # Одиночный comp=1 без детей — не составная витрина.
+        # Одиночный comp=1 без детей – не составная витрина.
         if not has_children and not (
             allow_station_composite_fallback and len(gbs) > 1
         ):
@@ -325,7 +325,7 @@ def enrich_station_blocks_composite_display(
             and not is_composite_parent_group(eg)
         ]
         station_summary = compute_summary(summary_rows) if summary_rows else {}
-        # По годам отдельно — иначе на edit_data (много лет) в каждой строке
+        # По годам отдельно – иначе на edit_data (много лет) в каждой строке
         # родителя «…, всего» показывается сумма детей сразу за все годы.
         station_summary_by_year: dict[int, dict] = {}
         rows_by_year: dict[int, list] = defaultdict(list)
@@ -372,7 +372,7 @@ def enrich_station_blocks_composite_display(
             if parent_obj is not None and not has_parent_gb:
                 years_for_total = sorted(year_to_params.keys()) if year_to_params else []
                 if not years_for_total:
-                    # Страницы без year_number на param — одна синтетическая строка.
+                    # Страницы без year_number на param – одна синтетическая строка.
                     child_years = []
                     for gb in gbs:
                         for _eg, param in gb.get("rows") or []:
@@ -398,7 +398,7 @@ def enrich_station_blocks_composite_display(
         elif show_summary is False:
             sb["suppress_station_summary"] = True
 
-        # Полоска/└ как на stations_equipment_groups — только если в блоке есть и родитель, и ребёнок.
+        # Полоска/└ как на stations_equipment_groups – только если в блоке есть и родитель, и ребёнок.
         show_composite_cluster = bool(has_composite_structure and has_children)
         for gb in gbs:
             eg = gb.get("equipment_group")

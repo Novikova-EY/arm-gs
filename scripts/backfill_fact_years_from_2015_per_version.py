@@ -7,10 +7,10 @@
 gs_sys_year_features с name='факт' и тем же database_version_id, куда вставляются годы.
 
 Идемпотентно: уже существующие пары (number, database_version_id) не дублируются;
-если год в этом диапазоне есть, но id_year_feature не «факт» — проставляется «факт».
+если год в этом диапазоне есть, но id_year_feature не «факт» – проставляется «факт».
 
-Если в версии нет ни одного года или min_year <= 2015 — для версии ничего не делается.
-Если для версии нет признака «факт» — версия пропускается с предупреждением.
+Если в версии нет ни одного года или min_year <= 2015 – для версии ничего не делается.
+Если для версии нет признака «факт» – версия пропускается с предупреждением.
 
 Запуск из корня репозитория:
 
@@ -210,7 +210,7 @@ def main() -> None:
 
             print(
                 f"version_id={v.id} ({v.version_number!r}): "
-                f"min_year={min_y or '-'} insert={ins} feature_fix={upd} — {note}"
+                f"min_year={min_y or '-'} insert={ins} feature_fix={upd} – {note}"
             )
 
             total_ins += ins
@@ -223,7 +223,7 @@ def main() -> None:
             _clear_year_caches()
             print("Commit выполнен, кэши справочников годов сброшены.")
         elif apply_changes:
-            print("Нечего менять — commit не требуется.")
+            print("Нечего менять – commit не требуется.")
 
 
 if __name__ == "__main__":

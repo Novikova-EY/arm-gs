@@ -13,7 +13,7 @@
 
     <h1 class="text-center mb-4">Изменения мощности генерирующего оборудования электростанций</h1>
 
-    {# Липкая панель: фильтры / импорт / годы / режим — как на station_list #}
+    {# Липкая панель: фильтры / импорт / годы / режим – как на station_list #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
         {% include 'generation/station_changes/station_changes_filters.html' %}
     </div>
@@ -37,7 +37,7 @@
             min-width: 100%;
         }
 
-        /* Архивные агрегаты — светлее, в конце списка станции */
+        /* Архивные агрегаты – светлее, в конце списка станции */
         #stationChangesTableContainer tr.machine-archived,
         #stationChangesTableContainer tr.machine-archived td {
             color: #8a9096 !important;
@@ -635,7 +635,7 @@
                                         {% set ns_kal.kal_rd_id = _rd_id %}
                                     {% endif %}
                                 {% endfor %}
-                                {# 2) Если не нашли — берем первый субъект зоны (обычно он один) #}
+                                {# 2) Если не нашли – берем первый субъект зоны (обычно он один) #}
                                 {% if ns_kal.kal_rd_id is none and (ns_sa.rd_ids|length > 0) %}
                                     {% set ns_kal.kal_rd_id = ns_sa.rd_ids[0] %}
                                 {% endif %}
@@ -660,7 +660,7 @@
                         {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
 
-                    {# "ТИТЭС, всего" выводим один раз — после последнего ТИТЭС-типа #}
+                    {# "ТИТЭС, всего" выводим один раз – после последнего ТИТЭС-типа #}
                     {% if show_totals and (should_show_parent_totals|default({})).get('tites_total', true) and is_tites_es and tites_es_type_ids and (es_type_id == (tites_es_type_ids|last)) %}
                         {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_tites_total.html' %}
                     {% endif %}

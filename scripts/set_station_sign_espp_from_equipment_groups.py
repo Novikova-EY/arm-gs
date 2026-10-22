@@ -212,7 +212,7 @@ def main() -> None:
             if stats["samples"]:
                 print("  примеры (id, name):")
                 for sid, sname in stats["samples"]:
-                    print(f"    {sid}: {sname or '—'}")
+                    print(f"    {sid}: {sname or '–'}")
             print()
 
         print("=== Итого ===")

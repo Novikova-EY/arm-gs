@@ -59,7 +59,7 @@ def _gaes_tep_derive_template_context():
     }
     ty_id = resolve_year_id_for_calendar_year_number(ty)
     return {
-        "gaes_tep_target_price_year_display": str(ty) if ty is not None else "—",
+        "gaes_tep_target_price_year_display": str(ty) if ty is not None else "–",
         "gaes_tep_price_derive_config": {
             "targetYear": ty,
             "targetYearId": ty_id,
@@ -73,7 +73,7 @@ def _gaes_tep_year_select_choices():
     from app.common.services.get_services.years.years_get_services import get_year_list_full
 
     years = get_year_list_full()
-    return [("", "— не указано —")] + [(str(y.id), str(y.number)) for y in years]
+    return [("", "– не указано –")] + [(str(y.id), str(y.number)) for y in years]
 
 
 def _gaes_tep_price_coeff_can_edit() -> bool:
@@ -314,15 +314,15 @@ def prospective_place_gaes_details(id):
 
     form = ProspectivePlaceGAESEditForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Не указано —")] + [
+    form.id_regional_district.choices = [("", "– Не указано –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
     res_list = get_regional_energy_system_choices()
-    form.id_regional_energy_system.choices = [("", "— Не указано —")] + [
+    form.id_regional_energy_system.choices = [("", "– Не указано –")] + [
         (str(res_id), name) for res_id, name in res_list
     ]
     ppt_list = ProspectivePlaceTypeGAES.query.order_by(ProspectivePlaceTypeGAES.name).all()
-    form.id_prospective_place_type_gaes.choices = [("", "— Не указано —")] + [
+    form.id_prospective_place_type_gaes.choices = [("", "– Не указано –")] + [
         (str(p.id), p.name) for p in ppt_list
     ]
 
@@ -643,7 +643,7 @@ def _populate_gaes_tep_form_from_row(form, tep_row):
         target_year=ty,
         coeff_by_year=coeff,
     )
-    form.specific_capital_investment_thous_rub_per_kw.data = None if s_derived == "—" else s_derived
+    form.specific_capital_investment_thous_rub_per_kw.data = None if s_derived == "–" else s_derived
     form.id_year_specific_capital_investment.data = tep_row.id_year_capital_cost_wo_pir_ges_with_reservoir
 
 
@@ -747,7 +747,7 @@ def _apply_gaes_tep_form_to_row(row, form, place):
 @prospective_places_bp.route("/gaes/<int:place_id>/machine/<int:machine_id>/", methods=["GET", "POST"])
 @login_required
 def machine_prospective_place_gaes_details(place_id, machine_id):
-    """Добавление/редактирование записи перечня ТЭП (machine_id=0 — добавить)."""
+    """Добавление/редактирование записи перечня ТЭП (machine_id=0 – добавить)."""
     from app.generation.prospective_places.models import (
         StationProspectivePlaceGAES,
         ProspectivePlaceGaesTepSource,
@@ -835,7 +835,7 @@ def add_prospective_place_gaes():
 
     form = ProspectivePlaceGAESAddForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Выберите субъект РФ —")] + [
+    form.id_regional_district.choices = [("", "– Выберите субъект РФ –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
 
@@ -958,7 +958,7 @@ def export_prospective_places_gaes():
     gaes_place_type_groups = build_gaes_stations_grouped_by_place_type(stations)
 
     def _planned_capacity_cell(station):
-        return format_gaes_planned_capacity_display(station, line_break="\n") or "—"
+        return format_gaes_planned_capacity_display(station, line_break="\n") or "–"
 
     thin_border = Border(
         left=Side(style="thin"),
@@ -1000,14 +1000,14 @@ def export_prospective_places_gaes():
             s.regional_energy_system.union_energy_system.name
             if s.regional_energy_system and s.regional_energy_system.union_energy_system
             else None
-        ) or "—"
+        ) or "–"
 
     def _rd_name(s):
-        return (s.regional_district.name_full if s.regional_district else None) or "—"
+        return (s.regional_district.name_full if s.regional_district else None) or "–"
 
     def _fmt_multiyear_generation(val):
         if val is None or val == "":
-            return "—"
+            return "–"
         return str(val).replace(".", ",")
 
     wb = Workbook()
@@ -1045,15 +1045,15 @@ def export_prospective_places_gaes():
                 idx += 1
                 ues = _ues_name(station)
                 rd = _rd_name(station)
-                site = station.site_name or "—"
-                initiator = station.project_initiator or "—"
-                water = station.water_body or "—"
-                geo = station.geo_location or "—"
+                site = station.site_name or "–"
+                initiator = station.project_initiator or "–"
+                water = station.water_body or "–"
+                geo = station.geo_location or "–"
                 planned = _planned_capacity_cell(station)
-                gen_scheme = station.general_scheme_commissioning_period or "—"
+                gen_scheme = station.general_scheme_commissioning_period or "–"
                 constr = format_construction_period_years_display(
                     station.construction_period_years
-                ) or "—"
+                ) or "–"
 
                 indicators = station.gaes_tep_source_indicators or []
                 if indicators:
@@ -1124,7 +1124,7 @@ def export_prospective_places_gaes():
                     ws.cell(row=row_num, column=3).alignment = center_align
                     ws.cell(row=row_num, column=4, value=planned).border = thin_border
                     ws.cell(row=row_num, column=4).alignment = center_align
-                    em2 = ws.cell(row=row_num, column=5, value="—")
+                    em2 = ws.cell(row=row_num, column=5, value="–")
                     em2.border = thin_border
                     em2.alignment = center_align
                     em2.font = Font(color="808080")

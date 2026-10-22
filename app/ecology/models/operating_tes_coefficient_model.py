@@ -15,10 +15,11 @@ class OperatingTesCoefficient(db.Model, AuditMixin):
     __table_args__ = (
         UniqueConstraint(
             "territory_slug",
+            "affiliation",
             "year_number",
             "kind",
             "database_version_id",
-            name="uq_eco_ot_coeff_terr_year_kind_ver",
+            name="uq_eco_ot_coeff_slice_year_kind_ver",
         ),
         ForeignKeyConstraint(
             ["year_number", "database_version_id"],
@@ -37,6 +38,10 @@ class OperatingTesCoefficient(db.Model, AuditMixin):
 
     # Идентификатор территории (vsego, minen, severo-zapad, …)
     territory_slug = db.Column(db.String(80), nullable=False, index=True)
+
+    affiliation = db.Column(
+        db.String(20), nullable=False, default="all", server_default="all"
+    )
 
     # Год: Year.number + database_version_id (composite FK)
     year_number = db.Column(db.Integer, nullable=False, index=True)

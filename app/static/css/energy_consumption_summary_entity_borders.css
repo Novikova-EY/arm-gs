@@ -1,4 +1,4 @@
-/* Разделительные полосы между блоками сущностей — как /power_demand/summary/oes/. */
+/* Разделительные полосы между блоками сущностей – как /power_demand/summary/oes/. */
 #powerDemandSummaryTable.power-demand-summary-table > tbody > tr > td {
     border-top-width: 0 !important;
     border-bottom-width: 0 !important;

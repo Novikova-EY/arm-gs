@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Коды полей Access для шапок таблиц (в скобках) — регистр как в схеме СиПР.
+Коды полей Access для шапок таблиц (в скобках) – регистр как в схеме СиПР.
 
 numb1120 / year / year_number не меняем (в Access разный регистр по таблицам).
 """
@@ -54,7 +54,7 @@ FUEL_HEADER_ACCESS_CODES: dict[str, str] = {
     "chukot": "CHUKOT",
     "sah": "SAH",
     "qotr": "QOTR",
-    # snk: в Станциях SNK, в Удельных snk — оставляем ORM-имя
+    # snk: в Станциях SNK, в Удельных snk – оставляем ORM-имя
     "ewtp": "EWTP",
     "nt": "NT",
     "nt_sum": "NTsum",
@@ -71,7 +71,7 @@ FUEL_HEADER_ACCESS_CODES: dict[str, str] = {
     "sn_ee": "SN_EE",
     "sn_te": "SN_TE",
     "sn_t": "SNT",
-    # Удельные(Схема) — смешанный регистр
+    # Удельные(Схема) – смешанный регистр
     "bk": "Bk",
     "ksn": "Ksn",
     "kh": "Kh",

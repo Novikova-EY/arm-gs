@@ -1,4 +1,4 @@
-{# pagination_endpoint: endpoint для ссылок пагинации. По умолчанию station_bp.station_list, для fuel — fuel_bp.stations_turbines и т.д. #}
+{# pagination_endpoint: endpoint для ссылок пагинации. По умолчанию station_bp.station_list, для fuel – fuel_bp.stations_turbines и т.д. #}
 {% set _pagination_endpoint = pagination_endpoint | default('station_bp.station_list') %}
 {# Сохраняем ВСЕ текущие query-параметры фильтров при смене страницы #}
 {% set _pag_args = request.args.to_dict(flat=False) %}

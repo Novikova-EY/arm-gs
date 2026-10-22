@@ -17,7 +17,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_regional_energy_system_choices():
-    """Список (id, name) для выпадающих списков. Без кэша — версия БД берется из текущего запроса (g.current_db_version)."""
+    """Список (id, name) для выпадающих списков. Без кэша – версия БД берется из текущего запроса (g.current_db_version)."""
     current_version = get_current_version()
     query = db.session.query(RegionalEnergySystem.id, RegionalEnergySystem.name)
     if current_version:
@@ -98,9 +98,9 @@ def get_regional_energy_systems_dto_list() -> List[dict]:
         for r in rows
     ]
 
-# 3) Карта {res_id: name_full} — легкий lookup
+# 3) Карта {res_id: name_full} – легкий lookup
 def get_regional_energy_systems_map() -> Dict[int, str]:
-    """Возвращает отображение {РЭС.id: РЭС.name_full}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {РЭС.id: РЭС.name_full}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query.with_entities(RegionalEnergySystem.id, RegionalEnergySystem.name_full)
     if current_version:
@@ -110,7 +110,7 @@ def get_regional_energy_systems_map() -> Dict[int, str]:
 
 
 def get_regional_energy_systems_name_map() -> Dict[int, str]:
-    """Возвращает отображение {РЭС.id: РЭС.name}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {РЭС.id: РЭС.name}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query.with_entities(RegionalEnergySystem.id, RegionalEnergySystem.name)
     if current_version:
@@ -119,9 +119,9 @@ def get_regional_energy_systems_name_map() -> Dict[int, str]:
     return {id_: name for id_, name in rows}
 
 
-# 4) Обратная/прямая связи с ОЭС — часто нужны вместе с РЭС
+# 4) Обратная/прямая связи с ОЭС – часто нужны вместе с РЭС
 def get_res_to_ues_id_map() -> Dict[int, int]:
-    """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query.with_entities(RegionalEnergySystem.id, RegionalEnergySystem.id_union_energy_system)
     if current_version:
@@ -131,7 +131,7 @@ def get_res_to_ues_id_map() -> Dict[int, int]:
 
 
 def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query.with_entities(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
     if current_version:
@@ -153,7 +153,7 @@ def invalidate_res_lookups_cache() -> None:
 
 
 def get_res_to_est_id_map() -> Dict[int, int]:
-    """Возвращает отображение {РЭС.id: ТипЭС.id} через ОЭС. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {РЭС.id: ТипЭС.id} через ОЭС. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     res_to_ues = get_res_to_ues_id_map()
     

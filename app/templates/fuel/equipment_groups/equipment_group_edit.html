@@ -10,7 +10,7 @@
 {% set grouping_station_choices = grouping_station_choices|default([]) %}
 {% set fuel_param_derived_formulas = fuel_param_derived_formulas|default({}) %}
 {% set fuel_params_by_year = fuel_params_by_year|default({}) %}
-{% set _calc_fill_rule = ' Правило заполнения: если есть данные для расчёта — значение по формуле; если нет — «—»/ручной ввод.' %}
+{% set _calc_fill_rule = ' Правило заполнения: если есть данные для расчёта – значение по формуле; если нет – «–»/ручной ввод.' %}
 
 {% macro eg_formula_icon(title, code='') -%}
 {% if title %}
@@ -22,12 +22,12 @@
 {% if attr == 'hfix' %}
     {% if can_edit %}
     <select name="fuel_param_{{ y }}_{{ attr }}" class="form-select form-select-sm text-center fuel-param-input" data-initial="{% if v is none %}{% else %}{{ v }}{% endif %}">
-        <option value="" {% if v is none %}selected{% endif %}>—</option>
+        <option value="" {% if v is none %}selected{% endif %}>–</option>
         <option value="0" {% if v is not none and v|string == '0' %}selected{% endif %}>нет</option>
         <option value="1" {% if v is not none and v|string == '1' %}selected{% endif %}>да</option>
     </select>
     {% else %}
-        {% if v is none %}—{% elif v|string == '1' %}да{% elif v|string == '0' %}нет{% else %}{{ v }}{% endif %}
+        {% if v is none %}–{% elif v|string == '1' %}да{% elif v|string == '0' %}нет{% else %}{{ v }}{% endif %}
     {% endif %}
 {% elif is_derived %}
     {% set calc = param|fuel_param_derived(attr) if param is not none else none %}
@@ -36,16 +36,16 @@
         <span class="fuel-param-derived-value text-muted" data-fuel-derived-attr="{{ attr }}"{% if calc_full %} title="{{ calc_full|e }}"{% endif %}>{{ calc|format_decimal_trim(rounding_digits) }}</span>
     {% elif can_edit %}
         {% set v_full = v|format_decimal(0) if v is not none else '' %}
-        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="–" {% if v_full %}title="{{ v_full }}"{% endif %}>
     {% else %}
-        {{ v|format_decimal_trim(rounding_digits) if v is not none else '—' }}
+        {{ v|format_decimal_trim(rounding_digits) if v is not none else '–' }}
     {% endif %}
 {% else %}
     {% set v_full = v|format_decimal(0) if v is not none else '' %}
     {% if can_edit %}
-    <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+    <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="–" {% if v_full %}title="{{ v_full }}"{% endif %}>
     {% else %}
-    {{ v|format_decimal_trim(rounding_digits) if v is not none else '—' }}
+    {{ v|format_decimal_trim(rounding_digits) if v is not none else '–' }}
     {% endif %}
 {% endif %}
 {%- endmacro %}
@@ -91,7 +91,7 @@
 .equipment-group-edit-page:not(.eg-show-empty-param-rows) tr[data-empty-row="1"]:not([data-always-show="1"]) {
     display: none !important;
 }
-/* Выпадающий список «Привязка к станции» — как фильтр РЭС на stations_equipment_groups */
+/* Выпадающий список «Привязка к станции» – как фильтр РЭС на stations_equipment_groups */
 .equipment-group-edit-page .grouping-station-dropdown .dropdown-menu {
     width: max(100%, 320px);
     min-width: 320px;
@@ -138,7 +138,7 @@
 
         <form id="equipmentGroupHeaderForm" method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            {# Первая submit в форме: при Enter в полях срабатывает она, иначе браузер берёт первую кнопку — «Удалить» #}
+            {# Первая submit в форме: при Enter в полях срабатывает она, иначе браузер берёт первую кнопку – «Удалить» #}
             <button type="submit" class="visually-hidden" tabindex="-1">Сохранить</button>
 
             <div class="container-fluid">
@@ -148,14 +148,14 @@
                     <div class="col-12 mb-2">
                         <h3 class="mb-0 ms-3">Общая информация</h3>
                     </div>
-                    {# Первая строка: 3 поля на 5/6 ширины; «Привязка к станции» — 1/6, как колонка названия родителя ниже #}
+                    {# Первая строка: 3 поля на 5/6 ширины; «Привязка к станции» – 1/6, как колонка названия родителя ниже #}
                     <div class="col-12">
                         <div class="row g-3">
                             <div class="col-md-10">
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label class="form-label fw-semibold">Название</label>
-                                        {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="—">{% else %}<span class="station-name">{{ equipment_group.name or '—' }}</span>{% endif %}
+                                        {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="–">{% else %}<span class="station-name">{{ equipment_group.name or '–' }}</span>{% endif %}
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label fw-semibold">Субъект РФ</label>
@@ -167,6 +167,20 @@
                                     <div class="col-md-4">
                                         <label class="form-label fw-semibold">Региональная энергосистема</label>
                                         {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
+                                        {% set energy_units = energy_units_by_regional_district.get(equipment_group.regional_district_id|string, []) %}
+                                        <div id="equipmentGroupEnergyUnit" class="mt-3" {% if not energy_units %}hidden{% endif %}>
+                                            <label for="equipmentGroupEnergyUnitSelect" class="form-label fw-semibold">Энергорайон</label>
+                                            {% if can_edit %}
+                                            <select id="equipmentGroupEnergyUnitSelect" name="energy_unit_id" class="form-select">
+                                                <option value="">–</option>
+                                                {% for unit in energy_units %}
+                                                <option value="{{ unit.id }}" {% if equipment_group.energy_unit_id == unit.id %}selected{% endif %}>{{ unit.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            {% else %}
+                                            <span class="form-control-plaintext">{{ equipment_group.energy_unit.name if equipment_group.energy_unit else '–' }}</span>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -218,7 +232,7 @@
                         <div class="row g-3 row-cols-2 row-cols-md-6">
                             <div class="col min-w-0">
                                 <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
-                                {% if can_edit %}<input type="text" inputmode="numeric" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb if equipment_group.numb is not none else '—' }}</span>{% endif %}
+                                {% if can_edit %}<input type="text" inputmode="numeric" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb if equipment_group.numb is not none else '–' }}</span>{% endif %}
                             </div>
                             <div class="col min-w-0">
                                 <label class="form-label fw-semibold">Тип группы оборудования</label>
@@ -228,9 +242,9 @@
                                     <option value="{{ val }}" {% if (equipment_group_type_selected or '')|string == (val or '')|string %}selected{% endif %}>{{ label }}</option>
                                     {% endfor %}
                                 </select>
-                                <div class="form-text">Прочерк — без типа группы (оболочка составной станции).</div>
-                                {% if not equipment_group_type_selected and equipment_group_types_display and equipment_group_types_display != '—' %}
-                                <div class="form-text text-muted">Сейчас в связях несколько разных типов: {{ equipment_group_types_display }} — выберите единый тип и сохраните.</div>
+                                <div class="form-text">Прочерк – без типа группы (оболочка составной станции).</div>
+                                {% if not equipment_group_type_selected and equipment_group_types_display and equipment_group_types_display != '–' %}
+                                <div class="form-text text-muted">Сейчас в связях несколько разных типов: {{ equipment_group_types_display }} – выберите единый тип и сохраните.</div>
                                 {% endif %}
                                 {% else %}
                                 <span class="form-control-plaintext">{{ equipment_group_types_display }}</span>
@@ -240,32 +254,32 @@
                                 <label class="form-label fw-semibold">Группа оборудования/составная станция (niv)</label>
                                 {% if can_edit %}
                                 <select name="niv" class="form-select">
-                                    <option value="" {% if equipment_group.niv is none %}selected{% endif %}>—</option>
-                                    <option value="1" {% if equipment_group.niv == 1 %}selected{% endif %}>1 — группа оборудования</option>
-                                    <option value="0" {% if equipment_group.niv == 0 %}selected{% endif %}>0 — не группа (станция)</option>
+                                    <option value="" {% if equipment_group.niv is none %}selected{% endif %}>–</option>
+                                    <option value="1" {% if equipment_group.niv == 1 %}selected{% endif %}>1 – группа оборудования</option>
+                                    <option value="0" {% if equipment_group.niv == 0 %}selected{% endif %}>0 – не группа (станция)</option>
                                 </select>
                                 {% else %}
-                                <span class="form-control-plaintext">{% if equipment_group.niv == 1 %}1 — группа оборудования{% elif equipment_group.niv == 0 %}0 — не группа (станция){% elif equipment_group.niv is none %}—{% else %}{{ equipment_group.niv }}{% endif %}</span>
+                                <span class="form-control-plaintext">{% if equipment_group.niv == 1 %}1 – группа оборудования{% elif equipment_group.niv == 0 %}0 – не группа (станция){% elif equipment_group.niv is none %}–{% else %}{{ equipment_group.niv }}{% endif %}</span>
                                 {% endif %}
                             </div>
                             <div class="col min-w-0">
                                 <label class="form-label fw-semibold">Признак составной станции (comp)</label>
                                 {% if can_edit %}
                                 <select name="comp" class="form-select">
-                                    <option value="" {% if equipment_group.comp is none %}selected{% endif %}>—</option>
-                                    <option value="1" {% if equipment_group.comp == 1 %}selected{% endif %}>1 — составная (разбита на группы)</option>
-                                    <option value="0" {% if equipment_group.comp == 0 %}selected{% endif %}>0 — не составная</option>
+                                    <option value="" {% if equipment_group.comp is none %}selected{% endif %}>–</option>
+                                    <option value="1" {% if equipment_group.comp == 1 %}selected{% endif %}>1 – составная (разбита на группы)</option>
+                                    <option value="0" {% if equipment_group.comp == 0 %}selected{% endif %}>0 – не составная</option>
                                 </select>
                                 {% else %}
-                                <span class="form-control-plaintext">{% if equipment_group.comp == 1 %}1 — составная (разбита на группы){% elif equipment_group.comp == 0 %}0 — не составная{% elif equipment_group.comp is none %}—{% else %}{{ equipment_group.comp }}{% endif %}</span>
+                                <span class="form-control-plaintext">{% if equipment_group.comp == 1 %}1 – составная (разбита на группы){% elif equipment_group.comp == 0 %}0 – не составная{% elif equipment_group.comp is none %}–{% else %}{{ equipment_group.comp }}{% endif %}</span>
                                 {% endif %}
                             </div>
                             <div class="col min-w-0">
                                 <label class="form-label fw-semibold">Код родителя (main)</label>
                                 {% if can_edit %}
-                                <input type="text" inputmode="numeric" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—" title="numb родительской группы (не id из URL)">
+                                <input type="text" inputmode="numeric" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="–" title="numb родительской группы (не id из URL)">
                                 {% else %}
-                                <span class="form-control-plaintext">{{ equipment_group.main if equipment_group.main is not none else '—' }}</span>
+                                <span class="form-control-plaintext">{{ equipment_group.main if equipment_group.main is not none else '–' }}</span>
                                 {% endif %}
                             </div>
                             <div class="col min-w-0">
@@ -285,19 +299,19 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Название (name_ext)</label>
-                        {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Действующая (d)</label>
+                        <label class="form-label fw-semibold">Признак действующей станции (d)</label>
                         {% if can_edit %}<select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (equipment_group.d or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.d }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Расширяемая (r)</label>
+                        <label class="form-label fw-semibold">Признак расширяемой станции (r)</label>
                         {% if can_edit %}<select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (equipment_group.r or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.r }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Типы турбин (tm)</label>
-                        {% if can_edit %}<input type="text" name="tm" class="form-control" value="{{ equipment_group.tm or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="tm" class="form-control" value="{{ equipment_group.tm or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.tm or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
@@ -306,31 +320,31 @@
                     <div class="w-100"></div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
-                        {% if can_edit %}<input type="text" name="n1" class="form-control" value="{{ equipment_group.n1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="n1" class="form-control" value="{{ equipment_group.n1 or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.n1 or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
-                        {% if can_edit %}<input type="text" name="n2" class="form-control" value="{{ equipment_group.n2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="n2" class="form-control" value="{{ equipment_group.n2 or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.n2 or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
-                        {% if can_edit %}<input type="text" name="p1" class="form-control" value="{{ equipment_group.p1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="p1" class="form-control" value="{{ equipment_group.p1 or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.p1 or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
-                        {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Адрес (addr)</label>
-                        {% if can_edit %}<input type="text" name="addr" class="form-control" value="{{ equipment_group.addr or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>{% endif %}
+                        {% if can_edit %}<input type="text" name="addr" class="form-control" value="{{ equipment_group.addr or '' }}" placeholder="–">{% else %}<span class="form-control-plaintext">{{ equipment_group.addr or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Примечание (note)</label>
-                        {% if can_edit %}<textarea name="note" class="form-control" rows="2" placeholder="—">{{ equipment_group.note or '' }}</textarea>{% else %}<span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>{% endif %}
+                        {% if can_edit %}<textarea name="note" class="form-control" rows="2" placeholder="–">{{ equipment_group.note or '' }}</textarea>{% else %}<span class="form-control-plaintext">{{ equipment_group.note or '–' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Субъект РФ (obl)</label>
@@ -381,12 +395,6 @@
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="submit" class="btn btn-outline-primary">Сохранить</button>
-                        <button type="submit"
-                                name="all_versions"
-                                value="1"
-                                class="btn btn-outline-success"
-                                title="Применить изменения карточки группы оборудования во всех версиях БД (по external_code)"
-                                onclick="return confirmEquipmentGroupHeaderSaveAllVersions(this);">Сохранить во всех версиях</button>
                         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
                     </div>
                 </div>
@@ -431,7 +439,7 @@
                                 <td class="{{ eg_name_cell_class(child_block, 'equipment-group-name') }}">
                                     {{ eg_name_label(child, (child.name or child.name_ext or ('numb=' ~ child.numb)), child_block, link_endpoint='fuel_bp.equipment_group_edit', link_extra_class='fw-bold fs-5') }}
                                 </td>
-                                <td class="text-center">{{ child.numb if child.numb is not none else '—' }}</td>
+                                <td class="text-center">{{ child.numb if child.numb is not none else '–' }}</td>
                                 <td class="text-center">{{ item.types_display }}</td>
                                 <td class="text-center">{{ item.machines_count }}</td>
                                 <td class="text-center">
@@ -453,7 +461,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted ms-3 mb-3">Нет групп оборудования с main={{ equipment_group.numb if equipment_group.numb is not none else '—' }} в текущей версии БД.</p>
+                <p class="text-muted ms-3 mb-3">Нет групп оборудования с main={{ equipment_group.numb if equipment_group.numb is not none else '–' }} в текущей версии БД.</p>
                 {% endif %}
             </div>
         </div>
@@ -475,7 +483,7 @@
                     <div>
                         <label for="target_equipment_group_id" class="form-label fw-semibold mb-1">Переопределить группу оборудования</label>
                         <select name="target_equipment_group_id" id="target_equipment_group_id" class="form-select" style="min-width: 320px;" required>
-                            <option value="">— выберите группу (код и название) —</option>
+                            <option value="">– выберите группу (код и название) –</option>
                             {% for gid, glabel in _rebind_choices %}
                             <option value="{{ gid }}">{{ glabel }}</option>
                             {% endfor %}
@@ -552,13 +560,13 @@
                                     {% for year in range(start_year, end_year + 1) %}
                                     <th style="width: 50px; text-align: center;">
                                         {{ year }}
-                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('—', true) }}</div>
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('–', true) }}</div>
                                     </th>
                                     {% endfor %}
                                     {% for year in range(start_year, end_year + 1) %}
                                     <th style="width: 50px; text-align: center;">
                                         {{ year }}
-                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('—', true) }}</div>
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('–', true) }}</div>
                                     </th>
                                     {% endfor %}
                                 </tr>
@@ -618,7 +626,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -635,13 +643,13 @@
                                     <td class="power-column" {% if v_display %}title="{{ v_display }}"{% endif %}>
                                         {% if can_edit %}
                                         <select name="fuel_param_{{ y }}_ved" class="form-select form-select-sm text-center" title="{{ v_display or 'Тип ТЭС (VED)' }}">
-                                            <option value="" {% if v_raw is none %}selected{% endif %}>—</option>
+                                            <option value="" {% if v_raw is none %}selected{% endif %}>–</option>
                                             {% for _code, _label in fuel_param_ved_labels|default([]) %}
                                             <option value="{{ _code }}" {% if v_raw is not none and (v_raw|string) == (_code|string) %}selected{% endif %}>{{ _label }}</option>
                                             {% endfor %}
                                         </select>
                                         {% else %}
-                                        {{ v_display if v_display is not none else '—' }}
+                                        {{ v_display if v_display is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -682,7 +690,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -728,7 +736,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -777,7 +785,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -800,11 +808,11 @@
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
                                     <td class="power-column{% if is_calc_row %} bg-light border-start border-secondary-subtle{% endif %}" {% if is_calc_row %}title="Расчётное значение{% if v_full %} · полное: {{ v_full }}{% endif %}"{% elif v_full %}title="{{ v_full }}"{% endif %}>
                                         {% if is_calc_row %}
-                                        <span class="d-block text-muted">{{ format_decimal_table4(v) if v is not none else '—' }}</span>
+                                        <span class="d-block text-muted">{{ format_decimal_table4(v) if v is not none else '–' }}</span>
                                         {% elif can_edit and attr in consumption_form_input_attrs %}
-                                        <input type="text" name="consumption_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        <input type="text" name="consumption_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% else %}
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -829,7 +837,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -845,9 +853,9 @@
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
                                     <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% if can_edit %}
-                                        <input type="text" name="extra_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table3(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        <input type="text" name="extra_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table3(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% else %}
-                                        {{ format_decimal_table3(v) if v is not none else '—' }}
+                                        {{ format_decimal_table3(v) if v is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -872,7 +880,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -888,9 +896,9 @@
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
                                     <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% if can_edit %}
-                                        <input type="text" name="cost_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        <input type="text" name="cost_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% else %}
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -919,7 +927,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                 <th class="year-header" style="width: 50px; text-align: center;">
                                     {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('–', true) }}</div>
                                 </th>
                                 {% endfor %}
                             </tr>
@@ -940,7 +948,7 @@
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
                                     <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -951,19 +959,13 @@
             </div>
         </div>
 
-        {# Остальные MAIN (obor/obl/…) на карточке не показываем — дублируют справочник EG;
+        {# Остальные MAIN (obor/obl/…) на карточке не показываем – дублируют справочник EG;
            сохранение формы пропускает их (кроме ved), чтобы не затирать значения. #}
 
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3 flex-wrap">
             <input type="hidden" name="save_fuel_params" value="1">
             <button type="submit" class="btn btn-outline-primary" title="Сохранить: VED, основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
-            <button type="submit"
-                    name="all_versions"
-                    value="1"
-                    class="btn btn-outline-success"
-                    title="Применить топливные параметры, удельные показатели, стоимость и цену во всех версиях БД (по external_code)"
-                    onclick="return confirmEquipmentGroupFuelParamsSaveAllVersions(this);">Сохранить параметры топлива во всех версиях</button>
             <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
         </div>
         </form>
@@ -1027,6 +1029,25 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var energyUnitsByDistrict = {{ energy_units_by_regional_district|tojson }};
+    var districtSelect = document.querySelector('#equipmentGroupHeaderForm select[name="regional_district_id"]');
+    var energyUnitField = document.getElementById('equipmentGroupEnergyUnit');
+    if (districtSelect) {
+        districtSelect.addEventListener('change', function() {
+            var units = energyUnitsByDistrict[districtSelect.value] || [];
+            var unitSelect = document.getElementById('equipmentGroupEnergyUnitSelect');
+            var previousValue = unitSelect.value;
+            unitSelect.replaceChildren(new Option('–', ''));
+            units.forEach(function(unit) {
+                unitSelect.add(new Option(unit.name, String(unit.id)));
+            });
+            unitSelect.value = units.some(function(unit) {
+                return String(unit.id) === previousValue;
+            }) ? previousValue : '';
+            energyUnitField.hidden = units.length === 0;
+        });
+    }
+
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
         if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
             new bootstrap.Tooltip(el);
@@ -1045,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function isEmptyValue(raw) {
         if (raw == null) return true;
         var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
-        if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return true;
+        if (!s || s === '–' || s === '-' || s.toLowerCase() === 'none') return true;
         var n = Number(s);
         return isFinite(n) && n === 0;
     }
@@ -1118,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function parseFuelNum(raw) {
         if (raw == null) return null;
         var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
-        if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return null;
+        if (!s || s === '–' || s === '-' || s.toLowerCase() === 'none') return null;
         var n = Number(s);
         return isFinite(n) ? n : null;
     }
@@ -1234,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', function() {
         td.classList.remove('bg-light');
         if (!canEdit) {
             if (prevText && !td.querySelector('input, .fuel-param-derived-value')) {
-                td.textContent = prevText || '—';
+                td.textContent = prevText || '–';
             }
             return;
         }
@@ -1245,8 +1266,8 @@ document.addEventListener('DOMContentLoaded', function() {
             existingInp.autocomplete = 'off';
             existingInp.name = 'fuel_param_' + year + '_' + attr;
             existingInp.className = 'form-control form-control-sm text-center fuel-param-input';
-            existingInp.placeholder = '—';
-            existingInp.value = prevText === '—' ? '' : prevText;
+            existingInp.placeholder = '–';
+            existingInp.value = prevText === '–' ? '' : prevText;
             td.appendChild(existingInp);
         }
     }
@@ -1335,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
                                 <td data-user="${log.username_lower}">${log.username}</td>
                                 <td><div data-action="${log.action_lower}">${log.action}</div></td>
-                                <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                                <td data-database-version="${(log.database_version || '–').toString().toLowerCase()}">${log.database_version || '–'}</td>
                                 <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
                             `;
                             return r;
@@ -1622,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const opt = typeSelect.options[typeSelect.selectedIndex];
             if (!opt || !opt.value) return null;
             const label = (opt.textContent || '').trim();
-            return label && label !== '—' ? label : null;
+            return label && label !== '–' ? label : null;
         }
 
         function composeAutoName() {

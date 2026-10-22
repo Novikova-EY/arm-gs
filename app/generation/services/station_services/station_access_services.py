@@ -97,7 +97,7 @@ def get_decentralized_zone_energy_system_type_id(database_version_id: int | None
 
 
 def get_decentralized_zone_res_ids(database_version_id: int | None = None) -> frozenset[int]:
-    """Id РЭС «не указано» (без запятой в названии) — признак децентрализованной зоны."""
+    """Id РЭС «не указано» (без запятой в названии) – признак децентрализованной зоны."""
     from app.common.services.database_version_filter import get_current_db_version_id
     from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 
@@ -194,7 +194,7 @@ def can_fuel_user_add_machine_to_station(user, station: "Station") -> bool:
 
 
 def can_fuel_user_edit_decentralized_station_details(user, station: "Station") -> bool:
-    """Редактирование карточки станции ДЭЗ и выработки — только Топливо-админ/редактор."""
+    """Редактирование карточки станции ДЭЗ и выработки – только Топливо-админ/редактор."""
     return (
         is_fuel_decentralized_station_creator(user)
         and is_decentralized_zone_station(station)
@@ -202,7 +202,7 @@ def can_fuel_user_edit_decentralized_station_details(user, station: "Station") -
 
 
 def can_edit_decentralized_zone_machine_details(user, station: "Station") -> bool:
-    """Редактирование карточки агрегата на станции ДЭЗ — топливо/генерация admin+editor."""
+    """Редактирование карточки агрегата на станции ДЭЗ – топливо/генерация admin+editor."""
     if not getattr(user, "is_authenticated", False):
         return False
     if not is_decentralized_zone_station(station):

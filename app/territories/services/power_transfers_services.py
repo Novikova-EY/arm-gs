@@ -420,7 +420,7 @@ def update_power_transfer_service(
             old_direction = (obj.direction or "").strip()
             new_direction = direction or ""
             if old_direction != new_direction:
-                changes.append(f"Направление: {old_direction or '—'} → {new_direction or '—'}")
+                changes.append(f"Направление: {old_direction or '–'} → {new_direction or '–'}")
                 obj.direction = direction
 
             if changes:
@@ -507,7 +507,7 @@ def add_power_transfer_service(data: list[dict[str, Any]], user: str) -> None:
                     (
                         f"Энергоузел ID={id_energy_unit}; "
                         f"Субъект РФ ID={id_regional_district}; "
-                        f"Направление: {direction or '—'}"
+                        f"Направление: {direction or '–'}"
                     ),
                     entity_type=ENTITY_TYPE,
                     entity_id=obj.id,

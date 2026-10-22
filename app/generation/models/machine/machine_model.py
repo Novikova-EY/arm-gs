@@ -318,7 +318,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Отображаемое значение для колонки 'Ввод в работу' на station_list:
         Machine.date_commission_year или Machine.date_exploitation_expected.
         При фактическом вводе/присоединении в текущем году ожидаемый год не показываем.
-        Для ПГУ-родителя с частями — год только у агрегатов ПГУ.
+        Для ПГУ-родителя с частями – год только у агрегатов ПГУ.
         """
         if self._is_pgu_parent_with_parts():
             return None
@@ -363,12 +363,12 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         if self.date_decompressing_fact:
             dt = convert_to_date(self.date_decompressing_fact)
             if dt is not None:
-                # 01.01.год — считается годом -1
+                # 01.01.год – считается годом -1
                 if dt.month == 1 and dt.day == 1:
                     return dt.year - 1
                 return dt.year
         if self.date_detatchment_fact:
-            # Факт отсоединения — ожидаемый вывод не показываем
+            # Факт отсоединения – ожидаемый вывод не показываем
             years = self._fact_display_years(self.date_detatchment_fact)
             return years[0] if years else None
         if self.date_decompressing_expected is not None:
@@ -386,7 +386,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     def _relabing_year_for_display(self, dt) -> int | None:
         """
         Для date_relabing_fact: если дата 01.01.год, то отображаемый год = год-1.
-        Иначе — год как есть.
+        Иначе – год как есть.
         """
         if dt is None:
             return None
@@ -400,7 +400,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Отображаемое значение для колонки 'Модерн.' на station_list.
 
         При фактической перемаркировке/уточнении в текущем году ожидаемые годы
-        модернизации не показываем (только факт). Для ПГУ-родителя с частями — пусто.
+        модернизации не показываем (только факт). Для ПГУ-родителя с частями – пусто.
         """
         if self._is_pgu_parent_with_parts():
             return None
@@ -429,7 +429,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     def modernization_power_change_display(self) -> str | None:
         """
         Год для колонки «Модерн. с изм. мощ-ти» на station_list:
-        при факте перемаркировки/уточнения в текущем году — только факт;
+        при факте перемаркировки/уточнения в текущем году – только факт;
         иначе максимум из ожидаемого года и факта.
         """
         if self._is_pgu_parent_with_parts():
@@ -477,7 +477,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Логика:
         - учитываем только годы, где есть ненулевая мощность (p_ust/p_ogr/p_rasp);
         - игнорируем техническое значение «не указано»;
-        - если по всем годам только «не указано» при нулевых мощностях — считаем, что топлива нет.
+        - если по всем годам только «не указано» при нулевых мощностях – считаем, что топлива нет.
         """
         from decimal import Decimal, InvalidOperation
         from app.common.services.database_version_filter import get_current_db_version_id
@@ -529,7 +529,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
 
             year = getattr(mf, "year_number", None)
             if not year or not _has_nonzero_power(year):
-                # Нет ненулевой мощности в этом году — топливо считаем неиспользуемым
+                # Нет ненулевой мощности в этом году – топливо считаем неиспользуемым
                 continue
 
             fuel_obj = getattr(mf, "fuel", None)
@@ -637,7 +637,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     def id_regional_energy_system(self):
         """
         Вычисляемый id РЭС для агрегата.
-        Берем со электростанции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
+        Берем со электростанции (Station.id_regional_energy_system), при отсутствии – пытаемся получить через субъект РФ.
 
         ВАЖНО: это НЕ колонка БД, а runtime-helper для группировки/отображения.
         """
@@ -818,7 +818,7 @@ def generate_external_code_before_insert(mapper, connection, target):
     external_code больше не должен пересчитываться из текущих параметров машины:
     это постоянный identity-key логического агрегата между версиями БД.
     Поэтому при вставке сначала пытаемся найти уже существующий код семейства,
-    а если машины ещё нигде нет — выдаём новый UUID один раз.
+    а если машины ещё нигде нет – выдаём новый UUID один раз.
     В одной версии БД код не должен совпадать с уже существующим агрегатом.
     """
     preferred = (target.external_code or "").strip() or None

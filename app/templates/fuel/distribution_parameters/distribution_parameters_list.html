@@ -75,13 +75,13 @@
     z-index: 1;
     position: relative;
 }
-/* Фильтры в шапке: как на station_list — dropdown с .filter-button */
+/* Фильтры в шапке: как на station_list – dropdown с .filter-button */
 .distribution-params-table .filter-button {
     font-size: inherit;
     white-space: normal;
     max-width: 100%;
 }
-/* Общие отступы меню; прокрутку не задаём здесь — иначе двойной скролл с .dp-thead-year-scroll */
+/* Общие отступы меню; прокрутку не задаём здесь – иначе двойной скролл с .dp-thead-year-scroll */
 .distribution-params-table thead .dp-thead-filter-menu {
     min-width: 11rem;
 }
@@ -95,7 +95,7 @@
     overflow-y: auto;
     min-width: 6.5rem;
 }
-/* Крестики удаления существующих строк — только в режиме «Удалить строки» */
+/* Крестики удаления существующих строк – только в режиме «Удалить строки» */
 #distributionParamsTableContainer.dp-delete-mode .dp-row-delete-existing {
     display: inline-block !important;
 }
@@ -160,12 +160,12 @@
                     <div class="d-flex align-items-center justify-content-center flex-nowrap gap-1">
                     {% if row is not none %}
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 dp-row-delete-existing" data-dp-delete-row-id="{{ row.id }}" title="Пометить строку на удаление">×</button>
-                    <span class="text-break" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}—{% endif %}</span>
+                    <span class="text-break" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} – {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}–{% endif %}</span>
                     <input type="hidden" name="dp_{{ suffix }}_id_union_energy_system" value="{% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}">
                     {% else %}
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 dp-remove-new-row" title="Удалить добавленную строку">×</button>
                     <select name="dp_{{ suffix }}_id_union_energy_system" class="form-select form-select-lg fuel-param-input" aria-label="ОЭС (name)">
-                        <option value="" {% if not prefill_union_energy_system_id %}selected{% endif %}>—</option>
+                        <option value="" {% if not prefill_union_energy_system_id %}selected{% endif %}>–</option>
                         {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
                         <option value="{{ ues.id }}" {% if prefill_union_energy_system_id is not none and prefill_union_energy_system_id == ues.id %}selected{% endif %}>{{ ues.name }}</option>
                         {% endfor %}
@@ -178,11 +178,11 @@
                 </td>
                 <td class="dp-col-year{% if row is not none %} px-2{% endif %}">
                     {% if row is not none %}
-                    <span title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} — номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}</span>
+                    <span title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} – номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}–{% endif %}</span>
                     <input type="hidden" name="dp_{{ suffix }}_id_base_year" value="{% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}">
                     {% else %}
                     <select name="dp_{{ suffix }}_id_base_year" class="form-select form-select-lg text-center fuel-param-input" aria-label="Базовый год (byear)">
-                        <option value="" selected>—</option>
+                        <option value="" selected>–</option>
                         {% for y in year_list_for_edit %}
                         <option value="{{ y.id }}">{{ y.number }}</option>
                         {% endfor %}
@@ -191,7 +191,7 @@
                 </td>
                 <td class="dp-col-year{% if row is not none %} px-2{% endif %}">
                     {% if row is not none %}
-                    <span title="В БД: id_year={{ row.id_year }}{% if row.year %} — номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}—{% endif %}</span>
+                    <span title="В БД: id_year={{ row.id_year }}{% if row.year %} – номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}–{% endif %}</span>
                     <input type="hidden" name="dp_{{ suffix }}_id_year" value="{{ row.id_year }}">
                     {% else %}
                     <select name="dp_{{ suffix }}_id_year" class="form-select form-select-lg text-center fuel-param-input" required aria-label="Расчетный год (year)">
@@ -213,11 +213,11 @@
                 <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_hnpg" value="{% if row and row.hnpg is not none %}{{ row.hnpg|format_decimal_trim(0) }}{% endif %}" {% if row and row.hnpg is not none %}title="{{ (row.hnpg|format_decimal_trim(0))|e }}"{% endif %}></td>
                 <td{% if row is not none %} class="px-2"{% endif %}>
                     {% if row is not none %}
-                    <span class="dp-lim-display" {% if row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>{%- if row.lim is none -%}—{%- elif row.lim == 1 -%}да{%- elif row.lim == 0 -%}нет{%- else -%}{{ row.lim }}{%- endif -%}</span>
+                    <span class="dp-lim-display" {% if row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>{%- if row.lim is none -%}–{%- elif row.lim == 1 -%}да{%- elif row.lim == 0 -%}нет{%- else -%}{{ row.lim }}{%- endif -%}</span>
                     <input type="hidden" name="dp_{{ suffix }}_lim" value="{% if row.lim is not none %}{{ row.lim }}{% endif %}">
                     {% else %}
                     <select name="dp_{{ suffix }}_lim" class="form-select form-select-lg text-center fuel-param-input" aria-label="Наличие ограничений по выработке для РЭС (lim)">
-                        <option value="" selected>—</option>
+                        <option value="" selected>–</option>
                         <option value="0">нет</option>
                         <option value="1">да</option>
                     </select>
@@ -351,7 +351,7 @@
                             {% endif %}
                         </div>
                         {% elif attr == 'doptim' %}
-                        {% set doptim_tooltip = "0.05 + 0.03 * (Nрасч − Nбаз). Nрасч и Nбаз — номер расчетного и базового годов" %}
+                        {% set doptim_tooltip = "0.05 + 0.03 * (Nрасч − Nбаз). Nрасч и Nбаз – номер расчетного и базового годов" %}
                         <span class="d-inline-block text-center">
                             {{ label|safe }} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ doptim_tooltip|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула doptim"></i><br>
                             <span class="text-muted small">({{ attr|fuel_header_code }})</span>
@@ -383,9 +383,9 @@
             {{ distribution_param_edit_row(row.id, row) }}
             {% else %}
             <tr class="text-center align-middle">
-                <td class="text-center text-break dp-col-ues" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}—{% endif %}</td>
-                <td class="dp-col-year" title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} — номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}</td>
-                <td class="dp-col-year" title="В БД: id_year={{ row.id_year }}{% if row.year %} — номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}—{% endif %}</td>
+                <td class="text-center text-break dp-col-ues" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} – {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}–{% endif %}</td>
+                <td class="dp-col-year" title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} – номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}–{% endif %}</td>
+                <td class="dp-col-year" title="В БД: id_year={{ row.id_year }}{% if row.year %} – номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}–{% endif %}</td>
                 <td {% if row.e is not none %}title="{{ (row.e|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.e) }}</td>
                 <td {% if row.doptim is not none %}title="{{ (row.doptim|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.doptim) }}</td>
                 <td {% if row.k is not none %}title="{{ (row.k|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.k) }}</td>
@@ -397,7 +397,7 @@
                 <td {% if row.hngt is not none %}title="{{ (row.hngt|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.hngt) }}</td>
                 <td {% if row.hnpg is not none %}title="{{ (row.hnpg|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.hnpg) }}</td>
                 <td {% if row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>
-                    {%- if row.lim is none -%}—
+                    {%- if row.lim is none -%}–
                     {%- elif row.lim == 1 -%}да
                     {%- elif row.lim == 0 -%}нет
                     {%- else -%}{{ row.lim }}{%- endif -%}
@@ -519,7 +519,7 @@
             {% endif %}
             <div class="d-flex align-items-center gap-1" style="min-width: 16rem;">
                 <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
-                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;" title="Только таблица просмотра. В полях ввода и при сохранении — все знаки из БД.">
+                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;" title="Только таблица просмотра. В полях ввода и при сохранении – все знаки из БД.">
                     <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
                     <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
                     <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
@@ -561,7 +561,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="distributionBulkAddBaseYear">Базовый год</label>
                         <select id="distributionBulkAddBaseYear" class="form-select form-select-lg" aria-label="Базовый год для массового добавления">
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -595,7 +595,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="distributionBulkPeriodBaseYear">Базовый год</label>
                         <select id="distributionBulkPeriodBaseYear" class="form-select form-select-lg" aria-label="Базовый год для периода">
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -634,7 +634,7 @@
     {% endif %}
 </div>
 
-{# Как на /fuel/calculation: без Select2 — выпадающие мультиселекты из station_filters_first_row.js #}
+{# Как на /fuel/calculation: без Select2 – выпадающие мультиселекты из station_filters_first_row.js #}
 <script id="filters-data" type="application/json">
     {{ {
         'union_energy_system_list': union_energy_system_list,
@@ -978,7 +978,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     } else if (prefill.lim === 0) {
                         limDisplay.textContent = "нет";
                     } else {
-                        limDisplay.textContent = "—";
+                        limDisplay.textContent = "–";
                     }
                 }
             }
@@ -1126,7 +1126,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     var st = stats || {};
                     var flashMsg = "Сохранено в базе данных: " + saved + ".";
                     if (isPeriod && st.period_from != null && st.period_to != null) {
-                        flashMsg = "Период " + st.period_from + "—" + st.period_to + ": в базу записано строк: " + saved + ".";
+                        flashMsg = "Период " + st.period_from + "–" + st.period_to + ": в базу записано строк: " + saved + ".";
                     }
                     showDistributionBulkFlash(flashMsg);
                     window.setTimeout(function() {
@@ -1202,7 +1202,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 var st = resp.body.stats || {};
                 var diag = "";
                 if (isPeriod && st.period_from != null && st.period_to != null) {
-                    diag += "\n\nПериод (календарные годы): " + st.period_from + " — " + st.period_to + ".";
+                    diag += "\n\nПериод (календарные годы): " + st.period_from + " – " + st.period_to + ".";
                 }
                 if (st.dp_rows_for_base === 0) {
                     diag += "\n\nПо данным сервера: в БД нет строк с выбранным базовым годом.";

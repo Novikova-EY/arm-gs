@@ -218,7 +218,7 @@
             <tbody>
                 {% for block in territory_blocks %}
                 <tr class="lt-po-territory-header-row">
-                    <td colspan="{{ years|length + 1 }}" class="summary-entity-cell text-wrap">{{ block.abbr }} — {{ block.label }}</td>
+                    <td colspan="{{ years|length + 1 }}" class="summary-entity-cell text-wrap">{{ block.abbr }} – {{ block.label }}</td>
                 </tr>
                 {% for row in block.rows %}
                 {% set _lt_ved_label_depth = 2 if row.is_industrial_component else 1 %}
@@ -230,7 +230,7 @@
                         </div>
                     </td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{% if _lt_ved_is_total_row %} fw-bold{% endif %}" data-ec-summary-col-year="{{ y }}"
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
@@ -243,7 +243,7 @@
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input{% if _lt_ved_is_total_row %} fw-bold{% endif %}"
                                inputmode="decimal" autocomplete="off"
-                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               value="{% if disp != '–' %}{{ disp }}{% endif %}"
                                {% if _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}

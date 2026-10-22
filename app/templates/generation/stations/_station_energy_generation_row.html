@@ -47,7 +47,7 @@ can_edit_station_energy is defined else can_edit %}
         style="min-width: 6rem"
       />
     {% else %}
-      {% if v is not none %}{{ format_station_energy_gen_display(v) }}{% else %}—{% endif %}
+      {% if v is not none %}{{ format_station_energy_gen_display(v) }}{% else %}–{% endif %}
     {% endif %}
   </td>
   {% endfor %}

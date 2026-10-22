@@ -42,7 +42,7 @@ _SUM_ATTRS = tuple(
 
 
 def parse_aggregation_types(args) -> list[str]:
-    """Разбирает фильтры итогов; если параметр не задан — показывает ЕЭС."""
+    """Разбирает фильтры итогов; если параметр не задан – показывает ЕЭС."""
     raw_aggregation_types = args.getlist("aggregation_type")
     if not raw_aggregation_types:
         return ["ees"]
@@ -198,7 +198,7 @@ def _sorted_sync_area_ids(synchronous_area_list: list) -> list[int]:
 
 def _format_cell(value: Any, digits: int) -> str:
     if value is None:
-        return "—"
+        return "–"
     if digits == -1:
         return format_decimal_trim_for_display(value, digits=0)
     if digits == 0:
@@ -222,7 +222,7 @@ def _build_year_rows(
             continue
         apply_fuel_param_derived_ratios_to_mapping(summary)
         cells = [
-            _format_cell(summary.get(attr), digits) if is_numeric else "—"
+            _format_cell(summary.get(attr), digits) if is_numeric else "–"
             for attr, _label, is_numeric in columns
         ]
         rows.append({"year": year, "cells": cells})

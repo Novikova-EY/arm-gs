@@ -23,9 +23,15 @@ from app.ecology.routes.ecology_bp import ecology_bp
 from app.ecology.services.export_gis_tes_fuel_comparison_services import (
     export_comparison_table_to_excel,
 )
-from app.ecology.services.gis_tek_page_services import can_edit_ecology
+from app.ecology.services.ecology_logging_services import (
+    context_lines,
+    log_file_download,
+    log_page_visit,
+)
+from app.ecology.services.gis_tek_page_services import can_edit_ecology, parse_norm_zv_parts
 from app.ecology.services.gis_tes_fuel_comparison_constants import (
     ANALYSIS_SHEET_SLUGS,
+    ZV_NORM_DEFAULT_PARTS,
 )
 from app.ecology.services.gis_tes_fuel_comparison_services import (
     build_comparison_table_context,
@@ -53,6 +59,8 @@ def gis_tes_fuel_comparison(sheet_slug: str):
             )
             if (value := request.args.get(key)) not in (None, "")
         }
+        if "norm_zv" in request.args:
+            keep["norm_zv"] = request.args.getlist("norm_zv")
         return redirect(
             url_for("ecology_bp.gis_tes_fuel_comparison", sheet_slug=sheet_slug, **keep)
         )
@@ -79,6 +87,8 @@ def gis_tes_fuel_comparison(sheet_slug: str):
         )
         if context.get(key) is not None
     }
+    if "norm_zv" in request.args:
+        year_keep["norm_zv"] = context.get("norm_zv_selected") or [""]
     year_keep["show_totals"] = "1" if context.get("show_totals") else "0"
     year_keep["show_empty_rows"] = "1" if context.get("show_empty_rows") else "0"
     year_keep["show_reported"] = "1" if context.get("show_reported") else "0"
@@ -94,6 +104,13 @@ def gis_tes_fuel_comparison(sheet_slug: str):
     )
     context["can_edit"] = bool(
         can_edit_ecology(current_user) and sheet_slug in ANALYSIS_SHEET_SLUGS
+    )
+    log_page_visit(
+        "Сопоставление данных ГИС ТЭС и Топливо",
+        tab=context["page_title"],
+        details=context_lines(
+            ("период", f"{context.get('start_year')}–{context.get('end_year')}"),
+        ),
     )
     return render_template("ecology/analysis/gis_tes_fuel_comparison.html", **context)
 
@@ -117,6 +134,11 @@ def gis_tes_fuel_comparison_export(sheet_slug: str):
         abort(404)
     stream = export_comparison_table_to_excel(context)
     filename = f"ecology_analysis_{sheet_slug}_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
+    log_file_download(
+        context["page_title"],
+        filename,
+        details=[f"лист={sheet_slug}"],
+    )
     return send_file(
         stream,
         as_attachment=True,
@@ -162,6 +184,10 @@ def gis_tes_fuel_comparison_update_value(sheet_slug: str):
             specific_rounding_digits=(
                 data.get("specific_rounding_digits")
                 or request.args.get("specific_rounding_digits")
+            ),
+            norm_zv_parts=parse_norm_zv_parts(
+                data if "norm_zv" in data else request.args,
+                ZV_NORM_DEFAULT_PARTS,
             ),
         )
     except ValueError as exc:

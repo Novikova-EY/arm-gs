@@ -1,0 +1,25 @@
+.ot-territory-filter-menu {
+    position: fixed;
+    z-index: 2000;
+    width: min(24rem, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+}
+
+.ot-territory-filter-values {
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+.ot-territory-filter-values label {
+    cursor: pointer;
+}
+
+.ot-territory-filter-values input {
+    flex-shrink: 0;
+}
+
+.ot-calculation-table [hidden],
+#otTerritoryFilterMenu[hidden] {
+    display: none !important;
+}

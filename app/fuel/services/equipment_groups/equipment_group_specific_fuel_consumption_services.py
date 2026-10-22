@@ -3,9 +3,9 @@
 """
 Read/query/display для страницы «Удельные показатели групп оборудования».
 
-Запись в EquipmentGroupSpecificFuelConsumption — в
+Запись в EquipmentGroupSpecificFuelConsumption – в
 equipment_group_specific_fuel_consumption_write_services.py
-(пересчёт *_calc — в equipment_group_specific_fuel_consumption_recalc_services.py).
+(пересчёт *_calc – в equipment_group_specific_fuel_consumption_recalc_services.py).
 """
 
 from collections import defaultdict
@@ -45,7 +45,7 @@ CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
 
 
 def _normalize_consumption_value(value):
-    """NULL и 0 на экране оба показываются как «—» — считаем эквивалентными."""
+    """NULL и 0 на экране оба показываются как «–» – считаем эквивалентными."""
     if value is None:
         return None
     try:
@@ -133,7 +133,7 @@ def overlay_snk_calc_from_fuel_params(rows) -> None:
     (формула sn_ee / e · 100 или сохранённый FuelParam.snk).
 
     Только для реальных строк удельников. Год без записи (плейсхолдер
-    интервала) не заполняем — иначе Seek-годы 2027–2031 показывают чужой SNK.
+    интервала) не заполняем – иначе Seek-годы 2027–2031 показывают чужой SNK.
 
     Подставляет значение в загруженные строки без пометки session dirty.
     """
@@ -148,7 +148,7 @@ def overlay_snk_calc_from_fuel_params(rows) -> None:
 
     pairs = []
     for eg, cons in rows or []:
-        # Пустой год интервала (нет строки удельников) — не подставляем SNK из ТЭП,
+        # Пустой год интервала (нет строки удельников) – не подставляем SNK из ТЭП,
         # иначе 2027–2031 выглядят заполненными при Seek-логике без копирования.
         if not cons:
             continue
@@ -393,10 +393,10 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
         if not stations:
             return None
         st_id, st_name = stations[0]
-        return (st_id, st_name or "—")
+        return (st_id, st_name or "–")
 
     def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
+        st_id, st_name = station_tuple or (None, "–")
         return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
 
     hierarchy_flat = []
@@ -435,7 +435,7 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
                 res_list.append(
                     {
                         "res_id": res_id,
-                        "res_name": res_names.get(res_id, "—"),
+                        "res_name": res_names.get(res_id, "–"),
                         "group_blocks": [
                             gb for sb in station_blocks for gb in sb["group_blocks"]
                         ],
@@ -446,14 +446,14 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
             ues_list.append(
                 {
                     "ues_id": ues_id,
-                    "ues_name": ues_names.get(ues_id, "—"),
+                    "ues_name": ues_names.get(ues_id, "–"),
                     "res_list": res_list,
                 }
             )
         hierarchy_flat.append(
             {
                 "est_id": est_id,
-                "est_name": est_names.get(est_id, "—"),
+                "est_name": est_names.get(est_id, "–"),
                 "ues_list": ues_list,
             }
         )
@@ -468,10 +468,10 @@ def map_latest_specific_y_by_equipment_group_id(
     effective_db_version_id: int | None = None,
 ) -> dict[int, object | None]:
     """
-    Для каждой группы — поле ``y`` из строки удельных расходов с максимальным
+    Для каждой группы – поле ``y`` из строки удельных расходов с максимальным
     ``year_number`` ≤ ``target_year``.
 
-    Условие присоединения к группе — как на странице
+    Условие присоединения к группе – как на странице
     ``stations_equipment_group_specific_fuel_consumption`` (``version_match`` между
     строкой удельных расходов и ``EquipmentGroup``), а не фильтр только по
     ``database_version_id`` самой строки: иначе строки с версией, совпадающей с группой,

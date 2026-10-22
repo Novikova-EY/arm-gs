@@ -19,7 +19,7 @@ body.seg-import-export-open #flaskFlashMessages .alert { display: block !importa
 {% if current_user.is_authenticated %}
 
 <style>
-/* Фильтры / поиск / пагинация — всегда видимы при скролле таблицы */
+/* Фильтры / поиск / пагинация – всегда видимы при скролле таблицы */
 .seg-sticky-controls {
     position: sticky;
     top: 0;
@@ -42,7 +42,7 @@ body.seg-import-export-open #flaskFlashMessages .alert { display: block !importa
 #stationsTableContainer table thead tr:nth-child(2) th {
     top: calc(var(--seg-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
 }
-/* Группы без numb (кнопка «Проверка») и строки с дублирующимся numb — слабый красный фон */
+/* Группы без numb (кнопка «Проверка») и строки с дублирующимся numb – слабый красный фон */
 #stationsEquipmentGroupsTable.seg-highlight-missing-numb tbody tr.seg-missing-numb,
 #stationsEquipmentGroupsTable tbody tr.seg-duplicate-numb {
     --bs-table-bg: #fdecee;
@@ -113,79 +113,97 @@ body.seg-import-export-open #flaskFlashMessages .alert { display: block !importa
 
 {% set column_count = 24 %}
 
+{% macro flag_filter_header(field, label, selected) %}
+{% set choices = (flag_filter_choices|default({})).get(field, []) %}
+{% set choice_values = choices|map(attribute=0)|list %}
+<th style="width: 80px;">
+    {{ label }}<br><span class="text-muted small">({{ field }})</span>
+    <select class="d-none equipment-group-flag-filter" multiple form="none"
+            data-filter-param="equipment_group_{{ field }}_filter"
+            data-placeholder="Фильтр" aria-label="Фильтр: {{ label }}">
+        {% for value, text in choices %}
+        <option value="{{ value }}"{% if value in selected %} selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+        {% for value in selected if value not in choice_values %}
+        <option value="{{ value }}" selected>{{ equipment_group_flag_label(field, value) }}</option>
+        {% endfor %}
+    </select>
+</th>
+{% endmacro %}
+
 {# Макрос для вычисления значений столбцов (для data-атрибутов фильтрации/сортировки) #}
 {% macro get_row_values(eg, station, group_type, machine, type_display=None) %}
-{% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '—' %}
-{% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '—' %}
-{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '—') %}
-{% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '—' %}
-{% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '—' %}
-{% set _v5 = (station.regional_district.name if station and station.regional_district else (eg.regional_district.name if eg and eg.regional_district else '')) or '—' %}
-{% set _v6 = (station.regional_energy_system if station else '') or (eg.regional_energy_system.name if eg and eg.regional_energy_system else '') or '—' %}
-{% set _v7 = (station.gen_companies if station and station.gen_companies else '') or '—' %}
-{% set _v8 = (eg.niv if eg and eg.niv else '') or '—' %}
-{% set _v9 = (eg.comp if eg and eg.comp else '') or '—' %}
-{% set _v10 = (eg.main if eg and eg.main else '') or '—' %}
-{% set _v11 = ('да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '')) or '—' %}
-{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
-{% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '—' %}
-{% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '—' %}
-{% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '—' %}
-{% set _v16 = ((eg.department_external_mapping.external_name if eg and eg.department_external_mapping else '') or (eg.dep if eg and eg.dep else '')) or '—' %}
-{% set _v17 = ((eg.union_energy_system_external_mapping.external_nameoes if eg and eg.union_energy_system_external_mapping else '') or (eg.oes if eg and eg.oes else '')) or '—' %}
-{% set _v18 = ((eg.economic_region_external_mapping.external_name if eg and eg.economic_region_external_mapping else '') or (eg.er if eg and eg.er else '')) or '—' %}
-{% set _v19 = ((eg.federal_district_external_mapping.external_name if eg and eg.federal_district_external_mapping else '') or (eg.fo if eg and eg.fo else '')) or '—' %}
-{% set _v20 = (eg.numb if eg and eg.numb else '') or '—' %}
-{% set _v21 = (eg.tm if eg and eg.tm else '') or '—' %}
-{% set _v22 = (eg.n1 if eg and eg.n1 else '') or '—' %}
-{% set _v23 = (eg.n2 if eg and eg.n2 else '') or '—' %}
-{% set _v24 = (eg.p1 if eg and eg.p1 else '') or '—' %}
-{% set _v25 = (eg.p2 if eg and eg.p2 else '') or '—' %}
-{% set _v26 = (eg.ordnumb if eg and eg.ordnumb else '') or '—' %}
-{% set _v27 = (eg.addr if eg and eg.addr else '') or '—' %}
-{% set _v28 = (eg.note if eg and eg.note else '') or '—' %}
-{% set _v29 = ((eg.cities_external_mapping.name if eg and eg.cities_external_mapping else '') or (eg.codegor if eg and eg.codegor else '')) or '—' %}
-{% set _v30 = ((eg.business_unit_external_mapping.external_name if eg and eg.business_unit_external_mapping else '') or (eg.be if eg and eg.be else '')) or '—' %}
-{% set _v31 = ((eg.gen_company_external_mapping.external_name if eg and eg.gen_company_external_mapping else '') or (eg.gk if eg and eg.gk else '')) or '—' %}
-{% set _v32 = ((eg.gen_company_branch_external_mapping.external_name if eg and eg.gen_company_branch_external_mapping else '') or (eg.gkf if eg and eg.gkf else '')) or '—' %}
+{% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '–' %}
+{% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '–' %}
+{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '–') %}
+{% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '–' %}
+{% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '–' %}
+{% set _v5 = (station.regional_district.name if station and station.regional_district else (eg.regional_district.name if eg and eg.regional_district else '')) or '–' %}
+{% set _v6 = (station.regional_energy_system if station else '') or (eg.regional_energy_system.name if eg and eg.regional_energy_system else '') or '–' %}
+{% set _v7 = (station.gen_companies if station and station.gen_companies else '') or '–' %}
+{% set _v8 = (eg.niv if eg and eg.niv else '') or '–' %}
+{% set _v9 = (eg.comp if eg and eg.comp else '') or '–' %}
+{% set _v10 = (eg.main if eg and eg.main else '') or '–' %}
+{% set _v11 = equipment_group_flag_label('d', eg.d) if eg else '–' %}
+{% set _v12 = equipment_group_flag_label('r', eg.r) if eg else '–' %}
+{% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '–' %}
+{% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '–' %}
+{% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '–' %}
+{% set _v16 = ((eg.department_external_mapping.external_name if eg and eg.department_external_mapping else '') or (eg.dep if eg and eg.dep else '')) or '–' %}
+{% set _v17 = ((eg.union_energy_system_external_mapping.external_nameoes if eg and eg.union_energy_system_external_mapping else '') or (eg.oes if eg and eg.oes else '')) or '–' %}
+{% set _v18 = ((eg.economic_region_external_mapping.external_name if eg and eg.economic_region_external_mapping else '') or (eg.er if eg and eg.er else '')) or '–' %}
+{% set _v19 = ((eg.federal_district_external_mapping.external_name if eg and eg.federal_district_external_mapping else '') or (eg.fo if eg and eg.fo else '')) or '–' %}
+{% set _v20 = (eg.numb if eg and eg.numb else '') or '–' %}
+{% set _v21 = (eg.tm if eg and eg.tm else '') or '–' %}
+{% set _v22 = (eg.n1 if eg and eg.n1 else '') or '–' %}
+{% set _v23 = (eg.n2 if eg and eg.n2 else '') or '–' %}
+{% set _v24 = (eg.p1 if eg and eg.p1 else '') or '–' %}
+{% set _v25 = (eg.p2 if eg and eg.p2 else '') or '–' %}
+{% set _v26 = (eg.ordnumb if eg and eg.ordnumb else '') or '–' %}
+{% set _v27 = (eg.addr if eg and eg.addr else '') or '–' %}
+{% set _v28 = (eg.note if eg and eg.note else '') or '–' %}
+{% set _v29 = ((eg.cities_external_mapping.name if eg and eg.cities_external_mapping else '') or (eg.codegor if eg and eg.codegor else '')) or '–' %}
+{% set _v30 = ((eg.business_unit_external_mapping.external_name if eg and eg.business_unit_external_mapping else '') or (eg.be if eg and eg.be else '')) or '–' %}
+{% set _v31 = ((eg.gen_company_external_mapping.external_name if eg and eg.gen_company_external_mapping else '') or (eg.gk if eg and eg.gk else '')) or '–' %}
+{% set _v32 = ((eg.gen_company_branch_external_mapping.external_name if eg and eg.gen_company_branch_external_mapping else '') or (eg.gkf if eg and eg.gkf else '')) or '–' %}
 data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3="{{ _v3 }}" data-col-4="{{ _v4 }}" data-col-5="{{ _v7 }}" data-col-6="{{ _v5 }}" data-col-7="{{ _v6 }}" data-col-8="{{ _v20 }}" data-col-9="{{ _v11 }}" data-col-10="{{ _v12 }}" data-col-11="{{ _v14 }}" data-col-12="{{ _v30 }}" data-col-13="{{ _v31 }}" data-col-14="{{ _v32 }}" data-col-15="{{ _v18 }}" data-col-16="{{ _v22 }}" data-col-17="{{ _v23 }}" data-col-18="{{ _v24 }}" data-col-19="{{ _v25 }}" data-col-20="{{ _v27 }}" data-col-21="{{ _v29 }}" data-col-22="{{ _v28 }}"
 {% endmacro %}
 
-{# То же для блока «одна группа — несколько станций»: субъект и РЭС по электростанции, не по полям группы оборудования #}
+{# То же для блока «одна группа – несколько станций»: субъект и РЭС по электростанции, не по полям группы оборудования #}
 {% macro get_row_values_multi(eg, station, group_type, machine, type_display=None) %}
-{% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '—' %}
-{% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '—' %}
-{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '—') %}
-{% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '—' %}
-{% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '—' %}
-{% set _v5 = (station.regional_district.name if station and station.regional_district else '') or '—' %}
-{% set _v6 = (station.regional_energy_system if station else '') or '—' %}
-{% set _v7 = (station.gen_companies if station and station.gen_companies else '') or '—' %}
-{% set _v8 = (eg.niv if eg and eg.niv else '') or '—' %}
-{% set _v9 = (eg.comp if eg and eg.comp else '') or '—' %}
-{% set _v10 = (eg.main if eg and eg.main else '') or '—' %}
-{% set _v11 = ('да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '')) or '—' %}
-{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
-{% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '—' %}
-{% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '—' %}
-{% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '—' %}
-{% set _v16 = ((eg.department_external_mapping.external_name if eg and eg.department_external_mapping else '') or (eg.dep if eg and eg.dep else '')) or '—' %}
-{% set _v17 = ((eg.union_energy_system_external_mapping.external_nameoes if eg and eg.union_energy_system_external_mapping else '') or (eg.oes if eg and eg.oes else '')) or '—' %}
-{% set _v18 = ((eg.economic_region_external_mapping.external_name if eg and eg.economic_region_external_mapping else '') or (eg.er if eg and eg.er else '')) or '—' %}
-{% set _v19 = ((eg.federal_district_external_mapping.external_name if eg and eg.federal_district_external_mapping else '') or (eg.fo if eg and eg.fo else '')) or '—' %}
-{% set _v20 = (eg.numb if eg and eg.numb else '') or '—' %}
-{% set _v21 = (eg.tm if eg and eg.tm else '') or '—' %}
-{% set _v22 = (eg.n1 if eg and eg.n1 else '') or '—' %}
-{% set _v23 = (eg.n2 if eg and eg.n2 else '') or '—' %}
-{% set _v24 = (eg.p1 if eg and eg.p1 else '') or '—' %}
-{% set _v25 = (eg.p2 if eg and eg.p2 else '') or '—' %}
-{% set _v26 = (eg.ordnumb if eg and eg.ordnumb else '') or '—' %}
-{% set _v27 = (eg.addr if eg and eg.addr else '') or '—' %}
-{% set _v28 = (eg.note if eg and eg.note else '') or '—' %}
-{% set _v29 = ((eg.cities_external_mapping.name if eg and eg.cities_external_mapping else '') or (eg.codegor if eg and eg.codegor else '')) or '—' %}
-{% set _v30 = ((eg.business_unit_external_mapping.external_name if eg and eg.business_unit_external_mapping else '') or (eg.be if eg and eg.be else '')) or '—' %}
-{% set _v31 = ((eg.gen_company_external_mapping.external_name if eg and eg.gen_company_external_mapping else '') or (eg.gk if eg and eg.gk else '')) or '—' %}
-{% set _v32 = ((eg.gen_company_branch_external_mapping.external_name if eg and eg.gen_company_branch_external_mapping else '') or (eg.gkf if eg and eg.gkf else '')) or '—' %}
+{% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '–' %}
+{% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '–' %}
+{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '–') %}
+{% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '–' %}
+{% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '–' %}
+{% set _v5 = (station.regional_district.name if station and station.regional_district else '') or '–' %}
+{% set _v6 = (station.regional_energy_system if station else '') or '–' %}
+{% set _v7 = (station.gen_companies if station and station.gen_companies else '') or '–' %}
+{% set _v8 = (eg.niv if eg and eg.niv else '') or '–' %}
+{% set _v9 = (eg.comp if eg and eg.comp else '') or '–' %}
+{% set _v10 = (eg.main if eg and eg.main else '') or '–' %}
+{% set _v11 = equipment_group_flag_label('d', eg.d) if eg else '–' %}
+{% set _v12 = equipment_group_flag_label('r', eg.r) if eg else '–' %}
+{% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '–' %}
+{% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '–' %}
+{% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '–' %}
+{% set _v16 = ((eg.department_external_mapping.external_name if eg and eg.department_external_mapping else '') or (eg.dep if eg and eg.dep else '')) or '–' %}
+{% set _v17 = ((eg.union_energy_system_external_mapping.external_nameoes if eg and eg.union_energy_system_external_mapping else '') or (eg.oes if eg and eg.oes else '')) or '–' %}
+{% set _v18 = ((eg.economic_region_external_mapping.external_name if eg and eg.economic_region_external_mapping else '') or (eg.er if eg and eg.er else '')) or '–' %}
+{% set _v19 = ((eg.federal_district_external_mapping.external_name if eg and eg.federal_district_external_mapping else '') or (eg.fo if eg and eg.fo else '')) or '–' %}
+{% set _v20 = (eg.numb if eg and eg.numb else '') or '–' %}
+{% set _v21 = (eg.tm if eg and eg.tm else '') or '–' %}
+{% set _v22 = (eg.n1 if eg and eg.n1 else '') or '–' %}
+{% set _v23 = (eg.n2 if eg and eg.n2 else '') or '–' %}
+{% set _v24 = (eg.p1 if eg and eg.p1 else '') or '–' %}
+{% set _v25 = (eg.p2 if eg and eg.p2 else '') or '–' %}
+{% set _v26 = (eg.ordnumb if eg and eg.ordnumb else '') or '–' %}
+{% set _v27 = (eg.addr if eg and eg.addr else '') or '–' %}
+{% set _v28 = (eg.note if eg and eg.note else '') or '–' %}
+{% set _v29 = ((eg.cities_external_mapping.name if eg and eg.cities_external_mapping else '') or (eg.codegor if eg and eg.codegor else '')) or '–' %}
+{% set _v30 = ((eg.business_unit_external_mapping.external_name if eg and eg.business_unit_external_mapping else '') or (eg.be if eg and eg.be else '')) or '–' %}
+{% set _v31 = ((eg.gen_company_external_mapping.external_name if eg and eg.gen_company_external_mapping else '') or (eg.gk if eg and eg.gk else '')) or '–' %}
+{% set _v32 = ((eg.gen_company_branch_external_mapping.external_name if eg and eg.gen_company_branch_external_mapping else '') or (eg.gkf if eg and eg.gkf else '')) or '–' %}
 data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3="{{ _v3 }}" data-col-4="{{ _v4 }}" data-col-5="{{ _v7 }}" data-col-6="{{ _v5 }}" data-col-7="{{ _v6 }}" data-col-8="{{ _v20 }}" data-col-9="{{ _v11 }}" data-col-10="{{ _v12 }}" data-col-11="{{ _v14 }}" data-col-12="{{ _v30 }}" data-col-13="{{ _v31 }}" data-col-14="{{ _v32 }}" data-col-15="{{ _v18 }}" data-col-16="{{ _v22 }}" data-col-17="{{ _v23 }}" data-col-18="{{ _v24 }}" data-col-19="{{ _v25 }}" data-col-20="{{ _v27 }}" data-col-21="{{ _v29 }}" data-col-22="{{ _v28 }}"
 {% endmacro %}
 
@@ -209,7 +227,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
         {% set station_gen_cell = namespace(printed=false) %}
         {% for link in station_entry.links %}
             {% set group_type = link.equipment_group_type %}
-            {% set type_display = 'станция' if is_composite_parent else ((group_type.name if group_type and group_type.name else '') or '—') %}
+            {% set type_display = 'станция' if is_composite_parent else ((group_type.name if group_type and group_type.name else '') or '–') %}
             {% set link_rowspan = link.rowspan %}
             {% set link_cell = namespace(printed=false) %}
             {% for machine in (link.machines if link.machines else [None]) %}
@@ -228,7 +246,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     {% endif %}
                     {% if show_merged_group_cells and not group_cell.printed %}
                         <td rowspan="{{ group_rowspan }}" class="{{ eg_name_cell_class(group_block) }}">
-                            {{ eg_name_label(group_entity, (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')), group_block, link_endpoint='fuel_bp.equipment_group_edit', link_target='_blank') }}
+                            {{ eg_name_label(group_entity, (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')), group_block, link_endpoint='fuel_bp.equipment_group_edit', link_target='_blank') }}
                         </td>
                         {% set group_cell.printed = true %}
                     {% endif %}
@@ -236,42 +254,42 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                         <td rowspan="{{ link_rowspan }}"{% if is_composite_parent %} class="fw-bold"{% endif %}>{{ type_display }}</td>
                         {% set link_cell.printed = true %}
                     {% endif %}
-                    <td>{{ (machine.machine_number if machine else '') or '—' }}</td>
+                    <td>{{ (machine.machine_number if machine else '') or '–' }}</td>
                     <td>
                         {% if machine and machine.id and station and station.id %}
                             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                {{ (machine.display_name or machine.machine_name) or '—' }}
+                                {{ (machine.display_name or machine.machine_name) or '–' }}
                             </a>
                         {% else %}
-                            {{ ((machine.display_name or machine.machine_name) if machine else '') or '—' }}
+                            {{ ((machine.display_name or machine.machine_name) if machine else '') or '–' }}
                         {% endif %}
                     </td>
                     {% if show_merged_station_cells and not station_gen_cell.printed %}
-                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.gen_companies if station and station.gen_companies else '') or '—' }}</td>
-                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.regional_district.name if station and station.regional_district else (group_entity.regional_district.name if group_entity and group_entity.regional_district else '')) or '—' }}</td>
-                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.regional_energy_system if station else '') or (group_entity.regional_energy_system.name if group_entity and group_entity.regional_energy_system else '') or '—' }}</td>
+                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.gen_companies if station and station.gen_companies else '') or '–' }}</td>
+                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.regional_district.name if station and station.regional_district else (group_entity.regional_district.name if group_entity and group_entity.regional_district else '')) or '–' }}</td>
+                        <td rowspan="{{ merged_station_rowspan }}">{{ (station.regional_energy_system if station else '') or (group_entity.regional_energy_system.name if group_entity and group_entity.regional_energy_system else '') or '–' }}</td>
                         {% set station_gen_cell.printed = true %}
                     {% endif %}
                     {% if show_merged_group_cells and not group_cell.fields %}
                         {% set eg = group_entity %}
                         {% set eg_fuel_mismatch = station_entry.fuel_fields_mismatch if station_entry.fuel_fields_mismatch is defined else false %}
-                        {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой электростанции (одна запись на несколько регионов). Нужна отдельная группа для этой электростанции: повторный импорт или разделение в БД.">—</span>' %}
-                        <td rowspan="{{ group_rowspan }}">{{ eg.numb if eg and eg.numb else '—' }}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else '—')) }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{% if eg and eg.vedomstvo %}{% if eg.vedomstvo|string == '1' %}станция<br>отрасли{% elif eg.vedomstvo|string == '2' %}пром.<br>предприятие{% else %}{{ eg.vedomstvo }}{% endif %}{% else %}—{% endif %}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.business_unit_external_mapping.external_name or eg.be) if eg and eg.business_unit_external_mapping else (eg.be if eg and eg.be else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_external_mapping.external_name or eg.gk) if eg and eg.gen_company_external_mapping else (eg.gk if eg and eg.gk else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_branch_external_mapping.external_name or eg.gkf) if eg and eg.gen_company_branch_external_mapping else (eg.gkf if eg and eg.gkf else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.economic_region_external_mapping.external_name or eg.er) if eg and eg.economic_region_external_mapping else (eg.er if eg and eg.er else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n1 if eg and eg.n1 else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n2 if eg and eg.n2 else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p1 if eg and eg.p1 else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p2 if eg and eg.p2 else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.addr if eg and eg.addr else '—' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.cities_external_mapping.name or eg.codegor) if eg and eg.cities_external_mapping else (eg.codegor if eg and eg.codegor else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.note if eg and eg.note else '—' }}{% endif %}</td>
+                        {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой электростанции (одна запись на несколько регионов). Нужна отдельная группа для этой электростанции: повторный импорт или разделение в БД.">–</span>' %}
+                        <td rowspan="{{ group_rowspan }}">{{ eg.numb if eg and eg.numb else '–' }}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('d', eg.d) if eg else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('r', eg.r) if eg else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{% if eg and eg.vedomstvo %}{% if eg.vedomstvo|string == '1' %}станция<br>отрасли{% elif eg.vedomstvo|string == '2' %}пром.<br>предприятие{% else %}{{ eg.vedomstvo }}{% endif %}{% else %}–{% endif %}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.business_unit_external_mapping.external_name or eg.be) if eg and eg.business_unit_external_mapping else (eg.be if eg and eg.be else '–') }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_external_mapping.external_name or eg.gk) if eg and eg.gen_company_external_mapping else (eg.gk if eg and eg.gk else '–') }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_branch_external_mapping.external_name or eg.gkf) if eg and eg.gen_company_branch_external_mapping else (eg.gkf if eg and eg.gkf else '–') }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.economic_region_external_mapping.external_name or eg.er) if eg and eg.economic_region_external_mapping else (eg.er if eg and eg.er else '–') }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n1 if eg and eg.n1 else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n2 if eg and eg.n2 else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p1 if eg and eg.p1 else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p2 if eg and eg.p2 else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.addr if eg and eg.addr else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.cities_external_mapping.name or eg.codegor) if eg and eg.cities_external_mapping else (eg.codegor if eg and eg.codegor else '–') }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.note if eg and eg.note else '–' }}{% endif %}</td>
                         {% set group_cell.fields = true %}
                     {% endif %}
                 </tr>
@@ -284,7 +302,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
     <!-- Таблица с данными -->
         <table class="table table-hover table-striped table-bordered table-responsive{% if show_missing_numb|default(false) %} seg-highlight-missing-numb{% endif %}" id="stationsEquipmentGroupsTable">
 
-            <!-- Шапка таблицы с данными (без фильтров в шапке) -->
+            <!-- Шапка таблицы с фильтрами по коду группы и признакам d/r -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th colspan="8">Модуль «Генерация»</th>
@@ -300,8 +318,8 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     <th style="width: 120px;">Субъект РФ</th>
                     <th style="width: 150px;">Региональная энергосистема</th>
                     {{ fuel_param_numb1120_header_th(1, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([])), 'numb') }}
-                    <th style="width: 80px;">Признак действующей электростанции<br><span class="text-muted small">(d)</span></th>
-                    <th style="width: 80px;">Признак расширяемой электростанции<br><span class="text-muted small">(r)</span></th>
+                    {{ flag_filter_header('d', 'Признак действующей станции', equipment_group_d_filter|default([])) }}
+                    {{ flag_filter_header('r', 'Признак расширяемой станции', equipment_group_r_filter|default([])) }}
                     <th style="width: 120px;">Название<br><span class="text-muted small">(name_ext)</span></th>
                     <th style="width: 100px;">Ведомство<br><span class="text-muted small">(vedomstvo)</span></th>
                     <th style="width: 80px;">Тип генерирующей компании<br><span class="text-muted small">(be)</span></th>

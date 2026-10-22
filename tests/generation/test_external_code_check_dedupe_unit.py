@@ -83,7 +83,7 @@ def test_dedupe_collapses_same_code_same_company_across_versions(monkeypatch):
 
 
 def test_dedupe_collapses_same_code_company_change_across_versions(monkeypatch):
-    """Смена генкомпании между версиями у того же external_code — одна строка."""
+    """Смена генкомпании между версиями у того же external_code – одна строка."""
     rows = [
         (451, "code-efrem", 7, 77, 70),
         (37167, "code-efrem", 47, 3231, 2907),

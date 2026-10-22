@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""EWTP со строки станции — вход расчёта, не результат Коэфф/Распред/Топливо."""
+"""EWTP со строки станции – вход расчёта, не результат Коэфф/Распред/Топливо."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -21,7 +21,7 @@ def formula_ewtp(qotr, y) -> Decimal:
 
 
 def apply_access_coeff_ewtp(fuel_param, y) -> bool:
-    """Кнопка5: ``w!EWTP = QOTR * U!y / 1000`` — пишется всегда, не только в пустое."""
+    """Кнопка5: ``w!EWTP = QOTR * U!y / 1000`` – пишется всегда, не только в пустое."""
     if fuel_param is None:
         return False
     new = formula_ewtp(getattr(fuel_param, "qotr", None), y)
@@ -33,7 +33,7 @@ def apply_access_coeff_ewtp(fuel_param, y) -> bool:
 def resolve_station_ewtp(fuel_param, y=None) -> Decimal:
     """
     Уже заданный ewtp (импорт «Станции(Схема)» / ручная правка) не трогаем.
-    Формула — только если ewtp пустой и есть y.
+    Формула – только если ewtp пустой и есть y.
     """
     if fuel_param is None:
         return Decimal("0")

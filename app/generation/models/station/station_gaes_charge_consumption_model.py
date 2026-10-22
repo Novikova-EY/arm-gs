@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationGaesChargeConsumption — потребление электрической энергии ГАЭС на заряд по годам (млн кВтч).
+StationGaesChargeConsumption – потребление электрической энергии ГАЭС на заряд по годам (млн кВтч).
 year_number без FK: у справочника годов составной ключ (number, database_version_id).
 """
 from sqlalchemy.sql import func

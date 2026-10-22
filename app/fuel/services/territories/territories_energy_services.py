@@ -37,7 +37,7 @@ def get_filter_choices_for_territories_energy():
     """Возвращает словарь {col: [(value, label), ...]} для выпадающих фильтров."""
     choices = {}
 
-    # Текстовые поля — distinct из таблицы
+    # Текстовые поля – distinct из таблицы
     text_cols = [
         "name_ext",
         "ao",
@@ -72,7 +72,7 @@ def get_filter_choices_for_territories_energy():
             _format_choice_value(r[0]) for r in rows if r[0] is not None
         ]
 
-    # dep, oes, er, fo — теперь Integer, берем distinct из самой таблицы
+    # dep, oes, er, fo – теперь Integer, берем distinct из самой таблицы
     for col in ["dep", "oes", "er", "fo"]:
         col_attr = getattr(TerritoriesEnergyExternalMapping, col)
         rows = (
@@ -86,7 +86,7 @@ def get_filter_choices_for_territories_energy():
             _format_choice_value(r[0]) for r in rows if r[0] is not None
         ]
 
-    # Поля из Генерации — по ref_uuid
+    # Поля из Генерации – по ref_uuid
     current_version_id = get_current_db_version_id()
     rd_rows = (
         RegionalDistrict.query.with_entities(

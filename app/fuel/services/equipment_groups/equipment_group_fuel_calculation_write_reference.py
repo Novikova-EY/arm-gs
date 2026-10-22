@@ -60,7 +60,7 @@ def get_fuel_calculation_write_reference() -> dict[str, Any]:
                     {
                         "table": t_main,
                         "model": "EquipmentGroupFuelParam",
-                        "rule": "строка на год расчёта — поля энергобаланса",
+                        "rule": "строка на год расчёта – поля энергобаланса",
                         "columns_used": ["qotr", "e", "q", "turt"],
                     },
                 ],
@@ -108,7 +108,7 @@ def get_fuel_calculation_write_reference() -> dict[str, Any]:
                         "model": "EquipmentGroupFuelFormula",
                         "rule": (
                             "строка с max(year_number) при year_number <= году расчёта, нужный variant_number, "
-                            "учёт database_version_id (аналогично удельному расходу — не обязательно «год минус один»)"
+                            "учёт database_version_id (аналогично удельному расходу – не обязательно «год минус один»)"
                         ),
                         "columns_used": ["formtxt"],
                     }
@@ -116,11 +116,11 @@ def get_fuel_calculation_write_reference() -> dict[str, Any]:
                 "writes": [
                     {
                         "table": t_main,
-                        "note": "имена из формулы, не входящие в UGLI1 — в одноимённые колонки EquipmentGroupFuelParam",
+                        "note": "имена из формулы, не входящие в UGLI1 – в одноимённые колонки EquipmentGroupFuelParam",
                     },
                     {
                         "table": t_extra,
-                        "note": "имена из UGLI1 — в одноимённые колонки EquipmentGroupExtraFuelParam",
+                        "note": "имена из UGLI1 – в одноимённые колонки EquipmentGroupExtraFuelParam",
                     },
                 ],
             },

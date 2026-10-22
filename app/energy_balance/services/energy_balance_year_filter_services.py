@@ -59,7 +59,7 @@ def resolve_ee_year_filters_for_request():
     """
     Возвращает (start_year, end_year, redirect_response).
 
-    По умолчанию — отчётное окно N−9…N (текущий год), а не период планирования СиПР.
+    По умолчанию – отчётное окно N−9…N (текущий год), а не период планирования СиПР.
     """
     default_start = get_ee_default_start_year()
     default_end = get_ee_default_end_year()
@@ -86,7 +86,7 @@ def resolve_ee_transfers_year_filters_for_request():
     """
     Годы для страницы «Перетоки ЭЭ».
 
-    Не подхватывает из URL период планирования СиПР (2024–2031 и т.п.) —
+    Не подхватывает из URL период планирования СиПР (2024–2031 и т.п.) –
     для отчётных данных используется окно N−9…N.
     """
     start_year, end_year, redirect_response = resolve_ee_year_filters_for_request()

@@ -530,7 +530,7 @@ def _parse_rounding_digits() -> int:
 
 
 def _parse_rounding_digits_k(*, fallback: int | None = None) -> int:
-    """Округление строк k на сводках «Коэффициенты…»; без параметра — fallback (на coeff-страницах 3 знака)."""
+    """Округление строк k на сводках «Коэффициенты…»; без параметра – fallback (на coeff-страницах 3 знака)."""
     raw = request.args.get("rounding_digits_k")
     if raw is None or str(raw).strip() == "":
         return _parse_rounding_digits() if fallback is None else fallback
@@ -554,7 +554,7 @@ def _filter_year_list_for_summary() -> list[int]:
 
 def _coeff_base_year_n() -> int:
     """
-    N — календарный год с признаком «текущий», иначе «текущий (оценка)»,
+    N – календарный год с признаком «текущий», иначе «текущий (оценка)»,
     иначе конец стандартного диапазона (как get_ges_tep_current_price_year_number + fallback).
     """
     n = get_ges_tep_current_price_year_number()
@@ -569,7 +569,7 @@ def _summary_period_base_year_n() -> int:
 
 
 def _parse_summary_include_medium_years() -> bool:
-    """GET pd_medium=1 — подгрузить столбцы N+1…N+6 (кнопка «Среднесрочный период» на сводке «максимумы»)."""
+    """GET pd_medium=1 – подгрузить столбцы N+1…N+6 (кнопка «Среднесрочный период» на сводке «максимумы»)."""
     return str(request.args.get("pd_medium") or "").strip().lower() in (
         "1",
         "true",
@@ -581,7 +581,7 @@ def _parse_summary_include_medium_years() -> bool:
 def _expand_summary_years_for_period_segments(
     sy: int, ey: int, n: int, *, include_medium_years: bool
 ) -> tuple[int, int]:
-    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years — ещё с N+1…N+6."""
+    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years – ещё с N+1…N+6."""
     bounds = _filter_year_list_for_summary()
     if not bounds:
         lo, hi = sy, ey
@@ -596,7 +596,7 @@ def _expand_summary_years_for_period_segments(
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
-    """По умолчанию — отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
+    """По умолчанию – отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
     bounds = _filter_year_list_for_summary()
     n = _summary_period_base_year_n()
     default_sy = n - 9
@@ -650,9 +650,9 @@ def _parse_coeff_page_data_year_range() -> tuple[int, int, int, bool, bool]:
     """
     (N, start_year, end_year, include_medium, include_long) для HTML/JSON «Коэффициенты…».
 
-    Как «Максимумы…»: первая отрисовка — только отчётное окно N−9…N.
-    Среднесрок (N+1…N+6) — при pd_medium=1 или если форма годов заходит за N.
-    Долгосрок (N+7…N+18) — при coeff_include_long=1 или если выбранный год конца периода позже N+6.
+    Как «Максимумы…»: первая отрисовка – только отчётное окно N−9…N.
+    Среднесрок (N+1…N+6) – при pd_medium=1 или если форма годов заходит за N.
+    Долгосрок (N+7…N+18) – при coeff_include_long=1 или если выбранный год конца периода позже N+6.
     """
     n = _coeff_base_year_n()
     include_long = _parse_coeff_include_long()
@@ -672,9 +672,9 @@ def _parse_coeff_ui_year_form_range(coeff_n: int) -> tuple[int, int, bool]:
     """
     Диапазон для формы «Год начала/конца» на страницах «Коэффициенты…».
 
-    Колонки таблицы — отдельно: сначала N−9…N, среднесрок/долгосрок подгружаются лениво.
-    Если в URL есть start_year/end_year — считаем диапазон применённым (ручной режим отображения).
-    Без параметров в URL — по умолчанию отчётное окно N−9…N (как на «Максимумы…»).
+    Колонки таблицы – отдельно: сначала N−9…N, среднесрок/долгосрок подгружаются лениво.
+    Если в URL есть start_year/end_year – считаем диапазон применённым (ручной режим отображения).
+    Без параметров в URL – по умолчанию отчётное окно N−9…N (как на «Максимумы…»).
     """
     bounds = _filter_year_list_for_summary()
     default_sy = int(coeff_n) - 9
@@ -786,7 +786,7 @@ def _parse_ez_territory_ordered() -> tuple[list[int], list[int]]:
 
 
 def _parse_summary_export_visible_keys(allowed: frozenset[str]) -> frozenset[str] | None:
-    """GET visible_rows=a,b,c — только ключи из whitelist; None = все строки."""
+    """GET visible_rows=a,b,c – только ключи из whitelist; None = все строки."""
     raw = request.args.get("visible_rows")
     if raw is None or str(raw).strip() == "":
         return None
@@ -869,7 +869,7 @@ def _apply_summary_export_view_filters(
 
 
 def _parse_export_years_list(full_years: list[int]) -> list[int] | None:
-    """GET export_years=2015,2016,... — подмножество full_years, порядок как в запросе."""
+    """GET export_years=2015,2016,... – подмножество full_years, порядок как в запросе."""
     raw = request.args.get("export_years")
     if raw is None or str(raw).strip() == "":
         return None

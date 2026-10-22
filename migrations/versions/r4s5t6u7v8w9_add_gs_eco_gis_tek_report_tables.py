@@ -37,7 +37,7 @@ _COMMON_COLUMNS = {
     "database_version_id": "Версия базы данных (FK -> gs_sys.gs_database_versions)",
     "note": "Примечание",
     "station_numb": "№_станции из ГИС ТЭК; связь с группой оборудования (Топливо) по numb",
-    "gis_tek_station_name": "Электростанция (ГИС ТЭК) — наименование из файла",
+    "gis_tek_station_name": "Электростанция (ГИС ТЭК) – наименование из файла",
     "station_type": "Тип станции из файла ГИС ТЭК",
     "equipment_group_id": "Группа оборудования (Топливо), FK -> gs_fue.gs_fue_equipment_groups",
     "year_number": "Год (связь с gs_sys.gs_sys_years по number и database_version_id)",

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-RegionalEnergySystemEnergyGeneration — контрольная выработка ЭЭ по РЭС (млн кВтч).
+RegionalEnergySystemEnergyGeneration – контрольная выработка ЭЭ по РЭС (млн кВтч).
 
 Итоговые значения строки «Выработка» из сводов ОЭС по каждой региональной
 энергосистеме. На странице ee_generation:
 - строка «…, всего» по РЭС показывает эти контрольные значения и позволяет
   править вручную;
-- строки «…, всего» по ОЭС / России — сумма по станциям
+- строки «…, всего» по ОЭС / России – сумма по станциям
   (до 2018: без ЭСПП + свод ЭСПП);
 - строка «Проверка» = сумма по станциям [+ свод ЭСПП] − контроль.
 
@@ -16,9 +16,9 @@ RegionalEnergySystemEnergyGeneration — контрольная выработк
 должна совпадать с контрольным итогом.
 
 Данные хранятся по годам и, при необходимости, по месяцам:
-- year_number — календарный год (ссылка на Year.number вместе с database_version_id);
-- month_number = 0 — годовое значение («год»);
-- month_number = 1..12 — значение за соответствующий месяц года.
+- year_number – календарный год (ссылка на Year.number вместе с database_version_id);
+- month_number = 0 – годовое значение («год»);
+- month_number = 1..12 – значение за соответствующий месяц года.
 """
 from sqlalchemy.sql import func
 from sqlalchemy import Numeric
@@ -28,7 +28,7 @@ from config import SCHEMA_ENERGY_BALANCE, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.generation.models.common.version_year_unique_index import version_year_month_unique_index
 
-# 0 — годовое значение («год»); 1–12 — номер месяца
+# 0 – годовое значение («год»); 1–12 – номер месяца
 RES_ENERGY_GENERATION_PERIOD_YEAR = 0
 
 

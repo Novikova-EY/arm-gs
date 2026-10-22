@@ -142,7 +142,7 @@ def test_pgu_power_extra_rows_have_cells_for_unspanned_columns():
     assert rasp_rows, html
     assert ogr_rows, html
 
-    # Первая строка Ррасп — агрегат ПГУ, последняя — итог по станции.
+    # Первая строка Ррасп – агрегат ПГУ, последняя – итог по станции.
     pgu_rasp = rasp_rows[0]
     texts = [text for _tag, _cls, text in pgu_rasp]
     assert texts[7] == "Ррасп", texts

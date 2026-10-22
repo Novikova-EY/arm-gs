@@ -152,9 +152,9 @@
                         <tr>
                             <td class="p-3">{{ log.timestamp_msk.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] if log.timestamp_msk else '' }}</td>
                             <td class="p-3">{{ log.username }}</td>
-                            <td class="p-3">{{ log.database_version_display or '—' }}</td>
+                            <td class="p-3">{{ log.database_version_display or '–' }}</td>
                             <td class="p-3">{{ log.action }}</td>
-                            <td class="p-3">{{ log.details if log.details is not none else '—' }}</td>
+                            <td class="p-3">{{ log.details if log.details is not none else '–' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

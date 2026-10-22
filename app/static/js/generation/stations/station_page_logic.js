@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // === 2. Обработка фильтров в dropdown
     function setupDropdownCheckboxFilters() {
         // Только эти чекбоксы в шапке перезагружают страницу сразу при изменении.
-        // Годовые фильтры (Ввод/Модерн./…) применяются только по кнопке «Ок» — их имя здесь не указываем.
+        // Годовые фильтры (Ввод/Модерн./…) применяются только по кнопке «Ок» – их имя здесь не указываем.
         const instantApplyCheckboxFilters = [
             'station_type_filter',
             'tes_type_filter',
@@ -195,14 +195,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.machineRowsSetupDone) return;
         window.machineRowsSetupDone = true;
 
-        // Сохраним исходный rowspan у ячеек агрегатов — только один раз
+        // Сохраним исходный rowspan у ячеек агрегатов – только один раз
         document.querySelectorAll('.rowspan-td').forEach(td => {
             if (td.dataset.originalRowspan == null) {
                 td.dataset.originalRowspan = td.getAttribute('rowspan') || '';
             }
         });
 
-        // Сохраняем базовое количество агрегатов на станцию — только один раз
+        // Сохраняем базовое количество агрегатов на станцию – только один раз
         document.querySelectorAll('.station-rowspan-td').forEach(td => {
             const dataTotalMachines = td.getAttribute('data-total-machines');
             const dataTotalPgu = td.getAttribute('data-total-pgu-count');
@@ -329,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // При изменении — только единая функция обновления, без дублирования логики
+        // При изменении – только единая функция обновления, без дублирования логики
         togglePOgr?.addEventListener('change', () => {
             window.applyPowerRowsUpdate?.();
             window.applyHideAggregatesUpdate?.();

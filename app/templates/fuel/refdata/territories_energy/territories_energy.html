@@ -125,7 +125,7 @@
                                             <ul class="dropdown-menu dropdown-menu-end">
                                                 <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_' ~ col: ''})) }}">Все</a></li>
                                                 {% for val, lbl in (filter_choices.get(col, [])[1:] if filter_choices.get(col) else []) %}
-                                                <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_' ~ col: val})) }}">{{ lbl or val or '—' }}</a></li>
+                                                <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_' ~ col: val})) }}">{{ lbl or val or '–' }}</a></li>
                                                 {% endfor %}
                                             </ul>
                                         </div>
@@ -147,7 +147,7 @@
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_district_ref_uuid': ''})) }}">Все</a></li>
                                             {% for val, lbl in (filter_choices.get('regional_district_ref_uuid', [])[1:] or []) %}
-                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_district_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_district_ref_uuid': val})) }}">{{ lbl or val or '–' }}</a></li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -161,7 +161,7 @@
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_energy_system_ref_uuid': ''})) }}">Все</a></li>
                                             {% for val, lbl in (filter_choices.get('regional_energy_system_ref_uuid', [])[1:] or []) %}
-                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_energy_system_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_energy_system_ref_uuid': val})) }}">{{ lbl or val or '–' }}</a></li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -175,7 +175,7 @@
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_energy_zone_ref_uuid': ''})) }}">Все</a></li>
                                             {% for val, lbl in (filter_choices.get('energy_zone_ref_uuid', [])[1:] or []) %}
-                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_energy_zone_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_energy_zone_ref_uuid': val})) }}">{{ lbl or val or '–' }}</a></li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -193,7 +193,7 @@
                                 <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_alph" class="form-control form-control-sm" value="{{ row.alph or '' }}"></td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_dep" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('dep', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.dep or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -201,7 +201,7 @@
                                 </td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_oes" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('oes', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.oes or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -209,7 +209,7 @@
                                 </td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_er" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('er', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.er or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -219,7 +219,7 @@
                                 <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_teo90" class="form-control form-control-sm" value="{{ row.teo90 or '' }}"></td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_fo" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('fo', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.fo or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -249,7 +249,7 @@
                                 {% if can_edit %}
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_regional_district_ref_uuid" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('regional_district_ref_uuid', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.regional_district_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -257,7 +257,7 @@
                                 </td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_regional_energy_system_ref_uuid" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('regional_energy_system_ref_uuid', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.regional_energy_system_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}
@@ -265,7 +265,7 @@
                                 </td>
                                 <td>
                                     <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_energy_zone_ref_uuid" class="form-select form-select-sm">
-                                        <option value="">—</option>
+                                        <option value="">–</option>
                                         {% for val, lbl in (filter_choices.get('energy_zone_ref_uuid', [])[1:] or []) %}
                                         <option value="{{ val }}" {% if (row.energy_zone_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
                                         {% endfor %}

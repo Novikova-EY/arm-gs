@@ -87,13 +87,13 @@ def test_south_fd_with_nt_calc_max_adds_nt_subjects_combined_on_fo(
     rows = [
         _fd_row(
             pk="calculated_max_power_mw",
-            year_values=["—", "—"],
+            year_values=["–", "–"],
             perimeter_variant_code="with_nt_without_gaes",
             entity_label="Южный ФО с НТ",
         ),
         _fd_row(
             pk="calculated_max_power_mw",
-            year_values=["—", "—"],
+            year_values=["–", "–"],
             perimeter_variant_code="without_nt_without_gaes",
             entity_label="Южный ФО без НТ",
         ),
@@ -145,7 +145,7 @@ def test_south_fd_with_nt_empty_when_nt_sum_zero(
     rows = [
         _fd_row(
             pk="calculated_max_power_mw",
-            year_values=["—", "—"],
+            year_values=["–", "–"],
             perimeter_variant_code="with_nt_without_gaes",
             entity_label="Южный ФО с НТ",
         ),
@@ -161,7 +161,7 @@ def test_south_fd_with_nt_empty_when_nt_sum_zero(
     )
 
     with_nt = rows[0]
-    assert with_nt["year_values"][0] == "—"
+    assert with_nt["year_values"][0] == "–"
     assert with_nt["year_values"][1] == "240"
 
 
@@ -186,7 +186,7 @@ def test_south_fd_with_nt_calc_max_falls_back_to_demand_combined_on_fo(
     rows = [
         _fd_row(
             pk="calculated_max_power_mw",
-            year_values=["—", "—"],
+            year_values=["–", "–"],
             perimeter_variant_code="with_nt_without_gaes",
             entity_label="Южный ФО с НТ",
         ),
@@ -201,5 +201,5 @@ def test_south_fd_with_nt_calc_max_falls_back_to_demand_combined_on_fo(
     )
 
     with_nt = rows[0]
-    assert with_nt["year_values"][0] == "—"
+    assert with_nt["year_values"][0] == "–"
     assert with_nt["year_values"][1] == "250"

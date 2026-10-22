@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Таблица gs_pd_ozp_max_power_params — максимумы потребления мощности ОЗП.
+"""Таблица gs_pd_ozp_max_power_params – максимумы потребления мощности ОЗП.
 
 Revision ID: o1z2p3m4a5x6
 Revises: b0c1d2e3f4a6

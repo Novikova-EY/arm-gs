@@ -163,7 +163,7 @@ def _get_regional_districts_in_table():
 def _get_regional_district_ids_from_filters(filters):
     """
     По каскадным фильтрам (ОЭС, РЭС, ФО, субъект) возвращает множество ID субъектов РФ.
-    Приоритет: если выбран субъект — только он; иначе объединяем по ОЭС, РЭС, ФО.
+    Приоритет: если выбран субъект – только он; иначе объединяем по ОЭС, РЭС, ФО.
     """
     rd_ids = set()
 
@@ -206,7 +206,7 @@ def apply_prospective_places_aes_station_order(query):
     Сортировка площадок АЭС для списка и экспорта:
     сначала по порядку отображения ОЭС (refdata UnionEnergySystem.display_order),
     затем по алфавиту по наименованию площадки (site_name).
-    Площадки без ОЭС / без РЭС — в конце блока по display_order (NULLS LAST).
+    Площадки без ОЭС / без РЭС – в конце блока по display_order (NULLS LAST).
     """
     from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
     from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
@@ -433,7 +433,7 @@ def get_prospective_places_filter_context(filters):
     fd_objects = get_federal_district_list_full()
     federal_district_list = [{"id": fd.id, "name": fd.name} for fd in fd_objects]
 
-    # ОЭС и Субъект РФ — только те значения, которые есть в таблице
+    # ОЭС и Субъект РФ – только те значения, которые есть в таблице
     union_energy_system_list = _get_union_energy_systems_in_table()
     regional_district_list = _get_regional_districts_in_table()
 

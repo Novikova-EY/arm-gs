@@ -68,7 +68,7 @@ def get_current_year_info(version_id):
         date_sipr_start = year_service.date_sipr_start.isoformat() if (year_service and year_service.date_sipr_start) else None
         date_sipr_end = year_service.date_sipr_end.isoformat() if (year_service and year_service.date_sipr_end) else None
 
-        # Если годы СиПР не заданы, но текущий год известен — подставляем дефолтные значения
+        # Если годы СиПР не заданы, но текущий год известен – подставляем дефолтные значения
         if current_year is not None and current_year != 0:
             if sipr_start is None:
                 sipr_start = current_year + 1
@@ -194,7 +194,7 @@ def update_current_year(version_id, new_year, user):
             get_year_list_full.cache_clear()
             clear_planning_period_year_caches()
         except Exception:
-            # Кэш — оптимизация, не должен ломать основную операцию
+            # Кэш – оптимизация, не должен ломать основную операцию
             pass
         
         log_to_db(

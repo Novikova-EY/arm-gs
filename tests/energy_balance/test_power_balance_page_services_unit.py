@@ -665,11 +665,11 @@ def test_kaliningrad_surplus_rows_show_top_ego_unit_tooltips():
         )
     rows = {row["key"]: row for row in tables["kaliningradskaya-sz-ees"]["rows"]}
     assert rows["surplus_deficit"]["year_cell_tooltip_lines"][2026] == [
-        "225 МВт — 1 ПГУ — Калининградская ТЭЦ-2"
+        "225 МВт – 1 ПГУ – Калининградская ТЭЦ-2"
     ]
     assert rows["surplus_deficit_second_unit"]["year_cell_tooltip_lines"][2026] == [
-        "225 МВт — 1 ПГУ — Калининградская ТЭЦ-2",
-        "220 МВт — 2 ПГУ — Калининградская ТЭЦ-2",
+        "225 МВт – 1 ПГУ – Калининградская ТЭЦ-2",
+        "220 МВт – 2 ПГУ – Калининградская ТЭЦ-2",
     ]
     assert rows["surplus_deficit"]["year_values"][2026] == "175"
     assert rows["surplus_deficit_second_unit"]["year_values"][2026] == "-50"
@@ -1061,11 +1061,11 @@ def test_station_capacity_breakdown_fills_total_from_machines():
     ]
     assert surplus_terms == [("demand_max", None), ("available_total", -1)]
     assert rows[SURPLUS_N1_ROW_KEY]["year_cell_tooltip_lines"][2026] == [
-        "8 МВт — 1 Турбина — Станция А"
+        "8 МВт – 1 Турбина – Станция А"
     ]
     assert rows[SURPLUS_N2_ROW_KEY]["year_cell_tooltip_lines"][2026] == [
-        "8 МВт — 1 Турбина — Станция А",
-        "4 МВт — 2 Турбина — Станция А",
+        "8 МВт – 1 Турбина – Станция А",
+        "4 МВт – 2 Турбина – Станция А",
     ]
     assert "Максимум потребления мощности" in (rows["surplus_deficit"].get("formula_tooltip") or "")
     assert "Располагаемая мощность (суммарная)" in (rows["surplus_deficit"].get("formula_tooltip") or "")

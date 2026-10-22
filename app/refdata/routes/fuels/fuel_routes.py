@@ -265,7 +265,7 @@ def fuel_list():
     # Заполняем список типов топлива с фильтрацией по версии БД
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
     form.parent.choices = choices_cache.get_choices_with_default(
-        Fuel, Fuel.id, default_text="— (корень)"
+        Fuel, Fuel.id, default_text="– (корень)"
     )
 
     return render_template(
@@ -314,7 +314,7 @@ def add_fuel():
     # Подготовка данных для формы с фильтрацией по версии БД
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
     form.parent.choices = choices_cache.get_choices_with_default(
-        Fuel, Fuel.id, default_text="— (корень)"
+        Fuel, Fuel.id, default_text="– (корень)"
     )
 
     # Обработка формы

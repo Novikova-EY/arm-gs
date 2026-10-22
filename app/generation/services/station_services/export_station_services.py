@@ -132,7 +132,7 @@ from app.generation.services.station_services.export_station_application_a_helpe
 )
 from app.common.services.help_services import to_excel_nbsp
 
-_EMPTY_EQUIPMENT_GROUP = "—"
+_EMPTY_EQUIPMENT_GROUP = "–"
 
 
 def equipment_group_type_display_name(group_type) -> str:
@@ -225,7 +225,7 @@ def round_value(val, digits):
         return 0
     if val == 0:
         return 0
-    # Режим "Не округлять": digits is None или 0 — не округлять (round(val, 0) дает целое!)
+    # Режим "Не округлять": digits is None или 0 – не округлять (round(val, 0) дает целое!)
     if digits is None or digits == 0:
         return val
     try:
@@ -484,7 +484,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         return round_value(val, rounding_digits)
 
     # ⚠️ Агрегаты уже должны быть в data (вызываются в get_station_list_data с show_totals=True)
-    # Если их нет — дополняем вручную (для совместимости)
+    # Если их нет – дополняем вручную (для совместимости)
     t1 = time.time()
     if "aggregate_power_by_regional_districts" not in data:
         attach_all_aggregates(data, rows)
@@ -603,7 +603,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     def add_machine_row(machine, station_name, subject_name):
         # Определяем отображаемое название типа агрегата ТЭС:
         # раньше скрывали по id == 0, теперь скрываем по названию "не указано"
-        tes_machine_type_name = "—"
+        tes_machine_type_name = "–"
         if machine.tes_machine_type and getattr(machine.tes_machine_type, "name", None):
             name_lower = machine.tes_machine_type.name.lower()
             if "не указано" not in name_lower and "не указан" not in name_lower:
@@ -616,19 +616,19 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 machine,
                 type_names_by_id=equipment_group_type_names,
             ),
-            "Электростанция": machine.machine_number if machine.machine_number else "—",
+            "Электростанция": machine.machine_number if machine.machine_number else "–",
             " ": machine.machine_name,
-            "Генерирующая компания": machine.gen_company.name if machine.gen_company else "—",
+            "Генерирующая компания": machine.gen_company.name if machine.gen_company else "–",
             "Год ввода": machine.date_exploitation,
             "Тип мощности": "Руст",
-            "Тип электростанции": machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—",
-            "Тип ТЭС": machine.tes_types or "—",
+            "Тип электростанции": machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "–",
+            "Тип ТЭС": machine.tes_types or "–",
             "Тип агрегата ТЭС": tes_machine_type_name,
             "Примечание": machine.note or "",
         }
         for year in range(start_year, end_year + 1):
             row_ust[str(year)] = round_val(machine.powers_by_year.get(year, {}).get("p_ust"))
-            row_ust[f"{year} (топливо)"] = machine.fuel_type_by_year.get(year, "—")
+            row_ust[f"{year} (топливо)"] = machine.fuel_type_by_year.get(year, "–")
         rows.append(row_ust)
 
         if show_p_ogr:
@@ -913,7 +913,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                     display_name = f"{level_id}"
                 else:
                     display_name = data.get(config["name_dict"], {}).get(level_id, f"id={level_id}")
-                # Если имя не найдено и получилась техническая подпись — не выводим строку
+                # Если имя не найдено и получилась техническая подпись – не выводим строку
                 if isinstance(display_name, str) and display_name.strip().startswith("id="):
                     return
             row = {
@@ -1287,7 +1287,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
                             # Для ДЭС: если в machine_type есть топливо «не указано» (= «прочее» по смыслу),
-                            # не показываем разбивку по топливу вообще — иначе дублируется «прочее»
+                            # не показываем разбивку по топливу вообще – иначе дублируется «прочее»
                             if "дэс" in (tes_type_name or "").lower() and fuel_dict:
                                 _fn = fuel_type_names.get
                                 has_ne_ukazano = any(
@@ -1524,7 +1524,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             if show_energy_unit and show_totals:
                                 add_named_total_row(eu_id, "energy_unit", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
                         # Показываем итого по субъекту всегда при включенных суммах
-                        # (ранее: только если в РЭС > 1 субъекта — из-за этого не выгружались строки ПСУ с топливом)
+                        # (ранее: только если в РЭС > 1 субъекта – из-за этого не выгружались строки ПСУ с топливом)
                         if show_totals:
                             add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
                     if show_totals:
@@ -1546,13 +1546,13 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
     def _row_has_unset_value(row):
         """Удаляем строки-заголовки с «не указано». Исключение: строки агрегатов по виду топлива «не указано»
-        для ДЭС — их удаляем всегда (дублируют «прочее»), остальные с данными по мощности оставляем."""
+        для ДЭС – их удаляем всегда (дублируют «прочее»), остальные с данными по мощности оставляем."""
         electro_val = row.get("Электростанция") or ""
         electro_str = str(electro_val).strip()
         electro_lower = electro_str.lower()
         tip_moshnosti = row.get("Тип мощности") or ""
 
-        # Строки разбивки по виду топлива «не указано» (агрегаты с Руст/Рогр/Ррасп) — удаляем всегда,
+        # Строки разбивки по виду топлива «не указано» (агрегаты с Руст/Рогр/Ррасп) – удаляем всегда,
         # т.к. для ДЭС «не указано» = «прочее» и создает некорректное дублирование группировок
         if tip_moshnosti in ("Руст", "Рогр", "Ррасп") and ("не указано" in electro_lower or "не указан" in electro_lower):
             return True  # Удаляем строку разбивки по топливу «не указано»
@@ -1730,7 +1730,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
     def _parse_date_value(value):
         return parse_appendix_a_date_value(value)
 
-    _DASH_RE = re.compile(r"[\s\-–—_]+", re.UNICODE)
+    _DASH_RE = re.compile(r"[\s\-––_]+", re.UNICODE)
 
     def _machine_number_sort_key(value):
         """
@@ -1738,7 +1738,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
         - сначала "чистые цифры": 1,2,3...
         - затем номера с буквами/префиксами: ГТУ-4, ГТУ-5, ПТУ-1...
           (по префиксу, затем по числу, затем по хвосту)
-        - пустые/непарсимые — в конец
+        - пустые/непарсимые – в конец
         """
         if value is None:
             return (2, "", 10**9, "")
@@ -1841,7 +1841,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         setattr(items[t], attr_name, 0)
                 i = j
 
-        # rowspan по группе агрегатов (гр.) — внутри блока топлива по СО ЕЭС (как на station_list)
+        # rowspan по группе агрегатов (гр.) – внутри блока топлива по СО ЕЭС (как на station_list)
         _set_rowspan_for_consecutive_runs(
             station.machines,
             key_fn=lambda m: (
@@ -1851,7 +1851,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             attr_name="group_rowspan",
         )
 
-        # rowspan по виду топлива — одна ячейка на тип топлива (в т.ч. «–» для ВЭС/СЭС/ГЭС)
+        # rowspan по виду топлива – одна ячейка на тип топлива (в т.ч. «–» для ВЭС/СЭС/ГЭС)
         _set_rowspan_for_consecutive_runs(
             station.machines,
             key_fn=fuel_rowspan_key,
@@ -1961,7 +1961,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     regional_system_name = name_full.replace("Электроэнергетическая система", "Энергосистема")
 
                 if regional_energy_system.regional_district_count > 1:
-                    # «территория …» — родительный падеж (name_rp), не дательный
+                    # «территория …» – родительный падеж (name_rp), не дательный
                     territory_name = territory_name_genitive(first_station.regional_district)
                     region_label = f"{regional_system_name}, территория {territory_name}"
                 else:
@@ -1987,7 +1987,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             # Группируем электростанции по энергоузлам
             stations_by_energy_unit = defaultdict(list)
             for station in stations:
-                # Для Норильска/Таймыра, Камчатки, Сахалина, Магадана энергоузлы не показываем —
+                # Для Норильска/Таймыра, Камчатки, Сахалина, Магадана энергоузлы не показываем –
                 # все станции субъекта в одном блоке.
                 if not should_show_energy_unit_header(
                     district_name=district_name_for_eu,
@@ -2192,7 +2192,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                             gc = getattr(machine, "gen_company", None)
                             machine_gen_company = (getattr(gc, "name", None) or "") if gc else ""
 
-                        # Значения мощности — без округления; отображение 1 знак после запятой задается форматом ячейки в Excel
+                        # Значения мощности – без округления; отображение 1 знак после запятой задается форматом ячейки в Excel
                         row = {
                             "Электростанция": machine.machine_group,
                             "Генерирующая компания": machine_gen_company,
@@ -2220,7 +2220,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     # Сумма считается из агрегатов, которые реально попали в таблицу.
                     # Если в каком-то году суммарная мощность равна нулю или отсутствует,
                     # ячейка должна быть пустой.
-                    # Итого по электростанции — без округления; отображение 1 знак после запятой — формат ячейки в Excel
+                    # Итого по электростанции – без округления; отображение 1 знак после запятой – формат ячейки в Excel
                     total_year_values = {}
                     for year in all_years:
                         p_ust = station_total_p_ust_from_machines.get(year, 0)
@@ -2244,7 +2244,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     }
                     data.append(total_row)
             
-            # Примечание ДПМ ВИЭ + «1)» в шапке — только при вводах ДПМ ВИЭ в субъекте
+            # Примечание ДПМ ВИЭ + «1)» в шапке – только при вводах ДПМ ВИЭ в субъекте
             has_dpm_vie = subject_has_dpm_vie_commissions(
                 stations,
                 fact_year=fact_year,
@@ -2309,7 +2309,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 df = df.drop(index=note_row_df_index)
                 df = df.reset_index(drop=True)  # Сбрасываем индексы для правильной последовательности
 
-            # Отдельная копия — без служебных колонок — для экспорта
+            # Отдельная копия – без служебных колонок – для экспорта
             df_export = df.drop(
                 columns=["_group_rowspan", "_fuel_rowspan", "_total_machines", "Есть группы"],
                 errors="ignore"
@@ -2485,7 +2485,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     worksheet.set_column(col_num, col_num, 8, power_number_format)
 
                 # Перезаписываем ячейки мощности сырыми значениями (без округления pandas),
-                # формат 0.0 уже задан на столбец — в ячейке хранится полная точность, отображается 1 знак
+                # формат 0.0 уже задан на столбец – в ячейке хранится полная точность, отображается 1 знак
                 for row_idx in range(len(df_export)):
                     data_idx = row_idx if (note_row_df_index is None or row_idx < note_row_df_index) else row_idx + 1
                     if data_idx >= len(data):

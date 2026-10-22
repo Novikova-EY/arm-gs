@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-# Коды ролей (Role.name) — те же, что для модуля «Нагрузки».
+# Коды ролей (Role.name) – те же, что для модуля «Нагрузки».
 ENERGY_CONSUMPTION_EDIT_ROLE_NAMES = frozenset(
     {
         "admin",
@@ -26,7 +26,7 @@ ENERGY_CONSUMPTION_EDIT_ROLE_FULL_NAMES = frozenset(
 
 
 def can_edit_energy_consumption(user) -> bool:
-    """Редактирование, формулы и «Проверка» — для Нагрузки-админ/редактор и admin."""
+    """Редактирование, формулы и «Проверка» – для Нагрузки-админ/редактор и admin."""
     if not getattr(user, "is_authenticated", False):
         return False
     for role in getattr(user, "roles", []) or []:

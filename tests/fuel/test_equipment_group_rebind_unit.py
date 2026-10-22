@@ -26,9 +26,9 @@ def test_format_choice_label_includes_numb_and_composite_marker():
         id=30052, numb=1502, name="ТЭЦ Ижорского з-да(тепл)", name_ext=None, main=81, comp=None
     )
     assert format_equipment_group_choice_label(parent) == (
-        "81 — ТЭЦ ПГУ ГСР Энерго (ПГУ-ТЭЦ) (составная)"
+        "81 – ТЭЦ ПГУ ГСР Энерго (ПГУ-ТЭЦ) (составная)"
     )
-    assert format_equipment_group_choice_label(child) == "1502 — ТЭЦ Ижорского з-да(тепл)"
+    assert format_equipment_group_choice_label(child) == "1502 – ТЭЦ Ижорского з-да(тепл)"
 
 
 def test_prefer_current_version_groups_drops_legacy_copy_with_same_code():
@@ -217,7 +217,7 @@ def test_rebind_source_group_rejects_target_outside_cluster():
         "app.fuel.services.equipment_groups.equipment_group_rebind_services.EquipmentGroup"
     ) as eg_cls, patch(
         "app.fuel.services.equipment_groups.equipment_group_rebind_services.get_rebind_target_choices_for_group",
-        return_value=[(30052, "1502 — child")],
+        return_value=[(30052, "1502 – child")],
     ):
         eg_cls.query.get.side_effect = lambda gid: {13130: source, 99: target}.get(gid)
         result = rebind_source_group_machines(

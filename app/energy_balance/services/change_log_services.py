@@ -17,7 +17,7 @@ NOT_SET = "не указано"
 
 
 def format_change_number(value: Any) -> str:
-    """Число как на страницах: «1234,5» — запятая и без лишних нулей."""
+    """Число как на страницах: «1234,5» – запятая и без лишних нулей."""
     if value is None or value == "":
         return NOT_SET
     try:

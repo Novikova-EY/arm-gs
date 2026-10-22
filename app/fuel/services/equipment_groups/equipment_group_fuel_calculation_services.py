@@ -7,7 +7,7 @@ EWTP, EOTP, EUST, EURT, TUST, B; разобрать formtxt; записать з
 EquipmentGroupFuelParam и EquipmentGroupExtraFuelParam.
 
 Здесь нет UI, территориальных фильтров, запуска по параметру распределения, JSON и шаблонов.
-Перенос полей между годами — отдельная управленческая логика, не этот сервис.
+Перенос полей между годами – отдельная управленческая логика, не этот сервис.
 
 Вход: EquipmentGroupFuelParam (базовые e, q, …), EquipmentGroupSpecificFuelConsumption,
 EquipmentGroupFuelFormula (formtxt), EquipmentGroupExtraFuelParam.
@@ -32,10 +32,10 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 
-# Основные «газ/мазут/…» — только поля, которые есть в EquipmentGroupFuelParam
+# Основные «газ/мазут/…» – только поля, которые есть в EquipmentGroupFuelParam
 TOPLS = frozenset({"gaz", "isk_gaz", "mazut", "torf", "slan", "proch"})
 
-# Углеводородные агрегаты на основной записи (кроме ugol — он считается суммой)
+# Углеводородные агрегаты на основной записи (кроме ugol – он считается суммой)
 UGLI = frozenset(
     {
         "don",
@@ -66,7 +66,7 @@ UGLI = frozenset(
     }
 )
 
-# Детальные поля «Доп_угли» — EquipmentGroupExtraFuelParam (+ sosv, luch, tal при наличии колонок)
+# Детальные поля «Доп_угли» – EquipmentGroupExtraFuelParam (+ sosv, luch, tal при наличии колонок)
 UGLI1 = frozenset(
     {
         "nazar",
@@ -200,7 +200,7 @@ ACCESS_PROCH_TRIGGERS = ACCESS_PROCH_TRIGGERS_2018
 
 
 def _proch_rollup_spec(year_number) -> tuple[tuple[str, ...], frozenset[str]]:
-    """Корзина Станции.PROCH: с 2018 — tvproch+szh_gaz+inoe, иначе старая VBA."""
+    """Корзина Станции.PROCH: с 2018 – tvproch+szh_gaz+inoe, иначе старая VBA."""
     try:
         year = int(year_number) if year_number is not None else 2018
     except (TypeError, ValueError):
@@ -324,9 +324,9 @@ class EquipmentGroupFuelCalculationService:
         explicit_database_version_id: int | None = None,
     ) -> None:
         """
-        Заполняет database_version_id у строки параметров, если NULL — иначе JOIN
+        Заполняет database_version_id у строки параметров, если NULL – иначе JOIN
         в get_equipment_groups_with_fuel_params_data не находит запись (прочерки в таблицах).
-        Правило версии — см. _resolve_db_version_for_fuel_rows.
+        Правило версии – см. _resolve_db_version_for_fuel_rows.
         """
         if row is None or getattr(row, "database_version_id", None) is not None:
             return
@@ -370,8 +370,8 @@ class EquipmentGroupFuelCalculationService:
         ВАЖНО:
         - не копирует payload из прошлых лет;
         - использует только текущую строку fuel_param на год расчёта;
-        - удельник и формула топлива — тот же Seek, что Access:
-          окно [base_year, year]; пустое окно при не-NoMatch — Bookmark
+        - удельник и формула топлива – тот же Seek, что Access:
+          окно [base_year, year]; пустое окно при не-NoMatch – Bookmark
           предыдущей станции цикла (Кнопка49 ``bm`` / ``bm1``).
         """
         from app.fuel.services.calculation.fuel_formula_lookup import (
@@ -441,7 +441,7 @@ class EquipmentGroupFuelCalculationService:
             variant_number=variant_number,
         )
 
-        # Access: If U.NoMatch / topl.NoMatch Then GoTo skip2 — без Update.
+        # Access: If U.NoMatch / topl.NoMatch Then GoTo skip2 – без Update.
         if consumption is None or not (formula and formula.formtxt):
             return fuel_param
 
@@ -453,7 +453,7 @@ class EquipmentGroupFuelCalculationService:
             consumption=consumption,
         )
 
-        # Снимок полей до обнуления — для Access «name=-1» (абсолют из текущего поля).
+        # Снимок полей до обнуления – для Access «name=-1» (абсолют из текущего поля).
         prior_main = {
             name: d0(getattr(fuel_param, name, None))
             for name in (TOPLS | UGLI)
@@ -518,7 +518,7 @@ class EquipmentGroupFuelCalculationService:
     ) -> None:
         """
         .. deprecated::
-            Не вызывается из calculate_group_year. Перенос полей между годами —
+            Не вызывается из calculate_group_year. Перенос полей между годами –
             отдельная подготовка данных, не расчёт топлива. Оставлено для возможного
             вынесения в отдельный сервис.
         """
@@ -908,7 +908,7 @@ class EquipmentGroupFuelCalculationService:
                 setattr(fuel_param, group_name, total)
 
         # Access YEAR>=2018: PROCH = tvproch + szh_gaz + inoe
-        # (старая VBA «Расчет» koksdom+prochgaz+tvproch — только year < 2018)
+        # (старая VBA «Расчет» koksdom+prochgaz+tvproch – только year < 2018)
         proch_children, proch_triggers = _proch_rollup_spec(
             getattr(fuel_param, "year_number", None)
         )

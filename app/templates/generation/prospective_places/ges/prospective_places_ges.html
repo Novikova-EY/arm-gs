@@ -153,20 +153,20 @@
                             {% if loop.first %}
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station_index }}</td>
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{% set details_endpoint = 'prospective_places_bp.prospective_place_ges_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '—' }}</td>
-                            <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{{ station.planned_capacity_mw or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '–' }}</td>
+                            <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{{ station.planned_capacity_mw or '–' }}</td>
                             {% endif %}
-                            <td class="text-center">{% set _gavg = (tr.generation_average_multiyear_million_kwh or '')|trim %}{% if _gavg %}{{ _gavg|replace('.', ',') }}{% else %}—{% endif %}</td>
+                            <td class="text-center">{% set _gavg = (tr.generation_average_multiyear_million_kwh or '')|trim %}{% if _gavg %}{{ _gavg|replace('.', ',') }}{% else %}–{% endif %}</td>
                             {% if loop.first %}
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.regulation_type or '—' }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.water_body or '—' }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.geo_location or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.regulation_type or '–' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '–' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_district.name_full if station.regional_district else None) or '–' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.water_body or '–' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.geo_location or '–' }}</td>
                             {% endif %}
                             {% if loop.first %}
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.general_scheme_commissioning_period or '—' }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.construction_period_years|format_construction_period_years) or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.general_scheme_commissioning_period or '–' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.construction_period_years|format_construction_period_years) or '–' }}</td>
                             {% endif %}
                         </tr>
                         {% endfor %}
@@ -174,16 +174,16 @@
                         <tr>
                             <td class="text-center">{{ station_index }}</td>
                             <td class="text-center">{% set details_endpoint = 'prospective_places_bp.prospective_place_ges_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
-                            <td class="text-center align-middle">{{ station.project_initiator or '—' }}</td>
-                            <td class="text-center align-middle col-capacity">{{ station.planned_capacity_mw or '—' }}</td>
-                            <td class="text-center text-muted">—</td>
-                            <td class="text-center align-middle">{{ station.regulation_type or '—' }}</td>
-                            <td class="text-center">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
-                            <td class="text-center">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
-                            <td class="text-center align-middle">{{ station.water_body or '—' }}</td>
-                            <td class="text-center align-middle">{{ station.geo_location or '—' }}</td>
-                            <td class="text-center align-middle">{{ station.general_scheme_commissioning_period or '—' }}</td>
-                            <td class="text-center align-middle">{{ (station.construction_period_years|format_construction_period_years) or '—' }}</td>
+                            <td class="text-center align-middle">{{ station.project_initiator or '–' }}</td>
+                            <td class="text-center align-middle col-capacity">{{ station.planned_capacity_mw or '–' }}</td>
+                            <td class="text-center text-muted">–</td>
+                            <td class="text-center align-middle">{{ station.regulation_type or '–' }}</td>
+                            <td class="text-center">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '–' }}</td>
+                            <td class="text-center">{{ (station.regional_district.name_full if station.regional_district else None) or '–' }}</td>
+                            <td class="text-center align-middle">{{ station.water_body or '–' }}</td>
+                            <td class="text-center align-middle">{{ station.geo_location or '–' }}</td>
+                            <td class="text-center align-middle">{{ station.general_scheme_commissioning_period or '–' }}</td>
+                            <td class="text-center align-middle">{{ (station.construction_period_years|format_construction_period_years) or '–' }}</td>
                         </tr>
                     {% endif %}
                     {% endfor %}
@@ -259,7 +259,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // Экспорт в Excel через fetch (как на station_list) — страница не виснет
+    // Экспорт в Excel через fetch (как на station_list) – страница не виснет
     const exportBtn = document.getElementById("exportProspectivePlacesGesBtn");
     const exportForm = document.getElementById("exportProspectivePlacesGesForm");
     if (exportBtn && exportForm) {

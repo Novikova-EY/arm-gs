@@ -144,7 +144,7 @@
             .replace(/\u2212/g, "-")
             .replace(/[\u00a0\u202f ]/g, "")
             .replace(",", ".");
-        if (!s || s === "—" || s === "-" || s === "–") {
+        if (!s || s === "–" || s === "-" || s === "–") {
             return null;
         }
         var n = parseFloat(s);
@@ -165,7 +165,7 @@
 
     function formatGrowthPct(num, digits) {
         if (!Number.isFinite(num)) {
-            return "—";
+            return "–";
         }
         var d = Number.isFinite(digits) ? digits : 2;
         var sign = num < 0 ? -1 : 1;
@@ -195,7 +195,7 @@
             }
             var text = formatGrowthPct(growth, digits);
             growthCells[i].textContent = text;
-            if (text && text !== "—") {
+            if (text && text !== "–") {
                 growthCells[i].setAttribute("title", text);
             } else {
                 growthCells[i].removeAttribute("title");

@@ -134,7 +134,7 @@ def _copy_summary_page_context(
     scope: str,
     entity_pagination: tuple[int, int] | None,
 ) -> tuple[dict, dict | None]:
-    """Копия только строк текущей страницы — без deepcopy всего дерева."""
+    """Копия только строк текущей страницы – без deepcopy всего дерева."""
     rows = full_context.get("summary_rows")
     pagination_meta = None
     if entity_pagination is not None:
@@ -204,7 +204,7 @@ def _summary_period_base_year_n() -> int:
 
 
 def _parse_summary_include_medium_years() -> bool:
-    """GET pd_medium=1 — подгрузить столбцы N+1…N+6 (кнопка «Среднесрочный период» на сводке «максимумы»)."""
+    """GET pd_medium=1 – подгрузить столбцы N+1…N+6 (кнопка «Среднесрочный период» на сводке «максимумы»)."""
     return str(request.args.get("pd_medium") or "").strip().lower() in (
         "1",
         "true",
@@ -216,7 +216,7 @@ def _parse_summary_include_medium_years() -> bool:
 def _expand_summary_years_for_period_segments(
     sy: int, ey: int, n: int, *, include_medium_years: bool
 ) -> tuple[int, int]:
-    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years — ещё с N+1…N+6."""
+    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years – ещё с N+1…N+6."""
     bounds = _filter_year_list_for_summary()
     if not bounds:
         lo, hi = sy, ey
@@ -268,7 +268,7 @@ def _ec_summary_common_page_kwargs(*, summary_table_page: bool) -> dict:
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
-    """По умолчанию — отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
+    """По умолчанию – отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
     bounds = _filter_year_list_for_summary()
     n = _summary_period_base_year_n()
     default_sy = n - 9
@@ -343,7 +343,7 @@ def _parse_ez_territory_ordered() -> tuple[list[int], list[int]]:
 
 
 def _parse_summary_export_visible_keys(allowed: frozenset[str]) -> frozenset[str] | None:
-    """GET visible_rows=a,b,c — только ключи из whitelist; None = все строки."""
+    """GET visible_rows=a,b,c – только ключи из whitelist; None = все строки."""
     raw = request.args.get("visible_rows")
     if raw is None or str(raw).strip() == "":
         return None
@@ -355,7 +355,7 @@ def _parse_summary_export_visible_keys(allowed: frozenset[str]) -> frozenset[str
 
 
 def _parse_export_years_list(full_years: list[int]) -> list[int] | None:
-    """GET export_years=2015,2016,... — подмножество full_years, порядок как в запросе."""
+    """GET export_years=2015,2016,... – подмножество full_years, порядок как в запросе."""
     raw = request.args.get("export_years")
     if raw is None or str(raw).strip() == "":
         return None
@@ -436,7 +436,7 @@ def summary_table_start():
 @energy_consumption_bp.route("/summary_table/")
 @login_required
 def summary_table_hub():
-    """Корень сводной таблицы: ОЭС без строк РЭС/субъектов; синхронные зоны — как на /summary_table/oes/."""
+    """Корень сводной таблицы: ОЭС без строк РЭС/субъектов; синхронные зоны – как на /summary_table/oes/."""
     sy, ey = _parse_summary_year_range()
     n = _summary_period_base_year_n()
     include_medium = _parse_summary_include_medium_years()
@@ -502,7 +502,7 @@ def demand_summary_energy_zones_export():
 @energy_consumption_bp.route("/summary_table/export.xlsx")
 @login_required
 def demand_summary_table_hub_export():
-    """Выгрузка корня /summary_table/ — тот же контекст, что на экране (не /summary_table/oes/)."""
+    """Выгрузка корня /summary_table/ – тот же контекст, что на экране (не /summary_table/oes/)."""
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
     context = build_summary_table_hub_page_context(
         oes_territory_ordered=_parse_oes_territory_ordered(),
@@ -596,17 +596,17 @@ def demand_summary_oes_gaes_charge_export():
 def _build_ec_summary_import_payload(stats: dict) -> dict:
     msg = (
         "Импорт выполнен по версиям БД: "
-        f"{stats['database_versions_processed']}. Лист «млн. кВт.ч»: записано ячеек — "
-        f"{stats['cells_written_mln_kvt_ch']}; лист «СиПР»: записано ячеек — "
+        f"{stats['database_versions_processed']}. Лист «млн. кВт.ч»: записано ячеек – "
+        f"{stats['cells_written_mln_kvt_ch']}; лист «СиПР»: записано ячеек – "
         f"{stats['cells_written_sipr']}."
     )
     if stats.get("mln_sheet_absent"):
-        msg += " Лист «млн. кВт.ч» в файле отсутствует — данные для него не импортировались."
+        msg += " Лист «млн. кВт.ч» в файле отсутствует – данные для него не импортировались."
     if stats.get("sipr_sheet_absent"):
-        msg += " Лист «СиПР» в файле отсутствует — данные для него не импортировались."
+        msg += " Лист «СиПР» в файле отсутствует – данные для него не импортировались."
     if stats.get("mln_sheet_skipped_no_data_grid"):
         msg += (
-            " Лист «млн. кВт.ч» без таблицы (заглушка) — поля «млн. кВтч» из этого листа не обновлялись."
+            " Лист «млн. кВт.ч» без таблицы (заглушка) – поля «млн. кВтч» из этого листа не обновлялись."
         )
     extras = []
     um = stats.get("unmatched_labels_mln") or []
@@ -629,7 +629,7 @@ def _build_ec_summary_import_payload(stats: dict) -> dict:
 @energy_consumption_bp.route("/summary/fo_ez/import.xlsx", methods=["POST"])
 @login_required
 def demand_summary_fo_ez_import_xlsx():
-    """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО — для страниц сводки по ОЭС, ФО и энергозонам.
+    """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО – для страниц сводки по ОЭС, ФО и энергозонам.
 
     Данные записываются во все зарегистрированные версии БД.
     """
@@ -771,7 +771,7 @@ def demand_summary_save_cell():
 def demand_summary_persist_computed_rows():
     """После сохранения ячеек: пересчитать формулы сводки и записать во все версии БД.
 
-    Временно — как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    Временно – как импорт Excel; позже вернёмся к пересчёту только текущей версии.
     """
     if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
@@ -974,7 +974,7 @@ def demand_summary_persist_formula_block():
             user = str(
                 getattr(current_user, "username", None) or current_user.get_id() or ""
             )
-        # Временно — во все версии БД (как импорт Excel).
+        # Временно – во все версии БД (как импорт Excel).
         result = persist_all_energy_consumption_summary_computed_rows_for_all_versions(
             rounding_digits=rounding_digits,
             years=years,

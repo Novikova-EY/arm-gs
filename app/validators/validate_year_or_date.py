@@ -13,9 +13,9 @@ def validate_year_or_date(form, field):
     value = field.data
 
     if not value:
-        return  # Пусто — пропускаем
+        return  # Пусто – пропускаем
 
-    # ✅ Если пришел объект date/datetime — просто проверим год
+    # ✅ Если пришел объект date/datetime – просто проверим год
     if isinstance(value, (date, datetime)):
         if value.year > 2050:
             raise ValidationError('Год в дате не может быть больше 2050.')
@@ -61,7 +61,7 @@ def validate_year_or_date(form, field):
         except ValueError:
             raise ValidationError(f'Некорректная дата: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')
 
-    # ❌ Все остальное — ошибка
+    # ❌ Все остальное – ошибка
     raise ValidationError(f'Некорректный формат: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')
 
 

@@ -152,7 +152,7 @@ def restore_empty_machine_names_by_external_code(
         if rows_map and (not only_empty or has_empty):
             machines_to_fix.append(machine)
         elif create_missing and (missing_years or not rows_map):
-            # нет строк или не хватает годов — тоже чиним
+            # нет строк или не хватает годов – тоже чиним
             machines_to_fix.append(machine)
 
     if not machines_to_fix:
@@ -181,7 +181,7 @@ def restore_empty_machine_names_by_external_code(
 
     best_by_code_year = _build_donor_names_by_external_code(external_codes)
 
-    # Если у цели нет годов из powers/tes — берём годы донора
+    # Если у цели нет годов из powers/tes – берём годы донора
     for machine in machines_to_fix:
         code = (machine.external_code or "").strip()
         if not years_by_machine.get(machine.id) and code in best_by_code_year:

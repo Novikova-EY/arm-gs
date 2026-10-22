@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupSpecificFuelConsumption model — удельные показатели групп оборудования.
+EquipmentGroupSpecificFuelConsumption model – удельные показатели групп оборудования.
 Поля: NAME, Year, Y, BTP, SNTP, BK, NUMB1120, SNK.
 """
 from sqlalchemy import UniqueConstraint
@@ -61,7 +61,7 @@ class EquipmentGroupSpecificFuelConsumption(db.Model):
     snk = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Ветвь Access для VED∈{1,4}: базовые СН/расход и наклоны по часам
-    # snbas, Ksn — для ekotp; bbas, Kh — для EUST
+    # snbas, Ksn – для ekotp; bbas, Kh – для EUST
     snbas = db.Column(db.Numeric(36, 16), nullable=True)
     ksn = db.Column(db.Numeric(36, 16), nullable=True)
     bbas = db.Column(db.Numeric(36, 16), nullable=True)
@@ -83,7 +83,7 @@ class EquipmentGroupSpecificFuelConsumption(db.Model):
     # УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч
     bk_calc = db.Column(db.Numeric(36, 16), nullable=True)
 
-    # СН на выработку ЭЭ, % — то же значение, что SNK на странице
+    # СН на выработку ЭЭ, % – то же значение, что SNK на странице
     # топливных параметров (sn_ee / e · 100 при наличии входов, иначе FuelParam.snk)
     snk_calc = db.Column(db.Numeric(36, 16), nullable=True)
 

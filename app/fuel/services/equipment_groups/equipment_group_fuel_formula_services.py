@@ -3,8 +3,8 @@
 """
 Read/query/display для страницы «Формулы для расчета топлива по группам оборудования».
 
-Запись в EquipmentGroupFuelFormula — в equipment_group_fuel_formula_write_services.py;
-импорт Excel — в import_equipment_group_fuel_formula_services.py.
+Запись в EquipmentGroupFuelFormula – в equipment_group_fuel_formula_write_services.py;
+импорт Excel – в import_equipment_group_fuel_formula_services.py.
 """
 
 from sqlalchemy import and_, or_
@@ -172,8 +172,8 @@ class _MissingYearFuelFormula:
 
 def expand_formula_rows_for_year_interval(rows, start_year, end_year):
     """
-    Как на ТЭП edit_data: для каждой группы — строки на каждый год интервала.
-    Если за год есть несколько формул (variant) — все сохраняются; иначе — пустая заглушка.
+    Как на ТЭП edit_data: для каждой группы – строки на каждый год интервала.
+    Если за год есть несколько формул (variant) – все сохраняются; иначе – пустая заглушка.
     """
     from collections import defaultdict
 
@@ -225,8 +225,8 @@ def _numb1120_merge_key(param):
 
 def annotate_formula_rows_numb1120_merge(rows, *, include_eg_in_key: bool = True):
     """
-    Для подряд идущих строк с одинаковым numb1120 (и при include_eg_in_key — с одной группой ОБ)
-    задает numb1120_merge_rowspan на первой строке группы; на остальных — None (ячейки не рисуются).
+    Для подряд идущих строк с одинаковым numb1120 (и при include_eg_in_key – с одной группой ОБ)
+    задает numb1120_merge_rowspan на первой строке группы; на остальных – None (ячейки не рисуются).
 
     rows: list[tuple[EquipmentGroup, EquipmentGroupFuelFormula | None]]
     """

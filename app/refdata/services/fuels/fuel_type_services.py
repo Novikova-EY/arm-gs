@@ -44,7 +44,7 @@ def _invalidate_fuel_type_caches() -> None:
         # По умолчанию ключ = model_class.__name__.lower() => "fueltype"
         choices_cache.invalidate_cache(FuelType.__name__.lower())
     except Exception:
-        # Кэш — оптимизация; если не получилось очистить, не роняем бизнес-операцию.
+        # Кэш – оптимизация; если не получилось очистить, не роняем бизнес-операцию.
         pass
 
     try:
@@ -218,7 +218,7 @@ def update_fuel_type_service(data, user):
                 )
                 obj.display_order = display_order
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -536,7 +536,7 @@ def repair_fuel_types_sequence_hard(user: str) -> None:
     Работает и для SERIAL, и для IDENTITY, т.к. имя берем через pg_get_serial_sequence.
     """
     try:
-        with db.engine.begin() as conn:  # <— отдельная транзакция, гарантированный commit
+        with db.engine.begin() as conn:  # <– отдельная транзакция, гарантированный commit
             seq_name = conn.execute(
                 text("SELECT pg_get_serial_sequence(:tbl, :col)"),
                 {"tbl": f"{SCHEMA_REFDATA}.fuel_types", "col": "id"}

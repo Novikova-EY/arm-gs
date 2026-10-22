@@ -3,10 +3,10 @@
 {% set sheet_slug = sheet.slug %}
 {% macro ot_url(s_slug) -%}
   {%- if start_year is defined and end_year is defined and rounding_digits is defined -%}
-    {%- if view_year -%}
-      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, view_year=view_year) }}
+    {%- if view_year and not year_columns_mode -%}
+      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), capacity_class=capacity_class|default(none), view_year=view_year, affiliation=affiliation if s_slug == 'koeff' else none) }}
     {%- else -%}
-      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
+      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), capacity_class=capacity_class|default(none), affiliation=affiliation if s_slug == 'koeff' else none) }}
     {%- endif -%}
   {%- else -%}
     {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug) }}
@@ -20,12 +20,26 @@
 <div class="d-flex align-items-center gap-2 w-100 pb-1">
   <div class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1" style="min-width:0;" role="navigation" aria-label="Листы расчёта">
     {% for nav in calc_sheets %}
+    {% if not nav.parent_slug or nav.parent_slug == nav.slug %}
     <a href="{{ ot_url(nav.slug) }}"
-       class="btn {% if nav.slug == sheet_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0{% if nav.slug in ('spravochnik', 'zola', 'obemy') %} ot-sheet-nav-gap{% endif %}">
+       class="btn {% if nav.slug == sheet_slug or nav.slug == sheet.parent_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0{% if nav.slug in ('zola', 'obemy') %} ot-sheet-nav-gap{% endif %}">
       {{ nav.sheet_name }}
     </a>
+    {% endif %}
     {% endfor %}
   </div>
   <a href="{{ url_for('ecology_bp.hub') }}"
      class="btn btn-secondary fs-5 text-nowrap flex-shrink-0">Модуль «Экология»</a>
 </div>
+{% if sheet.parent_slug %}
+<div class="d-flex flex-wrap gap-2" role="navigation" aria-label="Объемы выбросов для новых ТЭС">
+  {% for nav in calc_sheets %}
+  {% if nav.parent_slug == sheet.parent_slug %}
+  <a href="{{ ot_url(nav.slug) }}"
+     class="btn {% if nav.slug == sheet_slug %}btn-primary{% else %}btn-outline-primary{% endif %} text-nowrap"{% if nav.slug == sheet_slug %} aria-current="page"{% endif %}>
+    {{ nav.subtab_name }}
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}

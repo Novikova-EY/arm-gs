@@ -58,16 +58,16 @@ def _machines_same_for_field(group: list[MachineProspectivePlaceAES], field: str
 
 def _fmt_excel_like(val: Any) -> str:
     if val is None:
-        return "—"
+        return "–"
     s = str(val).strip() if val is not None else ""
     if not s:
-        return "—"
+        return "–"
     return s.replace(".", ",")
 
 
 def _fmt_year_ref(year) -> str:
     if year is None:
-        return "—"
+        return "–"
     return str(year.number)
 
 
@@ -88,18 +88,18 @@ def _scaled_thousand_display(
     yrel = getattr(mp, year_rel_attr, None)
     if apply_current_year and target_year is not None:
         return fmt_thousand_rub_per_kw_scaled(raw, yrel, target_year, coeff_by_year)
-    return _fmt_excel_like(raw or "—")
+    return _fmt_excel_like(raw or "–")
 
 
 def _row_machine_cells(mp: MachineProspectivePlaceAES) -> dict[str, str]:
     return {
         "ppt": _fmt_excel_like(
-            (mp.prospective_place_type.name if mp.prospective_place_type else None) or "—"
+            (mp.prospective_place_type.name if mp.prospective_place_type else None) or "–"
         ),
-        "station_block_number": _fmt_excel_like(mp.station_block_number or "—"),
-        "unit_type": _fmt_excel_like(mp.unit_type or "—"),
-        "unit_capacity_mw": _fmt_excel_like(mp.unit_capacity_mw or "—"),
-        "possible_implementation_period": _fmt_excel_like(mp.possible_implementation_period or "—"),
+        "station_block_number": _fmt_excel_like(mp.station_block_number or "–"),
+        "unit_type": _fmt_excel_like(mp.unit_type or "–"),
+        "unit_capacity_mw": _fmt_excel_like(mp.unit_capacity_mw or "–"),
+        "possible_implementation_period": _fmt_excel_like(mp.possible_implementation_period or "–"),
     }
 
 
@@ -114,12 +114,12 @@ def _row_tep_cells(
     use_scale = bool(apply_current_year_prices and target_year is not None)
     return {
         "service_life_years": (
-            str(mp.service_life_years) if mp.service_life_years is not None else "—"
+            str(mp.service_life_years) if mp.service_life_years is not None else "–"
         ),
         "construction_period_years": (
-            str(mp.construction_period_years) if mp.construction_period_years is not None else "—"
+            str(mp.construction_period_years) if mp.construction_period_years is not None else "–"
         ),
-        "max_annual_operating_hours": _fmt_excel_like(mp.max_annual_operating_hours or "—"),
+        "max_annual_operating_hours": _fmt_excel_like(mp.max_annual_operating_hours or "–"),
         "specific_fuel_cost_rub_per_kwh": _scaled_thousand_display(
             mp,
             "specific_fuel_cost_rub_per_kwh",
@@ -139,7 +139,7 @@ def _row_tep_cells(
         ),
         "year_specific_fixed_operating_costs": _fmt_year_ref(mp.year_specific_fixed_operating_costs),
         "relative_auxiliary_power_consumption_pct": _fmt_excel_like(
-            mp.relative_auxiliary_power_consumption_pct or "—"
+            mp.relative_auxiliary_power_consumption_pct or "–"
         ),
         "specific_capital_investment_thous_rub_per_kw": _scaled_thousand_display(
             mp,
@@ -159,9 +159,9 @@ def _row_tep_cells(
             coeff_by_year=coeff,
         ),
         "year_specific_decommissioning": _fmt_year_ref(mp.year_specific_decommissioning),
-        "emergency_state_probability": _fmt_excel_like(mp.emergency_state_probability or "—"),
-        "ozp": _fmt_excel_like(mp.ozp or "—"),
-        "vlp": _fmt_excel_like(mp.vlp or "—"),
+        "emergency_state_probability": _fmt_excel_like(mp.emergency_state_probability or "–"),
+        "ozp": _fmt_excel_like(mp.ozp or "–"),
+        "vlp": _fmt_excel_like(mp.vlp or "–"),
     }
 
 
@@ -293,7 +293,7 @@ def build_tep_view_rows(
                 mp.station_prospective_place_aes.site_name
                 if mp.station_prospective_place_aes
                 else None
-            ) or "—"
+            ) or "–"
             rows_out.append(
                 {
                     "idx": idx,

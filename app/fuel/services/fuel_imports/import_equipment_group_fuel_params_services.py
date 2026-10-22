@@ -136,7 +136,7 @@ _STATIONS_FUEL_MARKER_COLS = frozenset({"nust", "nr", "eotp", "nt", "ntsum", "nt
 _OTET_SVODNAYA_SN_EE_NORMS = frozenset({"с_нээ", "снээ", "sn_ee", "snee"})
 _OTET_SVODNAYA_SN_TE_NORMS = frozenset({"сн_тысквтч", "sn_te", "snte"})
 _OTET_SVODNAYA_FIELDS = ("sn_ee", "sn_te")
-# Access / исходные файлы: SN_EE и SN_TE в кВт·ч; в АРМ — тыс. кВт·ч.
+# Access / исходные файлы: SN_EE и SN_TE в кВт·ч; в АРМ – тыс. кВт·ч.
 _SN_FILE_TO_THOUSAND_KWH = Decimal("1000")
 _SN_FILE_SCALE_FIELDS = frozenset({"sn_ee", "sn_te"})
 
@@ -148,7 +148,7 @@ def _basename_lower(filename: str | None) -> str:
 
 
 def _filename_looks_like_otet_svodnaya(filename: str | None) -> bool:
-    """«Сводная таблица для ОТЭТ*.xls(x)» — абсолютные СН."""
+    """«Сводная таблица для ОТЭТ*.xls(x)» – абсолютные СН."""
     base = _basename_lower(filename)
     if not base:
         return False
@@ -203,10 +203,10 @@ def detect_fuel_params_excel_import_kind(filename: str | None, file=None) -> str
     - «otet_svodnaya» → только sn_ee / sn_te из «Сводная таблица для ОТЭТ»
     - None → файл не похож ни на один из разрешённых типов
 
-    Сначала по имени файла, при неоднозначности — по заголовкам листа (если передан file).
+    Сначала по имени файла, при неоднозначности – по заголовкам листа (если передан file).
     """
     base = _basename_lower(filename)
-    # «Имена_станций» содержит «станци», но это soft-import COMP/MAIN/NIV — не сюда.
+    # «Имена_станций» содержит «станци», но это soft-import COMP/MAIN/NIV – не сюда.
     is_imena = ("имен" in base and "станц" in base) or ("imena" in base and "stanci" in base)
     if _filename_looks_like_otet_svodnaya(filename):
         return "otet_svodnaya"
@@ -282,7 +282,7 @@ _IMPORT_KIND_LABELS = {
 
 
 def extract_year_from_fuel_params_import_filename(filename: str | None) -> int | None:
-    """Год из имени файла (Станции2023.xlsx → 2023). Нет года в имени — None."""
+    """Год из имени файла (Станции2023.xlsx → 2023). Нет года в имени – None."""
     base = _basename_lower(filename)
     if not base:
         return None
@@ -312,7 +312,7 @@ def fuel_params_import_year_mismatch_message(
     """
     Текст предупреждения, если год в имени файла не совпадает с годом фильтра.
     Импорт по кнопке больше не блокирует такое расхождение: год берётся из имени.
-    Нет года в имени или годы совпадают — None.
+    Нет года в имени или годы совпадают – None.
     """
     file_year = extract_year_from_fuel_params_import_filename(filename)
     if file_year is None or int(file_year) == int(selected_year):
@@ -332,7 +332,7 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
             alias_to_canonical[_normalize_column_name(a)] = canonical
     for field in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS:
         alias_to_canonical[_normalize_column_name(field)] = field
-    # Заголовки экспорта (русские подписи) — как в export_stations_equipment_group_fuel_params
+    # Заголовки экспорта (русские подписи) – как в export_stations_equipment_group_fuel_params
     for field, label in {**MAIN_PARAM_LABELS, **FUEL_PARAM_LABELS}.items():
         if field in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS:
             alias_to_canonical[_normalize_column_name(label)] = field
@@ -391,7 +391,7 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
     try:
         if isinstance(value, Decimal):
@@ -461,7 +461,7 @@ def _year_number_from_stations_row(row, fallback_year: int) -> int | None:
 
 
 def _qotr_from_stations_row(row):
-    """QOTR из строки; пустая ячейка — None."""
+    """QOTR из строки; пустая ячейка – None."""
     return _safe_decimal(_extract_cell_value(row, "qotr"))
 
 
@@ -488,7 +488,7 @@ def _access_code_as_str(raw) -> str | None:
             return str(int(raw))
         return str(raw).strip() or None
     s = str(raw).strip()
-    if not s or s.lower() in ("nan", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "–", "-", "–"):
         return None
     try:
         f = float(s.replace(",", "."))
@@ -500,8 +500,8 @@ def _access_code_as_str(raw) -> str | None:
 
 
 # Входы Коэфф / Распред / Топливо из «Станции(Схема)». Не берём DEP (ломает FK),
-# не берём рассчитанные B/GAZ/EURT/EUST/TUST — их пишет этап «Топливо».
-# TURT — вход TUST = Q·TURT/1000, не результат Топливо.
+# не берём рассчитанные B/GAZ/EURT/EUST/TUST – их пишет этап «Топливо».
+# TURT – вход TUST = Q·TURT/1000, не результат Топливо.
 _STATIONS_SCHEMA_CALC_FIELDS: tuple[str, ...] = (
     "name",
     "ved",
@@ -548,7 +548,7 @@ def _stations_schema_row_values(row, columns) -> dict:
 
 
 def _obor_if_mapped(obor: int | None) -> int | None:
-    """OBOR пишем только если код есть в справочнике типов ГО — иначе FK валит весь файл."""
+    """OBOR пишем только если код есть в справочнике типов ГО – иначе FK валит весь файл."""
     if obor is None:
         return None
     cache = getattr(_obor_if_mapped, "_codes", None)
@@ -581,7 +581,7 @@ def _resolve_equipment_groups_from_row(row):
     """
     Возвращает список (equipment_group_id, database_version_id) для строки.
     Сопоставление по numb1120 и копиям с тем же external_code во всех версиях БД.
-    equipment_group_id обязателен — строки без ГО не создаём.
+    equipment_group_id обязателен – строки без ГО не создаём.
     """
     from app.fuel.services.fuel_imports.fuel_import_all_versions import (
         resolve_equipment_group_import_targets,
@@ -600,7 +600,7 @@ def _get_or_create_equipment_group_fuel_param(
     eg_database_version_id: int | None,
 ) -> tuple[EquipmentGroupFuelParam, bool]:
     """
-    Одна строка на (группу, год) — так задан uq_equipment_group_fuel_param_group_year.
+    Одна строка на (группу, год) – так задан uq_equipment_group_fuel_param_group_year.
 
     Не фильтруем по database_version_id: иначе существующая строка с другой версией
     не находится, и INSERT падает с UniqueViolation.
@@ -648,10 +648,10 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
 
     Пишет: ved, obor, oes, obl, nust, nr, h, hfix, q, qotr, turt, nt, nt_sum, e, ewtp, snk, name.
     Пустая ячейка в файле очищает поле в ТЭП (чтобы QOTR с базового года не оставался).
-    Не пишет DEP и виды топлива (B/GAZ/TUST/…) — DEP ломает справочник, топливо считает этап.
+    Не пишет DEP и виды топлива (B/GAZ/TUST/…) – DEP ломает справочник, топливо считает этап.
 
-    Год — из столбца Year, иначе из имени файла / фильтра страницы.
-    Нет строки ТЭП — создаётся.
+    Год – из столбца Year, иначе из имени файла / фильтра страницы.
+    Нет строки ТЭП – создаётся.
     """
     logger = get_fuel_import_logger(__name__)
     t0 = time.perf_counter()
@@ -832,7 +832,7 @@ def _load_otet_svodnaya_sn_dataframe(xls: pd.ExcelFile, sheet_name: str) -> pd.D
             row_out["sn_ee"] = item.get("sn_ee")
         if "sn_te" in item:
             row_out["sn_te"] = item.get("sn_te")
-        # Строка-заголовок региона без чисел СН — пропускаем, если оба СН пустые.
+        # Строка-заголовок региона без чисел СН – пропускаем, если оба СН пустые.
         sn_ee_val = _safe_decimal(row_out.get("sn_ee"))
         sn_te_val = _safe_decimal(row_out.get("sn_te"))
         if sn_ee_val is None and sn_te_val is None:

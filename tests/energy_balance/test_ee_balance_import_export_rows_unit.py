@@ -107,8 +107,8 @@ def test_balance_rows_include_country_details_and_direction_totals(monkeypatch):
     )
 
     ural_rows = {row["key"]: row for row in tables["ural"]["rows"]}
-    assert ural_rows["ee_import_country_1"]["label"] == "Импорт ЭЭ — Беларусь"
-    assert ural_rows["ee_import_country_2"]["label"] == "Импорт ЭЭ — Казахстан"
+    assert ural_rows["ee_import_country_1"]["label"] == "Импорт ЭЭ – Беларусь"
+    assert ural_rows["ee_import_country_2"]["label"] == "Импорт ЭЭ – Казахстан"
     assert ural_rows["ee_import_total"]["label"] == "Импорт ЭЭ, всего"
     assert ural_rows["ee_import_total"]["formula_tooltip"] == (
         "Сумма импортов электрической энергии"
@@ -118,7 +118,7 @@ def test_balance_rows_include_country_details_and_direction_totals(monkeypatch):
     assert ural_rows["ee_import_total"]["collapsible"] is True
     assert ural_rows["ee_import_country_1"]["parent_group_key"] == "ee_import_total"
     assert ural_rows["ee_import_country_1"]["is_group_child"] is True
-    assert ural_rows["ee_export_country_1"]["label"] == "Экспорт ЭЭ — Беларусь"
+    assert ural_rows["ee_export_country_1"]["label"] == "Экспорт ЭЭ – Беларусь"
     assert ural_rows["ee_export_total"]["label"] == "Экспорт ЭЭ, всего"
     assert ural_rows["ee_export_total"]["formula_tooltip"] == (
         "Сумма экспортов электрической энергии"
@@ -147,7 +147,7 @@ def test_balance_rows_include_country_details_and_direction_totals(monkeypatch):
     centr_rows = {row["key"]: row for row in tables["centr"]["rows"]}
     assert centr_rows["ee_import_total"]["label"] == "Импорт ЭЭ, всего"
     assert centr_rows["ee_import_total"]["year_values"][2026] == "3"
-    assert centr_rows["ee_import_country_3"]["label"] == "Импорт ЭЭ — Монголия"
+    assert centr_rows["ee_import_country_3"]["label"] == "Импорт ЭЭ – Монголия"
     assert centr_rows["ee_import_country_3"]["year_values"][2026] == "3"
     centr_terms = centr_rows["demand_total"]["formula"]["terms"]
     assert {"row_key": "ee_export", "coeff": 1} in centr_terms

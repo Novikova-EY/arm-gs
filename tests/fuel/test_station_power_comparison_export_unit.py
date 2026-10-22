@@ -66,11 +66,11 @@ def test_export_preserves_numeric_values_hierarchy_and_mismatch_colors(show_p_ra
     assert sheet[f"{nust_col}5"].value == 48
     assert sheet[f"{nust_col}5"].fill.fgColor.rgb.endswith("F8D7DA")
     assert sheet["A5"].comment.text == "Шесть агрегатов двух станций"
-    assert sheet["G6"].value == "—"
+    assert sheet["G6"].value == "–"
     assert sheet[f"{nust_col}6"].value == 100
     if show_p_rasp:
         assert sheet["H5"].value == 35.5
-        assert sheet["J6"].value == "—"
+        assert sheet["J6"].value == "–"
     assert sheet.freeze_panes == "G4"
 
 

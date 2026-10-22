@@ -2,7 +2,7 @@
 """
 Association table: regional_district <-> regional_energy_system (многие-ко-многим).
 - Таблица лежит в схеме refdata (SCHEMA_REFDATA).
-- Никакой собственной модели не требуется — используем db.Table.
+- Никакой собственной модели не требуется – используем db.Table.
 """
 from app.extensions import db
 from config import SCHEMA_REFDATA

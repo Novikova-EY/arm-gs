@@ -30,25 +30,25 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
 def _format_cell_value(param, attr, is_numeric, rounding_digits):
     """Форматирует значение ячейки."""
     if param is None:
-        return "—"
+        return "–"
     if attr.endswith("_calc") and is_numeric:
         price_calc = getattr(param, "_price_calc", None) or {}
         val = price_calc.get(attr[:-5])
     else:
         val = getattr(param, attr, None)
     if val is None:
-        return "—"
+        return "–"
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
-    return str(val) if val is not None else "—"
+    return str(val) if val is not None else "–"
 
 
 def _format_summary_value(summary, attr, is_numeric, rounding_digits):
     if summary is None or attr not in summary:
-        return "—"
+        return "–"
     val = summary.get(attr)
     if val is None:
-        return "—"
+        return "–"
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
     return str(val)
@@ -113,21 +113,21 @@ def export_stations_equipment_group_specific_fuel_price_to_excel(
                 max_lengths[i] = len(str(v))
 
     for est_block in hierarchy:
-        title = est_block.get("est_name") or "—"
+        title = est_block.get("est_name") or "–"
         _bump_lengths([title] + [""] * (num_cols - 1))
         write_merged_section_row(
             ws, next_data_row_index(ws), num_cols, title, FILL_EST
         )
 
         for ues_block in est_block.get("ues_list") or []:
-            ues_title = ues_block.get("ues_name") or "—"
+            ues_title = ues_block.get("ues_name") or "–"
             _bump_lengths([ues_title] + [""] * (num_cols - 1))
             write_merged_section_row(
                 ws, next_data_row_index(ws), num_cols, ues_title, FILL_UES
             )
 
             for res_block in ues_block.get("res_list") or []:
-                res_title = res_block.get("res_name") or "—"
+                res_title = res_block.get("res_name") or "–"
                 _bump_lengths([res_title] + [""] * (num_cols - 1))
                 write_merged_section_row(
                     ws,
@@ -147,7 +147,7 @@ def export_stations_equipment_group_specific_fuel_price_to_excel(
                                 if group_entity and group_entity.name_ext
                                 else None
                             )
-                            or "—"
+                            or "–"
                         )
                         is_total = bool(group_block.get("is_composite_total_row"))
                         if is_total and not str(group_name).endswith(", всего"):
@@ -160,7 +160,7 @@ def export_stations_equipment_group_specific_fuel_price_to_excel(
                                 else (
                                     str(getattr(group_entity, "numb", None))
                                     if getattr(group_entity, "numb", None) is not None
-                                    else "—"
+                                    else "–"
                                 ),
                                 group_name,
                             ]
@@ -190,10 +190,10 @@ def export_stations_equipment_group_specific_fuel_price_to_excel(
                         and not station_block.get("is_virtual")
                         and not station_block.get("suppress_station_summary")
                     ):
-                        st_name = station_block.get("station_name") or "—"
+                        st_name = station_block.get("station_name") or "–"
                         label = f"{st_name}, всего"
                         summary = station_block.get("station_summary") or {}
-                        row_data = ["—", label]
+                        row_data = ["–", label]
                         for attr, _label, is_numeric in SPECIFIC_FUEL_PRICE_COLUMNS:
                             row_data.append(
                                 _format_summary_value(
@@ -207,10 +207,10 @@ def export_stations_equipment_group_specific_fuel_price_to_excel(
                         )
 
                 if res_block.get("group_blocks"):
-                    res_nm = res_block.get("res_name") or "—"
+                    res_nm = res_block.get("res_name") or "–"
                     label = f"{res_nm}, всего"
                     summary = res_block.get("res_summary") or {}
-                    row_data = ["—", label]
+                    row_data = ["–", label]
                     for attr, _label, is_numeric in SPECIFIC_FUEL_PRICE_COLUMNS:
                         row_data.append(
                             _format_summary_value(summary, attr, is_numeric, rounding_digits)

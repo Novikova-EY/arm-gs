@@ -19,7 +19,7 @@ def _ues_base_row() -> dict:
         "parent_id": 117,
         "hist_row_id": None,
         "year_row_ids": [101],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
         "perimeter_variant_code": None,
         "perimeter_variant_label": "",
@@ -47,7 +47,7 @@ def _ues_gaes_row() -> dict:
         "parent_id": 117,
         "hist_row_id": None,
         "year_row_ids": [None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
         "perimeter_variant_code": None,
         "perimeter_variant_label": "",
@@ -77,7 +77,7 @@ def _south_variant_row(code: str, value: str) -> dict:
         "parent_id": 118,
         "hist_row_id": None,
         "year_row_ids": [None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
         "perimeter_variant_code": code,
         "perimeter_variant_label": "",
@@ -105,7 +105,7 @@ def _south_gaes_charge_row(value: str) -> dict:
         "parent_id": 118,
         "hist_row_id": None,
         "year_row_ids": [None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
         "perimeter_variant_code": None,
         "perimeter_variant_label": "",
@@ -262,7 +262,7 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
     assert ees_type_with_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
     assert ees_russia_without_nt_with_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert ees_russia_without_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
-    # Нет варианта «с зарядом» — оставляем «без заряда» как fallback.
+    # Нет варианта «с зарядом» – оставляем «без заряда» как fallback.
     assert sync_without_nt_without_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert south_with_nt_with_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert south_with_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
@@ -360,7 +360,7 @@ def test_collapsed_nt_gaes_variant_row_rules_mark_primary_rows():
     assert south_rows[0]["pd_ec_entity_label_compact_nt_gaes"] == "ОЭС Юга"
     assert south_rows[1]["pd_ec_collapsed_nt_gaes_redundant_row"] is True
     assert south_rows[2]["pd_ec_collapsed_nt_gaes_redundant_row"] is True
-    # Только «без заряда» — fallback primary.
+    # Только «без заряда» – fallback primary.
     assert sync_row["pd_ec_collapsed_nt_gaes_visible_row"] is True
     assert sync_row["pd_ec_entity_label_compact_nt_gaes"] == "Первая синхронная зона"
 
@@ -445,7 +445,7 @@ def test_collapse_gaes_split_removes_south_fd_duplicates_without_stations(monkey
             "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
             "perimeter_variant_code": None,
             "pd_ec_gaes_injected_row": True,
-            "year_values": ["—"],
+            "year_values": ["–"],
             "show_entity_cell": True,
         },
         {
@@ -1107,7 +1107,7 @@ def test_apply_gaes_without_charge_formula_south_without_nt_without_gaes_is_form
     }
     target_row = {
         **_south_variant_row(service.CODE_WITHOUT_NT_WITHOUT_GAES, "77.5"),
-        "year_values": ["77.5", "—", "—"],
+        "year_values": ["77.5", "–", "–"],
         "year_numeric_tooltips": ["77.5", "", ""],
     }
     rows = [source_row, charge_row, target_row]
@@ -1139,7 +1139,7 @@ def test_apply_gaes_without_charge_formula_fills_empty_south_without_nt_without_
     years = [2024]
     source_row = _south_variant_row(service.CODE_WITHOUT_NT_WITH_GAES, "100.0")
     charge_row = _south_gaes_charge_row_for_nt_group("12.0", nt_group="without_nt")
-    target_row = _south_variant_row(service.CODE_WITHOUT_NT_WITHOUT_GAES, "—")
+    target_row = _south_variant_row(service.CODE_WITHOUT_NT_WITHOUT_GAES, "–")
     rows = [source_row, charge_row, target_row]
 
     service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
@@ -1160,7 +1160,7 @@ def test_apply_gaes_without_charge_formula_fills_empty_south_without_nt_without_
 
 
 def test_apply_gaes_without_charge_formula_replaces_polluted_south_without_nt_without_gaes():
-    """Ранний проход мог скопировать «с зарядом» — повторный вызов должен вычесть ГАЭС."""
+    """Ранний проход мог скопировать «с зарядом» – повторный вызов должен вычесть ГАЭС."""
     years = [2024]
     source_row = _south_variant_row(service.CODE_WITHOUT_NT_WITH_GAES, "100.0")
     charge_row = _south_gaes_charge_row_for_nt_group("12.0", nt_group="without_nt")
@@ -1351,12 +1351,12 @@ def test_first_sa_kaliningrad_verification_respects_year_bounds():
     )
 
     assert with_kal_ec.get("perimeter_variant_to_year") is None
-    assert with_kal_ec["year_values"] != ["—", "—", "—", "—"]
+    assert with_kal_ec["year_values"] != ["–", "–", "–", "–"]
     assert with_kal_ec["pd_ec_verification_year_red"] == [False, False, False, False]
 
     assert without_kal_ec["perimeter_variant_from_year"] == 2025
-    assert without_kal_ec["year_values"][:2] == ["—", "—"]
-    assert without_kal_ec["year_values"][2:] != ["—", "—"]
+    assert without_kal_ec["year_values"][:2] == ["–", "–"]
+    assert without_kal_ec["year_values"][2:] != ["–", "–"]
     assert without_kal_ec["pd_ec_verification_year_red"] == [False, False, False, False]
 
 
@@ -1408,8 +1408,8 @@ def test_first_sa_verification_red_flags_nonzero_after_perimeter_tag():
     ec = next(
         row for row in rows if row["parameter_key"] == "energy_consumption_mln_kvt_ch"
     )
-    assert ec["year_values"][0] not in ("—", "0", "0,0", "0,000000")
-    assert ec["year_values"][1] not in ("—", "0", "0,0", "0,000000")
+    assert ec["year_values"][0] not in ("–", "0", "0,0", "0,000000")
+    assert ec["year_values"][1] not in ("–", "0", "0,0", "0,000000")
     assert ec["pd_ec_verification_year_red"] == [True, True]
     assert ec.get("perimeter_variant_to_year") is None
 
@@ -1432,8 +1432,8 @@ def test_first_sa_without_kal_verification_red_flags_nonzero_after_perimeter_tag
     ec = next(
         row for row in rows if row["parameter_key"] == "energy_consumption_mln_kvt_ch"
     )
-    assert ec["year_values"][0] == "—"
-    assert ec["year_values"][1] not in ("—", "0", "0,0", "0,000000")
+    assert ec["year_values"][0] == "–"
+    assert ec["year_values"][1] not in ("–", "0", "0,0", "0,000000")
     assert ec["pd_ec_verification_year_red"] == [False, True]
     assert ec.get("perimeter_variant_from_year") == 2025
 
@@ -1499,7 +1499,7 @@ def test_all_verification_rows_use_six_decimal_places_independent_of_rounding_di
 
 
 def test_sync_table_verification_rows_get_nt_gaes_toggle_compact_labels():
-    """«Проверка ЕЭС/СЗ …»: приписки НТ/ГАЭС только при нажатых кнопках — как у обычных строк."""
+    """«Проверка ЕЭС/СЗ …»: приписки НТ/ГАЭС только при нажатых кнопках – как у обычных строк."""
     ees_rows = [
         {
             "entity_label": "Проверка ЕЭС России без НТ с зарядом ГАЭС",
@@ -1588,7 +1588,7 @@ def test_consumption_mln_rows_respect_rounding_digits_from_url():
     assert parameter_maps["energy_consumption_mln_kvt_ch"][2024] == "1 234,6"
     assert parameter_maps["energy_consumption_sipr_mln_kvt_ch"][2024] == "789,44"
     assert tooltips["energy_consumption_sipr_mln_kvt_ch"][2024] == "789,44"
-    assert parameter_maps[service.ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][2024] == "—"
+    assert parameter_maps[service.ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][2024] == "–"
 
 
 def test_sipr_consumption_display_falls_back_to_ec_when_sipr_missing():
@@ -1634,13 +1634,13 @@ def test_recompute_sipr_growth_metrics_after_display_fallback():
         {
             **russia_base,
             "parameter_key": service.ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
-            "year_values": ["—", "—"],
+            "year_values": ["–", "–"],
             "year_numeric_tooltips": ["", ""],
         },
         {
             **russia_base,
             "parameter_key": service.ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
-            "year_values": ["—", "—"],
+            "year_values": ["–", "–"],
             "year_numeric_tooltips": ["", ""],
         },
     ]
@@ -1673,7 +1673,7 @@ def test_apply_sipr_consumption_display_fallback_to_summary_rows():
             "entity_label": "Центральный ФО",
             "perimeter_variant_code": None,
             "parameter_key": "energy_consumption_sipr_mln_kvt_ch",
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
     ]
@@ -1761,7 +1761,7 @@ def test_mask_unrestricted_perimeter_variant_input_keeps_all_years(monkeypatch):
     assert unset_row.get("pd_ec_skip_perimeter_variant_year_bounds") is not True
     assert unset_row["year_values"] == ["1.0", "2.0", "3.0", "4.0"]
 
-    # Без флага — маскируем годы до «Год с».
+    # Без флага – маскируем годы до «Год с».
     masked = [
         {
             "entity_kind": "union_energy_system",
@@ -1774,14 +1774,14 @@ def test_mask_unrestricted_perimeter_variant_input_keeps_all_years(monkeypatch):
         }
     ]
     service.mask_summary_rows_perimeter_variant_year_display(masked, years)
-    assert masked[0]["year_values"] == ["—", "—", "—", "40.0"]
+    assert masked[0]["year_values"] == ["–", "–", "–", "40.0"]
     assert masked[0]["year_row_ids"] == [None, None, None, 4]
 
 
 def test_formula_write_respects_perimeter_variant_year_bounds_even_when_input_unrestricted(
     monkeypatch,
 ):
-    """Формулы на oes/fo/ez пишутся только в «Год с»…«Год по»; вне периода — данные из БД."""
+    """Формулы на oes/fo/ez пишутся только в «Год с»…«Год по»; вне периода – данные из БД."""
     years = [2022, 2023, 2024, 2025]
 
     def _fake_bounds(code: str):
@@ -1819,10 +1819,10 @@ def test_formula_write_respects_perimeter_variant_year_bounds_even_when_input_un
 
 
 def test_yoy_write_uses_two_decimals_in_cell_and_hover_tooltip():
-    """Годовой темп прироста: title при наведении — те же 2 знака, что и в ячейке."""
+    """Годовой темп прироста: title при наведении – те же 2 знака, что и в ячейке."""
     row = {
         "parameter_key": service.ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
-        "year_values": ["—", "—"],
+        "year_values": ["–", "–"],
         "year_numeric_tooltips": ["", ""],
     }
     service._write_numeric_year_values_to_summary_row(
@@ -2173,7 +2173,7 @@ def test_ees_russia_without_nt_gaes_verification_uses_ec_aligned_sipr_components
     second_ec = Decimal("40694.514342")
     kal_ec = Decimal("0")
     gaes_charge = Decimal("2636.192258")
-    # Колонка СиПР 1-й СЗ — как без заряда ГАЭС (типичный рассинхрон данных).
+    # Колонка СиПР 1-й СЗ – как без заряда ГАЭС (типичный рассинхрон данных).
     first_sipr_without_gaes = first_ec - gaes_charge
     ees_ec = first_ec + second_ec + kal_ec
     ees_sipr_rounded = Decimal("1033720")
@@ -2327,7 +2327,7 @@ def test_gaes_charge_marker_without_stations_emits_placeholder_row(monkeypatch):
     assert rows[0]["parameter_key"] == service.GAES_CHARGE_PARAMETER_KEY
     assert rows[0]["entity_label"] == "Южный ФО (заряд ГАЭС)"
     assert rows[0]["pd_ec_skip_empty_hide_row"] is True
-    assert rows[0]["year_values"] == ["—", "—"]
+    assert rows[0]["year_values"] == ["–", "–"]
     assert rows[0]["parent_id"] == 42
 
 
@@ -2559,7 +2559,7 @@ def test_tag_summary_rows_before_oes_blocks_marks_prefix_only():
 
 
 def test_territory_compact_tites_block_shows_res_only(monkeypatch):
-    """В «Сводной таблице» под «ТИТЭС» — РЭС Востока и энергорайон Таймыр/Норильск."""
+    """В «Сводной таблице» под «ТИТЭС» – РЭС Востока и энергорайон Таймыр/Норильск."""
     tites_ues_id = 77
     tites_res_id = 701
     norilsk_res_id = 702
@@ -2897,7 +2897,7 @@ def test_apply_variant_toggle_rows_hides_non_o1_when_entity_has_o1_variants():
 
 
 def test_apply_variant_toggle_rows_keeps_null_base_when_entity_has_o1():
-    """Базовая строка без варианта не скрывается кнопкой «Форма О-1» — O-1 добавляется к ней."""
+    """Базовая строка без варианта не скрывается кнопкой «Форма О-1» – O-1 добавляется к ней."""
     rows = [
         {
             "entity_label": "ЭС Камчатского края",
@@ -3113,7 +3113,7 @@ def test_apply_centralized_zone_without_nt_sum_formula():
     service.apply_centralized_zone_without_nt_sum_formula(rows, years, rounding_digits=1)
 
     cz_row = rows[0]
-    # В БД уже есть значения — формула не перезаписывает, строка остаётся редактируемой.
+    # В БД уже есть значения – формула не перезаписывает, строка остаётся редактируемой.
     assert cz_row["year_values"] == ["100", "200", "0"]
     assert cz_row.get("pd_ec_formula_derived_row") is not True
     assert service._CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP in str(
@@ -3131,7 +3131,7 @@ def test_apply_centralized_zone_without_nt_sum_formula_fills_empty_row():
             "demand_model_name": "CentralizedZoneEnergyConsumptionParameter",
             "perimeter_variant_code": service.CODE_WITHOUT_NT,
             "pd_ec_nt_without_row": True,
-            "year_values": ["—", "—", "—"],
+            "year_values": ["–", "–", "–"],
         },
         _ues_component_row(
             label="ОЭС Северо-Запада",
@@ -3177,7 +3177,7 @@ def test_apply_centralized_zone_without_nt_sum_formula_fills_empty_row():
     service.apply_centralized_zone_without_nt_sum_formula(rows, years, rounding_digits=1)
 
     cz_row = rows[0]
-    assert cz_row["year_values"] == ["—", "280", "2 800"]
+    assert cz_row["year_values"] == ["–", "280", "2 800"]
     assert cz_row.get("pd_ec_formula_derived_row") is not True
     assert service._CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP in str(
         cz_row.get("pd_ec_summary_row_formula_tooltip") or ""
@@ -3384,7 +3384,7 @@ def test_apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
 
 def _cz_russia_nt_pair_rows_for_reference_test(*, years: list[int]) -> list[dict]:
     n = len(years)
-    dash = ["—"] * n
+    dash = ["–"] * n
 
     def _cz_block(label: str, *, with_nt: bool, ec_values: list[str], sipr_values: list[str]) -> list[dict]:
         code = service.CODE_WITH_NT if with_nt else service.CODE_WITHOUT_NT
@@ -3514,7 +3514,7 @@ def test_inject_summary_table_cz_new_territories_reference_row_after_cz():
         if row.get("entity_label") == service._SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL
         and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
     )
-    assert ref_ec["year_values"] == ["—", "50", "50"]
+    assert ref_ec["year_values"] == ["–", "50", "50"]
     assert service._SUMMARY_TABLE_CZ_NT_REFERENCE_FORMULA_TOOLTIP in str(
         ref_ec.get("pd_ec_summary_row_formula_tooltip") or ""
     )
@@ -3535,7 +3535,7 @@ def test_inject_summary_table_cz_new_territories_reference_row_after_cz():
         if row.get("entity_label") == service._SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL
         and row.get("parameter_key") == "energy_consumption_sipr_mln_kvt_ch"
     )
-    assert ref_sipr["year_values"] == ["—", "5", "5"]
+    assert ref_sipr["year_values"] == ["–", "5", "5"]
     assert ref_sipr.get("pd_ec_nt_extra_row") is True
 
 
@@ -3616,7 +3616,7 @@ def test_inject_summary_table_cz_new_territories_reference_row_from_o1_variants(
         if row.get("entity_label") == service._SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL
         and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
     )
-    assert ref_ec["year_values"] == ["—", "50", "50"]
+    assert ref_ec["year_values"] == ["–", "50", "50"]
     assert ref_ec.get("pd_ec_nt_extra_row") is True
     assert ref_ec.get("pd_ec_formula_text_key") == "summary_table_cz_nt_reference"
     assert ref_ec.get("pd_ec_summary_row_formula_tooltip")
@@ -3624,7 +3624,7 @@ def test_inject_summary_table_cz_new_territories_reference_row_from_o1_variants(
 
 
 def _russia_and_ees_rows_for_decentralized_zone_test(*, years: list[int]) -> list[dict]:
-    dash = ["—" for _ in years]
+    dash = ["–" for _ in years]
     label_with_nt = "Россия с НТ"
     russia_rows: list[dict] = []
     for idx, (parameter_key, _) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
@@ -4115,7 +4115,7 @@ def test_inject_oes_summary_verification_rows_places_each_res_check_after_its_re
 
 
 def test_inject_south_ues_new_territories_places_check_after_nt_aggregate(monkeypatch):
-    """«Проверка для Новых территорий» — сразу после «Новые территории», до субъектов."""
+    """«Проверка для Новых территорий» – сразу после «Новые территории», до субъектов."""
     ues_model = "UnionEnergySystemEnergyConsumptionParameter"
     rd_model = "RegionalDistrictEnergyConsumptionParameter"
     south_ues_id = 7
@@ -4993,7 +4993,7 @@ def test_inject_fo_summary_verification_rows_excludes_o1_res_from_sum(monkeypatc
 def test_inject_fo_summary_verification_rows_does_not_add_oes_cross_checks(
     monkeypatch,
 ):
-    """На сводке ФО не вставляем «Проверка для ОЭС Юга/Урала» — только на /summary/oes/."""
+    """На сводке ФО не вставляем «Проверка для ОЭС Юга/Урала» – только на /summary/oes/."""
     from decimal import Decimal
 
     rows = [
@@ -5454,7 +5454,7 @@ def test_inject_oes_summary_verification_rows_skips_tites_east_before_2019():
         and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
     )
     assert tites_check["perimeter_variant_from_year"] == service.TITES_EAST_VERIFICATION_FROM_YEAR
-    assert tites_check["year_values"] == ["—", "200", "200"]
+    assert tites_check["year_values"] == ["–", "200", "200"]
     assert tites_check["pd_ec_verification_year_red"] == [False, True, True]
 
     filtered = service.filter_oes_summary_hidden_tites_union_energy_system_rows(rows)
@@ -6352,7 +6352,7 @@ def test_ezs_russia_without_nt_adds_kaliningrad_sa_from_split_year(monkeypatch):
     service.apply_ees_russia_gaes_aggregate_formulas(rows, years, rounding_digits=1)
 
     values = service._raw_year_values_from_summary_row(ezs, years)
-    # 2024: Калининград ещё в 1-й СЗ — не прибавляем 4912
+    # 2024: Калининград ещё в 1-й СЗ – не прибавляем 4912
     assert values[2024] == Decimal("1172513.6")
     # 2025: 1087532.4 + 5141.5 + 50551.3 + 15962.7 = 1159187.9
     assert values[2025] == Decimal("1159187.9")
@@ -6415,7 +6415,7 @@ def test_mask_kaliningrad_sync_area_null_variant_year_bounds_from_2025(monkeypat
     )
     service.mask_summary_rows_perimeter_variant_year_display([row], years)
     assert row["perimeter_variant_from_year"] == 2025
-    assert row["year_values"] == ["—", "20", "30"]
+    assert row["year_values"] == ["–", "20", "30"]
     assert row["year_row_ids"] == [None, 2, 3]
 
 
@@ -6730,7 +6730,7 @@ def test_apply_first_sa_without_nt_without_gaes_alias_fills_years_before_year_fr
         "perimeter_variant_code": "without_nt_without_gaes_kaliningrad",
         "perimeter_variant_from_year": 2025,
         "parameter_key": "energy_consumption_mln_kvt_ch",
-        "year_values": ["—", "—", "—"],
+        "year_values": ["–", "–", "–"],
         "year_numeric_tooltips": ["", "", ""],
     }
 
@@ -6973,7 +6973,7 @@ def test_ensure_first_sa_variant_formula_tooltips_covers_all_four_catalog_codes(
 def test_first_sa_without_kaliningrad_ues_sum_uses_south_with_gaes_others_without_nt(
     monkeypatch,
 ):
-    """Первая СЗ без НТ с ГАЭС: ОЭС Юга — with_gaes; остальные — как без НТ (без заряда)."""
+    """Первая СЗ без НТ с ГАЭС: ОЭС Юга – with_gaes; остальные – как без НТ (без заряда)."""
     south_id = 7
     other_id = 8
     nt_id = 9
@@ -7045,7 +7045,7 @@ def test_first_sa_without_kaliningrad_ues_sum_uses_south_with_gaes_others_withou
 
 
 def test_first_sa_with_nt_ues_sums_special_case_south_gaes_variants(monkeypatch):
-    """С НТ: Юг — with/without_gaes; остальные ОЭС — как с НТ; + НТ, − Восток."""
+    """С НТ: Юг – with/without_gaes; остальные ОЭС – как с НТ; + НТ, − Восток."""
     south_id = 7
     other_id = 8
     east_id = 10
@@ -8286,8 +8286,8 @@ def test_mask_sakha_yakutia_splits_years_between_tites_and_oes_east(monkeypatch)
         "year_row_ids": [1, 2],
     }
     service.mask_sakha_yakutia_tites_oes_east_year_membership([tites_row, oes_row], years)
-    assert tites_row["year_values"] == ["10", "—"]
-    assert oes_row["year_values"] == ["—", "20"]
+    assert tites_row["year_values"] == ["10", "–"]
+    assert oes_row["year_values"] == ["–", "20"]
     assert oes_row.get("pd_ec_sakha_oes_east_from_year_row") is True
 
 
@@ -8493,7 +8493,7 @@ def _fake_flatten_entity_for_energy_zone_inject_tests(
         "ЭС Приморского края": ["7"],
     }
     for index, (parameter_key, parameter_label) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
-        year_values = ["—" for _ in years]
+        year_values = ["–" for _ in years]
         if parameter_key == "energy_consumption_mln_kvt_ch":
             year_values = component_ec_values.get(entity.label, year_values)
         rows.append(
@@ -8891,7 +8891,7 @@ def test_sum_east_energy_zone_formula_includes_sakha_res_and_kamchatka_o1(monkey
         {
             "entity_label": service._EAST_ENERGY_ZONE_LABEL,
             "parameter_key": "energy_consumption_mln_kvt_ch",
-            "year_values": ["—"],
+            "year_values": ["–"],
         }
     ]
     for label, value in component_values.items():
@@ -9102,7 +9102,7 @@ def _chukotka_energy_zone_summary_block() -> list[dict]:
             "parent_id": 648,
             "hist_row_id": None,
             "year_row_ids": [None],
-            "hist_value": "—",
+            "hist_value": "–",
             "hist_numeric_tooltip": "",
             "perimeter_variant_code": "o1",
             "perimeter_variant_label": "О-1",
@@ -9150,7 +9150,7 @@ def _chukotka_energy_zone_summary_block() -> list[dict]:
                     param_key=param_key,
                     param_label=param_label,
                     demand_model=demand_model,
-                    value=values_by_key.get(param_key, "—"),
+                    value=values_by_key.get(param_key, "–"),
                     show_entity=idx == 0,
                 )
             )
@@ -9179,7 +9179,7 @@ def _chukotka_oes_split_summary_block() -> list[dict]:
             else (
                 value_sipr
                 if param_key == "energy_consumption_sipr_mln_kvt_ch"
-                else "—"
+                else "–"
             )
         )
         row = {
@@ -9194,7 +9194,7 @@ def _chukotka_oes_split_summary_block() -> list[dict]:
             "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
             "year_values": [value],
             "year_numeric_tooltips": [value],
-            "hist_value": "—",
+            "hist_value": "–",
             "hist_numeric_tooltip": "",
             "year_row_ids": [None],
             "hist_row_id": None,
@@ -9213,7 +9213,7 @@ def _chukotka_oes_split_summary_block() -> list[dict]:
             else (
                 value_sipr
                 if param_key == "energy_consumption_sipr_mln_kvt_ch"
-                else "—"
+                else "–"
             )
         )
         return {
@@ -9229,7 +9229,7 @@ def _chukotka_oes_split_summary_block() -> list[dict]:
             "perimeter_variant_code": None,
             "year_values": [value],
             "year_numeric_tooltips": [value],
-            "hist_value": "—",
+            "hist_value": "–",
             "hist_numeric_tooltip": "",
             "year_row_ids": [None],
             "hist_row_id": None,
@@ -9754,7 +9754,7 @@ def test_apply_energy_zone_formula_to_summary_rows_overwrites_from_res_aggregate
     )
 
     mln_row = {
-        "entity_label": "1 — Тестовая ЭЗ",
+        "entity_label": "1 – Тестовая ЭЗ",
         "entity_rowspan": 2,
         "entity_depth": 0,
         "entity_kind": "group",
@@ -9767,7 +9767,7 @@ def test_apply_energy_zone_formula_to_summary_rows_overwrites_from_res_aggregate
         "year_values": ["1.0", "2.0"],
         "year_numeric_tooltips": ["1.0", "2.0"],
         "year_row_ids": [None, None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
     }
     sipr_row = {
@@ -9792,7 +9792,7 @@ def test_apply_energy_zone_formula_to_summary_rows_overwrites_from_res_aggregate
         "year_values": ["99.0"],
         "year_numeric_tooltips": ["99.0"],
         "year_row_ids": [None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
     }
     rows = [mln_row, sipr_row, formula_row]
@@ -9810,7 +9810,7 @@ def test_apply_energy_zone_formula_to_summary_rows_overwrites_from_res_aggregate
 
 
 def test_apply_energy_zone_formula_falls_back_to_null_pvc_aggregates(monkeypatch):
-    """Если у ЭЗ with_nt, а у РЭС pvc пустой — берём агрегат (ez_id, None)."""
+    """Если у ЭЗ with_nt, а у РЭС pvc пустой – берём агрегат (ez_id, None)."""
     years = [2024]
     ez_id = 7
     monkeypatch.setattr(
@@ -9821,7 +9821,7 @@ def test_apply_energy_zone_formula_falls_back_to_null_pvc_aggregates(monkeypatch
         },
     )
     mln_row = {
-        "entity_label": "2 — ЭЗ",
+        "entity_label": "2 – ЭЗ",
         "entity_rowspan": 1,
         "entity_depth": 0,
         "entity_kind": "perimeter_variant",
@@ -9831,10 +9831,10 @@ def test_apply_energy_zone_formula_falls_back_to_null_pvc_aggregates(monkeypatch
         "parent_fk_column": "id_energy_zone",
         "parent_id": ez_id,
         "perimeter_variant_code": service.CODE_WITH_NT,
-        "year_values": ["—"],
+        "year_values": ["–"],
         "year_numeric_tooltips": [""],
         "year_row_ids": [None],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
     }
 

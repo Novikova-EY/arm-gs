@@ -8,8 +8,14 @@ from flask_login import current_user, login_required
 
 from app.common.services.help_services import parse_decimal_from_display
 from app.ecology.routes.ecology_bp import ecology_bp
+from app.ecology.services.ecology_logging_services import (
+    context_lines,
+    log_page_visit,
+)
 from app.ecology.services.gis_tek_page_services import can_edit_ecology
 from app.ecology.services.new_tes_constants import (
+    CAPACITY_CLASSES,
+    CAPACITY_LE100_KEY,
     DEFAULT_SHEET_SLUG,
     DEFAULT_TERRITORY_SLUG,
     get_calc_sheet,
@@ -58,14 +64,36 @@ def new_tes_table(territory_slug: str, sheet_slug: str):
         end_year=request.args.get("end_year"),
         rounding_digits=request.args.get("rounding_digits"),
         view_year=request.args.get("view_year"),
+        capacity_class=request.args.get("capacity_class", CAPACITY_LE100_KEY),
     )
     if context is None:
         abort(404)
     sheet = context.get("sheet") or {}
+    log_page_visit(
+        "Новые ТЭС",
+        tab=str(sheet.get("sheet_name") or sheet_slug),
+        details=context_lines(
+            ("территория", (context.get("territory") or {}).get("sheet_name")),
+            ("период", f"{context.get('start_year')}–{context.get('end_year')}"),
+            ("год", context.get("view_year")),
+        ),
+    )
     context["can_edit"] = bool(
         can_edit_ecology(current_user) and sheet.get("layout") == "chars"
     )
-    return render_template("ecology/operating_tes/operating_tes_table.html", **context)
+    if sheet.get("layout") == "fuel":
+        from app.ecology.services.fuel_exchange_services import pending_submissions
+        from app.ecology.services.fuel_summary_constants import FUEL_SUMMARY_LABELS, NEW_TES_SCOPE_CAPACITY
+
+        scope = next(key for key, capacity in NEW_TES_SCOPE_CAPACITY.items() if capacity == context["capacity_class"])
+        pending = pending_submissions(context["range_years"], scope=scope)
+        context["new_fuel_pending"] = [item for item in pending if item.year_number == context["view_year"]]
+        context["fuel_summary_labels"] = FUEL_SUMMARY_LABELS
+    return render_template(
+        "ecology/operating_tes/operating_tes_table.html",
+        document_title="Расчет по новым ТЭС",
+        **context,
+    )
 
 
 @ecology_bp.route(
@@ -77,6 +105,9 @@ def new_tes_update_value(territory_slug: str, sheet_slug: str):
     if not can_edit_ecology(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     if get_territory(territory_slug) is None or get_calc_sheet(sheet_slug) is None:
+        abort(404)
+    capacity = request.args.get("capacity_class", CAPACITY_LE100_KEY)
+    if capacity not in CAPACITY_CLASSES:
         abort(404)
     data = request.get_json(silent=True) or {}
     year = data.get("year")
@@ -93,6 +124,8 @@ def new_tes_update_value(territory_slug: str, sheet_slug: str):
         return jsonify(ok=False, error="Некорректное число"), 400
     try:
         if sheet_slug == "spravochnik":
+            if field in {"ash", "so2", "nox", "k_co2"}:
+                field = f"{'pg' if field == 'k_co2' else field}_{capacity}"
             upsert_norm(row_key, year_int, field, amount)
         else:
             return jsonify(ok=False, error="Лист только для просмотра"), 400

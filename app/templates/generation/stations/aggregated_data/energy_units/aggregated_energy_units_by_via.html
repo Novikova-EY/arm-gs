@@ -12,7 +12,7 @@
             {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
                 <td class="power-column" style="font-weight: bold;">
                     {% if val is none or val == 0 %}
-                        &mdash;
+                        &ndash;
                     {% else %}
                         {{ val | format_decimal }}
                     {% endif %}
@@ -31,7 +31,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
                 <td class="power-column" style="font-weight: bold;">
                     {% if val is none or val == 0 %}
-                        &mdash;
+                        &ndash;
                     {% else %}
                         {{ val | format_decimal }}
                     {% endif %}
@@ -50,7 +50,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
                 <td class="power-column" style="font-weight: bold;">
                     {% if val is none or val == 0 %}
-                        &mdash;
+                        &ndash;
                     {% else %}
                         {{ val | format_decimal }}
                     {% endif %}
@@ -76,7 +76,7 @@
                     {% set val = energy_units_by_station_types_yearly_p_ust.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}
@@ -93,7 +93,7 @@
                     {% set val = energy_units_by_station_types_yearly_p_ogr.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}
@@ -110,7 +110,7 @@
                     {% set val = energy_units_by_station_types_yearly_p_rasp.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}

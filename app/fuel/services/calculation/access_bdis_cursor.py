@@ -11,7 +11,7 @@ VBA Кнопка27 / Кнопка5:
     w.FindNext filter1
 
 Индекс таблицы «Станции(Схема)»: unique numb1 = (numb1, v, YEAR).
-hb не ищется по numb текущей станции — это значение с последней строки
+hb не ищется по numb текущей станции – это значение с последней строки
 базового года, на которую наехал курсор.
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ def d0(value) -> Decimal:
 
 
 def parse_access_numb1(*candidates: Any) -> float:
-    """Access Станции.numb1 — Double (256.1). Не путать с EG.n1 (мощность)."""
+    """Access Станции.numb1 – Double (256.1). Не путать с EG.n1 (мощность)."""
     for raw in candidates:
         if raw is None:
             continue
@@ -151,7 +151,7 @@ def walk_access_bdis_cursor(
     и отдаёт расчётные строки year=cyear с текущим состоянием курсора.
 
     z(h): NULL/пусто → 0, без синтеза E/NUST.
-    hb Dim на уровне Кнопка27 — не обнуляется на again:/BDis, только FindFirst
+    hb Dim на уровне Кнопка27 – не обнуляется на again:/BDis, только FindFirst
     с начала. Если первая строка cyear, берётся hb с конца прошлого прохода.
     """
     if state is None:

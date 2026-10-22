@@ -289,7 +289,7 @@ def equipment_group_fuel_batch_calculation_resolve_group_ids():
             "filter_start_year": filter_start_year,
             "filter_end_year": filter_end_year,
             "station_filters": station_filters,
-            "note": "Пересчёт не выполнялся; calculation_write_reference — куда пишутся данные при запуске пакета.",
+            "note": "Пересчёт не выполнялся; calculation_write_reference – куда пишутся данные при запуске пакета.",
             "calculation_write_reference": get_fuel_calculation_write_reference(),
         }
     )
@@ -423,8 +423,8 @@ def equipment_group_fuel_batch_fuel_params_tables_api():
     HTML-фрагменты таблиц как на stations_equipment_group_fuel_params и
     Предпросмотр доп. топливных параметров для списка групп и года(лет).
 
-    JSON-тело может содержать ``fuel_param_column_set``: ``full`` (по умолчанию) —
-    все колонки как на полной выгрузке; ``calculation`` — только баланс энергии и
+    JSON-тело может содержать ``fuel_param_column_set``: ``full`` (по умолчанию) –
+    все колонки как на полной выгрузке; ``calculation`` – только баланс энергии и
     расчётные показатели по строке (страница «Расчёт»).
     """
     if not _csrf_ok():
@@ -662,7 +662,7 @@ def equipment_group_fuel_batch_calculation_distribution_multi_api():
                 "ok": False,
                 "error": (
                     "Задайте наименование ОЭС (name, как в справочнике UnionEnergySystem), "
-                    "год и/или список id — иначе будут выбраны все строки параметров."
+                    "год и/или список id – иначе будут выбраны все строки параметров."
                 ),
             },
         ), 400

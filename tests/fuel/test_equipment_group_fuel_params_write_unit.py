@@ -15,7 +15,7 @@ def test_parse_e_accepts_thousand_grouped_display():
 
 def test_parse_e_empty_and_dash():
     assert _parse_fuel_param_value("e", "") is None
-    assert _parse_fuel_param_value("e", "—") is None
+    assert _parse_fuel_param_value("e", "–") is None
     assert _parse_fuel_param_value("e", None) is None
 
 

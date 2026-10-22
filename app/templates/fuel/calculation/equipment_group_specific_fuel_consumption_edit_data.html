@@ -5,7 +5,7 @@
 
 {# Подпись FuelParam.ved (Тип ТЭС) по справочнику FUEL_PARAM_VED_LABELS. #}
 {% macro fuel_param_ved_display(ved) -%}
-{%- if ved is none -%}—{%- else -%}{{- (fuel_param_ved_labels|default({})).get(ved|int, ved) -}}{%- endif -%}
+{%- if ved is none -%}–{%- else -%}{{- (fuel_param_ved_labels|default({})).get(ved|int, ved) -}}{%- endif -%}
 {%- endmacro %}
 
 {# Подсказка с полным значением из БД (без округления UI), как на equipment_group_fuel_params_edit_data #}
@@ -26,17 +26,17 @@
 {%- endmacro %}
 
 {% macro specific_fc_data_cell(attr, is_numeric, param) -%}
-{% if param is none %}—
+{% if param is none %}–
 {% elif attr == 'ved' %}{{ fuel_param_ved_display(param|get_attr('ved')) }}
-{% elif attr == 'snk_calc' %}{% set v = param|get_attr('snk_calc') %}{% if v is none %}—{% else %}{{ v|format_decimal }}{% endif %}
+{% elif attr == 'snk_calc' %}{% set v = param|get_attr('snk_calc') %}{% if v is none %}–{% else %}{{ v|format_decimal }}{% endif %}
 {% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
-{% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}
+{% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '–' }}{% endif %}
 {%- endmacro %}
 
 {% macro specific_fc_numb1120_cell(param, group_entity) -%}
 {% set v = param|get_attr('numb1120') if param is not none else none %}
 {% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}
-{{ v if v is not none else '—' }}
+{{ v if v is not none else '–' }}
 {%- endmacro %}
 
 {% macro specific_fc_numb1120_tooltip(param, group_entity) -%}
@@ -116,7 +116,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="specificFcAddYearTarget">Год</label>
                         <select name="id_target_year" id="specificFcAddYearTarget" class="form-select form-select-lg" aria-label="Год" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -149,7 +149,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="specificFcAddPeriodFrom">Год с</label>
                         <select name="id_year_from" id="specificFcAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -158,7 +158,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="specificFcAddPeriodTo">Год по</label>
                         <select name="id_year_to" id="specificFcAddPeriodTo" class="form-select form-select-lg" aria-label="Конец периода" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -181,12 +181,12 @@
 {% set plan_years = plan_year_numbers|default([]) %}
 {# (attr, key in COLUMN_LABELS / header, is_numeric, kind)
    kind: 'view' | 'input' | 'calc'
-   — input: редактируется кроме годов «факт»
-   — calc: только просмотр для «факт»; редактируется для остальных признаков (в т.ч. «план»)
+   – input: редактируется кроме годов «факт»
+   – calc: только просмотр для «факт»; редактируется для остальных признаков (в т.ч. «план»)
    Столбцы как на stations_equipment_group_specific_fuel_consumption:
    numb1120, ved (из FuelParam), k, y/y_calc, btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc #}
 {# numb1120 только просмотр; при сохранении подставляется EquipmentGroup.numb #}
-{# ved — только просмотр, значение из FuelParam за тот же год (как на equipment_group_fuel_params_edit_data) #}
+{# ved – только просмотр, значение из FuelParam за тот же год (как на equipment_group_fuel_params_edit_data) #}
 {% set specific_fc_columns = [
     ('numb1120', 'Код группы оборудования', false, 'view'),
     ('ved', 'Тип ТЭС', false, 'view'),
@@ -243,7 +243,7 @@
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
-                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                                 {% set row_span = group_block.rows|length %}
                                 {% if row_span > 0 %}
                                 {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
@@ -271,7 +271,7 @@
                                             {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% endif %}
-                                        <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                                        <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}–{% endif %}</td>
                                         {% for attr, _2, is_numeric, kind in specific_fc_columns %}
                                         {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit and attr != 'snk_calc') %}
                                         {% if attr == 'numb1120' %}
@@ -303,7 +303,7 @@
             {% for group_rows in equipment_group_specific_fuel_consumption_row_groups|default([]) %}
                 {% set row_span = group_rows|length %}
                 {% set group_entity = group_rows[0][0] %}
-                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                 {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
                 {% for row in group_rows %}
                 {% set param = row[1] %}
@@ -329,7 +329,7 @@
                         {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% endif %}
-                    <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                    <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}–{% endif %}</td>
                     {% for attr, _2, is_numeric, kind in specific_fc_columns %}
                     {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit and attr != 'snk_calc') %}
                     {% if attr == 'numb1120' %}
@@ -499,7 +499,7 @@
     }
     /*
       overflow на #stationsTableContainer ломает sticky у thead относительно .fuel-calc-edit-top.
-      Горизонтальный и вертикальный скролл — у .fuel-calc-edit-top (overflow-auto).
+      Горизонтальный и вертикальный скролл – у .fuel-calc-edit-top (overflow-auto).
     */
     .fuel-calc-edit-shell #stationsTableContainer {
         max-height: none !important;
@@ -528,7 +528,7 @@
         --bs-table-accent-bg: transparent;
         background-color: #fff3cd !important;
     }
-    /* Поля ввода — как обычные ячейки (без «белых окон» внутри строки) */
+    /* Поля ввода – как обычные ячейки (без «белых окон» внутри строки) */
     #specificFcEditTable tbody td:has(> input.form-control) {
         padding: 0 !important;
         vertical-align: middle;

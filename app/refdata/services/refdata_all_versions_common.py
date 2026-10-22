@@ -17,7 +17,7 @@ from config import SCHEMA_REFDATA
 
 # Кэш (model_name, source_pk, target_version_id) -> target_pk в рамках одной
 # операции «во всех версиях». Без него каждая строка формы × каждая версия × каждый FK
-# даёт отдельный SELECT (и log_to_db — отдельный commit).
+# даёт отдельный SELECT (и log_to_db – отдельный commit).
 _fk_id_cache: ContextVar[dict | None] = ContextVar("refdata_fk_id_cache", default=None)
 
 
@@ -188,7 +188,7 @@ def add_all_versions_records(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — нельзя выполнить операцию «во всех версиях»."
+            "В системе нет зарегистрированных версий БД – нельзя выполнить операцию «во всех версиях»."
         )
 
     normalized = [normalize_record(record) for record in data]

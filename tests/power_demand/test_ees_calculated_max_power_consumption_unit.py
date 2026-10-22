@@ -34,7 +34,7 @@ def _ees_aggregate_block(*, variant: str, label: str) -> list[dict]:
             "entity_rowspan": 2,
             "entity_label": label,
             "perimeter_variant_code": variant,
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
         {
@@ -43,7 +43,7 @@ def _ees_aggregate_block(*, variant: str, label: str) -> list[dict]:
             "show_entity_cell": False,
             "entity_rowspan": 1,
             "perimeter_variant_code": variant,
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
     ]

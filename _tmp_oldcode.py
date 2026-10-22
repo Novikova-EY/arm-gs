@@ -24,7 +24,7 @@ with app.app_context():
 
     from app.fuel.services.stations import stations_equipment_groups_services as svc
 
-    # Отключаем обе новые правки — получаем поведение кода, который сейчас на сервере
+    # Отключаем обе новые правки – получаем поведение кода, который сейчас на сервере
     svc.filter_redundant_standalone_equipment_group_ids = (
         lambda identity_rows, filtered_eg_ids, standalone_ids: set(filtered_eg_ids or ())
     )

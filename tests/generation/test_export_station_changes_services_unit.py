@@ -166,7 +166,7 @@ def test_export_routes_pass_changes_mode():
 def test_pril2_dash_and_empty_mw():
     assert PRIL2_DASH == "–"
     assert _pril2_empty_text(None) == "–"
-    assert _pril2_empty_text("—") == "–"
+    assert _pril2_empty_text("–") == "–"
     assert _pril2_empty_text("Газ") == "Газ"
     assert _pril2_mw_value(None) == 0
     assert _pril2_mw_value(0) == 0

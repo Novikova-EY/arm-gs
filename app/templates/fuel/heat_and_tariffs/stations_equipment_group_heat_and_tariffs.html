@@ -173,7 +173,7 @@ block content %} {% if current_user.is_authenticated %}
         in station_block.group_blocks %} {% set group_entity =
         group_block.equipment_group %} {% set group_name = (group_entity.name if
         group_entity and group_entity.name else (group_entity.name_ext if
-        group_entity and group_entity.name_ext else '—')) %} {% if
+        group_entity and group_entity.name_ext else '–')) %} {% if
         group_block.get('is_composite_total_row') %} {% set group_name =
         group_name ~ ', всего' %} {% endif %} {% set identity =
         group_block.identity|default({}) %} {% set metric_rows =
@@ -194,7 +194,7 @@ block content %} {% if current_user.is_authenticated %}
             class="hat-col-{{ attr }}"
             data-column="{{ attr }}"
           >
-            {{ identity.get(attr)|default('—') }}
+            {{ identity.get(attr)|default('–') }}
           </td>
           {% endfor %} {% endif %}
           <td class="hat-metric-label">
@@ -210,7 +210,7 @@ block content %} {% if current_user.is_authenticated %}
             {% if group_block.get('use_station_summary') or
             group_block.get('is_composite_total_row') %} {% if metric.attr ==
             'q' and station_summary.get('q') %} {{
-            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}—{%
+            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}–{%
             endif %} {% else %} {{
             render_numeric_or_dash(metric.values_by_year.get(year) if
             metric.values_by_year else none) }} {% endif %}
@@ -235,7 +235,7 @@ block content %} {% if current_user.is_authenticated %}
           {% for year in years %}
           <td class="hat-year-col" data-year="{{ year }}">
             {% if attr == 'q' and station_summary.get('q') %} {{
-            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}—{%
+            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}–{%
             endif %}
           </td>
           {% endfor %}
@@ -256,7 +256,7 @@ block content %} {% if current_user.is_authenticated %}
           {% for year in years %}
           <td class="hat-year-col" data-year="{{ year }}">
             {% if attr == 'q' and res_summary.get('q') %} {{
-            render_numeric_or_dash(res_summary.q.get(year)) }} {% else %}—{%
+            render_numeric_or_dash(res_summary.q.get(year)) }} {% else %}–{%
             endif %}
           </td>
           {% endfor %}

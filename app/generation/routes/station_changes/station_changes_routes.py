@@ -31,7 +31,7 @@ from app.common.services.get_services.years.years_get_services import (
 )
 
 # Версия структуры/смысла данных, которые кладем в export_cache для station_changes.
-# При изменениях логики группировок/агрегаций — увеличивать, чтобы не использовать устаревший кэш.
+# При изменениях логики группировок/агрегаций – увеличивать, чтобы не использовать устаревший кэш.
 STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 11
 
 @station_changes_bp.route('/station_changes_list', methods=['GET', 'POST'])
@@ -68,7 +68,7 @@ def station_changes_list():
         start_year = get_filter_start_year()
     if end_year is None:
         end_year = get_filter_end_year()
-    # D: колонки изменений мощности — с 2022 г. (2021 не показываем)
+    # D: колонки изменений мощности – с 2022 г. (2021 не показываем)
     try:
         start_year = max(int(start_year), 2022)
     except (TypeError, ValueError):
@@ -101,7 +101,7 @@ def station_changes_list():
     )
     print(f"[TIME] get_station_changes_list_data заняла: {time.time() - start_data:.2f} сек")
 
-    # Текущая версия БД (выбранная в сессии) — фиксируем в контексте страницы,
+    # Текущая версия БД (выбранная в сессии) – фиксируем в контексте страницы,
     # чтобы выгрузки из этой вкладки не "перепрыгивали" на версию,
     # которую пользователь мог выбрать в другой вкладке позже.
     current_db_version_id = None
@@ -216,10 +216,10 @@ def station_changes_list_export():
             else:
                 g.current_db_version = int(explicit_version_raw)
         except Exception:
-            # Если параметр некорректен — просто игнорируем и используем версию из middleware/сессии
+            # Если параметр некорректен – просто игнорируем и используем версию из middleware/сессии
             pass
 
-    # Параметры из запроса — как на странице (включая факт/план)
+    # Параметры из запроса – как на странице (включая факт/план)
     filters = extract_filters_from_args(request.args)
     filters["changes_mode"] = _resolve_changes_mode_from_request()
     try:

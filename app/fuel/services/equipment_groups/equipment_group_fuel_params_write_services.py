@@ -6,14 +6,14 @@ Write/update-слой для EquipmentGroupFuelParam.
 только read/query/hierarchy.
 
 Здесь:
-- нормализация FK (external_id) и sanitize перед сохранением — для импорта Excel
+- нормализация FK (external_id) и sanitize перед сохранением – для импорта Excel
   и форм (`import_equipment_group_fuel_params_services`, `fuel_routes`);
-- `update_equipment_group_fuel_params_from_form` — сохранение по годам с
+- `update_equipment_group_fuel_params_from_form` – сохранение по годам с
   `fuel_param_{year}_{attr}`, change_details и `database_version_id`.
 
 Списки колонок (`EQUIPMENT_GROUP_DETAILS_*`) и INTEGER/STRING/NUMERIC_ATTRS
 согласованы с `equipment_group_fuel_params_services` (единый источник колонок
-для таблиц; типы полей для парсинга — в этом модуле).
+для таблиц; типы полей для парсинга – в этом модуле).
 
 Не подменять этот файл упрощёнными заготовками: нужна двухаргументная
 нормализация FK с запросами к таблицам маппинга и текущая семантика
@@ -78,14 +78,14 @@ def normalize_fuel_param_external_mapping_value(attr, value):
     Исторически в топливные параметры местами попадал внутренний `id`
     таблицы маппинга вместо `external_id`. Для строковых FK-полей пытаемся:
     1) принять значение как корректный external_id;
-    2) если пришел числовой id записи маппинга — заменить на ее external_id;
-    3) если сопоставление не найдено — очистить значение, чтобы не ломать FK.
+    2) если пришел числовой id записи маппинга – заменить на ее external_id;
+    3) если сопоставление не найдено – очистить значение, чтобы не ломать FK.
     """
     if value is None:
         return None
 
     raw = str(value).strip()
-    if not raw or raw.lower() in ("nan", "—", "-", "–"):
+    if not raw or raw.lower() in ("nan", "–", "-", "–"):
         return None
 
     model = EXTERNAL_MAPPING_MODELS.get(attr)
@@ -138,7 +138,7 @@ def _parse_fuel_param_value(attr, value):
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     s = str(value).strip()
-    if not s or s.lower() in ("nan", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "–", "-", "–"):
         return None
     if attr in INTEGER_ATTRS:
         try:
@@ -174,13 +174,13 @@ def _fuel_param_table_name(attr):
 
 def _format_val(v):
     if v is None:
-        return "—"
+        return "–"
     if isinstance(v, bool):
         return str(v)
     if isinstance(v, (Decimal, int, float)):
         return format_number_trim_trailing(v)
     if isinstance(v, str):
-        return v.strip() or "—"
+        return v.strip() or "–"
     return str(v)
 
 
@@ -189,7 +189,7 @@ class _BulkFuelParamFormAdapter:
     Адаптер POST-данных массового редактирования: поля вида
     g{equipment_group_id}_fuel_param_{year}_{attr} → как fuel_param_{year}_{attr}
     для update_equipment_group_fuel_params_from_form.
-    (numb1120 на массовой странице не редактируется — передаётся skip_attrs.)
+    (numb1120 на массовой странице не редактируется – передаётся skip_attrs.)
     """
 
     __slots__ = ("_form", "_gid", "_prefix")
@@ -275,9 +275,9 @@ def update_equipment_group_fuel_params_from_form(
     """
     Обновляет EquipmentGroupFuelParam из данных формы.
     Ожидает ключи вида: fuel_param_{year}_{attr}
-    rounding_digits_table1/table2 — точность отображения для сравнения (избегаем ложных «изменений»).
-    skip_attrs — не обновлять эти атрибуты (например numb1120 на массовой странице расчёта).
-    partial=True — обрабатывать только ключи, присутствующие в form_data (массовая страница:
+    rounding_digits_table1/table2 – точность отображения для сравнения (избегаем ложных «изменений»).
+    skip_attrs – не обновлять эти атрибуты (например numb1120 на массовой странице расчёта).
+    partial=True – обрабатывать только ключи, присутствующие в form_data (массовая страница:
     не сбрасывать в NULL поля, не переданные в POST).
     Возвращает (success: bool, message: str, change_details: list).
     """
@@ -363,7 +363,7 @@ def update_equipment_group_fuel_params_from_form(
             if param is not None:
                 _assign_attr(attr, val)
 
-        # EURT/TURT/snk/SNT/h: при наличии входов — пересчёт по формуле;
+        # EURT/TURT/snk/SNT/h: при наличии входов – пересчёт по формуле;
         # ручной ввод из формы только если входов нет (иначе расчётное поле
         # не передаётся в POST и не должно затираться в NULL).
         for attr in sorted(FUEL_PARAM_DERIVED_ATTRS):

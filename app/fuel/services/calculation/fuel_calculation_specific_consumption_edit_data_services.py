@@ -3,7 +3,7 @@
 Данные для страницы «Редактировать удельные показатели» из модуля расчёта
 (/fuel/calculation/equipment_group_specific_fuel_consumption_edit_data).
 
-Источники — как на /fuel/stations_equipment_group_specific_fuel_consumption:
+Источники – как на /fuel/stations_equipment_group_specific_fuel_consumption:
 иерархия групп и удельные показатели за интервал лет.
 """
 
@@ -66,12 +66,12 @@ def _year_numbers_with_feature(feature_name: str) -> frozenset[int]:
 
 
 def _fact_year_numbers_for_current_version() -> frozenset[int]:
-    """Годы с признаком «факт» — входные y/btp/… только чтение."""
+    """Годы с признаком «факт» – входные y/btp/… только чтение."""
     return _year_numbers_with_feature("факт")
 
 
 def _plan_year_numbers_for_current_version() -> frozenset[int]:
-    """Годы с признаком «план» — *_calc только расчёт (не редактируются)."""
+    """Годы с признаком «план» – *_calc только расчёт (не редактируются)."""
     return _year_numbers_with_feature("план")
 
 
@@ -145,8 +145,8 @@ def _group_specific_rows_by_equipment_group(rows: list) -> list[list]:
 def group_matches_empty_specific_check(group_rows: list) -> bool:
     """Группа с ved > 0 и пустыми удельниками во всех отображаемых годах.
 
-    ved — FuelParam.ved (есть и > 0 хотя бы в одном году интервала).
-    Пустой удельник — нет полезной нагрузки y/snk/sntp/bk/btp/… (нули как пусто).
+    ved – FuelParam.ved (есть и > 0 хотя бы в одном году интервала).
+    Пустой удельник – нет полезной нагрузки y/snk/sntp/bk/btp/… (нули как пусто).
     """
     if not group_rows:
         return False
@@ -238,7 +238,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
 
     rows = sorted(rows, key=_row_sort_key)
 
-    # Жёлтая подсветка строк при изменении Nуст — как на equipment_group_fuel_params_edit_data
+    # Жёлтая подсветка строк при изменении Nуст – как на equipment_group_fuel_params_edit_data
     fuel_params_data = get_equipment_groups_with_fuel_params_data(
         filters=f,
         per_page="all",

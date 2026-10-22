@@ -36,6 +36,7 @@ from app.common.middleware import handle_stale_data
 from app.generation.services.station_services.station_services import get_station_by_id
 from app.logs.services.logging_service import log_to_db
 from app.generation.services.station_services.generation_year_filter_services import (
+    get_filter_year_list,
     resolve_generation_year_filters_for_request,
 )
 
@@ -53,7 +54,7 @@ def _machine_log_entity_ids(machine_id: int) -> list[int]:
 def _query_machine_logs_fast(machine_id: int, machine_number: int | None, limit: int = 20):
     """Возвращает последние `limit` логов для агрегата, приоритизируя быстрые фильтры.
 
-    Сначала берем записи, где явно установлен entity_type/entity_id — этот запрос использует
+    Сначала берем записи, где явно установлен entity_type/entity_id – этот запрос использует
     индексы и выполняется мгновенно. Если записей меньше, добираем по старому шаблону из details,
     где агрегат упоминается только текстом.
     """
@@ -308,6 +309,7 @@ def machine_details(station_id, machine_id):
             year_features=result['year_features'],
             version_year_start=result.get('version_year_start'),
             version_year_end=result.get('version_year_end'),
+            filter_year_list=get_filter_year_list(),
             machine_logs=machine_logs,
             all_documents=result['all_documents'],
             fallback_gen_company=result.get('fallback_gen_company'),
@@ -332,7 +334,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    # При POST start_year/end_year приходят в теле формы, при GET — в URL.
+    # При POST start_year/end_year приходят в теле формы, при GET – в URL.
     # Для pgu_machine_details поведение должно совпадать с machine_details:
     # берем значения из запроса без принудительного "зажатия" к диапазону версии.
     start_year = request.values.get("start_year", get_filter_start_year(), type=int)
@@ -414,5 +416,6 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
             pgu_machine_logs=pgu_machine_logs,
             rounding_digits=rounding_digits,
             version_year_end=result.get('version_year_end'),
+            filter_year_list=get_filter_year_list(),
             all_documents=result.get('all_documents', []),
         )

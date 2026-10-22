@@ -139,7 +139,7 @@ def update_technology_type_service(data, user, _retried=False):
                     entity_id=technology_type_id)
                 raise ValueError(f"Запись с ID «{technology_type_id}» не найдена.")
 
-            # Проверка уникальности name (глобально — в БД UNIQUE на name без версии)
+            # Проверка уникальности name (глобально – в БД UNIQUE на name без версии)
             if name != (obj.name or ""):
                 q = (TechnologyType.query
                      .filter(TechnologyType.name == name,
@@ -190,11 +190,11 @@ def update_technology_type_service(data, user, _retried=False):
                     TechnologyType,
                 ).first()
                 if dup:
-                    other = dup.name or "—"
+                    other = dup.name or "–"
                     raise ValueError(
                         f"Порядок «{display_order}» уже задан у записи «{other}» (id={dup.id}). "
                         f"Укажите другой номер или измените порядок у той строки. "
-                        f"Колонка «№» — это не порядок отображения."
+                        f"Колонка «№» – это не порядок отображения."
                     )
 
             changes = []
@@ -209,7 +209,7 @@ def update_technology_type_service(data, user, _retried=False):
                 changes.append(f"Порядок отображения: {old_val} → {new_val}")
                 obj.display_order = display_order
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -241,7 +241,7 @@ def update_technology_type_service(data, user, _retried=False):
     except IntegrityError as e:
         db.session.rollback()
         err_str = str(e).lower()
-        # При UniqueViolation на gs_sys_refdata_entity_years (рассинхронизация sequence) — выравниваем и повторяем 1 раз
+        # При UniqueViolation на gs_sys_refdata_entity_years (рассинхронизация sequence) – выравниваем и повторяем 1 раз
         if not _retried and ("gs_sys_refdata_entity_years" in err_str or "refdata_entity_years_pkey" in err_str):
             try:
                 quick_fix_seq(SCHEMA_REFDATA, "gs_sys_refdata_entity_years")
@@ -307,7 +307,7 @@ def add_technology_type_service(data, user):
                         TechnologyType,
                     ).first()
                     if dup_order:
-                        other = dup_order.name or "—"
+                        other = dup_order.name or "–"
                         raise ValueError(
                             f"Порядок «{display_order}» уже задан у записи «{other}» (id={dup_order.id})."
                         )

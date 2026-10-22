@@ -83,7 +83,7 @@ def _excel_display_digits_for_row(
 
 
 def _import_cell_value(raw: Any) -> Any:
-    """Число для листа импорта; пустые и «—» остаются пустыми."""
+    """Число для листа импорта; пустые и «–» остаются пустыми."""
     return parse_excel_numeric(raw)
 
 
@@ -146,7 +146,7 @@ def _append_ec_summary_import_sheets(
 
 
 def _verification_export_year_font(value: Any) -> Font:
-    """Курсив; ненулевые значения — красным (как на экране сводки)."""
+    """Курсив; ненулевые значения – красным (как на экране сводки)."""
     parsed = parse_excel_numeric(value)
     if parsed is None or parsed == 0:
         return Font(size=11, italic=True)

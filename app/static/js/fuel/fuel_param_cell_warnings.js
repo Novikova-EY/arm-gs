@@ -20,7 +20,7 @@
   function parseFuelNum(raw) {
     if (raw == null) return null;
     var s = String(raw).replace(/\s+/g, "").replace(",", ".").trim();
-    if (!s || s === "—" || s === "-" || s.toLowerCase() === "none") return null;
+    if (!s || s === "–" || s === "-" || s.toLowerCase() === "none") return null;
     var n = Number(s);
     return isFinite(n) ? n : null;
   }
@@ -92,10 +92,10 @@
       );
       if (inp) {
         var v = (inp.value || "").trim();
-        if (v && v !== "—" && v !== "-" && v.toLowerCase() !== "none") return false;
+        if (v && v !== "–" && v !== "-" && v.toLowerCase() !== "none") return false;
       } else {
         var t = (tds[i].textContent || "").trim();
-        if (t && t !== "—" && t !== "-" && t.toLowerCase() !== "none") return false;
+        if (t && t !== "–" && t !== "-" && t.toLowerCase() !== "none") return false;
       }
     }
     if (tr.getAttribute("data-row-empty") === "1") return true;
@@ -194,7 +194,7 @@
   function applyRowWarnings(table, tr) {
     if (!tr) return;
 
-    // Итоги РЭС без сверки; строка родителя «…, всего» — только серверный
+    // Итоги РЭС без сверки; строка родителя «…, всего» – только серверный
     // контроль Σ частей (data-parts-sum-mismatch-msg), без qotr/nust live-логики.
     if (
       tr.classList.contains("fuel-param-summary-row") &&

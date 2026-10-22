@@ -131,7 +131,7 @@ def test_effective_version_uses_current_when_group_version_is_none(monkeypatch):
 
 
 def test_import_updates_existing_formula_when_group_version_is_none(monkeypatch):
-    """uq включает version; группа без version, формула уже с текущей version=20 — UPDATE, не INSERT."""
+    """uq включает version; группа без version, формула уже с текущей version=20 – UPDATE, не INSERT."""
     df = pd.DataFrame(
         [
             {

@@ -142,7 +142,7 @@
                     <div class="col-12 col-md-6 col-xl-3">
                         <label class="form-label fw-semibold">Тип сущности</label>
                         <select class="form-select" name="bind_entity_kind" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for ek, elbl in entity_kind_choices %}
                             <option value="{{ ek }}">{{ elbl }}</option>
                             {% endfor %}
@@ -159,9 +159,9 @@
                     <div class="col-12 col-md-6 col-xl-2">
                         <label class="form-label fw-semibold">Вариант</label>
                         <select class="form-select" name="bind_variant_id" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for v in variants %}
-                            <option value="{{ v.id }}">{{ v.code }} — {{ v.label_suffix }}</option>
+                            <option value="{{ v.id }}">{{ v.code }} – {{ v.label_suffix }}</option>
                             {% endfor %}
                         </select>
                     </div>

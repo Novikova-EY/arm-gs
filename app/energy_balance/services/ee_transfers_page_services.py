@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница «Перетоки ЭЭ» — перетоки между энергосистемами."""
+"""Страница «Перетоки ЭЭ» – перетоки между энергосистемами."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ from app.refdata.models.territories.foreign_border_country_model import ForeignB
 
 def format_transfer_cell(value, rounding_digits: int) -> str:
     if value is None:
-        return "—"
+        return "–"
     try:
         if Decimal(str(value)) == 0:
             return "0"
@@ -457,7 +457,7 @@ def _build_transfer_pairs(
                 "to_rd_id": rec.id_to_regional_district,
                 "to_eu_id": rec.id_to_energy_unit,
                 "to_ues_id": target_ues_id,
-                "to_ues_name": ues_names.get(target_ues_id, "—"),
+                "to_ues_name": ues_names.get(target_ues_id, "–"),
                 "periods": {period_key: None for period_key, _ in period_columns},
             }
 
@@ -577,7 +577,7 @@ def _build_hierarchy(
                 {
                     "group_key": group_key,
                     "res_id": rows[0].get("from_res_id") or rows[0].get("from_rd_id") or -1,
-                    "res_name": rows[0].get("from_name") if rows else "—",
+                    "res_name": rows[0].get("from_name") if rows else "–",
                     "transfer_rows": rows,
                 }
             )
@@ -585,7 +585,7 @@ def _build_hierarchy(
         result.append(
             {
                 "ues_id": ues_id,
-                "ues_name": ues_rows[0].get("ues_name") if ues_rows else ues_names.get(ues_id, "—"),
+                "ues_name": ues_rows[0].get("ues_name") if ues_rows else ues_names.get(ues_id, "–"),
                 "res_list": res_list,
             }
         )

@@ -1,4 +1,4 @@
-<!-- Итоговые значения по РЭС (как "субъект") — event-based -->
+<!-- Итоговые значения по РЭС (как "субъект") – event-based -->
 {% set ns = namespace(printed=false) %}
 {% for event_type, event_label in event_types %}
     {% set event_data = regional_energy_systems_events_yearly_p_ust
@@ -23,11 +23,11 @@
                 {% if current_year_split is not none and year == current_year_split %}
                     <td class="power-column"></td>
                     <td class="power-column">
-                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                        {{ event_data.get(year, '–') | format_decimal if event_data }}
                     </td>
                 {% else %}
                     <td class="power-column">
-                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                        {{ event_data.get(year, '–') | format_decimal if event_data }}
                     </td>
                 {% endif %}
             {% endfor %}
@@ -42,7 +42,7 @@
                     {% endfor %}
                     {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                 {% else %}
-                    —
+                    –
                 {% endif %}
             </td>
             <td></td>

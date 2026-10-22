@@ -119,7 +119,7 @@
                                                 <div class="text-danger small mt-1">{{ form.site_name.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span class="place-name">{{ place.site_name or '—' }}</span>
+                                            <span class="place-name">{{ place.site_name or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -132,7 +132,7 @@
                                                 <div class="text-danger small mt-1">{{ form.project_initiator.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.project_initiator or '—' }}</span>
+                                            <span>{{ place.project_initiator or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -145,7 +145,7 @@
                                                 <div class="text-danger small mt-1">{{ form.id_regional_district.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ (place.regional_district.name_full if place.regional_district else None) or '—' }}</span>
+                                            <span>{{ (place.regional_district.name_full if place.regional_district else None) or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -164,7 +164,7 @@
                                                 <div class="text-danger small mt-1">{{ form.id_regional_energy_system.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ (place.regional_energy_system.name if place.regional_energy_system else None) or '—' }}</span>
+                                            <span>{{ (place.regional_energy_system.name if place.regional_energy_system else None) or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -177,7 +177,7 @@
                                                 <div class="text-danger small mt-1">{{ form.geo_location.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.geo_location or '—' }}</span>
+                                            <span>{{ place.geo_location or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -190,7 +190,7 @@
                                                 <div class="text-danger small mt-1">{{ form.water_body.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.water_body or '—' }}</span>
+                                            <span>{{ place.water_body or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -203,7 +203,7 @@
                                                 <div class="text-danger small mt-1">{{ form.regulation_type.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.regulation_type or '—' }}</span>
+                                            <span>{{ place.regulation_type or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -254,7 +254,7 @@
                                                 <div class="text-danger small mt-1">{{ form.id_prospective_place_type_ges.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ (place.prospective_place_type_ges.name if place.prospective_place_type_ges else None) or '—' }}</span>
+                                            <span>{{ (place.prospective_place_type_ges.name if place.prospective_place_type_ges else None) or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -267,7 +267,7 @@
                                                 <div class="text-danger small mt-1">{{ form.display_order.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.display_order if place.display_order is not none else '—' }}</span>
+                                            <span>{{ place.display_order if place.display_order is not none else '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -282,7 +282,7 @@
                                                 <div class="text-danger small mt-1">{{ form.planned_capacity_mw.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.planned_capacity_mw or '—' }}</span>
+                                            <span>{{ place.planned_capacity_mw or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -295,7 +295,7 @@
                                                 <div class="text-danger small mt-1">{{ form.general_scheme_commissioning_period.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ place.general_scheme_commissioning_period or '—' }}</span>
+                                            <span>{{ place.general_scheme_commissioning_period or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -308,7 +308,7 @@
                                                 <div class="text-danger small mt-1">{{ form.construction_period_years.errors[0] }}</div>
                                             {% endif %}
                                         {% else %}
-                                            <span>{{ (place.construction_period_years|format_construction_period_years) or '—' }}</span>
+                                            <span>{{ (place.construction_period_years|format_construction_period_years) or '–' }}</span>
                                         {% endif %}
                                     </div>
                                 </div>

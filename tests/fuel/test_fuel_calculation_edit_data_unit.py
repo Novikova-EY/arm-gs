@@ -100,7 +100,7 @@ def test_merge_interval_expands_display_range_without_db():
 
 
 def test_missing_year_placeholder_is_skipped_by_snk_overlay():
-    """overlay_snk_calc_from_fuel_params: if not cons — пустой год без SNK из ТЭП."""
+    """overlay_snk_calc_from_fuel_params: if not cons – пустой год без SNK из ТЭП."""
     from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
         _MissingYearSpecificFuelParam,
     )

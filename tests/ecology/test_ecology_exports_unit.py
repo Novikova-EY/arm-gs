@@ -153,7 +153,7 @@ def test_gis_tek_export_adds_ues_and_res_columns(monkeypatch):
 
 def test_analysis_export_has_hidden_key_row():
     ws = _sheet(export_comparison_table_to_excel(_analysis_context()))
-    # Служебная строка с кодами столбцов — по ней импорт находит столбцы.
+    # Служебная строка с кодами столбцов – по ней импорт находит столбцы.
     assert ws.cell(2, 1).value == "#keys"
     assert [ws.cell(2, col).value for col in range(3, 7)] == [
         "NAME",

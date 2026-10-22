@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         function buildYearSelectHtml(years, selectedId, excludeMap) {
             let h = "<select class=\"form-select form-select-sm ges-tep-coeff-year-select text-center\">";
-            h += "<option value=\"\">— год —</option>";
+            h += "<option value=\"\">– год –</option>";
             years.forEach(function (y) {
                 const idStr = String(y.id);
                 const dis = excludeMap[idStr] && String(selectedId) !== idStr;
@@ -253,9 +253,9 @@ document.addEventListener("DOMContentLoaded", function() {
             const tr = document.createElement("tr");
             tr.setAttribute("data-row-id", String(row.id));
             if (!canEdit) {
-                const y = row.year != null ? String(row.year) : "—";
+                const y = row.year != null ? String(row.year) : "–";
                 const rawC = row.coefficient;
-                const c = (rawC == null || String(rawC).trim() === "") ? "—" : (formatCoeffPretty(rawC) || "—");
+                const c = (rawC == null || String(rawC).trim() === "") ? "–" : (formatCoeffPretty(rawC) || "–");
                 tr.innerHTML = "<td class=\"text-center align-middle\">" + y + "</td><td class=\"text-center align-middle\">" + c + "</td>";
                 return tr;
             }

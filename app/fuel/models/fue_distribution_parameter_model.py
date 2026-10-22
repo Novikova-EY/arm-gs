@@ -135,7 +135,7 @@ class DistributionParameter(db.Model):
     )
 
 
-# Подписи колонок списка /fuel/distribution_parameters — совпадают с комментариями к полям выше.
+# Подписи колонок списка /fuel/distribution_parameters – совпадают с комментариями к полям выше.
 DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS: list[tuple[str, str]] = [
     ("name", "Объединенная энергосистема"),
     ("byear", "Базовый год"),

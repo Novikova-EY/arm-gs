@@ -123,7 +123,7 @@ def _cptp_for_coeff_table(selected_row, coeff_calc_year_display):
     """
     Доля %тп по формуле Access: cptp = csumetp / E * 100.
 
-    Знаменатель E — актуальное «Ераспред» из параметра (`selected_row.e`), числитель — `cetp` из сводки/превью,
+    Знаменатель E – актуальное «Ераспред» из параметра (`selected_row.e`), числитель – `cetp` из сводки/превью,
     чтобы колонка совпадала с введённым E без обязательного повторного запуска «Коэфф» после правки параметра.
     Если E ≤ 0, показываем сохранённое cptp (уже посчитанное с запасным знаменателем ΣE в сервисе).
     """
@@ -148,8 +148,8 @@ def _coeff_ratio_row(
     """
     Третья строка таблицы «Коэфф»: PE, PQ, Pотр, PH1 (как в Access после Кнопка5_Click).
 
-    При наличии сводки — из БД (или восстановление из полей сводки, если коэффициенты не записаны).
-    В режиме предпросмотра — из агрегатов базового года и расчёта по текущим данным.
+    При наличии сводки – из БД (или восстановление из полей сводки, если коэффициенты не записаны).
+    В режиме предпросмотра – из агрегатов базового года и расчёта по текущим данным.
     """
     if selected_row is None or coeff_calc_year_display is None:
         return None
@@ -218,7 +218,7 @@ def _nr_hfix_pending_for_page(selected_row: DistributionParameter | None):
 
     def _fmt(v):
         if v is None or v == "":
-            return "—"
+            return "–"
         try:
             # Как ячейки nust/nr/h на equipment_group_fuel_params_edit_data (view).
             return format_decimal_trim_for_display(Decimal(str(v)))
@@ -263,14 +263,14 @@ def _distribution_last_run_display_for_page(selected_row: DistributionParameter 
 
     def fmt_num(v, digits: int) -> str:
         if v is None or v == "":
-            return "—"
+            return "–"
         try:
             return format_decimal_trim_for_display(Decimal(str(v)), digits=digits)
         except Exception:
             return str(v)
 
     return {
-        "distribution_name": raw.get("distribution_name") or "—",
+        "distribution_name": raw.get("distribution_name") or "–",
         "year_number": raw.get("year_number"),
         "e_target": fmt_num(raw.get("e_target"), 0),
         "total_distributed_e": fmt_num(raw.get("total_distributed_e"), 1),
@@ -303,14 +303,14 @@ def _fuel_stage_last_run_display_for_page(selected_row: DistributionParameter | 
 
     def fmt_num(v, digits: int) -> str:
         if v is None or v == "":
-            return "—"
+            return "–"
         try:
             return format_decimal_trim_for_display(Decimal(str(v)), digits=digits)
         except Exception:
             return str(v)
 
     return {
-        "distribution_name": raw.get("distribution_name") or "—",
+        "distribution_name": raw.get("distribution_name") or "–",
         "year_number": raw.get("year_number"),
         "selected_group_count": raw.get("selected_group_count"),
         "success_count": raw.get("success_count"),
@@ -326,7 +326,7 @@ def _fuel_stage_last_run_display_for_page(selected_row: DistributionParameter | 
 def _coeff_last_run_display_for_page(selected_row: DistributionParameter | None):
     """
     Метаданные последнего POST «Коэфф» для текущего параметра.
-    Числа агрегатов — в основных таблицах Коэфф (сводка БД), здесь — факт запуска.
+    Числа агрегатов – в основных таблицах Коэфф (сводка БД), здесь – факт запуска.
     """
     if selected_row is None:
         return None
@@ -341,7 +341,7 @@ def _coeff_last_run_display_for_page(selected_row: DistributionParameter | None)
 
     def fmt_num(v, digits: int) -> str:
         if v is None or v == "":
-            return "—"
+            return "–"
         try:
             return format_decimal_trim_for_display(Decimal(str(v)), digits=digits)
         except Exception:
@@ -355,7 +355,7 @@ def _coeff_last_run_display_for_page(selected_row: DistributionParameter | None)
     }.get(trigger, trigger)
 
     return {
-        "distribution_name": raw.get("distribution_name") or "—",
+        "distribution_name": raw.get("distribution_name") or "–",
         "year_number": raw.get("year_number"),
         "base_year_number": raw.get("base_year_number"),
         "total_groups": raw.get("total_groups"),
@@ -384,7 +384,7 @@ def _get_coeff_summary_for_distribution_parameter(row: DistributionParameter):
     Сводка этапа «Коэфф» для параметра распределения.
 
     Только строка с тем же database_version_id, что и при расчёте
-    (поле параметра или текущая версия БД); при отсутствии версии — только NULL.
+    (поле параметра или текущая версия БД); при отсутствии версии – только NULL.
     """
     effective_version = row.database_version_id or get_current_db_version_id()
     if row.year is None:
@@ -435,13 +435,13 @@ def fuel_calculation_form():
         except (TypeError, ValueError):
             base_year = None
 
-    # Расчёт — строго по одной ОЭС (без режима «Все ОЭС»).
+    # Расчёт – строго по одной ОЭС (без режима «Все ОЭС»).
     ues_ids_raw = filters.get("union_energy_system_filter") or []
     ues_ids = ues_ids_raw[:1] if ues_ids_raw else []
 
     matching_distribution_parameters: list = []
     selected_row = None
-    # Без выбранной ОЭС параметры не подгружаем — иначе в таблице оказались бы все ОЭС.
+    # Без выбранной ОЭС параметры не подгружаем – иначе в таблице оказались бы все ОЭС.
     if start_year is not None and ues_ids:
         matching_distribution_parameters = get_distribution_parameters_list(
             year_numbers=[start_year],
@@ -466,7 +466,7 @@ def fuel_calculation_form():
         if not base_year_from_query and selected_row is not None and selected_row.base_year is not None:
             base_year = selected_row.base_year.number
 
-    # Нет строк ТЭП за расчётный год — посев с базового (без формул и удельных:
+    # Нет строк ТЭП за расчётный год – посев с базового (без формул и удельных:
     # Access Seek year ≤ расчётный, копия 2024 перекрыла бы 2025/2026).
     if (
         start_year is not None
@@ -718,7 +718,7 @@ def fuel_calculation_form():
 @login_required
 def distribution_parameters_list():
     filters = extract_filters_from_args(request.args)
-    # Расчитываемый год — несколько значений start_year=… как на station_list.
+    # Расчитываемый год – несколько значений start_year=… как на station_list.
     start_year_filter: list[int] = []
     for raw in request.args.getlist("start_year"):
         if raw in (None, ""):
@@ -890,9 +890,9 @@ def distribution_parameters_bulk_row_data_period():
 @fuel_bp.route("/restrictions", methods=["GET"])
 @login_required
 def fuel_restrictions_list():
-    """Таблица «Ограничения» (Access); порядок строк — по obl (как Form_Open в Access)."""
+    """Таблица «Ограничения» (Access); порядок строк – по obl (как Form_Open в Access)."""
     filters = extract_filters_from_args(request.args)
-    # Год — несколько значений start_year=… как на distribution_parameters.
+    # Год – несколько значений start_year=… как на distribution_parameters.
     start_year_filter: list[int] = []
     for raw in request.args.getlist("start_year"):
         if raw in (None, ""):
@@ -903,7 +903,7 @@ def fuel_restrictions_list():
             continue
     start_year_filter = list(dict.fromkeys(start_year_filter))
 
-    # Фильтры — id справочников UnionEnergySystem / RegionalEnergySystem.
+    # Фильтры – id справочников UnionEnergySystem / RegionalEnergySystem.
     ues_filter = filters.get("union_energy_system_filter") or []
     res_filter = filters.get("regional_energy_system_filter") or []
     restriction_rows = get_fuel_restrictions_list(
@@ -934,7 +934,7 @@ def fuel_restrictions_list():
         ues_filter or res_filter or start_year_filter
     )
 
-    # Query без edit — для возврата после save/import.
+    # Query без edit – для возврата после save/import.
     qs_parts: list[str] = []
     for key, values in request.args.lists():
         if key == "edit":
@@ -1099,14 +1099,14 @@ def _redirect_distribution_parameters_list():
 
 
 def _redirect_distribution_parameters_list_after_save():
-    """После POST /save в URL нет query — восстанавливаем из скрытого поля формы."""
+    """После POST /save в URL нет query – восстанавливаем из скрытого поля формы."""
     qs = (request.form.get("distribution_save_return_qs") or "").strip()
     base = url_for("fuel_bp.distribution_parameters_list")
     return redirect(f"{base}?{qs}" if qs else base)
 
 
 def _redirect_distribution_parameters_list_after_row_delete():
-    """После POST удаления строки — query из поля return_qs."""
+    """После POST удаления строки – query из поля return_qs."""
     qs = (request.form.get("return_qs") or "").strip()
     base = url_for("fuel_bp.distribution_parameters_list")
     return redirect(f"{base}?{qs}" if qs else base)
@@ -1255,7 +1255,7 @@ def distribution_parameters_import():
 
     try:
         n_added, n_updated, row_errors = import_distribution_parameters_from_upload(f)
-        # Ошибки валидации файла — полный откат; предупреждения по версиям — после успеха
+        # Ошибки валидации файла – полный откат; предупреждения по версиям – после успеха
         hard_errors = [e for e in row_errors if not str(e).startswith("Версия БД")]
         soft_warns = [e for e in row_errors if str(e).startswith("Версия БД")]
         if hard_errors:

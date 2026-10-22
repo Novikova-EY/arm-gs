@@ -57,7 +57,7 @@ def _log_ts_bucket(log: Log) -> tuple[Any, str]:
 
 
 def _dedupe_gaes_charge_log_pairs(logs: list[Log]) -> list[Log]:
-    """Убирает дубли station+summary при перекрёстной записи (одно сохранение — две строки)."""
+    """Убирает дубли station+summary при перекрёстной записи (одно сохранение – две строки)."""
     summary_from_station_card: set[tuple[Any, str]] = set()
     for log in logs:
         if not _is_gaes_charge_summary_log(log):

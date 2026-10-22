@@ -27,6 +27,6 @@ def text_contains(
 
     if reject_empty_needle and not needle:
         return False
-    if not text or (treat_em_dash_as_empty and text == "—"):
+    if not text or (treat_em_dash_as_empty and text == "–"):
         return False
     return needle.casefold() in text.casefold()

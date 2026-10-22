@@ -55,7 +55,7 @@ class _DummySession:
 
 
 class _FakeStation:
-    """Лёгкий double вместо ORM Station — unit-тесты не поднимают полный реестр mapper'ов."""
+    """Лёгкий double вместо ORM Station – unit-тесты не поднимают полный реестр mapper'ов."""
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():

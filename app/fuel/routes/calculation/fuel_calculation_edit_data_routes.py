@@ -296,9 +296,9 @@ def equipment_group_fuel_params_edit_data_add_heat_year():
         )
     else:
         flash(
-            f"Заполнены показатели тепла на {target_num} г.: q — из «Тепло и тарифы (схемы теплоснабжения)» "
-            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t — с {source_num} г.; "
-            f"nust, nr, nt — по правилам целевого года. Операций: {copied} (в выборке групп: {total_groups}, "
+            f"Заполнены показатели тепла на {target_num} г.: q – из «Тепло и тарифы (схемы теплоснабжения)» "
+            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t – с {source_num} г.; "
+            f"nust, nr, nt – по правилам целевого года. Операций: {copied} (в выборке групп: {total_groups}, "
             f"без данных за {source_num} г.: {skipped}).",
             "success",
         )
@@ -402,9 +402,9 @@ def equipment_group_fuel_params_edit_data_add_heat_period():
         )
     else:
         flash(
-            f"Заполнены показатели тепла на годы {n_lo}—{n_hi}: q — из «Тепло и тарифы (схемы теплоснабжения)» "
-            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t — с {source_num} г.; "
-            f"nust, nr, nt — по правилам целевого года (операций: {copied}; в выборке групп: {total_groups}).",
+            f"Заполнены показатели тепла на годы {n_lo}–{n_hi}: q – из «Тепло и тарифы (схемы теплоснабжения)» "
+            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t – с {source_num} г.; "
+            f"nust, nr, nt – по правилам целевого года (операций: {copied}; в выборке групп: {total_groups}).",
             "success",
         )
     return _redirect_equipment_group_fuel_params_edit_data(md)
@@ -1000,7 +1000,7 @@ def _redirect_specific_fc_interval_only(*, y_min: int, y_max: int):
     md = _md_from_heat_add_form()
     _merge_interval_onto_md(md, y_min=int(y_min), y_max=int(y_max))
     flash(
-        f"Интервал таблицы расширен до {md.get('start_year')}—{md.get('end_year')}. "
+        f"Интервал таблицы расширен до {md.get('start_year')}–{md.get('end_year')}. "
         "Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.",
         "success",
     )
@@ -1182,7 +1182,7 @@ def equipment_group_specific_fuel_consumption_edit_data():
         equipment_group_specific_fuel_consumption_hierarchy
     )
 
-    # Только фильтры формы расчёта — без equipment_group_ids со ссылки «Без удельника».
+    # Только фильтры формы расчёта – без equipment_group_ids со ссылки «Без удельника».
     # Интервал ТЭП: start=базовый, end=расчётный → обратно на форму расчёта маппим end→start_year.
     calculation_back_url = fuel_calculation_form_url_from_tep_edit_args(request.args)
 
@@ -1241,7 +1241,7 @@ def equipment_group_specific_fuel_consumption_edit_data():
 )
 @login_required
 def equipment_group_specific_fuel_consumption_edit_data_save():
-    """Массовое сохранение удельных (k, y/btp/sntp/bk/snk и *_calc); numb1120 ← numb группы; годы «факт» — только чтение."""
+    """Массовое сохранение удельных (k, y/btp/sntp/bk/snk и *_calc); numb1120 ← numb группы; годы «факт» – только чтение."""
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для сохранения.", "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data_after_bulk_save()

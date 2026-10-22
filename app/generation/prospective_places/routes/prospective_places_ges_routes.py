@@ -43,17 +43,17 @@ def _ges_tep_year_select_choices():
     from app.common.services.get_services.years.years_get_services import get_year_list_full
 
     years = get_year_list_full()
-    return [("", "— не указано —")] + [(str(y.id), str(y.number)) for y in years]
+    return [("", "– не указано –")] + [(str(y.id), str(y.number)) for y in years]
 
 
 def _ges_specific_capital_source_year_display(tep_row) -> str:
-    """Календарный год исходных капзатрат «ГЭС (с водохранилищем)» — для подписи у удельных (не год «текущий» из справочника)."""
+    """Календарный год исходных капзатрат «ГЭС (с водохранилищем)» – для подписи у удельных (не год «текущий» из справочника)."""
     if tep_row is None:
-        return "—"
+        return "–"
     y = getattr(tep_row, "year_capital_cost_wo_pir_ges_with_reservoir", None)
     if y is not None and getattr(y, "number", None) is not None:
         return str(y.number)
-    return "—"
+    return "–"
 
 
 def _ges_tep_derive_template_context():
@@ -69,7 +69,7 @@ def _ges_tep_derive_template_context():
     }
     ty_id = resolve_year_id_for_calendar_year_number(ty)
     return {
-        "ges_tep_target_price_year_display": str(ty) if ty is not None else "—",
+        "ges_tep_target_price_year_display": str(ty) if ty is not None else "–",
         "ges_tep_price_derive_config": {
             "targetYear": ty,
             "targetYearId": ty_id,
@@ -273,7 +273,7 @@ def prospective_places_ges_tep_main():
 @prospective_places_bp.route("/ges/tep_price_conversion_coefficients/", methods=["GET", "POST"])
 @login_required
 def ges_tep_price_conversion_coefficients_json():
-    """JSON: коэффициенты перевода цен и справочник годов; POST — новая запись (редакторы)."""
+    """JSON: коэффициенты перевода цен и справочник годов; POST – новая запись (редакторы)."""
     from app.generation.prospective_places.services.tep_capital_cost_current_year_services import (
         create_price_conversion_coefficient,
     )
@@ -407,15 +407,15 @@ def prospective_place_ges_details(id):
 
     form = ProspectivePlaceGESEditForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Не указано —")] + [
+    form.id_regional_district.choices = [("", "– Не указано –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
     res_list = get_regional_energy_system_choices()
-    form.id_regional_energy_system.choices = [("", "— Не указано —")] + [
+    form.id_regional_energy_system.choices = [("", "– Не указано –")] + [
         (str(res_id), name) for res_id, name in res_list
     ]
     ppt_list = ProspectivePlaceTypeGES.query.order_by(ProspectivePlaceTypeGES.name).all()
-    form.id_prospective_place_type_ges.choices = [("", "— Не указано —")] + [
+    form.id_prospective_place_type_ges.choices = [("", "– Не указано –")] + [
         (str(p.id), p.name) for p in ppt_list
     ]
 
@@ -462,7 +462,7 @@ def prospective_place_ges_details(id):
                     "form": f,
                     "form_prefix": pfx,
                     "machine_id": 0,
-                    "ges_specific_capital_year_display": "—",
+                    "ges_specific_capital_year_display": "–",
                 }
             )
     else:
@@ -485,7 +485,7 @@ def prospective_place_ges_details(id):
                     "form": f,
                     "form_prefix": pfx,
                     "machine_id": 0,
-                    "ges_specific_capital_year_display": "—",
+                    "ges_specific_capital_year_display": "–",
                 }
             )
 
@@ -717,7 +717,7 @@ def _populate_ges_tep_form_from_row(form, tep_row):
         target_year=ty,
         coeff_by_year=coeff,
     )
-    form.specific_capital_investment_thous_rub_per_kw.data = None if s_derived == "—" else s_derived
+    form.specific_capital_investment_thous_rub_per_kw.data = None if s_derived == "–" else s_derived
     form.id_year_specific_capital_investment.data = resolve_year_id_for_calendar_year_number(ty)
 
 
@@ -781,7 +781,7 @@ def _apply_ges_tep_form_to_row(row, form, place):
 @prospective_places_bp.route("/ges/<int:place_id>/machine/<int:machine_id>/", methods=["GET", "POST"])
 @login_required
 def machine_prospective_place_ges_details(place_id, machine_id):
-    """Добавление/редактирование записи перечня ТЭП (machine_id=0 — добавить)."""
+    """Добавление/редактирование записи перечня ТЭП (machine_id=0 – добавить)."""
     from app.generation.prospective_places.models import (
         StationProspectivePlaceGES,
         ProspectivePlaceGesTepSource,
@@ -870,7 +870,7 @@ def add_prospective_place_ges():
 
     form = ProspectivePlaceGESAddForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Выберите субъект РФ —")] + [
+    form.id_regional_district.choices = [("", "– Выберите субъект РФ –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
 
@@ -1031,23 +1031,23 @@ def export_prospective_places_ges():
             s.regional_energy_system.union_energy_system.name
             if s.regional_energy_system and s.regional_energy_system.union_energy_system
             else None
-        ) or "—"
+        ) or "–"
 
     def _rd_name(s):
-        return (s.regional_district.name_full if s.regional_district else None) or "—"
+        return (s.regional_district.name_full if s.regional_district else None) or "–"
 
     def _fmt_installed(val):
         if val is None or val == "":
-            return "—"
+            return "–"
         return str(val).replace(".", ",")
 
     def _fmt_gavg(tr):
         v = getattr(tr, "generation_average_multiyear_million_kwh", None)
         if v is None:
-            return "—"
+            return "–"
         s = str(v).strip()
         if not s:
-            return "—"
+            return "–"
         return s.replace(".", ",")
 
     wb = Workbook()
@@ -1085,16 +1085,16 @@ def export_prospective_places_ges():
                 idx += 1
                 ues = _ues_name(station)
                 rd = _rd_name(station)
-                site = station.site_name or "—"
-                initiator = station.project_initiator or "—"
-                water = station.water_body or "—"
-                regulation = station.regulation_type or "—"
-                geo = station.geo_location or "—"
-                planned = station.planned_capacity_mw or "—"
-                gen_scheme = station.general_scheme_commissioning_period or "—"
+                site = station.site_name or "–"
+                initiator = station.project_initiator or "–"
+                water = station.water_body or "–"
+                regulation = station.regulation_type or "–"
+                geo = station.geo_location or "–"
+                planned = station.planned_capacity_mw or "–"
+                gen_scheme = station.general_scheme_commissioning_period or "–"
                 constr = format_construction_period_years_display(
                     station.construction_period_years
-                ) or "—"
+                ) or "–"
 
                 indicators = station.ges_tep_source_indicators or []
                 if indicators:
@@ -1150,7 +1150,7 @@ def export_prospective_places_ges():
                     ws.cell(row=row_num, column=3).alignment = center_align
                     ws.cell(row=row_num, column=4, value=planned).border = thin_border
                     ws.cell(row=row_num, column=4).alignment = center_align
-                    em_gavg = ws.cell(row=row_num, column=5, value="—")
+                    em_gavg = ws.cell(row=row_num, column=5, value="–")
                     em_gavg.border = thin_border
                     em_gavg.alignment = center_align
                     em_gavg.font = Font(color="808080")
@@ -1164,7 +1164,7 @@ def export_prospective_places_ges():
                     ws.cell(row=row_num, column=9).alignment = center_align
                     ws.cell(row=row_num, column=10, value=geo).border = thin_border
                     ws.cell(row=row_num, column=10).alignment = center_align
-                    em_inst = ws.cell(row=row_num, column=11, value="—")
+                    em_inst = ws.cell(row=row_num, column=11, value="–")
                     em_inst.border = thin_border
                     em_inst.alignment = center_align
                     em_inst.font = Font(color="808080")

@@ -11,6 +11,7 @@ from app.common.services.database_version_filter import get_current_db_version_i
 from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
     get_filter_start_year,
+    get_year_list_full,
     normalize_start_end_years,
 )
 
@@ -46,6 +47,19 @@ def sync_generation_years_session_on_version_change() -> bool:
     session.modified = True
     _strip_years_from_station_list_session()
     return True
+
+
+def get_filter_year_list() -> list[int]:
+    """
+    Значения выпадающих списков «Год начала» / «Год конца» на страницах генерации.
+
+    Источник – справочник Year текущей версии БД (как на station_details);
+    если справочник пуст – диапазон периода планирования версии.
+    """
+    years_from_db = [y.number for y in get_year_list_full()]
+    if years_from_db:
+        return years_from_db
+    return list(range(get_filter_start_year(), get_filter_end_year() + 1))
 
 
 def resolve_year_range_from_args_or_buffer(args=None) -> tuple[int, int, list[int]]:

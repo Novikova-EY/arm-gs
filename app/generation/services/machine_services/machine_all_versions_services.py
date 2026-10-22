@@ -89,13 +89,13 @@ def _parse_int_form_val(val) -> Optional[int]:
 
 def _format_val_for_log(val) -> str:
     if val is None or val == "":
-        return "—"
+        return "–"
     return str(val)
 
 
 def _format_gen_company_for_log(pk_id: Optional[int]) -> str:
     if not pk_id:
-        return "—"
+        return "–"
     gc = GenCompany.query.get(pk_id)
     if gc and gc.name:
         return f"{gc.name} (id={pk_id})"
@@ -192,7 +192,7 @@ def _year_values_from_form(
     out: dict[int, Decimal | None] = {}
     for year in range(start_year, end_year + 1):
         raw = form_data.get(f"{field_prefix}_{year}")
-        if raw is None or str(raw).strip() in ("", "—", "-"):
+        if raw is None or str(raw).strip() in ("", "–", "-"):
             out[year] = None
         else:
             out[year] = to_decimal(raw)
@@ -661,9 +661,9 @@ def update_station_machines_all_versions_from_form(
     """
     Применяет данные формы station_details во всех версиях БД.
 
-    Агрегаты — по external_code машины (fuel_so, note, id_gen_company).
-    Общая информация / местоположение / код КТО — по external_code станции.
-    Выработка, потребление ГАЭС/СНЭЭ и выработка от собственника — по external_code станции
+    Агрегаты – по external_code машины (fuel_so, note, id_gen_company).
+    Общая информация / местоположение / код КТО – по external_code станции.
+    Выработка, потребление ГАЭС/СНЭЭ и выработка от собственника – по external_code станции
     (st_gen_*, st_gaes_charge_*, st_owner_gen_*, st_snee_consumption_*).
     """
     request_meta = request_meta or {}
@@ -761,7 +761,7 @@ def update_station_machines_all_versions_from_form(
     )
     if needs_station_code and not station_external_code:
         warnings.append(
-            "У электростанции отсутствует external_code — общая информация, код КТО, "
+            "У электростанции отсутствует external_code – общая информация, код КТО, "
             "выработка и специальные таблицы потребления не синхронизированы во всех версиях."
         )
         has_energy_form = False
@@ -1044,7 +1044,7 @@ def update_station_machines_all_versions_from_form(
 
     log_lines = [
         "Синхронизация station_details во всех версиях БД.",
-        f"Электростанция: {station.name} (id={station.id}, external_code={station_external_code or '—'})",
+        f"Электростанция: {station.name} (id={station.id}, external_code={station_external_code or '–'})",
         f"Пользователь: {user}",
         f"Годы: {start_year}–{end_year}",
         f"Затронуто версий БД: {versions_touched}",

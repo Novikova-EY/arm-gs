@@ -66,7 +66,7 @@ def _detect_header_row_and_parse_excel(xls: pd.ExcelFile, sheet_name: str) -> tu
     Это исключает ложное срабатывание, когда маркер встречается внутри текста в данных.
 
     Returns:
-        (df, header_row_index) — DataFrame с данными и индекс строки заголовка (0-based).
+        (df, header_row_index) – DataFrame с данными и индекс строки заголовка (0-based).
     """
     df_preview = xls.parse(sheet_name, header=None, nrows=30)
     header_markers = {
@@ -165,14 +165,14 @@ for _fld in EQUIPMENT_GROUP_UPDATE_FIELDS:
         lst.append(_fld)
 # name и name_ext оба берут значение из topl_name (ge_name_ext)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS.setdefault("name", []).insert(0, "ge_name_ext")
-# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код группы оборудования (numb)» — см. _coalesce_ge_numb_source_columns)
+# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код группы оборудования (numb)» – см. _coalesce_ge_numb_source_columns)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS["numb"] = ["ge_numb"]
 MACHINE_FUEL_PARAM_INTEGER_FIELDS = frozenset([
     "numb1120", "numb", "stnumb", "yearin",
     "dem", "nt", "grcode",
 ])
 
-# Поля, значения которых Excel часто отдает как float (1.0) — нормализуем в целочисленную строку ("1")
+# Поля, значения которых Excel часто отдает как float (1.0) – нормализуем в целочисленную строку ("1")
 EQUIPMENT_GROUP_SET_INTEGER_FIELDS = frozenset([
     "comp", "niv", "main", "numb", "ordnumb", "d", "r", "forem",
     "vedomstvo", "obl", "dep", "oes", "er", "fo",
@@ -189,11 +189,11 @@ EQUIPMENT_GROUP_STRICT_INTEGER_FIELDS = frozenset([
 
 
 def _import_cell_is_empty(value) -> bool:
-    """Пустая ячейка для слияния колонок id_station / id_machine (в т.ч. «—» из экспорта)."""
+    """Пустая ячейка для слияния колонок id_station / id_machine (в т.ч. «–» из экспорта)."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return True
     s = str(value).strip()
-    return s == "" or s in ("—", "-", "–", "−")
+    return s == "" or s in ("–", "-", "–", "−")
 
 
 def _collect_rows_with_empty_station_and_machine_ids(df: pd.DataFrame) -> set[int | float]:
@@ -202,7 +202,7 @@ def _collect_rows_with_empty_station_and_machine_ids(df: pd.DataFrame) -> set[in
     id_station и id_machine и которые не являются строками standalone-котельных.
 
     Такие строки полностью исключаются из обработки (нет построчного протягивания значений).
-    Исключение — «Котельные»: для них обе колонки ID могут быть пустыми по дизайну, и такие
+    Исключение – «Котельные»: для них обе колонки ID могут быть пустыми по дизайну, и такие
     строки должны обрабатываться отдельным шагом импорта standalone-групп.
     """
     if "id_station" not in df.columns and "id_machine" not in df.columns:
@@ -229,7 +229,7 @@ def _collect_rows_with_empty_station_and_machine_ids(df: pd.DataFrame) -> set[in
 def _coalesce_duplicate_station_machine_id_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Если одновременно есть каноническое имя (id_station) и русский заголовок (ID электростанции),
-    шаблон часто оставляет пустой id_station — тогда переименование второй колонки
+    шаблон часто оставляет пустой id_station – тогда переименование второй колонки
     блокировалось already_canonical и данные терялись при cols_to_keep.
     Объединяем значения в одну колонку с каноническим именем.
     """
@@ -410,11 +410,11 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# Тип группы оборудования для сопоставления со справочником — только столбец equipment_group.
-# «Котельные» смотрят только GE_GRUPPA_OBORUDOVANIYA_COLUMN — см. _get_equipment_group_for_kotelnye.
+# Тип группы оборудования для сопоставления со справочником – только столбец equipment_group.
+# «Котельные» смотрят только GE_GRUPPA_OBORUDOVANIYA_COLUMN – см. _get_equipment_group_for_kotelnye.
 EQUIPMENT_GROUP_COLUMN_NAMES = ("equipment_group",)
 
-# Разрешённые колонки после алиасов (лишние — type, Unnamed и т.д. — отбрасываются)
+# Разрешённые колонки после алиасов (лишние – type, Unnamed и т.д. – отбрасываются)
 ALLOWED_IMPORT_COLUMNS = frozenset([
     "equipment_group_id", "id_station", "id_machine", "ge_name_ext", "ge_comp", "ge_niv", "ge_main",
     "ge_numb", "ge_ordnumb", "ge_d", "ge_r", "ge_forem", "equipment_group",
@@ -426,7 +426,7 @@ ALLOWED_IMPORT_COLUMNS = frozenset([
     "machine_nt", "machine_grcode", "machine_station_name", "machine_opesname", "machine_note",
 ])
 
-# Значение "Котельные" — группа без привязки к электростанции (EquipmentGroup напрямую)
+# Значение "Котельные" – группа без привязки к электростанции (EquipmentGroup напрямую)
 KOTELNYE_GROUP_NAME = "Котельные"
 NEW_EQUIPMENT_GROUP_SUFFIX = " (нов)"
 
@@ -650,7 +650,7 @@ def _find_or_create_standalone_equipment_group(
     """
     Ищет standalone EquipmentGroup без реальных station-bound привязок по
     name или (database_version_id, numb).
-    Если не найдена — создает и возвращает. Возвращает (eg, was_created).
+    Если не найдена – создает и возвращает. Возвращает (eg, was_created).
     При numb: сначала ищет по (database_version_id, numb) для предотвращения дублей.
     """
     if numb is not None and db_version_id is not None:
@@ -752,7 +752,7 @@ def _get_equipment_group_from_row(row, df_columns) -> str | None:
 def _get_equipment_group_for_kotelnye(row, df_columns) -> str | None:
     """
     Для строк «Котельные»: текст берётся только из столбца Excel «Группа оборудования»
-    (после алиасов — GE_GRUPPA_OBORUDOVANIYA_COLUMN), не из equipment_group.
+    (после алиасов – GE_GRUPPA_OBORUDOVANIYA_COLUMN), не из equipment_group.
     """
     def _check_val(val):
         if val is None or (isinstance(val, float) and pd.isna(val)):
@@ -774,7 +774,7 @@ def _get_equipment_group_for_kotelnye(row, df_columns) -> str | None:
 def _extract_cell_value(row, field: str):
     """
     Извлекает скалярное значение из ячейки. При дублировании столбцов row[field]
-    возвращает Series — берем первый непустой элемент.
+    возвращает Series – берем первый непустой элемент.
     """
     val = row.get(field)
     if isinstance(val, pd.Series):
@@ -800,7 +800,7 @@ def _safe_str(value) -> str | None:
 def _safe_str_int(value) -> str | None:
     """
     Для числовых значений (1.0, 2.0) возвращает целочисленную строку ("1", "2").
-    Остальное — как _safe_str (для строковых колонок ordnumb, tm, n1, n2, p1, p2).
+    Остальное – как _safe_str (для строковых колонок ordnumb, tm, n1, n2, p1, p2).
     """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
@@ -809,7 +809,7 @@ def _safe_str_int(value) -> str | None:
             return str(int(value))
         if isinstance(value, int):
             return str(value)
-        return str(value)  # нецелое float — как есть
+        return str(value)  # нецелое float – как есть
     s = str(value).strip()
     if not s:
         return None
@@ -825,7 +825,7 @@ def _safe_str_int(value) -> str | None:
 def _safe_str_int_strict(value) -> str | None:
     """
     Для integer-колонок: возвращает целочисленную строку или None.
-    Нечисловые строки (напр. названия станций) не записываются — иначе psycopg2.InvalidTextRepresentation.
+    Нечисловые строки (напр. названия станций) не записываются – иначе psycopg2.InvalidTextRepresentation.
     """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
@@ -878,7 +878,7 @@ def _normalize_eg_numb_from_db(equipment_group: EquipmentGroup | None) -> str | 
 
 
 def _extract_equipment_group_numb_from_import_row(row, df_columns) -> str | None:
-    """Numb только из столбца topl_NUMB в Excel (после алиасов — ge_numb)."""
+    """Numb только из столбца topl_NUMB в Excel (после алиасов – ge_numb)."""
     if "ge_numb" not in df_columns:
         return None
     raw = _extract_cell_value(row, "ge_numb")
@@ -899,7 +899,7 @@ def _find_equipment_group_by_numb_for_station_external_code(
     и только для того же типа группы оборудования.
 
     Глобальный поиск только по numb и external_code давал .first() по «любой» электростанции
-    с тем же кодом — в т.ч. одноимённые электростанции в разных субъектах. Ограничение по
+    с тем же кодом – в т.ч. одноимённые электростанции в разных субъектах. Ограничение по
     family_ids сохраняет перенос между версиями одной электростанции и не подтягивает группу
     «соседней» электростанции с тем же external_code. Дополнительная фильтрация по
     equipment_group_type_id не дает склеивать в одну EquipmentGroup разные типы
@@ -1073,7 +1073,7 @@ def _get_station_family_for_import(station: Station | None) -> list[Station]:
 
         if source_rd_id is not None and sibling_rd_id is not None and sibling_rd_id != source_rd_id:
             continue
-        # У субъекта задано, у «сиблинга» нет — не смешиваем разные одноимённые электростанции
+        # У субъекта задано, у «сиблинга» нет – не смешиваем разные одноимённые электростанции
         if source_rd_id is not None and sibling_rd_id is None and source_name:
             if sibling_name and sibling_name != source_name:
                 continue
@@ -1111,7 +1111,7 @@ def _normalize_machine_number_for_import(value: str | None) -> str:
     return " ".join(
         str(value or "")
         .replace("–", "-")
-        .replace("—", "-")
+        .replace("–", "-")
         .replace("−", "-")
         .split()
     ).strip().lower()
@@ -1307,7 +1307,7 @@ def _get_machine_family_for_import(
     якорной электростанции.
 
     anchor_station_id: id электростанции из Excel (id_station). Если задан, семейство берётся по
-    этой электростанции — иначе по электростанции агрегата в БД. Иначе при расхождении id_station в
+    этой электростанции – иначе по электростанции агрегата в БД. Иначе при расхождении id_station в
     файле и id_station у машины группа и связи создавались по «чужой» электростанции.
     """
     if not machine:
@@ -1539,8 +1539,8 @@ def _build_import_report_excel(df: pd.DataFrame, row_results: dict) -> BytesIO:
 
 def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report: bool = True) -> dict:
     """
-    Шаг 1: строки с id_station и id_machine — привязка EquipmentGroupType к Machine.
-    По id_machine находим агрегат, по Machine.external_code — все агрегаты с тем же кодом,
+    Шаг 1: строки с id_station и id_machine – привязка EquipmentGroupType к Machine.
+    По id_machine находим агрегат, по Machine.external_code – все агрегаты с тем же кодом,
     и назначаем Machine.id_equipment_group в зависимости от версии БД.
 
     Шаг 2: после прохода по найденным id_machine создаем EquipmentGroupSetStation
@@ -1563,12 +1563,12 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         reject_imena_stanciy_on_fuel_db_import,
     )
 
-    # Защита: Access «Станции*.xlsx» / «Доп_угли» — только на «Сведения о работе ТЭС».
+    # Защита: Access «Станции*.xlsx» / «Доп_угли» – только на «Сведения о работе ТЭС».
     reject_access_stations_or_extra_fuel_excel(filename, file=file, context="fuel_db")
-    # Access «Имена_станций» — только жёлтая кнопка soft-import, не этот шаблон.
+    # Access «Имена_станций» – только жёлтая кнопка soft-import, не этот шаблон.
     reject_imena_stanciy_on_fuel_db_import(filename, file=file)
 
-    print("[IMPORT_FUEL_DB] Шаг 1: Чтение Excel — определение заголовков и колонок...")
+    print("[IMPORT_FUEL_DB] Шаг 1: Чтение Excel – определение заголовков и колонок...")
     xls = pd.ExcelFile(file)
     sheet_name = xls.sheet_names[0]
     print(f"[IMPORT_FUEL_DB]   Лист: {sheet_name}")
@@ -1601,7 +1601,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
             "Строки с id_machine обрабатываются только при наличии id_station."
         )
     if not has_machine:
-        print("[IMPORT_FUEL_DB]   Колонка id_machine отсутствует — шаг 1 пропускается")
+        print("[IMPORT_FUEL_DB]   Колонка id_machine отсутствует – шаг 1 пропускается")
     print(f"[IMPORT_FUEL_DB] Шаг 2: Проверка колонок OK (id_machine={has_machine}, id_station={has_station})")
 
     processed_rows = 0
@@ -1967,11 +1967,11 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         "not_found": set(),
     }
 
-    # [ВЫКЛ] Проверка дублей по numb — отключена
+    # [ВЫКЛ] Проверка дублей по numb – отключена
     # seen_numb: set[str] = set()
     # has_numb_col = "numb" in df.columns
 
-    print("[IMPORT_FUEL_DB] Шаг 3: Обработка строк (id_machine + id_station) — привязка групп к агрегатам...")
+    print("[IMPORT_FUEL_DB] Шаг 3: Обработка строк (id_machine + id_station) – привязка групп к агрегатам...")
     for index, row in df.iterrows():
         if row.isnull().all():
             skipped_empty += 1
@@ -2503,13 +2503,13 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
             if station_id_row is None:
                 continue
 
-            # Обновление полей EquipmentGroup (шаг 4.2) — только строки «только станция»
+            # Обновление полей EquipmentGroup (шаг 4.2) – только строки «только станция»
             # с обязательными id_station + ge_numb + ge_name_ext/topl_name.
             if machine_id is not None:
                 _set_row_result(
                     index,
                     "step4_2",
-                    "Пропуск: обновление EquipmentGroup — только для строк без id_machine",
+                    "Пропуск: обновление EquipmentGroup – только для строк без id_machine",
                 )
                 continue
 
@@ -2518,7 +2518,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 _set_row_result(
                     index,
                     "step4_2",
-                    "Пропуск: нет значения topl_NUMB (ge_numb) в строке — нужен для сопоставления с EquipmentGroup",
+                    "Пропуск: нет значения topl_NUMB (ge_numb) в строке – нужен для сопоставления с EquipmentGroup",
                 )
                 continue
 
@@ -2527,7 +2527,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 _set_row_result(
                     index,
                     "step4_2",
-                    "Пропуск: нет значения topl_name (ge_name_ext/name_ext) в строке — строка не подходит для обновления EquipmentGroup",
+                    "Пропуск: нет значения topl_name (ge_name_ext/name_ext) в строке – строка не подходит для обновления EquipmentGroup",
                 )
                 continue
 
@@ -2687,7 +2687,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         kotelnye_version_ids = [current_version]
     valid_version_ids_kotelnye = valid_version_ids | set(kotelnye_version_ids)
     print(
-        "[IMPORT_FUEL_DB] Шаг 4.2.5: Обработка «Котельные» — "
+        "[IMPORT_FUEL_DB] Шаг 4.2.5: Обработка «Котельные» – "
         "EquipmentGroup + EquipmentGroupSetStation(station_id=NULL) + EquipmentGroupSet..."
     )
     try:
@@ -2727,7 +2727,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                         val = val[:1000]
                     base_row_values[field] = val
 
-            # Название группы (EquipmentGroup.name) — из name_ext (ge_name_ext / topl_name), не из столбца «Группа оборудования»
+            # Название группы (EquipmentGroup.name) – из name_ext (ge_name_ext / topl_name), не из столбца «Группа оборудования»
             name_ext_val = base_row_values.get("name_ext")
             if name_ext_val:
                 base_row_values["name"] = name_ext_val
@@ -2792,7 +2792,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                     created_kotelnye_sets += 1
                     row_created_sets += 1
 
-                # Flush после каждой версии — чтобы INSERT выполнился до поиска в следующей
+                # Flush после каждой версии – чтобы INSERT выполнился до поиска в следующей
                 db.session.flush()
 
             if missing_type_versions:
@@ -3046,7 +3046,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         f"«Котельные» (standalone): обновлено {updated_kotelnye}, создано {created_kotelnye}. "
         f"Обновлено MachineFuelParam: {updated_fuel_params}. "
         f"Рассчитано удельных показателей (y_calc, btp_calc, sntp_calc, bk_calc): {updated_specific_consumption_calc}. "
-        f"Ошибок: {len(errors)}. Подробности — в логах."
+        f"Ошибок: {len(errors)}. Подробности – в логах."
     )
     return {
         "message": message,

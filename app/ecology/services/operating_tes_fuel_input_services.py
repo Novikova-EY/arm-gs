@@ -7,7 +7,8 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, case, func, or_
+from sqlalchemy import String, and_, case, cast, func, or_
+from sqlalchemy.orm import aliased
 
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _to_decimal
@@ -25,6 +26,19 @@ from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
 )
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
+from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
+    UnionEnergySystemExternalMapping,
+)
+from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
+    TerritoriesEnergyExternalMapping,
+)
+from app.generation.models.station.station_model import Station
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import (
+    regional_district_regional_energy_system,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     restrict_equipment_group_query_to_current_version,
 )
@@ -49,7 +63,7 @@ def _norm(text: str | None) -> str:
 
 def match_ues_slug(name: str | None) -> str | None:
     n = _norm(name)
-    if not n or "не указано" in n:
+    if not n or "не указано" in n or "титес" in n.replace("э", "е"):
         return None
     if "северо" in n and "запад" in n:
         return "severo-zapad"
@@ -63,18 +77,22 @@ def match_ues_slug(name: str | None) -> str | None:
         return "ural"
     if "сибир" in n:
         return "sibir"
-    if "восток" in n and "титес" not in n.replace("э", "е"):
+    if "восток" in n:
         return "vostok"
     return None
 
 
 def match_special_slug(ues_name: str | None, res_name: str | None) -> str | None:
     blob = _norm(f"{ues_name or ''} {res_name or ''}")
-    if "норильск" in blob:
+    tites = "титес" in blob.replace("э", "е")
+    if "норильск" in blob or (tites and "сибир" in blob):
         return "norilsk"
-    if "николаев" in blob:
-        return "nikolaevsky"
-    if "изолир" in blob or "из.узл" in blob or "из узл" in blob:
+    if (
+        (tites and "восток" in blob)
+        or "изолир" in blob
+        or "из.узл" in blob
+        or "из узл" in blob
+    ):
         return "isolated-dv"
     return None
 
@@ -93,8 +111,7 @@ def _ved_int(value: Any) -> int | None:
 def _distribute(
     buckets: dict[str, Any],
     ved: int | None,
-    ues_name: Any,
-    res_name: Any,
+    territory_slugs: set[str],
     values: dict[str, Decimal],
     cap_class: str | None = None,
 ) -> None:
@@ -103,12 +120,7 @@ def _distribute(
         targets.append("minen")
     elif ved in VED_INDUSTRIAL:
         targets.append("prompred")
-    oes_slug = match_ues_slug(ues_name)
-    if oes_slug:
-        targets.append(oes_slug)
-    special = match_special_slug(ues_name, res_name)
-    if special:
-        targets.append(special)
+    targets.extend(sorted(territory_slugs))
     for slug in targets:
         if cap_class:
             _add(buckets[slug][cap_class], values)
@@ -116,8 +128,104 @@ def _distribute(
             _add(buckets[slug], values)
 
 
+def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
+    if not group_ids:
+        return {}
+    # Субъект может входить в несколько РЭС: такая связь не определяет территорию ГО.
+    district_res = regional_district_regional_energy_system
+    unique_subject_res = (
+        db.session.query(
+            district_res.c.regional_district_id,
+            func.min(district_res.c.regional_energy_system_id).label("res_id"),
+        )
+        .group_by(district_res.c.regional_district_id)
+        .having(func.count() == 1)
+        .subquery()
+    )
+    group_unit = aliased(EnergyUnit)
+    rows = (
+        db.session.query(
+            EquipmentGroup.id,
+            group_unit.name,
+            UnionEnergySystem.name,
+            RegionalEnergySystem.name,
+            EnergyUnit.name,
+            UnionEnergySystemExternalMapping.external_nameoes,
+            UnionEnergySystemExternalMapping.external_name,
+            TerritoriesEnergyExternalMapping.external_name,
+        )
+        .select_from(EquipmentGroup)
+        .outerjoin(group_unit, group_unit.id == EquipmentGroup.energy_unit_id)
+        .outerjoin(EquipmentGroupSet, EquipmentGroupSet.equipment_group_id == EquipmentGroup.id)
+        .outerjoin(
+            EquipmentGroupSetStation,
+            and_(
+                EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id,
+                EquipmentGroupSetStation.database_version_id.is_not_distinct_from(
+                    EquipmentGroup.database_version_id
+                ),
+            ),
+        )
+        .outerjoin(
+            Station,
+            and_(
+                Station.id == EquipmentGroupSetStation.station_id,
+                Station.database_version_id.is_not_distinct_from(
+                    EquipmentGroup.database_version_id
+                ),
+            ),
+        )
+        .outerjoin(EnergyUnit, EnergyUnit.id == Station.id_energy_unit)
+        .outerjoin(
+            unique_subject_res,
+            unique_subject_res.c.regional_district_id
+            == func.coalesce(EquipmentGroup.regional_district_id, Station.id_regional_district),
+        )
+        .outerjoin(
+            RegionalEnergySystem,
+            RegionalEnergySystem.id == func.coalesce(
+                EquipmentGroup.regional_energy_system_id,
+                Station.id_regional_energy_system,
+                EnergyUnit.id_regional_energy_system,
+                unique_subject_res.c.res_id,
+            ),
+        )
+        .outerjoin(
+            UnionEnergySystem,
+            UnionEnergySystem.id == RegionalEnergySystem.id_union_energy_system,
+        )
+        .outerjoin(
+            UnionEnergySystemExternalMapping,
+            UnionEnergySystemExternalMapping.external_id == cast(EquipmentGroup.oes, String),
+        )
+        .outerjoin(
+            TerritoriesEnergyExternalMapping,
+            TerritoriesEnergyExternalMapping.external_id == cast(EquipmentGroup.obl, String),
+        )
+        .filter(EquipmentGroup.id.in_(group_ids))
+        .all()
+    )
+    result = defaultdict(set)
+    for group_id, group_unit_name, ues, res, unit, external_ues, external_name, subject in rows:
+        # Николаевский столбец определяется только полем «Энергорайон» карточки ГО.
+        if "николаев" in _norm(group_unit_name):
+            result[group_id].add("nikolaevsky")
+            continue
+        slug = (
+            match_special_slug(unit, None)
+            or match_special_slug(external_ues, external_name)
+            or match_special_slug(ues, res)
+            or match_special_slug(subject, None)
+            or match_ues_slug(ues)
+            or match_ues_slug(external_ues)
+        )
+        if slug:
+            result[group_id].add(slug)
+    return result
+
+
 def equipment_group_operating_clause(*, operating: bool = True):
-    """d = 1 — действующая ТЭС; новые — d IS NULL или d ≠ 1."""
+    """d = 1 – действующая ТЭС; новые – d IS NULL или d ≠ 1."""
     if operating:
         return EquipmentGroup.d == 1
     return or_(EquipmentGroup.d.is_(None), EquipmentGroup.d != 1)
@@ -161,7 +269,7 @@ def load_operating_tes_fuel_inputs(
     """year → territory_slug → поля топлива (тыс. т у.т. / млн кВтч / тыс. Гкал).
 
     «Всего» охватывает все участвующие группы, как «Россия, всего» в Топливе.
-    Если by_capacity=True, значение территории — {le100, gt100} → bucket.
+    Если by_capacity=True, значение территории – {le100, gt100} → bucket.
     """
     wanted = [int(y) for y in years if y is not None]
     if by_capacity:
@@ -172,6 +280,28 @@ def load_operating_tes_fuel_inputs(
         result = {year: defaultdict(empty_fuel_bucket) for year in wanted}
     if not wanted:
         return result
+    rows = load_group_fuel_rows(wanted, operating=operating, by_capacity=by_capacity)
+    main_n = len(FUEL_MAIN_SUM_FIELDS)
+    offset = 4 if by_capacity else 3
+    territory_slugs = _load_group_territory_slugs({row[2] for row in rows})
+    for row in rows:
+        year = int(row[0])
+        ved = _ved_int(row[1])
+        group_id = row[2]
+        cap_class = str(row[3]) if by_capacity else None
+        values: dict[str, Decimal] = {}
+        for i, field in enumerate(FUEL_MAIN_SUM_FIELDS):
+            values[field] = _to_decimal(row[offset + i]) or Decimal("0")
+        for i, field in enumerate(FUEL_EXTRA_SUM_FIELDS):
+            values[field] = _to_decimal(row[offset + main_n + i]) or Decimal("0")
+        _distribute(
+            result[year], ved, territory_slugs.get(group_id, set()), values, cap_class=cap_class
+        )
+    return {year: dict(buckets) for year, buckets in result.items()}
+
+
+def load_group_fuel_rows(wanted, *, operating=None, by_capacity=False, fuel_scope=None):
+    """Суммы по году, принадлежности и группе до распределения по территориям."""
     version_id = get_current_db_version_id()
     main_sums = [
         func.coalesce(func.sum(getattr(EquipmentGroupFuelParam, f)), 0)
@@ -185,8 +315,7 @@ def load_operating_tes_fuel_inputs(
     select_cols = [
         EquipmentGroupFuelParam.year_number,
         EquipmentGroupFuelParam.ved,
-        UnionEnergySystem.name,
-        RegionalEnergySystem.name,
+        EquipmentGroup.id,
     ]
     if cap_expr is not None:
         select_cols.append(cap_expr.label("capacity_class"))
@@ -210,16 +339,7 @@ def load_operating_tes_fuel_inputs(
                 ),
             ),
         )
-        .outerjoin(
-            RegionalEnergySystem,
-            RegionalEnergySystem.id == EquipmentGroup.regional_energy_system_id,
-        )
-        .outerjoin(
-            UnionEnergySystem,
-            UnionEnergySystem.id == RegionalEnergySystem.id_union_energy_system,
-        )
         .filter(EquipmentGroupFuelParam.year_number.in_(wanted))
-        .filter(equipment_group_operating_clause(operating=operating))
         # Тот же состав, что в «Россия, всего»: все группы с VED > 0,
         # независимо от наличия связи со станцией, но строго в своей версии.
         .filter(EquipmentGroupFuelParam.ved > 0)
@@ -229,33 +349,35 @@ def load_operating_tes_fuel_inputs(
             )
         )
     )
+    if operating is not None:
+        query = query.filter(equipment_group_operating_clause(operating=operating))
+    if fuel_scope == "operating":
+        query = query.filter(
+            EquipmentGroup.d == 1, EquipmentGroup.r == 1,
+            EquipmentGroupFuelParam.nust.is_not(None),
+        )
+    elif fuel_scope in ("new_lt100", "new_ge100"):
+        query = query.filter(
+            or_(
+                and_(EquipmentGroup.d == 1, EquipmentGroup.r == 2),
+                and_(EquipmentGroup.d.is_(None), EquipmentGroup.r.is_(None)),
+            ),
+            EquipmentGroupFuelParam.nust.is_not(None),
+            EquipmentGroupFuelParam.nust < 100 if fuel_scope == "new_lt100"
+            else EquipmentGroupFuelParam.nust >= 100,
+        )
+    elif fuel_scope is not None:
+        raise ValueError("Неизвестный раздел сводки")
     query = restrict_equipment_group_query_to_current_version(query, version_id)
     group_cols = [
         EquipmentGroupFuelParam.year_number,
         EquipmentGroupFuelParam.ved,
-        UnionEnergySystem.name,
-        RegionalEnergySystem.name,
+        EquipmentGroup.id,
     ]
     if cap_expr is not None:
         group_cols.append(cap_expr)
     query = query.group_by(*group_cols)
-    main_n = len(FUEL_MAIN_SUM_FIELDS)
-    offset = 5 if by_capacity else 4
-    for row in query.all():
-        year = int(row[0])
-        ved = _ved_int(row[1])
-        ues_name = row[2]
-        res_name = row[3]
-        cap_class = str(row[4]) if by_capacity else None
-        values: dict[str, Decimal] = {}
-        for i, field in enumerate(FUEL_MAIN_SUM_FIELDS):
-            values[field] = _to_decimal(row[offset + i]) or Decimal("0")
-        for i, field in enumerate(FUEL_EXTRA_SUM_FIELDS):
-            values[field] = _to_decimal(row[offset + main_n + i]) or Decimal("0")
-        _distribute(
-            result[year], ved, ues_name, res_name, values, cap_class=cap_class
-        )
-    return {year: dict(buckets) for year, buckets in result.items()}
+    return query.all()
 
 
 def _add(target: dict[str, Decimal], values: dict[str, Decimal]) -> None:
@@ -299,7 +421,7 @@ def bucket_field_amount(bucket: dict[str, Decimal] | None, field: str) -> Decima
     return value
 
 
-# На странице топлива: e — млн кВтч. В макете экологии — млрд.кВтч.
+# На странице топлива: e – млн кВтч. В макете экологии – млрд.кВтч.
 _TOP_INPUT_DIVISOR = {
     "ee_generation": Decimal("1000"),
 }

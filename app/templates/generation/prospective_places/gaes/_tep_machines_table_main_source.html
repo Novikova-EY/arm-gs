@@ -1,4 +1,4 @@
-{# ТЭП основных площадок: режим «исходные данные» — блок стоимости: млн руб. +
+{# ТЭП основных площадок: режим «исходные данные» – блок стоимости: млн руб. +
 год по каждой позиции. Ожидает: tep_groups #} {% set tep_col_count = 46 %}
 <div class="table-responsive">
   <table
@@ -280,7 +280,7 @@
           {{ tf.year_specific_capital_investment }}
         </td>
         <td class="text-start align-middle text-break">
-          {% if tf.note != '—' %}{{ tf.note|nl2br }}{% else %}—{% endif %}
+          {% if tf.note != '–' %}{{ tf.note|nl2br }}{% else %}–{% endif %}
         </td>
       </tr>
       {% endfor %} {% else %}

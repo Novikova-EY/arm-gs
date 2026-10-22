@@ -66,7 +66,7 @@ def get_equipment_group_machines_data(
     Связь: EquipmentGroupSet (equipment_group_id) -> EquipmentGroupSetStation (station_id, equipment_group_type_id).
     Machine.id_station = station_id, Machine.id_equipment_group = equipment_group_type_id.
 
-    equipment_group_id — одна группа или список (для составной станции: дочерние
+    equipment_group_id – одна группа или список (для составной станции: дочерние
     группы с MAIN=parent.NUMB).
 
     Returns:

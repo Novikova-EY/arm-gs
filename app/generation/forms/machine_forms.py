@@ -9,7 +9,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 # Значения для Machine.relabing_outcome (и формы)
 MACHINE_RELABING_OUTCOME_CHOICES = (
-    ("", "—"),
+    ("", "–"),
     ("окончательный вывод", "окончательный вывод"),
     ("замена", "замена"),
     ("новый ввод", "новый ввод"),

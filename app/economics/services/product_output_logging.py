@@ -17,9 +17,9 @@ ACTION_TITLE = "выпуск продукции (долгосрочный про
 
 def _fmt_log_value(value: Any) -> str:
     if value is None:
-        return "—"
+        return "–"
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else "—"
+    return s if s else "–"
 
 
 def load_product_output_logs_raw(

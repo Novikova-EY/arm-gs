@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from io import BytesIO
 
 from app.extensions import db
+from app.fuel.services.equipment_groups.equipment_group_flags import equipment_group_flag_label
 from app.auth.routes.decorators import roles_required, has_admin_required
 
 from . import fuel_bp
@@ -626,7 +627,7 @@ def _get_single_year_filter_options():
 def _resolve_year_range_filter_options():
     """
     Диапазон лет из start_year/end_year (или устаревшего year) и список годов для селектов.
-    Без параметров в URL — как на station_list: get_filter_start_year() … get_filter_end_year().
+    Без параметров в URL – как на station_list: get_filter_start_year() … get_filter_end_year().
     """
     fallback_start = get_filter_start_year()
     fallback_end = get_filter_end_year()
@@ -673,7 +674,7 @@ def _export_year_range_for_station_fuel_lists():
     """
     Диапазон года для экспорта Excel со страниц списков топлива: один выбранный год,
     по той же логике, что и у таблицы (см. _get_single_year_filter_options).
-    Не использовать сырой start_year/end_year из глобальных фильтров — иначе в выгрузку
+    Не использовать сырой start_year/end_year из глобальных фильтров – иначе в выгрузку
     попадёт несколько лет и строки групп задвоятся.
     """
     selected_year, _ = _get_single_year_filter_options()
@@ -819,7 +820,7 @@ def fuel_territories_energy_list():
     query = TerritoriesEnergyExternalMapping.query
     if territories_energy_filter:
         like_term = f"%{territories_energy_filter}%"
-        # obl, alph, dep, oes, er, terr_belyaev, teo90, fo — Integer, нужен cast для ilike
+        # obl, alph, dep, oes, er, terr_belyaev, teo90, fo – Integer, нужен cast для ilike
         query = query.filter(
             or_(
                 TerritoriesEnergyExternalMapping.name_ext.ilike(like_term),
@@ -2824,6 +2825,7 @@ def stations_equipment_groups():
     total_pages = 1
     current_page = 1
     numb1120_filter_choices = []
+    flag_filter_choices = {}
     duplicate_numb_ids = set()
     try:
         (
@@ -2842,6 +2844,7 @@ def stations_equipment_groups():
             per_page=per_page,
             numb1120_filter_choices_out=numb1120_filter_choices,
             duplicate_numb_ids_out=duplicate_numb_ids,
+            flag_filter_choices_out=flag_filter_choices,
         )
     except Exception as exc:
         current_app.logger.exception(
@@ -2927,6 +2930,10 @@ def stations_equipment_groups():
         has_active_filters=has_active_filters,
         soft_composite_import_report=soft_composite_import_report,
         numb1120_filter_choices=numb1120_filter_choices,
+        flag_filter_choices=flag_filter_choices,
+        equipment_group_flag_label=equipment_group_flag_label,
+        equipment_group_d_filter=filters.get("equipment_group_d_filter") or [],
+        equipment_group_r_filter=filters.get("equipment_group_r_filter") or [],
         show_missing_numb=show_missing_numb,
         missing_numb_toggle_url=missing_numb_toggle_url,
         show_composite_only=show_composite_only,
@@ -3030,7 +3037,7 @@ def stations_equipment_group_fuel_params():
         )
 
     filters = extract_filters_from_args(request.args)
-    # Не ограничиваем по типу ТЭС — показываем группы со всех станций (котельные, ТЭЦ и др.)
+    # Не ограничиваем по типу ТЭС – показываем группы со всех станций (котельные, ТЭЦ и др.)
     page = request.args.get("page", 1, type=int)
     filters.pop("page", None)
     per_page_param = request.args.get("per_page", "25")
@@ -3122,7 +3129,7 @@ def stations_equipment_group_fuel_params():
 
     has_active_filters = has_any_filters(request.args)
 
-    # Подписи и группировка столбцов видов топлива — как на equipment_group_fuel_params_edit_data
+    # Подписи и группировка столбцов видов топлива – как на equipment_group_fuel_params_edit_data
     # (базовые TOPLS/UGLI + детальные виды из ExtraFuelParam по Fuel.parent_id)
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
     full_columns, fuel_extra_column_attrs = assemble_fuel_edit_data_param_columns()
@@ -3365,7 +3372,7 @@ def stations_equipment_group_fuel_params_save():
                     else []
                 )
                 eg_name_by_id = {
-                    int(eg.id): ((eg.name or eg.name_ext or "—").strip() or "—")
+                    int(eg.id): ((eg.name or eg.name_ext or "–").strip() or "–")
                     for eg in eg_rows
                 }
                 for gid, details in merged_details_by_gid.items():
@@ -3374,7 +3381,7 @@ def stations_equipment_group_fuel_params_save():
                     log_equipment_group_fuel_param_changes(
                         current_user,
                         int(gid),
-                        eg_name_by_id.get(int(gid), "—"),
+                        eg_name_by_id.get(int(gid), "–"),
                         details,
                         header_lines=[
                             "Сохранение топливных параметров (Сведения о работе ТЭС).",
@@ -3505,7 +3512,7 @@ def stations_equipment_group_natural_fuel():
 
     has_active_filters = has_any_filters(request.args)
 
-    # Подписи и группировка столбцов видов топлива — как на equipment_group_fuel_params_edit_data
+    # Подписи и группировка столбцов видов топлива – как на equipment_group_fuel_params_edit_data
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
     fuel_param_column_hierarchy = build_fuel_param_columns_hierarchy(
         list(NATURAL_FUEL_COLUMNS)
@@ -3644,7 +3651,7 @@ def stations_equipment_group_specific_fuel_consumption():
     toggle_args["page"] = ["1"]
     if show_calc_mismatch:
         toggle_args.pop("show_calc_mismatch", None)
-        # При включении фильтра принудительно ставится per_page=all —
+        # При включении фильтра принудительно ставится per_page=all –
         # при отжатии возвращаем пагинацию, иначе браузер зависает на полной таблице.
         toggle_args["per_page"] = ["25"]
     else:
@@ -3847,10 +3854,10 @@ def stations_equipment_group_specific_fuel_cost():
 
     has_active_filters = has_any_filters(request.args)
 
-    # Подписи и группировка столбцов видов топлива — как на equipment_group_fuel_params_edit_data
+    # Подписи и группировка столбцов видов топлива – как на equipment_group_fuel_params_edit_data
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
 
-    # Скрываем столбцы name, year_number, ved, obl, dep, oes, er, numb1. NUMB1120 — первым после «Группа оборудования»
+    # Скрываем столбцы name, year_number, ved, obl, dep, oes, er, numb1. NUMB1120 – первым после «Группа оборудования»
     hidden_cost_columns = {"name", "year_number", "ved", "obl", "dep", "oes", "er", "numb1"}
     numb1120_col = next((c for c in SPECIFIC_FUEL_COST_COLUMNS if c[0] == "numb1120"), None)
     rest_cols = [c for c in SPECIFIC_FUEL_COST_COLUMNS if c[0] not in hidden_cost_columns and c[0] != "numb1120"]
@@ -4251,10 +4258,10 @@ def stations_equipment_group_specific_fuel_price():
 
     has_active_filters = has_any_filters(request.args)
 
-    # Подписи и группировка столбцов видов топлива — как на equipment_group_fuel_params_edit_data
+    # Подписи и группировка столбцов видов топлива – как на equipment_group_fuel_params_edit_data
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
 
-    # Скрываем служебные столбцы на странице. NUMB1120 — первым после «Группа оборудования»
+    # Скрываем служебные столбцы на странице. NUMB1120 – первым после «Группа оборудования»
     hidden_price_columns = {"name", "year_number", "obl", "sost", "group"}
     numb1120_col = next((c for c in SPECIFIC_FUEL_PRICE_COLUMNS if c[0] == "numb1120"), None)
     rest_cols = [
@@ -4276,7 +4283,7 @@ def stations_equipment_group_specific_fuel_price():
     toggle_args["page"] = ["1"]
     if show_calc_mismatch:
         toggle_args.pop("show_calc_mismatch", None)
-        # При включении фильтра принудительно ставится per_page=all —
+        # При включении фильтра принудительно ставится per_page=all –
         # при отжатии возвращаем пагинацию, иначе браузер зависает на полной таблице.
         toggle_args["per_page"] = ["25"]
     else:
@@ -4543,7 +4550,7 @@ def equipment_group_edit(equipment_group_id):
                                 flash("Данные успешно сохранены", "success")
                             group = EquipmentGroup.query.get(equipment_group_id)
                             group_name = (
-                                (group.name or group.name_ext or "—") if group else "—"
+                                (group.name or group.name_ext or "–") if group else "–"
                             )
                             if all_change_details:
                                 header = [
@@ -4646,7 +4653,7 @@ def equipment_group_edit(equipment_group_id):
                     )
                 log_lines = [
                     f"Перенос привязки с группы id={equipment_group_id} "
-                    f"({result.get('source_label') or '—'}) "
+                    f"({result.get('source_label') or '–'}) "
                     f"на {target_label} (id={result.get('target_id')}).",
                     f"Перенесено агрегатов: {rebound}",
                 ]
@@ -4716,7 +4723,7 @@ def equipment_group_edit(equipment_group_id):
 
                     if deleted_groups > 0:
                         log_lines = [
-                            f"Группа id={equipment_group_id} ({result.get('group_name') or '—'}) удалена во всех версиях БД.",
+                            f"Группа id={equipment_group_id} ({result.get('group_name') or '–'}) удалена во всех версиях БД.",
                             f"Удалено групп: {deleted_groups}",
                             f"Затронуто версий: {versions_touched}",
                             f"Удалено связей EquipmentGroupSet: {result.get('deleted_sets', 0)}",
@@ -4744,7 +4751,7 @@ def equipment_group_edit(equipment_group_id):
                 if deleted_groups > 0:
                     flash("Группа оборудования удалена.", "success")
                     log_lines = [
-                        f"Группа id={equipment_group_id} ({result.get('group_name') or '—'}) удалена.",
+                        f"Группа id={equipment_group_id} ({result.get('group_name') or '–'}) удалена.",
                         f"Удалено связей EquipmentGroupSet: {result.get('deleted_sets', 0)}",
                         f"Удалено осиротевших связей EquipmentGroupSetStation: {result.get('deleted_set_stations', 0)}",
                         f"Удалено зависимых записей: {result.get('deleted_related_rows', 0)}",
@@ -4998,7 +5005,7 @@ def equipment_group_edit(equipment_group_id):
             equipment_group_type_labels.append(str(link.equipment_group_type_id))
     equipment_group_type_labels.sort()
     equipment_group_types_display = (
-        ", ".join(equipment_group_type_labels) if equipment_group_type_labels else "—"
+        ", ".join(equipment_group_type_labels) if equipment_group_type_labels else "–"
     )
 
     # Агрегаты группы оборудования (таблица как на station_details)
@@ -5018,7 +5025,7 @@ def equipment_group_edit(equipment_group_id):
         return format_decimal_for_display(value, digits=rounding_digits)
 
     # Количество EquipmentGroupSet для группы (по ним определяем, показывать ли итог).
-    # Считаем все связи — те же, из которых берутся агрегаты в equipment_group_machines.
+    # Считаем все связи – те же, из которых берутся агрегаты в equipment_group_machines.
     equipment_group_sets_count = EquipmentGroupSet.query.filter(
         EquipmentGroupSet.equipment_group_id.in_(machine_eg_ids)
     ).count()
@@ -5192,7 +5199,7 @@ def equipment_group_edit(equipment_group_id):
         _build_main_params_grid(),
         EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
     )
-    # FuelParam.ved всегда на карточке (в т.ч. 0) — не скрывать фильтром «пустых» строк.
+    # FuelParam.ved всегда на карточке (в т.ч. 0) – не скрывать фильтром «пустых» строк.
     ved_param_raw_by_year = {
         y: _val(params_by_year.get(y), "ved") for y in years_range
     }
@@ -5206,7 +5213,7 @@ def equipment_group_edit(equipment_group_id):
         FUEL_PARAM_VED_LABELS,
     )
     fuel_param_ved_labels = sorted(FUEL_PARAM_VED_LABELS.items())
-    # nust/nr/e — мощность и выработка ЭЭ, даже если в выбранных годах NULL
+    # nust/nr/e – мощность и выработка ЭЭ, даже если в выбранных годах NULL
     # (иначе строку нельзя ни увидеть, ни заполнить; как hfix и расчётные строки).
     # Пустые строки не отбрасываем: на карточке их прячет кнопка «Пустые строки».
     table1_params_grid, table1_attrs, table1_empty_flags = _filter_empty_zero_rows(
@@ -5481,7 +5488,7 @@ def equipment_group_details(equipment_group_id):
     if start_year > end_year:
         start_year, end_year = end_year, start_year
 
-    # Обработка POST с топливными параметрами (для старых закладок) — все типы таблиц
+    # Обработка POST с топливными параметрами (для старых закладок) – все типы таблиц
     _legacy_prefixes = ("fuel_param_", "extra_param_", "consumption_param_", "cost_param_", "price_param_")
     _is_legacy_fuel_post = request.method == "POST" and can_edit and any(
         isinstance(k, str) and k.startswith(p) for k in request.form for p in _legacy_prefixes
@@ -5519,7 +5526,7 @@ def equipment_group_details(equipment_group_id):
                 flash("; ".join(messages), "success")
                 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
                 group = EquipmentGroup.query.get(equipment_group_id)
-                group_name = (group.name or group.name_ext or "—") if group else "—"
+                group_name = (group.name or group.name_ext or "–") if group else "–"
                 _LOG_ACTIONS = {
                     "Параметры группы оборудования": "Редактирование параметров группы оборудования (EquipmentGroupFuelParam)",
                     "Основные параметры": "Редактирование основных параметров (EquipmentGroupFuelParam)",
@@ -5683,7 +5690,7 @@ def _import_one_equipment_group_fuel_params_file(file, user, fallback_year: int)
 def import_equipment_group_fuel_params():
     """Загрузка из Excel на странице основных топливных параметров.
 
-    Можно несколько файлов за раз. Год — из имени (Станции2024.xlsx → 2024),
+    Можно несколько файлов за раз. Год – из имени (Станции2024.xlsx → 2024),
     иначе год фильтра страницы.
 
     Типы файлов (по имени, иначе по столбцам):
@@ -6058,7 +6065,7 @@ def import_equipment_group_specific_fuel_cost():
     """Загрузка данных EquipmentGroupSpecificFuelCost.
 
     Можно несколько файлов за раз. Имя должно содержать «Стоимость».
-    Год — из имени (Стоимость2024.xlsx → 2024), иначе год фильтра страницы.
+    Год – из имени (Стоимость2024.xlsx → 2024), иначе год фильтра страницы.
     """
     user = session.get("username", "Неизвестный пользователь")
     files = _collect_fuel_params_import_files()
@@ -6819,7 +6826,7 @@ def _get_import_report_dir():
 
 
 def _get_import_fuel_db_redirect_args():
-    """Аргументы для редиректа после импорта БД Топливо. redirect_to — endpoint (stations_turbines, stations_equipment_groups, fuel_params)."""
+    """Аргументы для редиректа после импорта БД Топливо. redirect_to – endpoint (stations_turbines, stations_equipment_groups, fuel_params)."""
     redirect_to = request.form.get("redirect_to")
     exclude = ("file", "csrf_token", "redirect_to")
     if redirect_to in ("fuel_bp.stations_turbines", "fuel_bp.stations_equipment_groups"):
@@ -6990,9 +6997,9 @@ def soft_import_composite_flags():
     """
     Admin-only: мягкая дозагрузка из Access «Имена_станций.xlsx» по numb:
     флаги COMP/MAIN/NIV и словарные поля существующих групп.
-    Phase A всегда (при apply); Phase B — только с галкой include_phase_b.
-    Отсутствующие NUMB — с галкой create_missing_numbs (текущая версия, без станции).
-    По умолчанию dry_run; запись — apply_changes.
+    Phase A всегда (при apply); Phase B – только с галкой include_phase_b.
+    Отсутствующие NUMB – с галкой create_missing_numbs (текущая версия, без станции).
+    По умолчанию dry_run; запись – apply_changes.
     """
     user = session.get("username", "Неизвестный пользователь")
     redirect_args = {k: v for k, v in request.args.items()}
@@ -7007,10 +7014,10 @@ def soft_import_composite_flags():
         return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
 
     if not str(file.filename).lower().endswith((".xlsx", ".xls")):
-        flash("Нужен Excel (.xlsx / .xls) — выгрузка Access «Имена_станций».", "danger")
+        flash("Нужен Excel (.xlsx / .xls) – выгрузка Access «Имена_станций».", "danger")
         return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
 
-    # Явный флаг записи; без него — только отчёт (безопасно по умолчанию).
+    # Явный флаг записи; без него – только отчёт (безопасно по умолчанию).
     apply_changes = request.form.get("apply_changes") in ("1", "on", "true", "yes")
     include_phase_b = request.form.get("include_phase_b") in ("1", "on", "true", "yes")
     create_missing_numbs = request.form.get("create_missing_numbs") in (
@@ -7053,10 +7060,10 @@ def soft_import_composite_flags():
             "matched_numb": result.matched_numb,
             "skipped_not_in_db": result.skipped_not_in_db,
         }
-        # Полный отчёт — в жёлтом блоке на странице (не в куче flash).
+        # Полный отчёт – в жёлтом блоке на странице (не в куче flash).
         if dry_run:
             flash(
-                "Проверка флагов и словарных полей завершена — полный отчёт на странице. "
+                "Проверка флагов и словарных полей завершена – полный отчёт на странице. "
                 "Запись не выполнялась."
                 + (" Phase B в режиме отчёта (галка выкл)." if not include_phase_b else "")
                 + (
@@ -7080,7 +7087,7 @@ def soft_import_composite_flags():
                     if create_missing_numbs
                     else " (отсутствующие NUMB пропущены)"
                 )
-                + ". Полный отчёт — на странице.",
+                + ". Полный отчёт – на странице.",
                 "success",
             )
         current_app.logger.info(
@@ -7114,7 +7121,7 @@ def soft_import_composite_flags():
 @fuel_bp.route("/stations_turbines", methods=["GET", "POST"])
 @login_required
 def stations_turbines():
-    """Страница «Турбины электростанций» — копия groups с полями MachineFuelParam после «Тип агрегата»."""
+    """Страница «Турбины электростанций» – копия groups с полями MachineFuelParam после «Тип агрегата»."""
     form = StationFilterForm()
 
     if request.method == "POST":

@@ -83,13 +83,13 @@ def log_to_db(
         safe_action = _safe_trim(action or "", MAX_ACTION)
         safe_entity_type = _safe_trim(entity_type, MAX_ENTITY_TYPE) if entity_type else None
 
-        # details — Text, но на всякий случай приводим к строке
+        # details – Text, но на всякий случай приводим к строке
         if details is not None and not isinstance(details, str):
             details = str(details)
 
-        # Создаем независимую сессию заранее — ее же используем для версии БД
+        # Создаем независимую сессию заранее – ее же используем для версии БД
         session = _make_independent_session()
-        # Если создать независимую сессию не удалось — тихо выходим,
+        # Если создать независимую сессию не удалось – тихо выходим,
         # чтобы не коммитить основной db.session и не инвалидировать объекты
         if session is None:
             return
@@ -138,7 +138,7 @@ def log_to_db(
                 current_app.logger.warning(f"log_to_db error: {e!r}")
         except Exception:
             pass
-        # Не пробрасываем исключение — логирование не должно валить основной поток
+        # Не пробрасываем исключение – логирование не должно валить основной поток
     finally:
         try:
             # Закрываем только если это НЕ db.session (иначе закроешь глобальную)

@@ -51,7 +51,7 @@ _NORILSK_TAIMYR_MARKERS = (
 _DPM_PLACEHOLDER_STATION_RE = re.compile(r"^\s*новые\s+сэс\b", re.IGNORECASE)
 
 _STATION_NUMBER_IN_NAME_RE = re.compile(
-    r"(?:^|[\s\-–—])(?:ТЭЦ|ГРЭС|ТЭС|ГЭС|АЭС|СЭС|ВЭС)?[\s\-–—]*(\d+)\s*$",
+    r"(?:^|[\s\-––])(?:ТЭЦ|ГРЭС|ТЭС|ГЭС|АЭС|СЭС|ВЭС)?[\s\-––]*(\d+)\s*$",
     re.IGNORECASE,
 )
 
@@ -175,7 +175,7 @@ def subject_has_dpm_vie_commissions(
     sipr_end: int,
 ) -> bool:
     """
-    Примечание ДПМ ВИЭ и «1)» в шапке — только если в субъекте есть вводы ВИЭ
+    Примечание ДПМ ВИЭ и «1)» в шапке – только если в субъекте есть вводы ВИЭ
     (ВЭС/СЭС) в окне [fact_year, sipr_end]. Плейсхолдеры «Новые СЭС» не считаем.
     """
     for station in stations or []:
@@ -231,7 +231,7 @@ def norilsk_taimyr_ees_label(energy_unit_name: Optional[str] = None) -> str:
     """
     eu = (energy_unit_name or "").strip()
     if eu:
-        # Убираем хвост «Красноярского края», если он уже есть в имени энергоузла —
+        # Убираем хвост «Красноярского края», если он уже есть в имени энергоузла –
         # оставляем формулировку энергоузла как территориальную часть.
         base = eu
         if not base.lower().startswith("электроэнергетическая система"):
@@ -300,7 +300,7 @@ def machine_queue_sort_key(machine: Any) -> tuple:
     )
 
 
-_DASH_RE = re.compile(r"[\s\-–—_]+", re.UNICODE)
+_DASH_RE = re.compile(r"[\s\-––_]+", re.UNICODE)
 
 
 def _machine_number_sort_key(value: Any) -> tuple:
@@ -322,7 +322,7 @@ def _machine_number_sort_key(value: Any) -> tuple:
 
 
 def station_name_number_sort_key(name: Optional[str]) -> tuple:
-    """Для ТЭЦ-21 / ТЭЦ-22 — натуральный номер из названия."""
+    """Для ТЭЦ-21 / ТЭЦ-22 – натуральный номер из названия."""
     text = (name or "").strip()
     if not text:
         return (1, 10**9, "")
@@ -375,10 +375,10 @@ def build_machine_appendix_a_note(
     """
     Примечания агрегата для Приложения А.
 
-    Факт текущего года (fact_year) — с точной датой:
+    Факт текущего года (fact_year) – с точной датой:
       «Ввод в эксплуатацию ДД.ММ.ГГГГ», «Вывод …», «Перемаркировка …», «Присоединение …».
-    Прошлые факты — без примечания.
-    План (ожидаемые годы в all_years) — «… в YYYY г.».
+    Прошлые факты – без примечания.
+    План (ожидаемые годы в all_years) – «… в YYYY г.».
     Несколько факт-событий текущего года объединяются в одно примечание.
     """
     years = set(int(y) for y in all_years)
@@ -430,13 +430,13 @@ def build_machine_appendix_a_note(
         if planned_year is not None:
             note_parts.append(f"Ввод в эксплуатацию в {planned_year} г.")
 
-    # Плановый вывод — только если нет факта вывода в текущем году
+    # Плановый вывод – только если нет факта вывода в текущем году
     if not decommission_dates:
         y = extract_year(getattr(machine, "date_decompressing_expected", None))
         if y is not None and y in years and y >= fact_year:
             note_parts.append(f"Вывод из эксплуатации в {y} г.")
 
-    # Плановая модернизация — не подменяем факт перемаркировки
+    # Плановая модернизация – не подменяем факт перемаркировки
     if not relabing_dates:
         y = extract_year(getattr(machine, "date_modernization_power_change_expected", None))
         if y is not None and y in years and y >= fact_year:

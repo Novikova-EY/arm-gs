@@ -15,7 +15,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_year_feature_list():
-    """Получает список признаков годов для текущей версии. Без кэша — версия из текущего запроса."""
+    """Получает список признаков годов для текущей версии. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = YearFeature.query
     if current_version:
@@ -24,7 +24,7 @@ def get_year_feature_list():
 
 
 def get_year_feature_id_dict():
-    """Возвращает словарь {id: name} признаков годов для текущей версии. Без кэша — версия из текущего запроса."""
+    """Возвращает словарь {id: name} признаков годов для текущей версии. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = YearFeature.query
     if current_version:

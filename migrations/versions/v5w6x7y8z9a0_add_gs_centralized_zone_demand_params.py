@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Таблица gs_centralized_zone_demand_params — параметры нагрузки для Централизованной зоны (без FK).
+"""Таблица gs_centralized_zone_demand_params – параметры нагрузки для Централизованной зоны (без FK).
 
 Revision ID: v5w6x7y8z9a0
 Revises: 9baedd89c064

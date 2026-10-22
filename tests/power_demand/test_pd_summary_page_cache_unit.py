@@ -57,7 +57,7 @@ def test_cached_load_skips_set_when_generation_bumped(app):
                     result = cache.cached_load_pd_summary_data("oes", slow_loader)
                     assert result == {"summary_rows": [{"v": "stale"}]}
                     assert calls["n"] == 1
-                    # В кэш не попало — generation сменился во время loader.
+                    # В кэш не попало – generation сменился во время loader.
                     key = cache.make_pd_summary_data_cache_key(
                         "oes", "pd_page=1&pd_page_size=2"
                     )
@@ -86,7 +86,7 @@ def test_get_rejects_entry_from_previous_generation_without_redis_delete(app):
 
 
 def test_query_string_combinations_produce_distinct_keys(app):
-    """Любое сочетание фильтров/кнопок (query) — отдельный ключ кэша."""
+    """Любое сочетание фильтров/кнопок (query) – отдельный ключ кэша."""
     with app.app_context():
         with patch.object(cache, "get_current_db_version_id", return_value=1):
             queries = [

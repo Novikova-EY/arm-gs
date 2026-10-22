@@ -33,7 +33,7 @@ def parse_truthy_arg(
     casefold: bool = False,
     use_getlist: bool = False,
 ) -> bool:
-    """True, если аргумент key — truthy-строка (1/true/yes/on)."""
+    """True, если аргумент key – truthy-строка (1/true/yes/on)."""
     if use_getlist:
         values = arg_values(args, key)
         if not values:

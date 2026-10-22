@@ -105,7 +105,7 @@ def PERIMETER_VARIANT_BY_CODE() -> dict[str, PerimeterVariantDefinition]:
     return _catalog().variants_by_code
 
 
-# Для `from registry import PERIMETER_VARIANT_BY_CODE` как dict — ленивый прокси через __getattr__ в loader consumers
+# Для `from registry import PERIMETER_VARIANT_BY_CODE` как dict – ленивый прокси через __getattr__ в loader consumers
 # Проще: в demand_summary импортировать perimeter_variant_definitions()
 
 
@@ -407,7 +407,7 @@ def kaliningrad_sync_area_year_bounds() -> tuple[int | None, int | None]:
     """Год с/по для строки СЗ Калининграда.
 
     Берётся из привязки сущности на /perimeter_variants/ (min «Год с» / max «Год по»
-    по вариантам). Если привязки нет или годы не заданы — с
+    по вариантам). Если привязки нет или годы не заданы – с
     ``KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR``.
     """
     from_years: list[int] = []
@@ -642,8 +642,8 @@ def perimeter_entity_context_for_model(
     """
     (entity_kind, entity_name) для привязок периметра по классу модели параметров.
 
-    Агрегаты «Россия», «ЭЭС России», «ЦЗ России» — без FK на refdata.
-    ОЭС и прочие территориальные сущности — по parent_id (см. вызывающий код).
+    Агрегаты «Россия», «ЭЭС России», «ЦЗ России» – без FK на refdata.
+    ОЭС и прочие территориальные сущности – по parent_id (см. вызывающий код).
     """
     key = (model_name or "").strip()
     if not key:

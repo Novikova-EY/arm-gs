@@ -286,8 +286,8 @@ def equipment_group_query(
         query = query.filter(EquipmentGroupType.name.ilike(f"%{equipment_group_filter}%"))
 
     # Фильтр по типу технологии:
-    # - если передан ID (из выпадающего списка) — фильтруем по EquipmentGroupType.id_technology_type
-    # - если передана строка (ручной ввод) — фильтруем по имени типа технологии
+    # - если передан ID (из выпадающего списка) – фильтруем по EquipmentGroupType.id_technology_type
+    # - если передана строка (ручной ввод) – фильтруем по имени типа технологии
     if technology_type_id is not None:
         query = query.filter(EquipmentGroupType.id_technology_type == technology_type_id)
     elif technology_type_filter:
@@ -384,7 +384,7 @@ def update_equipment_group_service(data, user):
     
     last_entity_id = None
 
-    # flush() может выбросить IntegrityError до commit — ловим в том же try, что и _commit_with_retry()
+    # flush() может выбросить IntegrityError до commit – ловим в том же try, что и _commit_with_retry()
     try:
         with db.session.no_autoflush:
             _merge_submitted_batch_duplicates(data, user, merged_away_ids, updated_ids)
@@ -417,7 +417,7 @@ def update_equipment_group_service(data, user):
                         entity_id=equipment_group_id)
                     raise ValueError(f"Запись с ID «{equipment_group_id}» не найдена.")
 
-                # Пара (name, technology_type): при дубле с уже существующей записью — сливаем с неё
+                # Пара (name, technology_type): при дубле с уже существующей записью – сливаем с неё
                 if name != (obj.name or "") or new_technology_type_id != obj.id_technology_type:
                     dup = (
                         _equipment_group_dup_query(name, new_technology_type_id, exclude_id=equipment_group_id)
@@ -485,7 +485,7 @@ def update_equipment_group_service(data, user):
                         changes.append(format_field_change("id_technology_availability", old_name, new_name, "equipment_group"))
                         obj.id_technology_availability = new_val
 
-                # Если есть реальные изменения — лог и добавление в список
+                # Если есть реальные изменения – лог и добавление в список
                 if changes:
                     log_to_db(
                         user, 
@@ -642,7 +642,7 @@ def add_equipment_group_all_versions_service(data, user):
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — нельзя выполнить добавление «во всех версиях»."
+            "В системе нет зарегистрированных версий БД – нельзя выполнить добавление «во всех версиях»."
         )
     shared_ref = str(uuid.uuid4())
 

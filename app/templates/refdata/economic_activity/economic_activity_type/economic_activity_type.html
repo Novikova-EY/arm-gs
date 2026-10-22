@@ -334,13 +334,13 @@
 
                         <!-- Строки таблицы. Столбец "Порядок отображения" -->
                         <td class="text-center">
-                            {{ economic_activity_type.display_order if economic_activity_type.display_order is not none else '—' }}
+                            {{ economic_activity_type.display_order if economic_activity_type.display_order is not none else '–' }}
                         </td>
 
                         <!-- Строки таблицы. Столбец "Вид экономической деятельности" -->
                         <td> {{ economic_activity_type.name }} </td>
 
-                        <td> {{ economic_activity_type.name_2 or '—' }} </td>
+                        <td> {{ economic_activity_type.name_2 or '–' }} </td>
                     </tr>
                     {% else %}
                     <tr>

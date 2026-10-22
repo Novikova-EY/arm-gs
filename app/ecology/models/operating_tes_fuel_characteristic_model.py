@@ -9,15 +9,16 @@ from config import SCHEMA_ECOLOGY, SCHEMA_REFDATA
 
 
 class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
-    """Переопределение справочных характеристик топлива по году и версии БД."""
+    """Общие для всех уровней характеристики топлива по году и версии БД."""
 
     __tablename__ = "gs_eco_operating_tes_fuel_chars"
     __table_args__ = (
         UniqueConstraint(
+            "territory_slug",
             "fuel_key",
             "year_number",
             "database_version_id",
-            name="uq_eco_ot_fuel_char_key_year_ver",
+            name="uq_eco_ot_fuel_char_slice_key_year_ver",
         ),
         ForeignKeyConstraint(
             ["year_number", "database_version_id"],
@@ -33,6 +34,11 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
 
     # Уникальный идентификатор записи
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Общий набор хранится под vsego; поле сохранено для совместимости со старыми срезами.
+    territory_slug = db.Column(
+        db.String(40), nullable=False, default="vsego", server_default="vsego", index=True
+    )
 
     # Ключ вида топлива (gas_natural, mazut, donetsk, …)
     fuel_key = db.Column(db.String(80), nullable=False, index=True)
@@ -92,9 +98,6 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
     # Коэффициент эмиссии CO2, т СО2/ТДж
     t_co2_per_tj = db.Column(Numeric(36, 16), nullable=True)
 
-    # Коэффициент перехода к натуральному топливу (ГИСТЭК 27-30), д.ед.
-    k_natural = db.Column(Numeric(36, 16), nullable=True)
-    
     # Примечание
     note = db.Column(db.Text, nullable=True)
 

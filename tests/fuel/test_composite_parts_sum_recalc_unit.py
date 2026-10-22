@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Unit-tests: Access «Сумма_частей» — Σ детей на родителя составной станции."""
+"""Unit-tests: Access «Сумма_частей» – Σ детей на родителя составной станции."""
 from decimal import Decimal
 from types import SimpleNamespace
 

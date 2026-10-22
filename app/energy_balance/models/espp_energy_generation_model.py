@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-ESPPEnergyGeneration — сводная выработка ЭЭ по ЭСПП в разрезе РЭС (млн кВтч).
+ESPPEnergyGeneration – сводная выработка ЭЭ по ЭСПП в разрезе РЭС (млн кВтч).
 
 Данные хранятся по годам и, при необходимости, по месяцам:
-- year_number — календарный год (ссылка на Year.number вместе с database_version_id);
-- month_number = 0 — годовое значение («год»);
-- month_number = 1..12 — значение за соответствующий месяц года.
+- year_number – календарный год (ссылка на Year.number вместе с database_version_id);
+- month_number = 0 – годовое значение («год»);
+- month_number = 1..12 – значение за соответствующий месяц года.
 """
 from sqlalchemy.sql import func
 from sqlalchemy import Numeric
@@ -15,7 +15,7 @@ from config import SCHEMA_ENERGY_BALANCE, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.generation.models.common.version_year_unique_index import version_year_month_unique_index
 
-# 0 — годовое значение («год»); 1–12 — номер месяца
+# 0 – годовое значение («год»); 1–12 – номер месяца
 ESPP_ENERGY_GENERATION_PERIOD_YEAR = 0
 
 

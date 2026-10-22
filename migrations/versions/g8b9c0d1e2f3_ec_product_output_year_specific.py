@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Выпуск продукции: год цен (Year) — id_year_specific_product_output.
+"""Выпуск продукции: год цен (Year) – id_year_specific_product_output.
 
 Revision ID: g8b9c0d1e2f3
 Revises: f7a8b9c0d1e2

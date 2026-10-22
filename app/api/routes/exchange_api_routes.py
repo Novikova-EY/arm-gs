@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""JSON-API наборов datasets: отдельный набор — отдельный URL.
+"""JSON-API наборов datasets: отдельный набор – отдельный URL.
 
-GET /api/config — discovery (первый запрос внешнего клиента)
-GET /api/datasets — список имён наборов (справка)
-GET /api/datasets/<database_version> — каталог наборов выбранной версии
-GET /api/datasets/<database_version>/<dataset> — один JSON-набор
-GET /api/duplicate_identity_uuids — план разведения дублирующих UUID
-GET /api/duplicate_identity_uuids/<database_version> — тот же план по версии
+GET /api/config – discovery (первый запрос внешнего клиента)
+GET /api/datasets – список имён наборов (справка)
+GET /api/datasets/<database_version> – каталог наборов выбранной версии
+GET /api/datasets/<database_version>/<dataset> – один JSON-набор
+GET /api/duplicate_identity_uuids – план разведения дублирующих UUID
+GET /api/duplicate_identity_uuids/<database_version> – тот же план по версии
 
 Версии БД: GET /api/database_versions (отдельный blueprint).
 """
@@ -87,7 +87,7 @@ def get_exchange_config():
 def get_datasets_catalog():
     """
     Справка: какие наборы можно запросить по id версии.
-    Лёгкий ответ — открывается в браузере.
+    Лёгкий ответ – открывается в браузере.
 
     GET /api/datasets
     """

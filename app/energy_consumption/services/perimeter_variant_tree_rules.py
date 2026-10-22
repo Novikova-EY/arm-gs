@@ -82,7 +82,7 @@ def should_add_new_territories_to_ees_russia_base_tree(
 ) -> bool:
     """Для ЭЭС России (агрегат): в базовом дереве (without_nt) ОЭС Юга получает НТ с 2023 года.
 
-    Вариант with_nt — только строка показателей; территориальное отличие — в дереве under without_nt.
+    Вариант with_nt – только строка показателей; территориальное отличие – в дереве under without_nt.
     """
     return (
         entity_kind == EES_RUSSIA_ENTITY_KIND

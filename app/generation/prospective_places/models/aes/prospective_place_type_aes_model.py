@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ProspectivePlaceTypeAES — тип перспективной площадки АЭС (справочник refdata).
+ProspectivePlaceTypeAES – тип перспективной площадки АЭС (справочник refdata).
 
 Таблица gs_gen.gs_gen_prospective_place_types. Только для MachineProspectivePlaceAES.
 Для ГЭС см. ProspectivePlaceTypeGES.

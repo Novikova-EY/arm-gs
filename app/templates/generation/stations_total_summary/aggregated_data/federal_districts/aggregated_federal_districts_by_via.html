@@ -17,7 +17,7 @@
             {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -34,7 +34,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -51,7 +51,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -80,7 +80,7 @@
                                 .get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}
@@ -97,7 +97,7 @@
                                 .get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}
@@ -115,7 +115,7 @@
                                 .get(y, 0) %}
                     <td class="power-column">
                         {% if val is none or val == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ val | format_decimal }}
                         {% endif %}

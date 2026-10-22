@@ -36,7 +36,7 @@ def build_accum_monetary_income_excel_stream(context: dict[str, Any]) -> BytesIO
 
     row_idx = 2
     for ami_row in context.get("accum_monetary_income_rows") or []:
-        label = f"{ami_row.get('abbr', '')} — {ami_row.get('label', '')}"
+        label = f"{ami_row.get('abbr', '')} – {ami_row.get('label', '')}"
         ws.cell(row=row_idx, column=1, value=label)
         cells = ami_row.get("cells") or {}
         for col_idx, year in enumerate(years, start=2):

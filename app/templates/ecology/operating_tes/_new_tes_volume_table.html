@@ -1,0 +1,39 @@
+<colgroup>
+  <col class="ot-col-label" />
+  {% for column in value_columns %}<col class="ot-col-terr" />{% endfor %}
+</colgroup>
+<thead class="table-success">
+  <tr class="text-center align-middle">
+    <th class="ot-label-col" rowspan="3" scope="col">Вид топлива
+      {% include 'ecology/operating_tes/_territory_filter.html' %}
+    </th>
+    {% for terr in territory_columns %}
+    <th class="ot-terr-col border-start border-2" colspan="{{ new_tes_volume_columns|length }}" scope="colgroup">{{ terr.sheet_name }}</th>
+    {% endfor %}
+  </tr>
+  <tr class="text-center align-middle">
+    {% for terr in territory_columns %}
+    <th class="ot-terr-col border-start border-2" colspan="{{ new_tes_volume_columns|length - 1 }}" scope="colgroup">Вредные вещества, т</th>
+    <th class="ot-year-col" rowspan="2" scope="col">{{ new_tes_volume_columns[-1][1] }}</th>
+    {% endfor %}
+  </tr>
+  <tr class="text-center align-middle">
+    {% for terr in territory_columns %}
+    {% for key, label in new_tes_volume_columns if key != 'co2' %}
+    <th class="ot-year-col{% if loop.first %} border-start border-2{% endif %}" scope="col">{{ label }}</th>
+    {% endfor %}
+    {% endfor %}
+  </tr>
+</thead>
+<tbody>
+  {% for row in rows %}
+  <tr class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}" data-row-key="{{ row.key }}">
+    <td class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">{{ row.label }}</td>
+    {% for column in value_columns %}
+    <td class="text-center ot-year-cell{% if column.metric == 'pollutants_total' %} border-start border-2{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}"
+        data-territory="{{ column.territory_slug }}" data-metric="{{ column.metric }}"
+        title="{{ row.col_values_raw[column.slug] }}">{{ row.col_values[column.slug] }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</tbody>

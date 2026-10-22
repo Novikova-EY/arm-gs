@@ -3,7 +3,7 @@
 
 Сопоставление группы: numb (NUMB1120) + копии с тем же external_code.
 При fill_missing_versions для версий без группы добавляется (None, version_id)
-— только у таблиц с nullable equipment_group_id.
+– только у таблиц с nullable equipment_group_id.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def resolve_equipment_group_import_targets(
     во все версии БД.
 
     :param fill_missing_versions: добавить (None, version_id) для версий без ГО
-    :param require_group_match: если ГО нет ни в одной версии — вернуть []
+    :param require_group_match: если ГО нет ни в одной версии – вернуть []
         (False = как «Тепло и тарифы»: писать во все версии даже без ГО)
     """
     numb_str = normalize_import_numb(numb_value)
@@ -120,9 +120,9 @@ def lookup_imported_row(
     """
     Находит уже загруженную строку.
 
-    При наличии ГО — по (equipment_group_id, year) [+ extra], без фильтра версии
+    При наличии ГО – по (equipment_group_id, year) [+ extra], без фильтра версии
     (уникальный ключ обычно без database_version_id).
-    Без ГО — по (equipment_group_id IS NULL, year, database_version_id) [+ extra].
+    Без ГО – по (equipment_group_id IS NULL, year, database_version_id) [+ extra].
     """
     extra_eq = extra_eq or {}
     query = model.query.filter_by(year_number=year_number, **extra_eq)

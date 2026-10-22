@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-StationEnergyGeneration — выработка электроэнергии электростанцией (млн кВтч).
+StationEnergyGeneration – выработка электроэнергии электростанцией (млн кВтч).
 
 Данные хранятся по годам и, при необходимости, по месяцам:
-- year_number — календарный год (ссылка на Year.number вместе с database_version_id);
-- month_number = 0 — годовое значение («год»);
-- month_number = 1..12 — значение за соответствующий месяц года.
+- year_number – календарный год (ссылка на Year.number вместе с database_version_id);
+- month_number = 0 – годовое значение («год»);
+- month_number = 1..12 – значение за соответствующий месяц года.
 """
+from decimal import Decimal
+
 from sqlalchemy.sql import func
-from sqlalchemy import Numeric
+from sqlalchemy import Numeric, event
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_ENERGY_BALANCE, SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.generation.models.common.version_year_unique_index import version_year_month_unique_index
 
-# 0 — годовое значение («год»); 1–12 — номер месяца
+# 0 – годовое значение («год»); 1–12 – номер месяца
 STATION_ENERGY_GENERATION_PERIOD_YEAR = 0
+
+
+def calculate_aes_own_needs_percent(own_needs, energy):
+    if own_needs is None or energy in (None, 0):
+        return None
+    return Decimal(str(own_needs)) / Decimal(str(energy)) * Decimal(100)
 
 
 class StationEnergyGeneration(db.Model, AuditMixin):
@@ -77,6 +85,8 @@ class StationEnergyGeneration(db.Model, AuditMixin):
 
     # Выработка, млн кВтч
     electricity_generation = db.Column(Numeric(25, 16))
+    own_needs = db.Column(Numeric(25, 16))
+    own_needs_percent = db.Column(Numeric(36, 16))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -97,4 +107,14 @@ class StationEnergyGeneration(db.Model, AuditMixin):
         return (
             f"<StationEnergyGeneration id={self.id} station_id={self.id_station} "
             f"year={self.year_number} period={period} gen={self.electricity_generation}>"
+        )
+
+
+@event.listens_for(StationEnergyGeneration, "before_insert")
+@event.listens_for(StationEnergyGeneration, "before_update")
+def _update_aes_own_needs_percent(mapper, connection, target):
+    # Covers generation edits both on the balance page and on the station card.
+    if target.is_annual and target.own_needs is not None:
+        target.own_needs_percent = calculate_aes_own_needs_percent(
+            target.own_needs, target.electricity_generation
         )

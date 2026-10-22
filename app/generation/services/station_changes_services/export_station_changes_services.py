@@ -16,7 +16,7 @@ from app.generation.services.station_changes_services.station_changes_services i
 # Порядок типов станций в итоговых блоках Excel (включая СНЭЭ).
 STATION_TYPE_ORDER_FOR_TOTALS = ["АЭС", "ГЭС", "ГАЭС", "ТЭС", "ВЭС", "СЭС", "СНЭЭ"]
 
-# Короткое тире утверждённой формы Приложения 2 (не длинное «—»).
+# Короткое тире утверждённой формы Приложения 2 (не длинное «–»).
 PRIL2_DASH = "–"
 
 PRIL2_FOOTNOTES: list[tuple[str, float]] = [
@@ -118,13 +118,13 @@ def _get_sum_years_and_header(start_year: int, end_year: int, current_year: int 
     """
     years = list(range(start_year, end_year + 1))
 
-    # Если текущий год не определен или не входит в диапазон — суммируем все как есть.
+    # Если текущий год не определен или не входит в диапазон – суммируем все как есть.
     if current_year is None or current_year < start_year or current_year > end_year:
         return years, f"{start_year}–{end_year} гг."
 
     sum_years = [y for y in years if y != current_year]
 
-    # Если текущий год — первый в диапазоне, делаем заголовок как в форме СиПР (со следующего года).
+    # Если текущий год – первый в диапазоне, делаем заголовок как в форме СиПР (со следующего года).
     if current_year == start_year and start_year + 1 <= end_year:
         return sum_years, f"{start_year + 1}–{end_year} гг."
 
@@ -136,7 +136,7 @@ def _get_export_header_period_start(current_year: int | None, fallback_start_yea
     """
     Для шапок экспортируемых файлов: начало периода = (текущий год + 1).
 
-    Если текущий год определить не удалось — используем fallback_start_year.
+    Если текущий год определить не удалось – используем fallback_start_year.
     """
     if current_year is None:
         return int(fallback_start_year)
@@ -169,7 +169,7 @@ def _synchronous_area_total_label(sa_name: str | None, sa_number: str | int | No
     sa_l = str(sa_name or "").strip().lower().replace("ё", "е")
     num = str(sa_number or "").strip().lower()
 
-    # Технический ярлык orphan-id (СЗ из другой версии БД) — не печатаем «Итого по id=N»
+    # Технический ярлык orphan-id (СЗ из другой версии БД) – не печатаем «Итого по id=N»
     if sa_l.startswith("id=") and sa_l[3:].isdigit():
         return "Итого по синхронной зоне"
 
@@ -194,7 +194,7 @@ def _synchronous_area_total_label(sa_name: str | None, sa_number: str | int | No
         or "2-я" in sa_l
         or "2-ая" in sa_l
     )
-    # Если в имени есть и 1, и 2 (редко) — приоритет у явного number.
+    # Если в имени есть и 1, и 2 (редко) – приоритет у явного number.
     if num == "1":
         is_second = False
     elif num == "2":
@@ -241,7 +241,7 @@ def _pril2_row_period_total(year, p_ust, sum_years):
 
 def _pril2_empty_text(value) -> str:
     text = "" if value is None else str(value).strip()
-    if not text or text in {"—", "-", "–"}:
+    if not text or text in {"–", "-", "–"}:
         return PRIL2_DASH
     return text
 
@@ -316,11 +316,11 @@ def _get_expected_export_years(
 
     export_years: list[int] = []
 
-    # Текущий год (план) — всегда первый, если попадает в диапазон
+    # Текущий год (план) – всегда первый, если попадает в диапазон
     if current_year_split is not None and int(start_year) <= int(current_year_split) <= int(end_year):
         export_years.append(int(current_year_split))
 
-    # Далее — плановые годы после текущего года (или весь плановый хвост, если текущий не найден)
+    # Далее – плановые годы после текущего года (или весь плановый хвост, если текущий не найден)
     if current_year_split is not None:
         export_years.extend([y for y in plan_years if y > int(current_year_split)])
     else:
@@ -363,7 +363,7 @@ def _power_row_machine_number(machine, power_row: dict) -> str:
 
 
 def _power_row_machine_name(machine, power_row: dict) -> str:
-    """Тип ГО как на веб: до/после при смене имени; если имя то же — только на «до модернизации»."""
+    """Тип ГО как на веб: до/после при смене имени; если имя то же – только на «до модернизации»."""
     part_name = None
     if isinstance(power_row, dict):
         part_name = power_row.get("display_machine_name")
@@ -391,7 +391,7 @@ def _power_row_machine_name(machine, power_row: dict) -> str:
     return (
         getattr(machine, "display_name", None)
         or getattr(machine, "machine_name", None)
-        or "—"
+        or "–"
     )
 
 
@@ -432,7 +432,7 @@ def _write_machine_identity_cells(
         name = (
             getattr(machine, "display_name", None)
             or getattr(machine, "machine_name", None)
-            or "—"
+            or "–"
         )
         merge_if_needed(first_row, machine_name_col, last_row, machine_name_col, name, cell_format)
         return
@@ -771,7 +771,7 @@ def _write_combined_totals_block(
     note_col: int,
     max_merged_row_by_col: dict[int, int],
     current_row: int,
-    empty_cell_dash: str = "—",
+    empty_cell_dash: str = "–",
     mw_display_fn=None,
 ) -> int:
     """Пишет комбинированный блок итогов: для каждого мероприятия сначала 'Всего',
@@ -1083,7 +1083,7 @@ def _write_rd_station_data_rows(
     flat_segments: list[tuple[str, int]] = []
     for _station, _station_rows, _machine_plans in rd_station_plans:
         for _machine, _rows in _machine_plans:
-            company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
+            company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "–"
             flat_segments.append((company, len(_rows)))
     row_cursor = rd_start_row
     seg_i = 0
@@ -1110,7 +1110,7 @@ def _write_rd_station_data_rows(
             station_name_col,
             station_row_cursor + station_rows - 1,
             station_name_col,
-            getattr(station, "name", "—"),
+            getattr(station, "name", "–"),
             text_center_format,
         )
 
@@ -1140,8 +1140,8 @@ def _write_rd_station_data_rows(
                 station_type_name = _pril2_empty_text(station_type_name)
                 fuel_value = _pril2_empty_text(getattr(machine, "fuel_so", None))
             else:
-                station_type_name = station_type_name or "—"
-                fuel_value = getattr(machine, "fuel_so", None) or "—"
+                station_type_name = station_type_name or "–"
+                fuel_value = getattr(machine, "fuel_so", None) or "–"
             merge_if_needed(
                 first_row_for_machine,
                 station_type_col,
@@ -1897,17 +1897,17 @@ def export_station_changes_pril_2_russia_to_excel(
         "изолированных территориальных электроэнергетических системах\n"
         f"на период {period_start}–{period_end} годов"
     )
-    # Строка 4 Excel — отступ перед «ПЕРЕЧЕНЬ...» (как в утверждённом файле)
+    # Строка 4 Excel – отступ перед «ПЕРЕЧЕНЬ...» (как в утверждённом файле)
     worksheet.set_row(3, 33.75)
 
-    # «ПЕРЕЧЕНЬ...» — строка 5 Excel, на всю ширину до колонки «Итого»
+    # «ПЕРЕЧЕНЬ...» – строка 5 Excel, на всю ширину до колонки «Итого»
     worksheet.merge_range(f"A5:{last_col_name}5", preamble_text, header_center_format_bold)
     worksheet.set_row(4, 117.75)
 
     # Пустая строка ПОСЛЕ «ПЕРЕЧЕНЬ...»
     worksheet.set_row(5, 15.75)
 
-    # (МВт) — строка 7 Excel, над колонкой "Итого"
+    # (МВт) – строка 7 Excel, над колонкой "Итого"
     worksheet.write(6, all_years_col, "(МВт)", preamble_unit_format)
     worksheet.set_row(6, 24.0)
 

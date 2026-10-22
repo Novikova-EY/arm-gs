@@ -110,9 +110,9 @@ class ProspectivePlaceGaesTepSource(db.Model, AuditMixin):
 
     # Годовая выработка электроэнергии, млн кВтч
     generation_average_multiyear_million_kwh = db.Column(db.String(100), nullable=True)
-    # Годовая выработка электроэнергии — 1 очередь, млн кВтч
+    # Годовая выработка электроэнергии – 1 очередь, млн кВтч
     generation_average_multiyear_million_kwh_stage_1 = db.Column(db.String(100), nullable=True)
-    # Годовая выработка электроэнергии — 2 очередь, млн кВтч
+    # Годовая выработка электроэнергии – 2 очередь, млн кВтч
     generation_average_multiyear_million_kwh_stage_2 = db.Column(db.String(100), nullable=True)
 
     # Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВтч
@@ -123,7 +123,7 @@ class ProspectivePlaceGaesTepSource(db.Model, AuditMixin):
 
     # Годовое потребление электрической энергии ГАЭС на заряд, млн кВтч
     annual_charging_electricity_consumption_million_kwh = db.Column(db.String(100), nullable=True)
-    # Годовое потребление электрической энергии ГАЭС на заряд, млн кВтч — по очередям
+    # Годовое потребление электрической энергии ГАЭС на заряд, млн кВтч – по очередям
     annual_charging_electricity_consumption_million_kwh_stage_1 = db.Column(db.String(100), nullable=True)
     annual_charging_electricity_consumption_million_kwh_stage_2 = db.Column(db.String(100), nullable=True)
 
@@ -140,7 +140,7 @@ class ProspectivePlaceGaesTepSource(db.Model, AuditMixin):
         foreign_keys=[id_year_specific_capital_investment],
     )
 
-    # Стоимость (капзатраты без ПИР), млн руб; год — справочник Year
+    # Стоимость (капзатраты без ПИР), млн руб; год – справочник Year
     capital_cost_wo_pir_total_million_rub = db.Column(db.Numeric(24, 4), nullable=True)
     id_year_capital_cost_wo_pir_total = db.Column(
         db.Integer,

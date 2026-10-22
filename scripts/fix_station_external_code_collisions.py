@@ -74,7 +74,7 @@ def _count_sql_multi_ref_external_codes() -> int:
 
 
 def _print_db_target() -> None:
-    """Печатает фактическое подключение — сверьте host/database с pgAdmin перед применением."""
+    """Печатает фактическое подключение – сверьте host/database с pgAdmin перед применением."""
     url = db.engine.url
     print("Целевая БД (должна совпадать с подключением в pgAdmin):")
     print(f"  driver:   {url.drivername}")
@@ -276,7 +276,7 @@ def _build_station_update_plan_sql(sync_all: bool = False) -> tuple[dict[int, st
         )
 
         if multi_ref:
-            # Один и тот же uuid5(sk) на разных субъектах, если sk схлопнулся — добиваем ref_uuid.
+            # Один и тот же uuid5(sk) на разных субъектах, если sk схлопнулся – добиваем ref_uuid.
             raw_targets: dict[int, str] = {}
             for row in group_rows:
                 mm = _m(row)
@@ -588,7 +588,7 @@ def main() -> None:
             if sql_multi_ref_groups == 0 and sql_bad_from_rows == 0:
                 print(
                     "Подсказка: в этой базе нет одного и того же external_code на разные субъекты "
-                    "(или вы подключены не к той БД, что в pgAdmin — сверьте host/database выше)."
+                    "(или вы подключены не к той БД, что в pgAdmin – сверьте host/database выше)."
                 )
             return
 

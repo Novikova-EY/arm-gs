@@ -485,7 +485,7 @@ def apply_distribution_parameters_save_from_form(
     def _data_from_parsed(parsed: dict[str, Any], existing: DistributionParameter | None = None) -> dict[str, Any]:
         data = {attr: parsed["numeric"].get(attr) for attr in _NUMERIC_ATTRS}
         data["lim"] = parsed["lim_v"]
-        # filter_text / wname и пр. с формы сейчас не редактируются — сохраняем с якоря
+        # filter_text / wname и пр. с формы сейчас не редактируются – сохраняем с якоря
         if existing is not None:
             for attr in _NUMERIC_ATTRS:
                 data[attr] = coalesce_posted_numeric_with_stored(

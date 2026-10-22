@@ -63,7 +63,7 @@ def _chart_calc_intensity_y(
     coef_a: float | None,
     coef_x: float | None,
 ) -> float | None:
-    """Y = A × I^X (A — вручную введённый коэффициент или «Арасч»)."""
+    """Y = A × I^X (A – вручную введённый коэффициент или «Арасч»)."""
     if accum_x is None or coef_a is None or coef_x is None:
         return None
     if not (accum_x > 0) or not (coef_a > 0):
@@ -87,8 +87,8 @@ def build_ei_section_scatter_chart(
     current_year: int | None,
 ) -> dict[str, Any] | None:
     """
-    Scatter: X — накопленные инвестиции, Y — электроёмкость.
-    «Фактическая» — годы ≤ текущего; «Расчётная» — Y = A_ручн. × I^X по display_years.
+    Scatter: X – накопленные инвестиции, Y – электроёмкость.
+    «Фактическая» – годы ≤ текущего; «Расчётная» – Y = A_ручн. × I^X по display_years.
     """
     if not (section.get("has_ei_block") or section.get("has_ei_intensity_block")):
         return None
@@ -180,7 +180,7 @@ def build_rf_scatter_chart(
 ) -> dict[str, Any] | None:
     """
     Scatter для блока РФ (как свод ФО): факт ≤ текущего года;
-    расчётная кривая — с текущего года по конец периода.
+    расчётная кривая – с текущего года по конец периода.
     """
     calc_cells = calculated_cells if calculated_cells is not None else intensity_cells
     fact: list[dict[str, Any]] = []
@@ -222,7 +222,7 @@ def build_fd_summary_scatter_chart(
 ) -> dict[str, Any] | None:
     """
     Сводный scatter по ФО (как в Excel «Таблица 1»): одна строка электроёмкости ВРП.
-    «Фактическая» — годы ≤ текущего; «Расчётная» — с текущего года по конец периода.
+    «Фактическая» – годы ≤ текущего; «Расчётная» – с текущего года по конец периода.
     """
     return build_rf_scatter_chart(
         accum_cells=accum_cells,

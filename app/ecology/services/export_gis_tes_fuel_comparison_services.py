@@ -68,7 +68,7 @@ def _row_values(
     columns: list[dict[str, Any]],
     display_cells: list[Any],
 ) -> list[Any]:
-    """Значения строки: числа — сырыми, остальные — как на экране."""
+    """Значения строки: числа – сырыми, остальные – как на экране."""
     filled = (group.get("filled_by_year") or {}).get(row.get("year")) or []
     values: list[Any] = []
     for index, column in enumerate(columns):
@@ -124,6 +124,12 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
     page_title = str(context.get("page_title") or sheet.get("page_title") or "Данные")
     hierarchy = list(context.get("hierarchy") or [])
     labels = _column_labels(columns, _header_labels(context))
+    if "norm_zv_selected" in context:
+        selected = context["norm_zv_selected"]
+        parts = [label for attr, label in context.get("norm_zv_options", []) if attr in selected]
+        for index, column in enumerate(columns):
+            if column.get("key") == "ZV_normir":
+                labels[index] += " (" + (" + ".join(parts) or "слагаемые не выбраны") + ")"
 
     wb = Workbook()
     ws = wb.active

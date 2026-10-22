@@ -16,7 +16,7 @@ from app.refdata.services.refdata_all_versions_common import (
     new_shared_ref_uuid,
 )
 
-# Поля данных (не FK версии) — копируются во все версии.
+# Поля данных (не FK версии) – копируются во все версии.
 DP_SYNC_DATA_ATTRS: tuple[str, ...] = (
     "filter_text",
     "e",
@@ -151,7 +151,7 @@ def upsert_distribution_parameter_in_all_versions(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — "
+            "В системе нет зарегистрированных версий БД – "
             "нельзя сохранить параметры распределения во всех версиях."
         )
 
@@ -179,19 +179,19 @@ def upsert_distribution_parameter_in_all_versions(
         id_year = year_id_for_version(year_number, vid)
         if id_year is None:
             warnings.append(
-                f"Версия БД id={vid}: нет года {year_number} в справочнике — пропуск."
+                f"Версия БД id={vid}: нет года {year_number} в справочнике – пропуск."
             )
             continue
         id_base = year_id_for_version(base_year_number, vid) if base_year_number is not None else None
         if base_year_number is not None and id_base is None:
             warnings.append(
-                f"Версия БД id={vid}: нет базового года {base_year_number} — пропуск."
+                f"Версия БД id={vid}: нет базового года {base_year_number} – пропуск."
             )
             continue
         id_ues = ues_id_for_version(ues_ref_uuid, vid) if ues_ref_uuid else None
         if ues_ref_uuid and id_ues is None:
             warnings.append(
-                f"Версия БД id={vid}: нет ОЭС с ref_uuid={ues_ref_uuid} — пропуск."
+                f"Версия БД id={vid}: нет ОЭС с ref_uuid={ues_ref_uuid} – пропуск."
             )
             continue
 

@@ -136,7 +136,7 @@ def test_build_rf_territory_summary_rows(app):
 
 
 def test_build_rf_territory_summary_from_fd_summaries_plan_years(app):
-    """Сводка РФ по всем годам — сумма сводок ФО с прогнозом на плановые годы."""
+    """Сводка РФ по всем годам – сумма сводок ФО с прогнозом на плановые годы."""
     ved_types = _ved_types()
     fd_summary_a = {
         "reference_rows": [

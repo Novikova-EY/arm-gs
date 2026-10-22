@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Расчет полей _calc для EquipmentGroupSpecificFuelConsumption.
-param — EquipmentGroupFuelParam (ewtp, qotr, ved и т.д.).
+param – EquipmentGroupFuelParam (ewtp, qotr, ved и т.д.).
 """
 from decimal import Decimal
 
@@ -52,7 +52,7 @@ def safe_div(a, b, default=None):
 def calc_y_calc(param) -> Decimal:
     """
     Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал (расчет).
-    param — EquipmentGroupFuelParam (ved, qotr, ewtp).
+    param – EquipmentGroupFuelParam (ved, qotr, ewtp).
     """
     if param is None:
         return D0
@@ -69,8 +69,8 @@ def calc_y_calc(param) -> Decimal:
 def calc_btp_calc(param, coeff_k) -> Decimal:
     """
     УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч (расчет).
-    param — EquipmentGroupFuelParam (ved, ewtp, e, eurt).
-    coeff_k — consumption.k (коэффициент экономии от теплофикации, привязан к году).
+    param – EquipmentGroupFuelParam (ved, ewtp, e, eurt).
+    coeff_k – consumption.k (коэффициент экономии от теплофикации, привязан к году).
     """
     if param is None:
         return D0
@@ -91,7 +91,7 @@ def calc_btp_calc(param, coeff_k) -> Decimal:
 def calc_sntp_calc(param) -> Decimal:
     """
     Коэффициент отпуска ЭЭ в теплофикационном режиме (расчет).
-    param — EquipmentGroupFuelParam (ved, ewtp, eotp, e, snk).
+    param – EquipmentGroupFuelParam (ved, ewtp, eotp, e, snk).
     """
     if param is None:
         return D0
@@ -123,7 +123,7 @@ def calc_bk_calc(param, btp_calc, sntp_calc) -> Decimal:
     """
     УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч (расчет).
     Зависит от уже посчитанных btp_calc и sntp_calc.
-    param — EquipmentGroupFuelParam (ved, ewtp, e, eust, snk, eurt).
+    param – EquipmentGroupFuelParam (ved, ewtp, e, eust, snk, eurt).
     """
     if param is None:
         return D0

@@ -3,7 +3,7 @@
 """
 Помечает группу оборудования родителем составной станции (comp=1, main пусто).
 
-Когда нужно: на /fuel/stations_equipment_groups у станции две строки одной группы —
+Когда нужно: на /fuel/stations_equipment_groups у станции две строки одной группы –
 безверсионная оболочка (comp=1, legacy) и группа текущей версии (main = numb родителя).
 Тогда обе подсвечиваются как дубль numb, а строка «станция» и полоска кластера
 рисуются по оболочке, карточка которой может не открываться.
@@ -19,7 +19,7 @@
 
 Опции:
   --group-id ID  id группы оборудования (можно указывать несколько раз)
-  --apply        записать изменения и commit (без флага — только план)
+  --apply        записать изменения и commit (без флага – только план)
   --yes          с --apply: не спрашивать подтверждение в консоли
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ from app.fuel.services.equipment_groups.equipment_group_edit_services import (
 
 
 def _version_label(version_id) -> str:
-    return "— (без версии)" if version_id is None else str(version_id)
+    return "– (без версии)" if version_id is None else str(version_id)
 
 
 def _children_of(group) -> list[EquipmentGroup]:
@@ -67,21 +67,21 @@ def process_group(group_id: int, apply_changes: bool) -> dict[str, int]:
         stats["not_found"] += 1
         return stats
 
-    print(f"--- группа id={group.id} «{group.name or group.name_ext or '—'}»")
+    print(f"--- группа id={group.id} «{group.name or group.name_ext or '–'}»")
     print(f"    версия БД: {_version_label(group.database_version_id)}")
     print(
-        f"    numb: {group.numb if group.numb is not None else '—'}, "
-        f"comp: {group.comp if group.comp is not None else '—'}, "
-        f"main: {group.main if group.main is not None else '—'}"
+        f"    numb: {group.numb if group.numb is not None else '–'}, "
+        f"comp: {group.comp if group.comp is not None else '–'}, "
+        f"main: {group.main if group.main is not None else '–'}"
     )
 
     children = _children_of(group)
     print(f"    группы со main={group.numb}: {len(children)}")
     for child in children:
-        print(f"      id={child.id} numb={child.numb} «{child.name or child.name_ext or '—'}»")
+        print(f"      id={child.id} numb={child.numb} «{child.name or child.name_ext or '–'}»")
 
     if is_composite_parent_group(group):
-        print("    уже родитель составной станции (comp=1, main пусто) — изменений не требуется")
+        print("    уже родитель составной станции (comp=1, main пусто) – изменений не требуется")
         stats["skipped"] += 1
         return stats
 
@@ -105,8 +105,8 @@ def process_group(group_id: int, apply_changes: bool) -> dict[str, int]:
     for label, old_value, new_value in change_details:
         print(f"      {label}: {old_value} → {new_value}")
     print(
-        f"    стало: comp={updated.comp if updated.comp is not None else '—'}, "
-        f"main={updated.main if updated.main is not None else '—'}, "
+        f"    стало: comp={updated.comp if updated.comp is not None else '–'}, "
+        f"main={updated.main if updated.main is not None else '–'}, "
         f"родитель составной станции: {'да' if is_composite_parent_group(updated) else 'нет'}"
     )
     if is_main_empty(updated.main) and updated.comp == 1:
@@ -133,7 +133,7 @@ def main() -> None:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Записать изменения и commit (без флага — только план).",
+        help="Записать изменения и commit (без флага – только план).",
     )
     parser.add_argument(
         "--yes",

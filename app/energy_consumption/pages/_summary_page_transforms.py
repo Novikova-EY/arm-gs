@@ -1,4 +1,4 @@
-"""Постобработка контекста сводки — вынесено из routes для страниц с отдельными шаблонами."""
+"""Постобработка контекста сводки – вынесено из routes для страниц с отдельными шаблонами."""
 
 from __future__ import annotations
 
@@ -260,7 +260,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
         )
     if context.get("active_summary") in ("fo", "ez"):
         # Верхние агрегаты пересчитываются формулами, затем выравниваются с hub
-        # (ЦЗ / ЭЭС / ЕЭС / СЗ) — одинаково на /summary/oes|federal_districts|energy_zones/.
+        # (ЦЗ / ЭЭС / ЕЭС / СЗ) – одинаково на /summary/oes|federal_districts|energy_zones/.
         apply_summary_table_formula_calculations(
             summary_rows,
             years=list(context.get("years") or []),
@@ -356,7 +356,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
         # Как на /power_demand/summary/oes/: «ЦЗ России» остаётся в режиме «Сводная таблица».
         keep_centralized_zone_rows_in_territory_compact(summary_rows)
     if context.get("active_summary") in ("oes", "fo", "ez"):
-        # Общий верх сводной (ЦЗ / ЭЭС / ЕЭС / СЗ) — один hub /summary_table/.
+        # Общий верх сводной (ЦЗ / ЭЭС / ЕЭС / СЗ) – один hub /summary_table/.
         apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
             summary_rows,
             years=list(context.get("years") or []),
@@ -372,7 +372,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-        # Проверки ЕЭС/первой СЗ — после выравнивания верха с hub.
+        # Проверки ЕЭС/первой СЗ – после выравнивания верха с hub.
         inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
             summary_rows,
             years=list(context.get("years") or []),

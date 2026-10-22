@@ -31,7 +31,7 @@ def log_to_db(username, action, details=None):
         try:
             db.session.rollback()
         except Exception:
-            # если даже rollback не удался, просто игнорируем — это только подсистема логирования
+            # если даже rollback не удался, просто игнорируем – это только подсистема логирования
             pass
 
 # Создание Blueprint для маршрутов авторизации
@@ -63,7 +63,7 @@ def login():
                         except Exception as e:
                             log_to_db('Система', f'Ошибка установки версии БД для пользователя: {e}')
                     else:
-                        # Версия удалена — очищаем сохраненное значение
+                        # Версия удалена – очищаем сохраненное значение
                         try:
                             user.last_database_version_id = None
                             db.session.commit()

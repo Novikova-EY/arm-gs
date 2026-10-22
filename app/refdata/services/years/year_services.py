@@ -38,7 +38,7 @@ def year_query(year_filter=None, sort_by="number", sort_dir="asc"):
     need_join = False
 
     if yf:
-        # Если похоже на число — фильтруем по году; иначе — по признаку.
+        # Если похоже на число – фильтруем по году; иначе – по признаку.
         if yf.isdigit():
             query = query.filter(Year.number == int(yf))
         else:

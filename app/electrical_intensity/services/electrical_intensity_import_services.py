@@ -73,7 +73,7 @@ def _parse_cell_value(cell_value: Any) -> Decimal | None:
     if isinstance(cell_value, (int, float)):
         return Decimal(str(cell_value))
     s = str(cell_value).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:
@@ -185,7 +185,7 @@ def import_electrical_intensity_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
         if label_n in ref_labels:
             continue
 
-        for sep in (" — ", " - "):
+        for sep in (" – ", " - "):
             if sep in label and label_n not in ROW_LABEL_BY_KIND.values():
                 parts = [_normalize_label(p) for p in label.split(sep, 1)]
                 for p in parts:

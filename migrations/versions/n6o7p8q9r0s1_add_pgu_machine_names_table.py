@@ -30,7 +30,7 @@ TABLE = "pgu_machine_names"
 
 def upgrade():
     conn = op.get_bind()
-    # Уже создана под старым или новым именем (в т.ч. после rename b1) — не дублируем индексы.
+    # Уже создана под старым или новым именем (в т.ч. после rename b1) – не дублируем индексы.
     if column_utils.pgu_machine_names_table_name(conn, SCHEMA) is not None:
         return
     ref_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REF)

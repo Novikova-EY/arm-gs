@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupFuelParam model — топливные параметры для группы оборудования.
+EquipmentGroupFuelParam model – топливные параметры для группы оборудования.
 Схема gs_fue, одна группа может иметь несколько записей параметров по годам (по year_number).
 """
 from sqlalchemy import UniqueConstraint, cast
@@ -69,7 +69,7 @@ class EquipmentGroupFuelParam(db.Model):
 
     # ЧЧИУМ, ч (Access H)
     h = db.Column(db.Numeric(36, 16), nullable=True)
-    # Признак фиксации ЧЧИУМ (Access HFIX): 1 — не пересчитывать H формулой распределения
+    # Признак фиксации ЧЧИУМ (Access HFIX): 1 – не пересчитывать H формулой распределения
     hfix = db.Column(db.Integer, nullable=True)
 
     # Электроэнергия:
@@ -162,9 +162,9 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
-    # Access Станции(Схема).VED — операционный код строки за год (антидубль составных):
-    # 0 — оболочка родителя (не входит в Σ при ved>0); 1 — КЭС, отрасль; 2 — ТЭЦ, отрасль;
-    # 3 — ТЭЦ, промпредприятия; 4 — КЭС, промпредприятия; 99 — к разбиению.
+    # Access Станции(Схема).VED – операционный код строки за год (антидубль составных):
+    # 0 – оболочка родителя (не входит в Σ при ved>0); 1 – КЭС, отрасль; 2 – ТЭЦ, отрасль;
+    # 3 – ТЭЦ, промпредприятия; 4 – КЭС, промпредприятия; 99 – к разбиению.
     # Не путать с EquipmentGroup.vedomstvo (1 отрасль / 2 пром).
     ved = db.Column(db.Integer, nullable=True)
     ved_cyrillic = db.Column(db.Integer, nullable=True, name="вед")  # вед
@@ -309,11 +309,11 @@ class EquipmentGroupFuelParam(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    # Подписи nust/nr/h для шапок (код поля — отдельно в скобках).
+    # Подписи nust/nr/h для шапок (код поля – отдельно в скобках).
     NUST_COLUMN_LABEL = "Суммарная установленная мощность, МВт"
     NR_COLUMN_LABEL = "Суммарная располагаемая мощность, МВт"
     H_COLUMN_LABEL = "ЧЧИУМ, ч"
-    # Подпись hfix для шапок (код Access HFIX — через fuel_header_access_codes).
+    # Подпись hfix для шапок (код Access HFIX – через fuel_header_access_codes).
     HFIX_COLUMN_LABEL = "Признак фиксации ЧЧИУМ"
     # Подпись e для шапок (неразрывный пробел между «Выработка» и «ЭЭ»).
     E_COLUMN_LABEL = "Выработка ЭЭ, млн кВтч"
@@ -332,9 +332,9 @@ class EquipmentGroupFuelParam(db.Model):
     # Подпись tust для шапок («усл. топлива» и «на ТЭ» непереносимо;
     # «тыс. т у.т.» целиком непереносимо).
     TUST_COLUMN_LABEL = "Расход усл. топлива на ТЭ, тыс. т у.т."
-    # Подпись nt для шапок (код поля — отдельно в скобках).
+    # Подпись nt для шапок (код поля – отдельно в скобках).
     NT_COLUMN_LABEL = "Тепловая мощность отборов, Гкал/ч"
-    # Подпись nt_sum для шапок (код поля — отдельно в скобках).
+    # Подпись nt_sum для шапок (код поля – отдельно в скобках).
     NT_SUM_COLUMN_LABEL = "Сумма тепловых мощностей, Гкал/ч"
     # Подпись sn_ee для шапок (неразрывный пробел в «тыс. кВт·ч»).
     SN_EE_COLUMN_LABEL = "СН на производство электроэнергии, тыс. кВт·ч"

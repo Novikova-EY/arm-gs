@@ -206,9 +206,9 @@
             <tbody>
                 {% for row in population_rows %}
                 <tr>
-                    <td class="summary-parameter-cell text-wrap">{{ row.abbr }} — {{ row.label }}</td>
+                    <td class="summary-parameter-cell text-wrap">{{ row.abbr }} – {{ row.label }}</td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell" data-ec-summary-col-year="{{ y }}"
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
@@ -217,7 +217,7 @@
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
-                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               value="{% if disp != '–' %}{{ disp }}{% endif %}"
                                {% if _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}

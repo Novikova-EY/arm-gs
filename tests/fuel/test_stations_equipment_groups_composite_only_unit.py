@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-import app.electrical_intensity.models  # noqa: F401 — связи модели Year
+import app.electrical_intensity.models  # noqa: F401 – связи модели Year
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.services.stations import stations_equipment_groups_services as service
@@ -34,10 +34,10 @@ def fuel_session(monkeypatch):
                 {"id": 4, "external_code": "plain-tes", "numb": 200, "comp": None, "main": None, "database_version_id": 1},
                 # Группа обычной ТЭС: main указывает на «не составной» numb
                 {"id": 5, "external_code": "plain-group", "numb": 201, "comp": None, "main": 200, "database_version_id": 1},
-                # Родитель с main=0 (как в Access) — тоже составная станция
+                # Родитель с main=0 (как в Access) – тоже составная станция
                 {"id": 6, "external_code": "parent-zero-main", "numb": 300, "comp": 1, "main": 0, "database_version_id": 1},
                 {"id": 7, "external_code": "child-of-zero", "numb": 301, "comp": None, "main": 300, "database_version_id": 1},
-                # Другая версия БД — не должна попадать в текущую
+                # Другая версия БД – не должна попадать в текущую
                 {"id": 8, "external_code": "other-version-parent", "numb": 400, "comp": 1, "main": None, "database_version_id": 2},
                 {"id": 9, "external_code": "other-version-child", "numb": 401, "comp": None, "main": 400, "database_version_id": 2},
             ],

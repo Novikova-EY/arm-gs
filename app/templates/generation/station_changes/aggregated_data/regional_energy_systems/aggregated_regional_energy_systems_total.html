@@ -12,13 +12,13 @@
                 <td class="power-column" style="font-weight: bold;">
                     {{ regional_energy_systems_yearly_p_ust
                         .get(current_res_id, {})
-                        .get(year, 0) | format_decimal or '—' }}
+                        .get(year, 0) | format_decimal or '–' }}
                 </td>
             {% else %}
                 <td class="power-column" style="font-weight: bold;">
                     {{ regional_energy_systems_yearly_p_ust
                         .get(current_res_id, {})
-                        .get(year, 0) | format_decimal or '—' }}
+                        .get(year, 0) | format_decimal or '–' }}
                 </td>
             {% endif %}
         {% endfor %}
@@ -33,7 +33,7 @@
                 {% endfor %}
                 {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
             {% else %}
-                —
+                –
             {% endif %}
         </td>
         {% set _extra_col = 1 if (current_year_split is not none and current_year_split >= start_year and current_year_split <= end_year) else 0 %}

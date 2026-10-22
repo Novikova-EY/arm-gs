@@ -775,16 +775,16 @@
                             <!-- Строки таблицы. Столбец "Энергорайон (предл. пад.)" -->
                             <td>{{ item.name_dp }}</td>
                             <!-- Строки таблицы. Столбец "Наименование (в дательном падеже)" -->
-                            <td>{{ item.name_dat or '—' }}</td>
+                            <td>{{ item.name_dat or '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "Субъект РФ" -->
-                            <td>{{ item.regional_district.name if item.regional_district else '—' }}</td>
+                            <td>{{ item.regional_district.name if item.regional_district else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "Региональная энергосистема" -->
-                            <td>{{ item.regional_energy_system.name if item.regional_energy_system else '—' }}</td>
+                            <td>{{ item.regional_energy_system.name if item.regional_energy_system else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "ОЭС" -->
-                            <td>{{ item.union_energy_system.name if item.union_energy_system else '—' }}</td>
+                            <td>{{ item.union_energy_system.name if item.union_energy_system else '–' }}</td>
                         </tr>
                     {% else %}
                         <tr>

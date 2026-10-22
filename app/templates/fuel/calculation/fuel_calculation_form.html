@@ -1,14 +1,14 @@
 {% extends 'base.html' %} {% block title %}Расчет топливных показателей на
-перспективный период{% endblock %} {# Числа: 0 показываем; None — тире. Запятая,
-без лишних нулей (digits=0 — без округления). #} {% macro num_cell(v) -%} {%- if
-v is not none -%}{{ v|format_decimal_trim(0) }}{%- else -%}—{%- endif -%} {%-
+перспективный период{% endblock %} {# Числа: 0 показываем; None – тире. Запятая,
+без лишних нулей (digits=0 – без округления). #} {% macro num_cell(v) -%} {%- if
+v is not none -%}{{ v|format_decimal_trim(0) }}{%- else -%}–{%- endif -%} {%-
 endmacro %} {% macro num_cell_k(v) -%} {%- if v is not none -%}{{
-v|format_decimal_trim(2) }}{%- else -%}—{%- endif -%} {%- endmacro %} {# Строка
+v|format_decimal_trim(2) }}{%- else -%}–{%- endif -%} {%- endmacro %} {# Строка
 «Отношение»: ровно 2 знака после запятой (без обрезки нулей в конце дроби). #}
 {% macro num_cell_ratio2(v) -%} {%- if v is not none -%}{{ v|format_decimal(2)
-}}{%- else -%}—{%- endif -%} {%- endmacro %} {# Первая таблица «Коэфф»: Nуст, E,
-Eтп, Q, qotr, %тп, Н — округление до целого (digits=-1). #} {% macro int_cell(v)
--%} {%- if v is not none -%}{{ v|format_decimal_trim(-1) }}{%- else -%}—{%-
+}}{%- else -%}–{%- endif -%} {%- endmacro %} {# Первая таблица «Коэфф»: Nуст, E,
+Eтп, Q, qotr, %тп, Н – округление до целого (digits=-1). #} {% macro int_cell(v)
+-%} {%- if v is not none -%}{{ v|format_decimal_trim(-1) }}{%- else -%}–{%-
 endif -%} {%- endmacro %} {% macro cell_help(tip_key) -%} {%- set tips =
 coeff_cell_tooltips|default({}) -%} {%- set tip = tips.get(tip_key, '') -%} {%-
 if tip -%}
@@ -27,7 +27,7 @@ if tip -%}
 </div>
 {%- endmacro %} {% macro dash_with_tip(tip_key) -%}
 <div class="fuel-calc-cell-tip-wrap">
-  <span class="fuel-calc-cell-num">—</span
+  <span class="fuel-calc-cell-num">–</span
   ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
 </div>
 {%- endmacro %} {% macro num_with_tip(v, tip_key) -%}
@@ -95,7 +95,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
   .fuel-calc-coeff-table tbody td:not(:first-child) {
     white-space: nowrap;
   }
-  /* Результаты этапов: «Показатель» переносится, «Значение» — шире и в одну строку */
+  /* Результаты этапов: «Показатель» переносится, «Значение» – шире и в одну строку */
   .fuel-calc-stage-result-table {
     table-layout: fixed;
     width: 100%;
@@ -178,7 +178,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
     justify-content: center;
     box-sizing: border-box;
   }
-  /* Таблица параметров распределения — как на /fuel/distribution_parameters */
+  /* Таблица параметров распределения – как на /fuel/distribution_parameters */
   .distribution-params-table {
     font-size: 1.15rem;
     vertical-align: middle;
@@ -285,9 +285,9 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
       <p class="small text-muted mb-0">
         <i class="bi bi-info-circle me-1"></i>Нет параметра распределения для
         выбранных <strong>{{ dp_l.get('byear', 'Базовый год') }}</strong> /
-        <strong>{{ dp_l.get('year', 'Расчетный год') }}</strong> и ОЭС — ввод
+        <strong>{{ dp_l.get('year', 'Расчетный год') }}</strong> и ОЭС – ввод
         <strong>{{ dp_l.get('e', 'e') }}</strong> (поле e) и кнопки этапов
-        неактивны. Загрузите или заведите параметры в БД (список — по ссылке
+        неактивны. Загрузите или заведите параметры в БД (список – по ссылке
         «Параметры распределения»).
       </p>
     </div>
@@ -298,7 +298,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
     <div class="mb-4 p-3" style="background: transparent; border: none">
       {% if not selected_row %}
       <p class="small text-muted mb-2">
-        Таблицы без привязки к сценарию — задайте расчетный год и ОЭС, для
+        Таблицы без привязки к сценарию – задайте расчетный год и ОЭС, для
         которых есть параметр распределения.
       </p>
       {% elif not coeff_summary and not coeff_calc_year_is_preview %}
@@ -310,7 +310,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
       </p>
       {% elif coeff_calc_year_is_preview %}
       <p class="small text-muted mb-2">
-        Строка «Расчётный год» и вторая таблица — предварительный расчёт по
+        Строка «Расчётный год» и вторая таблица – предварительный расчёт по
         данным БД (как при «Коэфф», без записи сводки). Нажмите «Коэфф», чтобы
         зафиксировать результат и обновить строки топлива.
       </p>
@@ -510,7 +510,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                   <th class="text-center">
                     ЧЧИУМ<br>нового оборудования, ч<br /><span
                       class="text-muted small fw-normal"
-                      >(hn) — ввод; K<sub>нов</sub> пересчитывается</span
+                      >(hn) – ввод; K<sub>нов</sub> пересчитывается</span
                     >
                   </th>
                 </tr>
@@ -678,7 +678,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
         align-middle mb-0 w-100 fuel-calc-num fuel-calc-coeff-table
         fuel-calc-stage-result-table" %}
         <div class="row g-3 align-items-start">
-          {# Левый столбец: таблицы стеком — тот же gap, что и справа #}
+          {# Левый столбец: таблицы стеком – тот же gap, что и справа #}
           <div class="col-12 col-md-6 d-flex flex-column gap-3">
             {% if coeff_stage_last_result %}
             <div class="table-responsive">
@@ -698,14 +698,14 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     <td class="text-start">{{ dp_l.get('byear', 'Базовый год') }}</td>
                     <td class="text-center">
                       {{ coeff_stage_last_result.base_year_number if
-                      coeff_stage_last_result.base_year_number is not none else '—' }}
+                      coeff_stage_last_result.base_year_number is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">{{ dp_l['year'] }}</td>
                     <td class="text-center">
                       {{ coeff_stage_last_result.year_number if
-                      coeff_stage_last_result.year_number is not none else '—' }}
+                      coeff_stage_last_result.year_number is not none else '–' }}
                     </td>
                   </tr>
                 </tbody>
@@ -728,7 +728,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                   <tr>
                     <td class="text-start">{{ dp_l['year'] }}</td>
                     <td class="text-center">
-                      {{ _stage_ctx.year_number if _stage_ctx.year_number is not none else '—' }}
+                      {{ _stage_ctx.year_number if _stage_ctx.year_number is not none else '–' }}
                     </td>
                   </tr>
                 </tbody>
@@ -746,7 +746,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                 <tbody>
                   <tr{% if _missing_spec_count %} class="table-warning"{% endif %}>
                     <td class="text-start">
-                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '—' }} года
+                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '–' }} года
                     </td>
                     <td class="text-center">
                       {% if _missing_spec_count and _missing_spec_url %}
@@ -754,13 +754,13 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                       {% elif _missing_spec is not none %}
                       0
                       {% else %}
-                      —
+                      –
                       {% endif %}
                     </td>
                   </tr>
                   <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
                     <td class="text-start">
-                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '–' }} год
                     </td>
                     <td class="text-center">
                       {% if _missing_fuel_count and _missing_fuel_url %}
@@ -768,7 +768,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                       {% elif _missing_spec is not none %}
                       0
                       {% else %}
-                      —
+                      –
                       {% endif %}
                     </td>
                   </tr>
@@ -797,26 +797,26 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                   <tr>
                     <td class="text-start">Сводка сохранена</td>
                     <td class="text-center">
-                      {% if coeff_stage_last_result.summary_id %}да{% else %}—{% endif %}
+                      {% if coeff_stage_last_result.summary_id %}да{% else %}–{% endif %}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Групп в фильтре</td>
                     <td class="text-center">
                       {{ coeff_stage_last_result.total_groups if
-                      coeff_stage_last_result.total_groups is not none else '—' }}
+                      coeff_stage_last_result.total_groups is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Обновлено ewtp (строк топлива)</td>
                     <td class="text-center">
                       {{ coeff_stage_last_result.updated_fuel_rows if
-                      coeff_stage_last_result.updated_fuel_rows is not none else '—' }}
+                      coeff_stage_last_result.updated_fuel_rows is not none else '–' }}
                     </td>
                   </tr>
                   <tr{% if _missing_spec_count %} class="table-warning"{% endif %}>
                     <td class="text-start">
-                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '—' }} года
+                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '–' }} года
                     </td>
                     <td class="text-center">
                       {% if _missing_spec_count and _missing_spec_url %}
@@ -824,14 +824,14 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                       {% elif _missing_spec is not none %}
                       0
                       {% else %}
-                      —
+                      –
                       {% endif %}
                     </td>
                   </tr>
                   {% if not distribution_stage_last_result %}
                   <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
                     <td class="text-start">
-                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '–' }} год
                     </td>
                     <td class="text-center">
                       {% if _missing_fuel_count and _missing_fuel_url %}
@@ -839,7 +839,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                       {% elif _missing_spec is not none %}
                       0
                       {% else %}
-                      —
+                      –
                       {% endif %}
                     </td>
                   </tr>
@@ -911,26 +911,26 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     <td class="text-start">Групп в фильтре</td>
                     <td class="text-center">
                       {{ distribution_stage_last_result.selected_group_count if
-                      distribution_stage_last_result.selected_group_count is not none else '—' }}
+                      distribution_stage_last_result.selected_group_count is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Обработано групп</td>
                     <td class="text-center">
                       {{ distribution_stage_last_result.processed_group_count if
-                      distribution_stage_last_result.processed_group_count is not none else '—' }}
+                      distribution_stage_last_result.processed_group_count is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Обновлено строк топлива</td>
                     <td class="text-center">
                       {{ distribution_stage_last_result.updated_fuel_rows if
-                      distribution_stage_last_result.updated_fuel_rows is not none else '—' }}
+                      distribution_stage_last_result.updated_fuel_rows is not none else '–' }}
                     </td>
                   </tr>
                   <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
                     <td class="text-start">
-                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '–' }} год
                     </td>
                     <td class="text-center">
                       {% if _missing_fuel_count and _missing_fuel_url %}
@@ -938,7 +938,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                       {% elif _missing_spec is not none %}
                       0
                       {% else %}
-                      —
+                      –
                       {% endif %}
                     </td>
                   </tr>
@@ -964,7 +964,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     </td>
                     <td class="text-center">
                       {{ distribution_stage_last_result.iterations if
-                      distribution_stage_last_result.iterations is not none else '—' }}
+                      distribution_stage_last_result.iterations is not none else '–' }}
                     </td>
                   </tr>
                   {% if distribution_stage_last_result.apply_restrictions %}
@@ -975,7 +975,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     </td>
                     <td class="text-center">
                       {{ distribution_stage_last_result.restriction_outer_iterations if
-                      distribution_stage_last_result.restriction_outer_iterations is not none else '—' }}
+                      distribution_stage_last_result.restriction_outer_iterations is not none else '–' }}
                     </td>
                   </tr>
                   {% endif %}
@@ -1012,28 +1012,28 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     <td class="text-start">Групп в фильтре</td>
                     <td class="text-center">
                       {{ fuel_stage_last_result.selected_group_count if
-                      fuel_stage_last_result.selected_group_count is not none else '—' }}
+                      fuel_stage_last_result.selected_group_count is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Успешно</td>
                     <td class="text-center">
                       {{ fuel_stage_last_result.success_count if
-                      fuel_stage_last_result.success_count is not none else '—' }}
+                      fuel_stage_last_result.success_count is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">С пересчётом EOTP/B</td>
                     <td class="text-center">
                       {{ fuel_stage_last_result.calculated_count if
-                      fuel_stage_last_result.calculated_count is not none else '—' }}
+                      fuel_stage_last_result.calculated_count is not none else '–' }}
                     </td>
                   </tr>
                   <tr>
                     <td class="text-start">Ошибок</td>
                     <td class="text-center">
                       {{ fuel_stage_last_result.error_count if
-                      fuel_stage_last_result.error_count is not none else '—' }}
+                      fuel_stage_last_result.error_count is not none else '–' }}
                     </td>
                   </tr>
                 </tbody>
@@ -1134,7 +1134,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
         });
     }
     // Страница «Расчёт»: общий station_filters_first_row.js цепляет авто-submit только к collapse-формам
-    // generation/stations. Здесь — отдельная GET-форма; Select2 не всегда вызывает inline onchange.
+    // generation/stations. Здесь – отдельная GET-форма; Select2 не всегда вызывает inline onchange.
     function setupFuelCalculationFilterAutoReload() {
       var form = document.querySelector(".fuel-calc-filters-form");
       if (!form) return;
@@ -1165,7 +1165,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
         var el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("change", function () {
-          // При смене расчётного года сбрасываем byear — иначе залипает чужой базовый год.
+          // При смене расчётного года сбрасываем byear – иначе залипает чужой базовый год.
           if (id === "start_year") {
             var by = document.getElementById("base_year");
             if (by) by.value = "";
@@ -1185,7 +1185,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
           });
       }
 
-      // ОЭС и тип ТЭС — одиночные select: сразу после выбора подгружаем страницу.
+      // ОЭС и тип ТЭС – одиночные select: сразу после выбора подгружаем страницу.
       ["union_energy_system", "tes_type_filter"].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;

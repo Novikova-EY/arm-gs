@@ -57,7 +57,7 @@ def parse_machine_commission_year(value) -> int | None:
 
 
 def machine_commission_year_sort_value(machine) -> int:
-    """Год ввода для сортировки строк (меньше — раньше). Нет года — в конец."""
+    """Год ввода для сортировки строк (меньше – раньше). Нет года – в конец."""
     for attr in ("date_commission_year", "date_exploitation_expected", "commission_display"):
         year = parse_machine_commission_year(getattr(machine, attr, None))
         if year is not None:
@@ -91,7 +91,7 @@ def machine_has_station_number(machine) -> bool:
     if raw is None:
         return False
     text = str(raw).strip()
-    if not text or text in {"–", "—", "-"}:
+    if not text or text in {"–", "–", "-"}:
         return False
     return bool(re.search(r"\d+", text))
 
@@ -108,8 +108,8 @@ def machine_number_sort_key(value):
 
 def machine_year_then_number_sort_key(machine, number_key=None):
     """
-    Нумерные агрегаты (ТЭС) — по станционному номеру, затем году.
-    ВЭС/СЭС без номера — по году ввода ASC, иначе получается «чет/нечет» по id.
+    Нумерные агрегаты (ТЭС) – по станционному номеру, затем году.
+    ВЭС/СЭС без номера – по году ввода ASC, иначе получается «чет/нечет» по id.
     """
     if number_key is None:
         number_key = machine_number_sort_key
@@ -154,7 +154,7 @@ def _group_min_number_key(machines):
 
 
 def _fuel_groups_sort_key(group):
-    # Пустое топливо даёт отдельный блок на каждый id — без года снова «чет/нечет».
+    # Пустое топливо даёт отдельный блок на каждый id – без года снова «чет/нечет».
     return (
         _group_min_number_key(group) if _machines_block_has_station_number(group) else (1, float("inf"), ""),
         _machines_block_year_key(group),
@@ -165,8 +165,8 @@ def _fuel_groups_sort_key(group):
 def order_station_machines_for_display(machine_list: list) -> tuple[list, list]:
     """
     Порядок агрегатов внутри электростанции: блоки группы оборудования вместе.
-    ВЭС/СЭС без станционного номера — по году ввода ASC (не по id).
-    ТЭС с номером — по номеру, затем году.
+    ВЭС/СЭС без станционного номера – по году ввода ASC (не по id).
+    ТЭС с номером – по номеру, затем году.
     Возвращает (блоки групп оборудования, блоки топлива) для rowspan.
     """
     equipment_group_blocks_dict = defaultdict(list)
@@ -383,7 +383,7 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
                     res = r
                     break
             if res is None:
-                # нет РЭС с валидной ОЭС — берем первую по версии, даже если у нее нет ОЭС (будет пропуск)
+                # нет РЭС с валидной ОЭС – берем первую по версии, даже если у нее нет ОЭС (будет пропуск)
                 res = rd_res_list[0]
 
         ues = getattr(res, 'union_energy_system', None)
@@ -766,7 +766,7 @@ def fetch_machines_with_rowspans(
             m.total_rows = total_rows
             m.base_rows = base_rows
 
-        # Группа "гр." — одна ячейка на весь блок группы оборудования внутри электростанции.
+        # Группа "гр." – одна ячейка на весь блок группы оборудования внутри электростанции.
         for group in ordered_group_blocks:
             group_rowspan = sum(m.total_rows for m in group)
             group_base_rows = sum((1 + len(m.pgu_machines)) for m in group)

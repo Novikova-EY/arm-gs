@@ -36,6 +36,10 @@ current_user.is_authenticated %}
       territory_slug='vsego', sheet_slug='obemy'), 'Расчет по новым ТЭС',
       'is-accent') }}
     </div>
+    <div class="home-outline__tiles mt-2">
+      {{ hub_tile(url_for('ecology_bp.calculation_summary_index'),
+      'Сводные данные расчетов', 'is-accent') }}
+    </div>
   </section>
 
   <section class="home-outline__section">

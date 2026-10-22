@@ -4,7 +4,7 @@
 Перенос параметров нагрузки между таблицами gs_pd (исправление путаницы ЕЭС / ЭЭС).
 
 До исправления:
-  - gs_pd_ees_russia_demand_params хранила «ЕЭС России» (должна — «ЭЭС России»);
+  - gs_pd_ees_russia_demand_params хранила «ЕЭС России» (должна – «ЭЭС России»);
   - gs_pd_ees_demand_params хранила «ЭЭС России»;
   - gs_pd_energy_system_type_demand_params для «ЕЭС России» пуста.
 
@@ -17,7 +17,7 @@
   python scripts/migrate_misplaced_ees_unified_pd_demand_params.py
   python scripts/migrate_misplaced_ees_unified_pd_demand_params.py --apply --yes
 
-На сервере — то же в venv приложения, после `flask db upgrade` (колонка perimeter_variant_code
+На сервере – то же в venv приложения, после `flask db upgrade` (колонка perimeter_variant_code
 в gs_pd_energy_system_type_demand_params) и бэкапа БД.
 """
 from __future__ import annotations
@@ -261,7 +261,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Выполнить перенос (без флага — только план).",
+        help="Выполнить перенос (без флага – только план).",
     )
     parser.add_argument(
         "--yes",

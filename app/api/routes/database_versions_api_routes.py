@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Независимый JSON-API версий БД АРМ.
 
-GET /api/database_versions — список версий для выбора
-GET /api/database_versions/<id> — сведения по одной версии
+GET /api/database_versions – список версий для выбора
+GET /api/database_versions/<id> – сведения по одной версии
 
 Клиент выбирает id и дальше запрашивает данные:
 GET /api/datasets/<database_version>/<dataset>

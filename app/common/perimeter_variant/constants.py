@@ -14,7 +14,7 @@ CODE_WITHOUT_NT = "without_nt"
 CODE_WITHOUT_CRIMEA_SEV = "without_crimea_sev"
 CODE_WITHOUT_NT_WITH_KALININGRAD_ES = "without_nt_with_kaliningrad_es"
 CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES = "without_nt_without_kaliningrad_es"
-# Синхронная зона Калининградской области на сводках — данные / формулы с этого года.
+# Синхронная зона Калининградской области на сводках – данные / формулы с этого года.
 KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR = 2025
 KALININGRAD_SYNC_AREA_NAME_TOKEN_CF = "калининград"
 CODE_WITH_NT_WITH_GAES = "with_nt_with_gaes"
@@ -27,7 +27,7 @@ CODE_O1_WITH_NT = "o1_with_nt"
 CODE_O1_WITHOUT_NT = "o1_without_nt"
 CODE_TERRITORIAL_BOUNDARIES = "territorial_boundaries"
 
-# Варианты блоков «с/без заряда ГАЭС» на сводке — не строки дерева ОЭС/ЕЭС.
+# Варианты блоков «с/без заряда ГАЭС» на сводке – не строки дерева ОЭС/ЕЭС.
 TREE_EXCLUDED_VARIANT_CODES: frozenset[str] = frozenset(
     {
         CODE_WITH_NT_WITH_GAES,
@@ -89,7 +89,7 @@ def perimeter_variant_codes_prefer_without_gaes(code: str | None) -> tuple[str, 
 
 
 def is_tree_display_variant_code(code: str | None) -> bool:
-    """Исключает варианты блоков «с/без заряда ГАЭС» — они не строки дерева сводки."""
+    """Исключает варианты блоков «с/без заряда ГАЭС» – они не строки дерева сводки."""
     if not code:
         return False
     return str(code).strip() not in TREE_EXCLUDED_VARIANT_CODES
@@ -104,13 +104,13 @@ EC_SUMMARY_BLOCK_ENTITY_KIND = "ec_summary_block"
 ENTITY_KIND_EES_RUSSIA = "ees_russia"
 ENTITY_KIND_RUSSIA_FEDERATION = "russia_federation"
 ENTITY_KIND_CENTRALIZED_ZONE = "centralized_zone"
-# Строка справочника EnergySystemType (Единая энергосистема России — «ЕЭС», не «ЭЭС»).
+# Строка справочника EnergySystemType (Единая энергосистема России – «ЕЭС», не «ЭЭС»).
 ENTITY_KIND_ENERGY_SYSTEM_TYPE = "energy_system_type"
 
-# ЭЭС России — электроэнергетические системы России (агрегат, модели EesRussia*, Ees*, …).
+# ЭЭС России – электроэнергетические системы России (агрегат, модели EesRussia*, Ees*, …).
 EES_RUSSIA_AGGREGATE_NAME = "ЭЭС России"
 EES_RUSSIA_AGGREGATE_NAME_CF = "ээс россии"
-# ЕЭС России — единая энергосистема (справочник EnergySystemType, имя как в refdata).
+# ЕЭС России – единая энергосистема (справочник EnergySystemType, имя как в refdata).
 EES_UNIFIED_REF_NAME = "ЕЭС России"
 EES_UNIFIED_REF_NAME_CF = "еэс россии"
 

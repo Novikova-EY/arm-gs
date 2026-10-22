@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupExtraFuelParam model — дополнительные топливные параметры групп оборудования.
+EquipmentGroupExtraFuelParam model – дополнительные топливные параметры групп оборудования.
 """
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.sql import func

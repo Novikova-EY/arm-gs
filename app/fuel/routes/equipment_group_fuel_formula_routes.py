@@ -287,7 +287,7 @@ def equipment_group_fuel_formulas_page():
 
     formtxt_editable_years = formtxt_editable_year_numbers_for_version()
 
-    # Жёлтая подсветка при изменении Nуст к предыдущему году — как на ТЭП
+    # Жёлтая подсветка при изменении Nуст к предыдущему году – как на ТЭП
     fuel_params_data = get_equipment_groups_with_fuel_params_data(
         filters=filters,
         per_page="all",
@@ -493,7 +493,7 @@ def equipment_group_fuel_formulas_add_period():
         )
     else:
         flash(
-            f"Скопированы формулы с {source_num} г. на годы {n_lo}—{n_hi}: "
+            f"Скопированы формулы с {source_num} г. на годы {n_lo}–{n_hi}: "
             f"операций {copied} (в выборке групп: {total_groups}).",
             "success",
         )

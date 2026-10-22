@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ProspectivePlaceTypeGES — тип перспективной площадки ГЭС (справочник refdata).
+ProspectivePlaceTypeGES – тип перспективной площадки ГЭС (справочник refdata).
 
-Ровно три допустимых наименования — см. PROSPECTIVE_PLACE_TYPE_GES_CANONICAL_NAMES.
+Ровно три допустимых наименования – см. PROSPECTIVE_PLACE_TYPE_GES_CANONICAL_NAMES.
 Отдельно от справочника типов АЭС (ProspectivePlaceTypeAES).
 """
 from sqlalchemy.sql import func

@@ -289,7 +289,7 @@ def update_regional_energy_system_service(data, user):
                         if district:
                             regional_energy_system.regional_districts.remove(district)
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -784,9 +784,9 @@ def export_regional_energy_system_mappings_service(
                 "Название в БД Топливо": mapping.external_name or "",
                 "Наименование РЭС (Топливо)": mapping.external_nameoes or "",
                 "Сокр. РЭС (Топливо)": mapping.external_abbr or "",
-                "UUID РЭС": "—",
-                "ID РЭС (текущая версия)": "—",
-                "Наименование РЭС в АРМ": "—",
+                "UUID РЭС": "–",
+                "ID РЭС (текущая версия)": "–",
+                "Наименование РЭС в АРМ": "–",
             }
         )
 

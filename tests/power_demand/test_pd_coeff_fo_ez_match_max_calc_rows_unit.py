@@ -124,7 +124,7 @@ def test_strip_new_territories_block_for_ez_summary_removes_header_and_subjects(
 
 
 def test_strip_new_territories_block_for_coeff_ez_removes_header_and_subjects() -> None:
-    """Обратная совместимость: прежнее имя функции — тот же strip для ЭЗ."""
+    """Обратная совместимость: прежнее имя функции – тот же strip для ЭЗ."""
     rows = [
         {
             "show_entity_cell": True,

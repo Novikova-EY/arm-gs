@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Мощности списка станций для балансов: p_ust по типам, ограничения и вводы Q4.
 
-Типы — справочник station_type (порядок display_order): «не указано» не берём,
-ВЭС и СЭС суммируем в строку «СЭС, ВЭС» с подстроками СЭС и ВЭС. Территория —
+Типы – справочник station_type (порядок display_order): «не указано» не берём,
+ВЭС и СЭС суммируем в строку «СЭС, ВЭС» с подстроками СЭС и ВЭС. Территория –
 ОЭС или синхронная зона листа.
-Ограничения мощности — сумма Рогр (или Руст−Ррасп) по всем станциям территории.
-Вводы после максимума — Руст агрегатов с «Ввод 4 квартала» в ожидаемом году ввода.
+Ограничения мощности – сумма Рогр (или Руст−Ррасп) по всем станциям территории.
+Вводы после максимума – Руст агрегатов с «Ввод 4 квартала» в ожидаемом году ввода.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def _groups_from_station_types(station_types: list[Any]) -> list[dict[str, Any]]
 
 
 def iter_station_type_groups(groups: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    """Родительские группы типов и вложенные СЭС / ВЭС — для загрузки значений."""
+    """Родительские группы типов и вложенные СЭС / ВЭС – для загрузки значений."""
     items: list[dict[str, Any]] = []
     for group in groups or []:
         items.append(group)
@@ -295,7 +295,7 @@ def _constraints_year_values(
     p_rasp_map: dict[int, Any] | None,
     years: list[int],
 ) -> dict[int, Decimal]:
-    """Рогр; если пусто — Руст − Ррасп (как на списке станций)."""
+    """Рогр; если пусто – Руст − Ррасп (как на списке станций)."""
     p_ogr_map = p_ogr_map or {}
     p_ust_map = p_ust_map or {}
     p_rasp_map = p_rasp_map or {}
@@ -331,7 +331,7 @@ def resolve_station_balance_territory(
     district_to_ues: dict[int, int],
     district_to_sa: dict[int, int],
 ) -> tuple[int | None, int | None]:
-    """ОЭС: прямая РЭС, иначе первая РЭС субъекта. СЗ — субъект РФ станции."""
+    """ОЭС: прямая РЭС, иначе первая РЭС субъекта. СЗ – субъект РФ станции."""
     ues_id: int | None = None
     if id_regional_energy_system:
         ues_id = res_to_ues.get(int(id_regional_energy_system))
@@ -767,7 +767,7 @@ def assign_station_ids_for_shared_res_eu(
     current_eu_id: int,
     eu_id_to_name: dict[int, str],
 ) -> list[int]:
-    """Станции общей РЭС: в энергорайон по токенам имени, без совпадений — в «остаток»."""
+    """Станции общей РЭС: в энергорайон по токенам имени, без совпадений – в «остаток»."""
     token_by_eu = {
         int(eu_id): _tokens_for_eu_name(name) for eu_id, name in (eu_id_to_name or {}).items()
     }
@@ -790,7 +790,7 @@ def assign_station_ids_for_shared_res_eu(
 
 
 def _station_ids_for_energy_unit_via_res(eu_id: int, eu_name: str) -> list[int]:
-    """Станции энергорайона: прямого id_energy_unit нет — берём РЭС, Чукотку режем по имени."""
+    """Станции энергорайона: прямого id_energy_unit нет – берём РЭС, Чукотку режем по имени."""
     from app.common.services.database_version_filter import filter_by_db_version
     from app.extensions import db
     from app.generation.models.station.station_model import Station
@@ -1021,7 +1021,7 @@ def _build_station_capacity_items(
 
 
 def _sheet_needs_station_machine_powers(sheet: dict[str, Any] | None) -> bool:
-    """ТИТЭС — разбивка по станциям; Калининград — подсказки 1-й/2-й ЕГО."""
+    """ТИТЭС – разбивка по станциям; Калининград – подсказки 1-й/2-й ЕГО."""
     if not sheet or sheet.get("skip_table") or sheet.get("skip_direct_capacity"):
         return False
     if sheet.get("station_capacity_breakdown"):

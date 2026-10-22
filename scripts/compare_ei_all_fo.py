@@ -177,13 +177,13 @@ def main():
         if not ex_fd:
             print(f"[!] Нет Excel для {abbr}")
             continue
-        print(f"\n{'='*60}\n{abbr} — {block.get('label')}\n{'='*60}")
+        print(f"\n{'='*60}\n{abbr} – {block.get('label')}\n{'='*60}")
         fo_issues = 0
         for section in block.get("ved_sections") or []:
             name = section.get("ved_name") or ""
             if not section.get("scatter_chart"):
                 if name != "Промышленное производство":
-                    print(f"  [—] {name}: нет графика")
+                    print(f"  [–] {name}: нет графика")
                 continue
             total_sections += 1
             matched = match_name(name, ex_fd["blocks"])

@@ -3,7 +3,7 @@
 Контрольная выработка ЭЭ по уровням иерархии, кроме РЭС (млн кВтч).
 
 Строки РЭС хранятся в RegionalEnergySystemEnergyGeneration.
-Эта таблица — тот же параметр для Россия / типа ЭС / СЗ / ОЭС.
+Эта таблица – тот же параметр для Россия / типа ЭС / СЗ / ОЭС.
 """
 from sqlalchemy.sql import func
 from sqlalchemy import Numeric, Index, text

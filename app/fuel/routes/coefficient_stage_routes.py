@@ -50,7 +50,7 @@ def _store_coeff_last_run_in_session(
 
 def _ph_for_psu_hd_column(summary: DistributionCoefficientSummary | None):
     """
-    PH = hd / bh (как в этапе «Коэфф») — показатель для ячейки строки ПСУ под столбцом «hd».
+    PH = hd / bh (как в этапе «Коэфф») – показатель для ячейки строки ПСУ под столбцом «hd».
     В сводке хранится поле ph; иначе восстанавливаем из hd и bh.
     """
     if summary is None:
@@ -74,7 +74,7 @@ def _ph_for_psu_hd_column(summary: DistributionCoefficientSummary | None):
 def coeff_tech_type_table(summary: DistributionCoefficientSummary | None):
     """
     Строки ПСУ / ГТУ / ПГУ для второй таблицы этапа «Коэфф».
-    N_нов — cnustn*; в колонке «ЧЧИУМ» вводятся hnps/hngt/hnpg; K_нов — knps/kngt/knpg (hn/ch после расчёта).
+    N_нов – cnustn*; в колонке «ЧЧИУМ» вводятся hnps/hngt/hnpg; K_нов – knps/kngt/knpg (hn/ch после расчёта).
     """
     if summary is None:
         return []

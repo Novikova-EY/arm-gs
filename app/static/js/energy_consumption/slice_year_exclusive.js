@@ -41,7 +41,7 @@
 
                 var blank = document.createElement("option");
                 blank.value = "";
-                blank.textContent = "—";
+                blank.textContent = "–";
                 if (current === "") {
                     blank.selected = true;
                 }

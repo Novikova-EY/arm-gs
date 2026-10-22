@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Таблица gs_russia_federation_demand_params — параметры нагрузки для РФ в целом (без FK на справочник).
+"""Таблица gs_russia_federation_demand_params – параметры нагрузки для РФ в целом (без FK на справочник).
 
 Revision ID: k1l2m3n4o5p6
 Revises: j0k1l2m3n4o5

@@ -162,7 +162,7 @@ def _normalize_name(value: object) -> str:
         .replace("\xa0", " ")
         .replace("-", " ")
         .replace("–", " ")
-        .replace("—", " ")
+        .replace("–", " ")
         .replace(".", " ")
         .replace(",", " ")
         .lower()
@@ -889,11 +889,11 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     """
     Импорт сопоставлений типов групп оборудования из Excel (по принципу gen_company).
     Ожидаемые колонки:
-    - code         — код из БД Топливо (целое), аналог external_id
-    - name_topl    — наименование из БД Топливо (текст)
-    - gruppa_oborud — группа оборудования (текст)
-    - name         — наименование типа группы в АРМ (для поиска EquipmentGroupType.name)
-    - type, tm, n1, n2, p1, p2 — дополнительные поля
+    - code         – код из БД Топливо (целое), аналог external_id
+    - name_topl    – наименование из БД Топливо (текст)
+    - gruppa_oborud – группа оборудования (текст)
+    - name         – наименование типа группы в АРМ (для поиска EquipmentGroupType.name)
+    - type, tm, n1, n2, p1, p2 – дополнительные поля
     """
     logger = current_app.logger
     filename = getattr(file, "filename", None)
@@ -949,7 +949,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     name_map, duplicates = _build_equipment_group_name_map(current_version_id)
 
     existing = EquipmentGroupExternalMapping.query.all()
-    # Маппинги без привязки к EquipmentGroupType (equipment_group_ref_uuid is None) —
+    # Маппинги без привязки к EquipmentGroupType (equipment_group_ref_uuid is None) –
     # ключ: (code, name_topl, gruppa_oborud)
     by_unmatched_key: dict[tuple[str, str, str], EquipmentGroupExternalMapping] = {
         (
@@ -964,7 +964,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     by_code: dict[int, EquipmentGroupExternalMapping] = {
         m.code: m for m in existing if m.code is not None
     }
-    # Маппинги с привязкой к EquipmentGroupType — допускаем несколько строк на один ref_uuid,
+    # Маппинги с привязкой к EquipmentGroupType – допускаем несколько строк на один ref_uuid,
     # но для каждой пары (code, equipment_group_ref_uuid) должна быть не более одной записи.
     # Ключ: (code, equipment_group_ref_uuid)
     by_key_with_ref: dict[tuple[str, str], EquipmentGroupExternalMapping] = {
@@ -998,7 +998,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
         processed += 1
 
         # Для сопоставления с EquipmentGroupType используем колонку name (АРМ),
-        # а name_topl — это внешнее наименование из БД Топливо.
+        # а name_topl – это внешнее наименование из БД Топливо.
         local_name = _clean_text(row.get("name"))
         normalized_local = _normalize_name(local_name) if local_name else ""
 
@@ -1306,7 +1306,7 @@ def import_gen_company_branch_mappings_from_excel(file, user: str):
     """
     Импорт сопоставлений филиалов генерирующих компаний из Excel.
     Обязательные колонки: code_topl, name_topl.
-    Необязательная колонка name — для сопоставления с GenCompany.name.
+    Необязательная колонка name – для сопоставления с GenCompany.name.
     Все строки с code_topl и name_topl сохраняются в БД, даже без сопоставления с GenCompany.
     """
     logger = current_app.logger
@@ -1341,7 +1341,7 @@ def import_gen_company_branch_mappings_from_excel(file, user: str):
     name_map, duplicates = _build_gen_company_name_map(current_version_id)
 
     existing = GenCompanyBranchExternalMapping.query.all()
-    # Ключ для поиска существующей строки: (external_id, external_name) — филиал идентифицируется по данным из БД Топливо
+    # Ключ для поиска существующей строки: (external_id, external_name) – филиал идентифицируется по данным из БД Топливо
     by_key: dict[tuple[str, str], GenCompanyBranchExternalMapping] = {
         (
             _clean_text(m.external_id),
@@ -1846,7 +1846,7 @@ def import_territories_energy_from_excel(file, user: str):
     res_map, res_dups = _build_regional_energy_system_name_map(current_version_id)
     ez_map, ez_dups = _build_energy_unit_name_map(current_version_id)
 
-    # Валидные external_id для FK: dep, oes, er, fo — должны существовать в соответствующих таблицах сопоставлений
+    # Валидные external_id для FK: dep, oes, er, fo – должны существовать в соответствующих таблицах сопоставлений
     valid_dep_ids = {
         _clean_text(m.external_id)
         for m in DepartmentExternalMapping.query.all()
@@ -1921,7 +1921,7 @@ def import_territories_energy_from_excel(file, user: str):
     updated = 0
     errors: list[str] = []
     processed = 0
-    warned_missing: set[tuple[str, str]] = set()  # (field, value) — чтобы не дублировать предупреждения
+    warned_missing: set[tuple[str, str]] = set()  # (field, value) – чтобы не дублировать предупреждения
 
     for index, row in df.iterrows():
         if row.isnull().all():
@@ -1990,7 +1990,7 @@ def import_territories_energy_from_excel(file, user: str):
         er_val = integer_values.get("er_topl") or None
         fo_val = integer_values.get("fo_topl") or None
 
-        # dep, oes, er, fo — FK на таблицы сопоставлений; если external_id отсутствует — ставим None
+        # dep, oes, er, fo – FK на таблицы сопоставлений; если external_id отсутствует – ставим None
         if dep_val and _clean_text(dep_val) not in valid_dep_ids:
             if ("dep", _clean_text(dep_val)) not in warned_missing:
                 warned_missing.add(("dep", _clean_text(dep_val)))

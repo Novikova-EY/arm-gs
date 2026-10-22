@@ -185,7 +185,7 @@ def _write_sheet(
                 _cell_value(row, year),
                 zero_as_dash=False,
             )
-            if value == "—" and _cell_value(row, year) in (None, ""):
+            if value == "–" and _cell_value(row, year) in (None, ""):
                 value = None
                 is_numeric = False
             cell = ws.cell(row=excel_row, column=col_idx, value=value)

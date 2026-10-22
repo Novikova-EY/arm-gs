@@ -8,6 +8,7 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.common.services.help_services import apply_nbsp_to_row
+from app.fuel.services.equipment_groups.equipment_group_flags import equipment_group_flag_label
 from app.fuel.services.stations.stations_equipment_groups_services import (
     build_equipment_group_hierarchy_eg_first,
 )
@@ -77,8 +78,8 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "Группа оборудования/составная станция (niv)",
         "Признак составной станции (comp)",
         "Код группы оборудования (main)",
-        "Признак действующей электростанции (d)",
-        "Признак расширяемой электростанции (r)",
+        "Признак действующей станции (d)",
+        "Признак расширяемой станции (r)",
         "Признак ФОРЭМ (forem)",
         "Ведомство (vedomstvo)",
         "Субъект РФ (obl)",
@@ -131,105 +132,98 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             return group_obj.name
         if group_obj and group_obj.name_ext:
             return group_obj.name_ext
-        return "—"
+        return "–"
 
     def _write_group_fields(row, group_obj, station_for_company):
         if not group_obj:
             for col_idx in range(IX_FIRST_GROUP_DETAIL, len(columns)):
-                row[col_idx] = "—"
+                row[col_idx] = "–"
             return
 
         rd = getattr(group_obj, "regional_district", None)
-        row[IX_FIRST_GROUP_DETAIL] = rd.name if rd and rd.name else "—"
+        row[IX_FIRST_GROUP_DETAIL] = rd.name if rd and rd.name else "–"
         res = getattr(group_obj, "regional_energy_system", None)
-        row[IX_FIRST_GROUP_DETAIL + 1] = res.name if res and res.name else "—"
+        row[IX_FIRST_GROUP_DETAIL + 1] = res.name if res and res.name else "–"
         row[IX_FIRST_GROUP_DETAIL + 2] = (
-            getattr(station_for_company, "gen_companies", None) or "—"
+            getattr(station_for_company, "gen_companies", None) or "–"
             if station_for_company and hasattr(station_for_company, "gen_companies")
-            else "—"
+            else "–"
         )
-        row[IX_FIRST_GROUP_DETAIL + 3] = group_obj.niv if group_obj.niv else "—"
-        row[IX_FIRST_GROUP_DETAIL + 4] = group_obj.comp if group_obj.comp else "—"
-        row[IX_FIRST_GROUP_DETAIL + 5] = group_obj.main if group_obj.main else "—"
-        d_val = group_obj.d
-        r_val = group_obj.r
+        row[IX_FIRST_GROUP_DETAIL + 3] = group_obj.niv if group_obj.niv else "–"
+        row[IX_FIRST_GROUP_DETAIL + 4] = group_obj.comp if group_obj.comp else "–"
+        row[IX_FIRST_GROUP_DETAIL + 5] = group_obj.main if group_obj.main else "–"
         forem_val = group_obj.forem
-        row[IX_FIRST_GROUP_DETAIL + 6] = "да" if d_val and str(d_val) == "1" else (d_val or "—")
-        if r_val and str(r_val) == "1":
-            row[IX_FIRST_GROUP_DETAIL + 7] = "да"
-        elif r_val and str(r_val) == "2":
-            row[IX_FIRST_GROUP_DETAIL + 7] = "новая часть действующей электростанции"
-        else:
-            row[IX_FIRST_GROUP_DETAIL + 7] = r_val or "—"
-        row[IX_FIRST_GROUP_DETAIL + 8] = "да" if forem_val and str(forem_val) == "1" else (forem_val or "—")
+        row[IX_FIRST_GROUP_DETAIL + 6] = equipment_group_flag_label("d", group_obj.d)
+        row[IX_FIRST_GROUP_DETAIL + 7] = equipment_group_flag_label("r", group_obj.r)
+        row[IX_FIRST_GROUP_DETAIL + 8] = "да" if forem_val and str(forem_val) == "1" else (forem_val or "–")
         _vedomstvo = group_obj.vedomstvo
         if _vedomstvo and str(_vedomstvo) == "1":
             row[IX_FIRST_GROUP_DETAIL + 9] = "станция\nотрасли"
         elif _vedomstvo and str(_vedomstvo) == "2":
             row[IX_FIRST_GROUP_DETAIL + 9] = "пром.\nпредприятие"
         else:
-            row[IX_FIRST_GROUP_DETAIL + 9] = _vedomstvo or "—"
+            row[IX_FIRST_GROUP_DETAIL + 9] = _vedomstvo or "–"
         terr_mapping = getattr(group_obj, "territories_energy_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 10] = (
             terr_mapping.external_name
             if terr_mapping and terr_mapping.external_name
-            else (group_obj.obl or "—")
+            else (group_obj.obl or "–")
         )
         dep_mapping = getattr(group_obj, "department_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 11] = (
             dep_mapping.external_name
             if dep_mapping and dep_mapping.external_name
-            else (group_obj.dep or "—")
+            else (group_obj.dep or "–")
         )
         ues_mapping = getattr(group_obj, "union_energy_system_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 12] = (
             ues_mapping.external_nameoes
             if ues_mapping and ues_mapping.external_nameoes
-            else (group_obj.oes or "—")
+            else (group_obj.oes or "–")
         )
         er_mapping = getattr(group_obj, "economic_region_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 13] = (
             er_mapping.external_name
             if er_mapping and er_mapping.external_name
-            else (group_obj.er or "—")
+            else (group_obj.er or "–")
         )
         fd_mapping = getattr(group_obj, "federal_district_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 14] = (
             fd_mapping.external_name
             if fd_mapping and fd_mapping.external_name
-            else (group_obj.fo or "—")
+            else (group_obj.fo or "–")
         )
-        row[IX_FIRST_GROUP_DETAIL + 15] = group_obj.numb if group_obj.numb else "—"
-        row[IX_FIRST_GROUP_DETAIL + 16] = group_obj.tm if group_obj.tm else "—"
-        row[IX_FIRST_GROUP_DETAIL + 17] = group_obj.n1 if group_obj.n1 else "—"
-        row[IX_FIRST_GROUP_DETAIL + 18] = group_obj.n2 if group_obj.n2 else "—"
-        row[IX_FIRST_GROUP_DETAIL + 19] = group_obj.p1 if group_obj.p1 else "—"
-        row[IX_FIRST_GROUP_DETAIL + 20] = group_obj.p2 if group_obj.p2 else "—"
-        row[IX_FIRST_GROUP_DETAIL + 21] = group_obj.ordnumb if group_obj.ordnumb else "—"
-        row[IX_FIRST_GROUP_DETAIL + 22] = group_obj.addr if group_obj.addr else "—"
-        row[IX_FIRST_GROUP_DETAIL + 23] = group_obj.note if group_obj.note else "—"
+        row[IX_FIRST_GROUP_DETAIL + 15] = group_obj.numb if group_obj.numb else "–"
+        row[IX_FIRST_GROUP_DETAIL + 16] = group_obj.tm if group_obj.tm else "–"
+        row[IX_FIRST_GROUP_DETAIL + 17] = group_obj.n1 if group_obj.n1 else "–"
+        row[IX_FIRST_GROUP_DETAIL + 18] = group_obj.n2 if group_obj.n2 else "–"
+        row[IX_FIRST_GROUP_DETAIL + 19] = group_obj.p1 if group_obj.p1 else "–"
+        row[IX_FIRST_GROUP_DETAIL + 20] = group_obj.p2 if group_obj.p2 else "–"
+        row[IX_FIRST_GROUP_DETAIL + 21] = group_obj.ordnumb if group_obj.ordnumb else "–"
+        row[IX_FIRST_GROUP_DETAIL + 22] = group_obj.addr if group_obj.addr else "–"
+        row[IX_FIRST_GROUP_DETAIL + 23] = group_obj.note if group_obj.note else "–"
         row[IX_FIRST_GROUP_DETAIL + 24] = (
             group_obj.cities_external_mapping.name
             if group_obj.cities_external_mapping
-            else (group_obj.codegor or "—")
+            else (group_obj.codegor or "–")
         )
         bu_mapping = getattr(group_obj, "business_unit_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 25] = (
             bu_mapping.external_name
             if bu_mapping and bu_mapping.external_name
-            else (group_obj.be or "—")
+            else (group_obj.be or "–")
         )
         gk_mapping = getattr(group_obj, "gen_company_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 26] = (
             gk_mapping.external_name
             if gk_mapping and gk_mapping.external_name
-            else (group_obj.gk or "—")
+            else (group_obj.gk or "–")
         )
         gkf_mapping = getattr(group_obj, "gen_company_branch_external_mapping", None)
         row[IX_FIRST_GROUP_DETAIL + 27] = (
             gkf_mapping.external_name
             if gkf_mapping and gkf_mapping.external_name
-            else (group_obj.gkf or "—")
+            else (group_obj.gkf or "–")
         )
 
     def _render_station_blocks(station_blocks):
@@ -240,7 +234,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             if not station:
                 continue
             station_name = (
-                station.name if hasattr(station, "name") and station.name else "—"
+                station.name if hasattr(station, "name") and station.name else "–"
             )
 
             for group_block in station_block.get("group_blocks") or []:
@@ -257,21 +251,21 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         row[IX_STATION_ID] = (
                             station.id
                             if station and getattr(station, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_STATION] = station_name
                         row[IX_MACHINE_NUM] = (
-                            getattr(machine, "machine_number", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_number", None) or "–"
+                            if machine else "–"
                         )
                         row[IX_MACHINE_ID] = (
                             machine.id
                             if machine and getattr(machine, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_MACHINE_NAME] = (
-                            getattr(machine, "machine_name", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_name", None) or "–"
+                            if machine else "–"
                         )
 
                         if group_first_row is None:
@@ -279,15 +273,15 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             if group_obj:
                                 row[IX_EG_ID] = group_obj.id
                                 row[IX_NUMB1120] = (
-                                    group_obj.numb if group_obj.numb is not None else "—"
+                                    group_obj.numb if group_obj.numb is not None else "–"
                                 )
                                 row[IX_NAME_EXT] = (
-                                    group_obj.name_ext if group_obj.name_ext else "—"
+                                    group_obj.name_ext if group_obj.name_ext else "–"
                                 )
                             else:
-                                row[IX_EG_ID] = "—"
-                                row[IX_NUMB1120] = "—"
-                                row[IX_NAME_EXT] = "—"
+                                row[IX_EG_ID] = "–"
+                                row[IX_NUMB1120] = "–"
+                                row[IX_NAME_EXT] = "–"
                             row[IX_GROUP_NAME] = _group_name(group_obj)
 
                         _write_group_fields(row, group_obj, station)
@@ -297,7 +291,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             row[IX_GROUP_TYPE] = (
                                 group_type.name
                                 if group_type and getattr(group_type, "name", None)
-                                else "—"
+                                else "–"
                             )
 
                         _track_row_lengths(row)
@@ -338,7 +332,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                 if not station:
                     continue
                 station_name = (
-                    station.name if hasattr(station, "name") and station.name else "—"
+                    station.name if hasattr(station, "name") and station.name else "–"
                 )
 
                 for link in station_entry.get("links") or []:
@@ -351,21 +345,21 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         row[IX_STATION_ID] = (
                             station.id
                             if station and getattr(station, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_STATION] = station_name
                         row[IX_MACHINE_NUM] = (
-                            getattr(machine, "machine_number", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_number", None) or "–"
+                            if machine else "–"
                         )
                         row[IX_MACHINE_ID] = (
                             machine.id
                             if machine and getattr(machine, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_MACHINE_NAME] = (
-                            getattr(machine, "machine_name", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_name", None) or "–"
+                            if machine else "–"
                         )
 
                         if group_first_row is None:
@@ -373,15 +367,15 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             if group_obj:
                                 row[IX_EG_ID] = group_obj.id
                                 row[IX_NUMB1120] = (
-                                    group_obj.numb if group_obj.numb is not None else "—"
+                                    group_obj.numb if group_obj.numb is not None else "–"
                                 )
                                 row[IX_NAME_EXT] = (
-                                    group_obj.name_ext if group_obj.name_ext else "—"
+                                    group_obj.name_ext if group_obj.name_ext else "–"
                                 )
                             else:
-                                row[IX_EG_ID] = "—"
-                                row[IX_NUMB1120] = "—"
-                                row[IX_NAME_EXT] = "—"
+                                row[IX_EG_ID] = "–"
+                                row[IX_NUMB1120] = "–"
+                                row[IX_NAME_EXT] = "–"
                             row[IX_GROUP_NAME] = _group_name(group_obj)
                             _write_group_fields(row, group_obj, first_station)
 
@@ -390,7 +384,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             row[IX_GROUP_TYPE] = (
                                 group_type.name
                                 if group_type and getattr(group_type, "name", None)
-                                else "—"
+                                else "–"
                             )
 
                         _track_row_lengths(row)
@@ -431,7 +425,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             for station_entry in group_block.get("station_entries") or []:
                 station = station_entry.get("station")
                 station_name = (
-                    station.name if station and getattr(station, "name", None) else "—"
+                    station.name if station and getattr(station, "name", None) else "–"
                 )
 
                 for link in station_entry.get("links") or []:
@@ -444,21 +438,21 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         row[IX_STATION_ID] = (
                             station.id
                             if station and getattr(station, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_STATION] = station_name
                         row[IX_MACHINE_NUM] = (
-                            getattr(machine, "machine_number", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_number", None) or "–"
+                            if machine else "–"
                         )
                         row[IX_MACHINE_ID] = (
                             machine.id
                             if machine and getattr(machine, "id", None)
-                            else "—"
+                            else "–"
                         )
                         row[IX_MACHINE_NAME] = (
-                            getattr(machine, "machine_name", None) or "—"
-                            if machine else "—"
+                            getattr(machine, "machine_name", None) or "–"
+                            if machine else "–"
                         )
 
                         if group_first_row is None:
@@ -466,15 +460,15 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             if group_obj:
                                 row[IX_EG_ID] = group_obj.id
                                 row[IX_NUMB1120] = (
-                                    group_obj.numb if group_obj.numb is not None else "—"
+                                    group_obj.numb if group_obj.numb is not None else "–"
                                 )
                                 row[IX_NAME_EXT] = (
-                                    group_obj.name_ext if group_obj.name_ext else "—"
+                                    group_obj.name_ext if group_obj.name_ext else "–"
                                 )
                             else:
-                                row[IX_EG_ID] = "—"
-                                row[IX_NUMB1120] = "—"
-                                row[IX_NAME_EXT] = "—"
+                                row[IX_EG_ID] = "–"
+                                row[IX_NUMB1120] = "–"
+                                row[IX_NAME_EXT] = "–"
                             row[IX_GROUP_NAME] = _group_name(group_obj)
 
                         _write_group_fields(row, group_obj, station)
@@ -484,7 +478,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             row[IX_GROUP_TYPE] = (
                                 group_type.name
                                 if group_type and getattr(group_type, "name", None)
-                                else "—"
+                                else "–"
                             )
 
                         _track_row_lengths(row)
@@ -509,7 +503,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                     )
 
     for est_block in equipment_group_blocks_hierarchy:
-        es_type_name = est_block.get("est_name", "—")
+        es_type_name = est_block.get("est_name", "–")
         row = [None] * len(columns)
         row[IX_GROUP_TYPE] = es_type_name
         _track_row_lengths(row)
@@ -521,7 +515,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         current_row += 1
 
         for ues_block in est_block.get("ues_list") or []:
-            ues_name = ues_block.get("ues_name", "—")
+            ues_name = ues_block.get("ues_name", "–")
             row = [None] * len(columns)
             row[IX_GROUP_TYPE] = ues_name
             _track_row_lengths(row)
@@ -534,7 +528,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             current_row += 1
 
             for res_block in ues_block.get("res_list") or []:
-                res_name = res_block.get("res_name", "—")
+                res_name = res_block.get("res_name", "–")
                 row = [None] * len(columns)
                 row[IX_GROUP_TYPE] = res_name
                 _track_row_lengths(row)

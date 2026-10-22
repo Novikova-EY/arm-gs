@@ -3,7 +3,7 @@
 Пересчёт полей xxx_c в EquipmentGroupSpecificFuelPrice по данным:
 EquipmentGroupFuelParam, EquipmentGroupExtraFuelParam, EquipmentGroupSpecificFuelCost.
 
-Формулы — в equipment_group_specific_fuel_price_calc_services (fill_specific_fuel_price_from_calc).
+Формулы – в equipment_group_specific_fuel_price_calc_services (fill_specific_fuel_price_from_calc).
 """
 from __future__ import annotations
 
@@ -140,11 +140,11 @@ def recalculate_all_specific_fuel_prices(
     - кнопка «Рассчитать цены топлива» на странице цены;
     - после импорта стоимости / топливных параметров.
 
-    :param year: если задан — только этот год
+    :param year: если задан – только этот год
     :param equipment_group_id: ограничить одну группу
     :param start_year, end_year: диапазон лет
     :param commit: False при вызове из orchestrator до общего commit
-    :param all_versions: если True — без фильтра текущей версии БД
+    :param all_versions: если True – без фильтра текущей версии БД
     :return: число обработанных строк цены
     """
     from app.fuel.models.fue_equipment_group_model import EquipmentGroup

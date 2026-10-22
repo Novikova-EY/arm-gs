@@ -33,7 +33,7 @@ def test_hide_empty_entity_blocks_keeps_nonzero_and_skip_flag():
         _block(
             entity_label="Пустая",
             parameter_key="max_power",
-            year_values=["0", "—", ""],
+            year_values=["0", "–", ""],
             rowspan=1,
         ),
         _block(

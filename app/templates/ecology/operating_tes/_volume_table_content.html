@@ -1,0 +1,37 @@
+<colgroup>
+  <col class="ot-col-label" />
+  {% for col in territory_columns %}
+  <col class="ot-col-terr" />
+  {% endfor %}
+</colgroup>
+<thead class="table-success">
+  <tr class="text-center align-middle">
+    <th class="text-center align-middle ot-label-col">Наименование
+      {% if territory_filter_storage_key %}
+      {% include 'ecology/operating_tes/_territory_filter.html' %}
+      {% endif %}
+    </th>
+    {% for col in territory_columns %}
+    <th class="text-center align-middle ot-terr-col">{{ col.sheet_name }}</th>
+    {% endfor %}
+  </tr>
+</thead>
+<tbody>
+  {% for row in rows %}
+  {% if row.key in ('pollutants_total', 'co2') %}
+  <tr class="table-secondary">
+    <th colspan="{{ value_columns|length + 1 }}" class="text-start fw-bold">
+      {{ 'Вредные вещества' if row.key == 'pollutants_total' else 'Парниковые газы' }}
+    </th>
+  </tr>
+  {% endif %}
+  <tr class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}" data-row-key="{{ row.key }}">
+    <td class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}">
+      {{ emission_row_label(row) }}
+    </td>
+    {% for col in value_columns %}
+    <td class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}">{{ row.col_values[col.slug] }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</tbody>

@@ -108,7 +108,7 @@ _TITES_AND_DZ_AGGREGATE_LABEL = "ТИТЭС и децентрализованн�
 _TITES_COMPACT_AGGREGATE_LABEL = "ТИТЭС"
 _TITES_SIBERIA_UES_NAME_CF = "титэссибири"
 _TITES_EAST_UES_NAME_CF = "титэсвостока"
-# Западный/Центральный энергорайоны ЭС Саха (Якутия): до 2018 в ТИТЭС, с 2019 — в ОЭС Востока.
+# Западный/Центральный энергорайоны ЭС Саха (Якутия): до 2018 в ТИТЭС, с 2019 – в ОЭС Востока.
 _SAKHA_YAKUTIA_RES_NAME_MARKERS_CF = ("саха", "якутия")
 _TITES_SAKHA_YAKUTIA_EXTRA_EU_BASE_LABELS_ORDERED: tuple[str, ...] = (
     "западный энергорайон",
@@ -119,7 +119,7 @@ _TITES_SAKHA_YAKUTIA_EXTRA_EU_BASE_LABELS_CF = frozenset(
 )
 _TITES_OES_SAKHA_YAKUTIA_EXTRA_ENERGY_UNITS_THROUGH_YEAR = 2018
 _SAKHA_TITES_THROUGH_YEAR_ENTITY_KIND = "sakha_tites_through_year"
-# В «Сводной таблице» под ТИТЭС: вместо РЭС «ЭС г. Норильска…» — энергорайон Таймыр/Туруханск/Норильск.
+# В «Сводной таблице» под ТИТЭС: вместо РЭС «ЭС г. Норильска…» – энергорайон Таймыр/Туруханск/Норильск.
 _NORILSK_RES_LABEL = "ЭС г. Норильска Красноярского края"
 _NORILSK_RES_LABEL_CF = _NORILSK_RES_LABEL.casefold().replace(" ", "")
 _TAIMYR_NORILSK_EU_LABEL = (
@@ -206,7 +206,7 @@ _KALININGRAD_SA_FROM_ES_FORMULA_KEY: dict[str, str] = {
 def _federal_district_excluded_from_summary(fd: FederalDistrict) -> bool:
     name = (getattr(fd, "name", None) or "").strip()
     cf = name.casefold()
-    for prefix in ("фо - ", "фо — "):
+    for prefix in ("фо - ", "фо – "):
         p = prefix.casefold()
         if cf.startswith(p):
             cf = cf[len(prefix) :].strip()
@@ -230,7 +230,7 @@ CALCULATED_MAX_PARAMETER_KEYS = frozenset(
     }
 )
 
-# Округление из URL влияет только на эти показатели; полная точность — в title/data-db-full.
+# Округление из URL влияет только на эти показатели; полная точность – в title/data-db-full.
 _NUMERIC_ROUNDING_TOOLTIP_KEYS = frozenset(
     {
         "max_power",
@@ -402,12 +402,12 @@ PARAMETERS_SUBJECT_FD_SUMMARY: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
     ("combined_on_fo", "Совмещенное потребление мощности на час прохождения максимума ФО, МВт"),
 )
-# Энергорайон на сводке по ФО (в модели ЭР нет combined_on_fo — совмещённый на РЭС).
+# Энергорайон на сводке по ФО (в модели ЭР нет combined_on_fo – совмещённый на РЭС).
 PARAMETERS_ENERGY_UNIT_FD_SUMMARY: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
     ("combined_on_es", "Совмещенный максимум потребления мощности ЭР на РЭС, МВт"),
 )
-# Региональная энергосистема на сводке по энергозонам: «на энергозону» (ОЭС/ЕЭС — на странице по ОЭС)
+# Региональная энергосистема на сводке по энергозонам: «на энергозону» (ОЭС/ЕЭС – на странице по ОЭС)
 PARAMETERS_RES: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
     ("combined_on_ez", "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт"),
@@ -491,7 +491,7 @@ class SummaryEntity:
     id_federal_district: int | None = None
     id_energy_zone: int | None = None
     id_synchronous_area: int | None = None
-    # Вариант периметра ОЭС Юга (with_nt / without_nt / without_crimea_sev); для прочих ОЭС — None.
+    # Вариант периметра ОЭС Юга (with_nt / without_nt / without_crimea_sev); для прочих ОЭС – None.
     perimeter_variant_code: str | None = None
     # Строка уже развёрнута по варианту периметра (включая code=None → «не указано»).
     summary_perimeter_variant_row: bool = False
@@ -504,7 +504,7 @@ class SummaryEntity:
     # Копия Западный/Центральный Саха (Якутия) под ТИТЭС (годы ≤ 2018), без строки РЭС.
     sakha_yakutia_tites_through_year_row: bool = False
     # РЭС на сводке ЭЗ: True, если все субъекты РЭС входят в эту энергозону.
-    # False — частичное пересечение: полный показатель РЭС в агрегат зоны не берём.
+    # False – частичное пересечение: полный показатель РЭС в агрегат зоны не берём.
     ez_res_fully_in_zone: bool | None = None
 
 
@@ -931,7 +931,7 @@ def _demand_row_groups_for_all_binding_variants(
     *,
     binding: Any,
 ) -> list[tuple[str | None, list[Any]]]:
-    """``не указано`` + все варианты из привязки /perimeter_variants/ — даже без строк в БД."""
+    """``не указано`` + все варианты из привязки /perimeter_variants/ – даже без строк в БД."""
     if binding is None or not getattr(binding, "variants", ()):
         stored = _demand_rows_by_stored_perimeter_variant(
             model,
@@ -972,7 +972,7 @@ def _demand_row_groups_for_all_binding_variants(
         None,
     )
     out: list[tuple[str | None, list[Any]]] = []
-    # «Не указано» — только если в БД есть строки без варианта или в привязке нет вариантов.
+    # «Не указано» – только если в БД есть строки без варианта или в привязке нет вариантов.
     if null_rows or not codes:
         out.append((None, null_rows))
     for code in codes:
@@ -1037,7 +1037,7 @@ def _summary_variant_entity_label(
 
     Не берёт ``label_suffix`` / префикс из /perimeter_variants/ (там могут быть
     «без заряда ГАЭС», «(Калин)», «O-1 …» и произвольные переименования).
-    Метка О-1 — только у кнопки/бейджа, не в названии строки.
+    Метка О-1 – только у кнопки/бейджа, не в названии строки.
     """
     _ = (binding, entity_kind, entity_name)
     base = str(base_label or "").strip()
@@ -1212,7 +1212,7 @@ def _oes_promote_subjects_only_under_ees_russia(
     entities: list[SummaryEntity],
     f_rd: frozenset[int],
 ) -> list[SummaryEntity]:
-    """При фильтре по субъекту — только субъекты РФ (без уровней ОЭС и РЭС)."""
+    """При фильтре по субъекту – только субъекты РФ (без уровней ОЭС и РЭС)."""
     if not f_rd:
         return entities
     rd_dn = RegionalDistrictDemandParameter.__name__
@@ -1237,7 +1237,7 @@ def _oes_promote_energy_units_only_under_ees_russia(
     entities: list[SummaryEntity],
     f_eu: frozenset[int],
 ) -> list[SummaryEntity]:
-    """При фильтре по энергоузлу — только энергоузлы (без ОЭС, РЭС, субъекта)."""
+    """При фильтре по энергоузлу – только энергоузлы (без ОЭС, РЭС, субъекта)."""
     if not f_eu:
         return entities
     eu_dn = EnergyUnitDemandParameter.__name__
@@ -1265,7 +1265,7 @@ def _oes_promote_res_only_under_ees_russia(
     entities: list[SummaryEntity],
     f_res: frozenset[int],
 ) -> list[SummaryEntity]:
-    """При фильтре по РЭС — только строки РЭС (без ОЭС, субъектов и энергоузлов)."""
+    """При фильтре по РЭС – только строки РЭС (без ОЭС, субъектов и энергоузлов)."""
     if not f_res:
         return entities
     res_dn = RegionalEnergySystemDemandParameter.__name__
@@ -1374,7 +1374,7 @@ def _enrich_national_prefix_calculated_max_like_oes(
     *,
     filter_year_list: list[int],
 ) -> None:
-    """Расчётные показатели префикса ЦЗ / ЕЭС / СЗ / ЭЭС — как в ``_enrich_oes_summary_calculated_max_from_res``."""
+    """Расчётные показатели префикса ЦЗ / ЕЭС / СЗ / ЭЭС – как в ``_enrich_oes_summary_calculated_max_from_res``."""
     enrich_oes_summary_calculated_max_power_from_res_combined(
         working_rows, years, rounding_digits
     )
@@ -1452,7 +1452,7 @@ def _apply_national_prefix_oes_formulas(
     """Заполняет префикс ЕЭС/СЗ на ФО/ЭЗ формулами ОЭС; возвращает кэш скрытых строк-источников.
 
     Строки префикса в ``summary_rows`` мутируются на месте (те же объекты dict).
-    На ФО/ЭЗ в расчёт не попадает территориальное дерево страницы — только префикс
+    На ФО/ЭЗ в расчёт не попадает территориальное дерево страницы – только префикс
     и скрытые источники ОЭС, иначе суммы ЦЗ/ЭЭС расходятся с /summary/oes/.
     """
     if not summary_rows or not years:
@@ -1549,7 +1549,7 @@ def _build_oes_union_energy_system_entities(
 
 
 def _strip_oes_ees_russia_nt_parent_aggregate(entities: list[SummaryEntity]) -> list[SummaryEntity]:
-    """Сохранено для совместимости вызовов при территориальном фильтре (плоское дерево — без изменений)."""
+    """Сохранено для совместимости вызовов при территориальном фильтре (плоское дерево – без изменений)."""
     return list(entities)
 
 
@@ -1786,7 +1786,7 @@ def _finalize_oes_summary_context(
         ),
     )
     _tag_common_power_demand_summary_rows(rows, oes_summary=True)
-    # До формул ЭЭС/ТИТЭС: Западный/Центральный Саха — ≤2018 под ТИТЭС, ≥2019 под ОЭС Востока.
+    # До формул ЭЭС/ТИТЭС: Западный/Центральный Саха – ≤2018 под ТИТЭС, ≥2019 под ОЭС Востока.
     mask_sakha_yakutia_tites_oes_east_year_membership(rows, years)
 
     need_calc_max_enrichment = _summary_data_segments_requested(
@@ -1894,7 +1894,7 @@ def _finalize_fo_summary_context(
 
         inject_peak_usage_hours_rows(rows, years, rounding_digits)
         inject_combined_peak_usage_hours_rows(rows, years, rounding_digits)
-        # ЧЧИ 2-й СЗ / СЗ Калининграда — как на ОЭС: числитель из ОЭС Востока / ЭС Калининграда.
+        # ЧЧИ 2-й СЗ / СЗ Калининграда – как на ОЭС: числитель из ОЭС Востока / ЭС Калининграда.
         _apply_national_prefix_oes_formulas(
             rows,
             years,
@@ -2032,17 +2032,17 @@ def build_oes_summary_context(
     """Сводка по ОЭС (GET ds_ues, ds_res, ds_rd, ds_eu).
 
     Набор строк показателей по каждой сущности не урезается территориальными фильтрами; скрытие
-    отдельных параметров — только через модальное окно «Наименование параметров» (и ``visible_rows`` при выгрузке).
+    отдельных параметров – только через модальное окно «Наименование параметров» (и ``visible_rows`` при выгрузке).
 
     При сочетании фильтров нижний уровень сужается **отдельно в каждой ветке родителя** (как на
-    сводках по ФО и энергозонам): например, выбранные субъекты РФ относятся только к одной ОЭС —
+    сводках по ФО и энергозонам): например, выбранные субъекты РФ относятся только к одной ОЭС –
     под остальными выбранными ОЭС показываются все РЭС/субъекты/энергорайоны этой ветки; то же
     для РЭС ↔ субъектов и субъектов ↔ энергорайонов.
 
-    Ровно один id: для одной РЭС, одного субъекта или одного энергорайона — прежнее поднятие
-    строки под «ЕЭС России без НТ»; для одной ОЭС — полное поддерево (РЭС и ниже).
+    Ровно один id: для одной РЭС, одного субъекта или одного энергорайона – прежнее поднятие
+    строки под «ЕЭС России без НТ»; для одной ОЭС – полное поддерево (РЭС и ниже).
 
-    ``for_client_render_shell=True`` — только метаданные страницы (годы, заголовок); строки
+    ``for_client_render_shell=True`` – только метаданные страницы (годы, заголовок); строки
     таблицы загружаются отдельным JSON-запросом.
     """
     if for_client_render_shell:
@@ -2085,7 +2085,7 @@ def build_oes_summary_context(
         f_eu = frozenset(eu_l)
         ent = prune_summary_entities_oes(base_entities, f_ues, f_res, f_rd, f_eu, frozenset())
         total_ids = len(ues_l) + len(res_l) + len(rd_l) + len(eu_l)
-        # Только ОЭС в URL — полное поддерево (РЭС → субъект → энергорайон), без «поднятия» одной строки ОЭС.
+        # Только ОЭС в URL – полное поддерево (РЭС → субъект → энергорайон), без «поднятия» одной строки ОЭС.
         if total_ids == 1:
             if eu_l:
                 ent = _oes_promote_energy_units_only_under_ees_russia(ent, f_eu)
@@ -2162,8 +2162,8 @@ def _inject_oes_peak_usage_hours_rows(ctx: dict[str, Any], rounding_digits: int)
     )
 
 
-# «Расчетный максимум потребления мощности …»: после каждой строки — своя «Проверка для …».
-# formula_pair: (a_key, b_key) для a−b; None — формула будет добавлена позже.
+# «Расчетный максимум потребления мощности …»: после каждой строки – своя «Проверка для …».
+# formula_pair: (a_key, b_key) для a−b; None – формула будет добавлена позже.
 _OES_VERIFY_AFTER_CALC_MAX_POWER_CONSUMPTION_SPECS: tuple[
     tuple[str, str, str, tuple[str, str] | None],
     ...,
@@ -2265,23 +2265,23 @@ def _verify_diff_year_values(
     *,
     bounds_row: dict[str, Any] | None = None,
 ) -> tuple[list[str], list[str]]:
-    """«Проверка …» = a − b по годам (целое в ячейке; title — до 3 знаков)."""
+    """«Проверка …» = a − b по годам (целое в ячейке; title – до 3 знаков)."""
     n_y = len(years)
     if a_row is None or b_row is None:
-        return (["—"] * n_y, [""] * n_y)
+        return (["–"] * n_y, [""] * n_y)
     out_vals: list[str] = []
     out_tt: list[str] = []
     for j in range(n_y):
         if bounds_row is not None and not _formula_year_applies_to_row_perimeter_variant(
             bounds_row, int(years[j])
         ):
-            out_vals.append("—")
+            out_vals.append("–")
             out_tt.append("")
             continue
         av = _summary_row_year_float(a_row, j)
         bv = _summary_row_year_float(b_row, j)
         if av is None or bv is None:
-            out_vals.append("—")
+            out_vals.append("–")
             out_tt.append("")
             continue
         d = float(av) - float(bv)
@@ -2333,14 +2333,14 @@ def _inject_oes_summary_verification_rows(
     """
     Сводка «Максимумы» по ОЭС: добавить скрытые строки «Проверка для …» в каждом блоке сущности.
 
-    Формулы (значения по годам — целое число; в title при наведении — до 3 знаков после запятой):
+    Формулы (значения по годам – целое число; в title при наведении – до 3 знаков после запятой):
     - «Проверка максимального потребления мощности , МВт» =
         «Расчетное максимальное потребление мощности, МВт» − «Максимальное потребление мощности, МВт»
     - «Проверка расчетного совмещенного потребления мощности на час прохождения максимума ЕЭС, МВт» =
         «Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» − «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
     - «Проверка расчетного совмещенного … на ЦЗ России, МВт» (ФО) =
         «Расчетное/Расчетный совмещенный … на ЦЗ России, МВт» − «Совмещенное/Совмещенный … на ЦЗ России, МВт»
-    - После каждой строки «Расчетный максимум потребления мощности …» — своя «Проверка для …»
+    - После каждой строки «Расчетный максимум потребления мощности …» – своя «Проверка для …»
       (для части показателей формула будет добавлена позже).
     """
     if not summary_rows or not years:
@@ -2371,7 +2371,7 @@ def _inject_oes_summary_verification_rows(
             return
         end = min(block_start + block_size, len(summary_rows))
         block0 = summary_rows[block_start]
-        # Индекс вставки — сразу после строки insert_after_parameter_key, иначе в конец блока.
+        # Индекс вставки – сразу после строки insert_after_parameter_key, иначе в конец блока.
         insert_at = end
         a_row = None
         b_row = None
@@ -2388,7 +2388,7 @@ def _inject_oes_summary_verification_rows(
                 a_row, b_row, bounds_row=block0
             )
         else:
-            year_values, year_tooltips = (["—"] * n_y, [""] * n_y)
+            year_values, year_tooltips = (["–"] * n_y, [""] * n_y)
 
         old_span = block_size
         new_span = old_span + 1
@@ -2450,7 +2450,7 @@ def _inject_oes_summary_verification_rows(
         span = int(row0.get("entity_rowspan") or 1)
         if span < 1:
             span = 1
-        # Ключи в блоке — определяем, что именно можно проверять.
+        # Ключи в блоке – определяем, что именно можно проверять.
         end = min(i + span, len(summary_rows))
         keys_in_block = {str(summary_rows[j].get("parameter_key") or "") for j in range(i, end)}
 
@@ -2486,7 +2486,7 @@ def _inject_oes_summary_verification_rows(
                 "",
             )
             # Как на /summary/federal_districts/ (PARAMETERS_FEDERAL_DISTRICT_MAX).
-            # Короткие подписи «…совмещенного на ЦЗ…» — только для legacy coeff без max-набора.
+            # Короткие подписи «…совмещенного на ЦЗ…» – только для legacy coeff без max-набора.
             if "потребления" in calc_cz_label.casefold() or "час максимума" in calc_cz_label.casefold():
                 verify_cz_label = (
                     "Проверка расчетного совмещенного потребления мощности "
@@ -2572,25 +2572,25 @@ def build_federal_district_summary_context(
     """Сводка по ФО и РЭС (GET ds_fd, ds_res).
 
     Набор строк показателей по сущности не урезается территориальными фильтрами; скрытие
-    параметров — модальное окно «Наименование параметров» и ``visible_rows`` при выгрузке.
+    параметров – модальное окно «Наименование параметров» и ``visible_rows`` при выгрузке.
 
-    Без фильтров — ЦЗ и полное дерево по всем ФО со всеми РЭС, входящими в округ.
+    Без фильтров – ЦЗ и полное дерево по всем ФО со всеми РЭС, входящими в округ.
 
-    Только ``ds_fd`` — каждая выбранная строка ФО и **все** РЭС этих округов.
+    Только ``ds_fd`` – каждая выбранная строка ФО и **все** РЭС этих округов.
 
-    ``ds_fd`` + ``ds_res`` — строка по каждому выбранному ФО; РЭС сужаются **отдельно по
-    каждому округу**: если в ``ds_res`` есть РЭС этого ФО — показываются только они, если
-    все отмеченные РЭС из других ФО — под данным ФО выводятся **все** его РЭС.
+    ``ds_fd`` + ``ds_res`` – строка по каждому выбранному ФО; РЭС сужаются **отдельно по
+    каждому округу**: если в ``ds_res`` есть РЭС этого ФО – показываются только они, если
+    все отмеченные РЭС из других ФО – под данным ФО выводятся **все** его РЭС.
 
-    Только ``ds_res`` (без ``ds_fd``) — плоский список строк по РЭС без уровня ФО (как в Excel).
+    Только ``ds_res`` (без ``ds_fd``) – плоский список строк по РЭС без уровня ФО (как в Excel).
 
     При ``fo_aggregate_by_res=True`` под каждым ФО выводятся строки РЭС; если в РЭС в этом ФО
-    больше одного субъекта — строки субъектов с энергорайонами; при одном субъекте —
+    больше одного субъекта – строки субъектов с энергорайонами; при одном субъекте –
     энергорайоны сразу под РЭС (как на сводке потребления ЭЭ по ФО). Фильтр ``ds_res``
     оставляет РЭС, связанные хотя бы с одним из выбранных субъектов данного ФО, и сужает
     дочерние строки субъектов.
 
-    ``for_client_render_shell=True`` — только метаданные страницы без строк таблицы.
+    ``for_client_render_shell=True`` – только метаданные страницы без строк таблицы.
     """
     if for_client_render_shell:
         return _build_summary_context(
@@ -2715,7 +2715,7 @@ def _inject_fo_max_cz_russia_calculated_max_row(
     year_row_ids: list[int | None] = [None] * n_y
     for ix in range(n_y):
         if not any_vals[ix]:
-            year_values.append("—")
+            year_values.append("–")
             year_tooltips.append("")
             continue
         v = float(sum_vals[ix])
@@ -2802,18 +2802,18 @@ def build_energy_zones_summary_context(
     """Сводка по энергозонам (GET ds_ez, ds_res).
 
     Набор строк показателей по сущности не урезается территориальными фильтрами; скрытие
-    параметров — модальное окно «Наименование параметров» и ``visible_rows`` при выгрузке.
+    параметров – модальное окно «Наименование параметров» и ``visible_rows`` при выгрузке.
 
-    Без фильтров — «ЕЭС России» и полное дерево энергозона → РЭС → …
+    Без фильтров – «ЕЭС России» и полное дерево энергозона → РЭС → …
 
-    Только ``ds_ez`` — выбранные зоны со всеми РЭС внутри.
+    Только ``ds_ez`` – выбранные зоны со всеми РЭС внутри.
 
-    ``ds_ez`` + ``ds_res`` — каждая выбранная зона; РЭС сужаются **по зоне**: если в ``ds_res``
-    есть РЭС из этой зоны — только они, иначе все РЭС зоны (как на сводке по ФО).
+    ``ds_ez`` + ``ds_res`` – каждая выбранная зона; РЭС сужаются **по зоне**: если в ``ds_res``
+    есть РЭС из этой зоны – только они, иначе все РЭС зоны (как на сводке по ФО).
 
-    Только ``ds_res`` (без ``ds_ez``) — плоский список по выбранным РЭС без строки энергозоны.
+    Только ``ds_res`` (без ``ds_ez``) – плоский список по выбранным РЭС без строки энергозоны.
 
-    ``for_client_render_shell=True`` — только метаданные страницы без строк таблицы.
+    ``for_client_render_shell=True`` – только метаданные страницы без строк таблицы.
     """
     if for_client_render_shell:
         return _build_summary_context(
@@ -2928,7 +2928,7 @@ def build_oes_summary_context_coeff(
         data_segments=data_segments,
     )
     ctx["page_title"] = "Коэффициенты и совмещенные максимумы по энергосистемам"
-    # Подписи — как на /summary/oes/ и coeff ФО/ЭЗ (кнопка «+ НТ»), без полного «без ГАЭС».
+    # Подписи – как на /summary/oes/ и coeff ФО/ЭЗ (кнопка «+ НТ»), без полного «без ГАЭС».
     return ctx
 
 
@@ -3007,7 +3007,7 @@ def _inject_fo_coeff_cz_total_rows(
         for j in range(n_y):
             v = vals[j]
             if not any_flag[j] or v is None:
-                yv_out.append("—")
+                yv_out.append("–")
                 yt_out.append("")
             else:
                 yv_out.append(_format_numeric(v, rounding_digits))
@@ -3085,7 +3085,7 @@ def _inject_fo_coeff_cz_total_rows(
                 "parent_id": block0.get("parent_id"),
                 "hist_row_id": None,
                 "year_row_ids": list(yrid_l),
-                "hist_value": "—",
+                "hist_value": "–",
                 "year_values": list(yv_l),
                 "hist_numeric_tooltip": "",
                 "year_numeric_tooltips": list(ynt_l),
@@ -3099,7 +3099,7 @@ def _inject_fo_coeff_cz_total_rows(
                 "pd_formula_text_key": formula_key,
                 # Как строки «Проверка»: скрыты до кнопки «Проверка», без строки k.
                 "pd_pd_verify_for_row": True,
-                "year_k_values": ["—"] * n_y,
+                "year_k_values": ["–"] * n_y,
                 "year_k_full_tooltips": [""] * n_y,
             }
         )
@@ -3119,7 +3119,7 @@ def build_federal_district_summary_context_coeff(
 ) -> dict[str, Any]:
     """Коэффициенты по ФО: префикс «Сводной таблицы» (ЦЗ→ЭЭС→ЕЭС→СЗ) + дерево ФО→РЭС.
 
-    Набор расчётных/проверочных строк и формулы — как на /summary/federal_districts/
+    Набор расчётных/проверочных строк и формулы – как на /summary/federal_districts/
     (``fo_max_extended_parameters=True``).
     """
     ctx = build_federal_district_summary_context(
@@ -3141,13 +3141,13 @@ def build_federal_district_summary_context_coeff(
             list(ctx["years"]),
             int(ctx["rounding_digits"]),
         )
-        # Строки вставлены после tag_summary_rows_before_section_blocks — пометить снова.
+        # Строки вставлены после tag_summary_rows_before_section_blocks – пометить снова.
         from app.power_demand.services.pd_summary_entity_pagination import (
             tag_summary_rows_before_section_blocks,
         )
 
         tag_summary_rows_before_section_blocks(ctx["summary_rows"], "fo")
-    # Подписи энергосистем — как на /summary/federal_districts/ (кнопка «+ НТ»),
+    # Подписи энергосистем – как на /summary/federal_districts/ (кнопка «+ НТ»),
     # без принудительного «без НТ / без заряда ГАЭС» в compact-режиме.
     return ctx
 
@@ -3157,7 +3157,7 @@ def _strip_new_territories_block_for_ez_summary(
 ) -> list[dict[str, Any]]:
     """Сводка ЭЗ (max/coeff): блок «Новые территории» (заголовок, субъекты и ЭР) не показываем, даже при «+ НТ».
 
-    Строки префикса «… с НТ» (ЦЗ/ЭЭС/ЕЭС/СЗ) не затрагиваем — их видимость задаёт кнопка «+ НТ».
+    Строки префикса «… с НТ» (ЦЗ/ЭЭС/ЕЭС/СЗ) не затрагиваем – их видимость задаёт кнопка «+ НТ».
     """
     if not summary_rows:
         return summary_rows
@@ -3214,7 +3214,7 @@ def build_energy_zones_summary_context_coeff(
 ) -> dict[str, Any]:
     """Коэффициенты по энергозонам: префикс «Сводной таблицы» (ЦЗ→ЭЭС→ЕЭС→СЗ) + дерево ЭЗ.
 
-    Набор расчётных/проверочных строк и формулы — как на /summary/energy_zones/
+    Набор расчётных/проверочных строк и формулы – как на /summary/energy_zones/
     (``ez_max_extended_parameters=True``).
     Блок «Новые территории» уже убран в ``build_energy_zones_summary_context``.
     """
@@ -3230,7 +3230,7 @@ def build_energy_zones_summary_context_coeff(
         data_segments=data_segments,
     )
     ctx["page_title"] = "Коэффициенты и совмещенные максимумы по энергозонам"
-    # Подписи — как на /summary/energy_zones/ (кнопка «+ НТ»).
+    # Подписи – как на /summary/energy_zones/ (кнопка «+ НТ»).
     return ctx
 
 
@@ -3274,7 +3274,7 @@ def _build_summary_context(
     }
 
 
-# Кнопки ЭЭ / ЧЧИ / «Проверка» и расчётные максимумы — тоже в Excel при видимости на экране.
+# Кнопки ЭЭ / ЧЧИ / «Проверка» и расчётные максимумы – тоже в Excel при видимости на экране.
 _PD_EXPORT_TOGGLE_PARAMETER_KEYS: frozenset[str] = frozenset(
     {
         "energy_consumption_mln_kvt_ch",
@@ -3333,7 +3333,7 @@ FO_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
     }
     | _PD_EXPORT_TOGGLE_PARAMETER_KEYS
 )
-# Экран «Коэффициенты по ФО»: под ФО — РЭС (на ФО, на ЦЗ России), субъекты и энергорайоны.
+# Экран «Коэффициенты по ФО»: под ФО – РЭС (на ФО, на ЦЗ России), субъекты и энергорайоны.
 FO_COEFF_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
     {
         "max_power",
@@ -3360,8 +3360,8 @@ FO_COEFF_CZ_TOTAL_PARAMETER_KEYS: frozenset[str] = frozenset(
         "cz_total_imbalance_mw",
     }
 )
-# Coeff: без k у расчётного совмещённого — иначе вторая строка k под «Совмещенное потребление…»
-# (ФО/ЭЗ — whitelist ниже; ОЭС/UES — тот же skip в summary_row_allows_coeff_k_row).
+# Coeff: без k у расчётного совмещённого – иначе вторая строка k под «Совмещенное потребление…»
+# (ФО/ЭЗ – whitelist ниже; ОЭС/UES – тот же skip в summary_row_allows_coeff_k_row).
 _COEFF_SKIP_K_CALCULATED_COMBINED_KEYS: frozenset[str] = frozenset(
     {
         "calculated_combined_on_ees_mw",
@@ -3476,7 +3476,7 @@ def _pd_strip_catalog_annotation_parentheticals(label: str) -> str:
 
 
 def _pd_strip_o1_marker_from_entity_label(label: str) -> str:
-    """Убрать «O-1» / «О-1» из названия энергосистемы (метка — у кнопки «Форма О-1»)."""
+    """Убрать «O-1» / «О-1» из названия энергосистемы (метка – у кнопки «Форма О-1»)."""
     s = str(label or "").strip()
     if not s:
         return s
@@ -3551,7 +3551,7 @@ def _pd_format_full_variant_entity_label_for_coeff(base_label: str, code: str) -
     base = _pd_strip_gaes_text_from_label_fragment(base)
     base = _pd_strip_catalog_annotation_parentheticals(base)
     base = _pd_strip_o1_marker_from_entity_label(base)
-    # СЗ Калининграда — без пары с/без НТ; суффикс НТ не добавляем.
+    # СЗ Калининграда – без пары с/без НТ; суффикс НТ не добавляем.
     if is_kaliningrad_sync_area_entity_name(base):
         return f"{base}{_pd_gaes_label_suffix_for_variant_code(code)}".strip()
     return (
@@ -3664,7 +3664,7 @@ def exclude_o1_perimeter_variant_summary_rows(
 
 
 def _pd_strip_o1_from_centralized_zone_label(label: str) -> str:
-    """Убирает «O-1» / «О-1» из подписи «ЦЗ России» (метка О-1 — только в столбце варианта)."""
+    """Убирает «O-1» / «О-1» из подписи «ЦЗ России» (метка О-1 – только в столбце варианта)."""
     s = str(label or "").strip()
     if not s.casefold().startswith(CENTRALIZED_ZONE_AGGREGATE_NAME_CF):
         return s
@@ -3683,7 +3683,7 @@ def _pd_strip_o1_from_centralized_zone_label(label: str) -> str:
 
 
 def _pd_centralized_zone_o1_entity_display_label(full_label: str) -> str:
-    """Подпись «ЦЗ России» без «O-1» и без «с/без НТ» (различие — в столбце варианта периметра)."""
+    """Подпись «ЦЗ России» без «O-1» и без «с/без НТ» (различие – в столбце варианта периметра)."""
     base, _kal = _pd_strip_variant_suffixes_from_label(full_label)
     return _pd_strip_o1_from_centralized_zone_label(base)
 
@@ -3838,7 +3838,7 @@ def _pd_format_oes_entity_label_for_toggle_state(
     base = _pd_strip_gaes_text_from_label_fragment(base)
     base = _pd_strip_catalog_annotation_parentheticals(base)
     base = _pd_strip_o1_marker_from_entity_label(base)
-    # СЗ Калининграда — одна сущность без пары с/без НТ; «без НТ» в названии лишнее.
+    # СЗ Калининграда – одна сущность без пары с/без НТ; «без НТ» в названии лишнее.
     if is_kaliningrad_sync_area_entity_name(base):
         return base
     nt_suffix = _pd_nt_label_suffix_for_variant_code(code) if nt_detail_on else ""
@@ -4170,10 +4170,10 @@ def _pd_summary_row_skips_perimeter_variant_year_bounds(row: dict[str, Any]) -> 
 def _formula_year_applies_to_row_perimeter_variant(row: dict[str, Any], year: int) -> bool:
     """Формулы считаются только в интервале «Год с»/«Год по» варианта периметра.
 
-    Исключение: «Первая синхронная зона» — формулы пишутся по всем годам; «Год с»
+    Исключение: «Первая синхронная зона» – формулы пишутся по всем годам; «Год с»
     ограничивает только вычитание Калининграда (``_apply_first_sa_kaliningrad_es_subtract_from_year``).
 
-    Исключение: «ОЭС Юга с НТ» и «Южный ФО с НТ» — без ограничения «с 2023»; пустота
+    Исключение: «ОЭС Юга с НТ» и «Южный ФО с НТ» – без ограничения «с 2023»; пустота
     ячейки задаётся наличием ненулевой суммы по субъектам НТ.
 
     В отличие от ``_year_applies_to_pd_summary_row_perimeter_variant``, не учитывает
@@ -4253,7 +4253,7 @@ def mask_power_demand_summary_rows_perimeter_variant_year_display(
     ввод для строк с вариантом периметра, отличным от «не указано». Формулы при этом
     по-прежнему считаются только в интервале «Год с»/«Год по» (см.
     ``_pd_should_apply_formula_for_year`` / ``_formula_year_applies_to_row_perimeter_variant``).
-    Границы «Год с»/«Год по» на строке сохраняются и при skip — для формул и live JS.
+    Границы «Год с»/«Год по» на строке сохраняются и при skip – для формул и live JS.
     """
     if not years:
         return
@@ -4293,7 +4293,7 @@ def mask_power_demand_summary_rows_perimeter_variant_year_display(
         tt = list(row.get("year_numeric_tooltips") or [])
         rids = list(row.get("year_row_ids") or [])
         while len(yv) < n:
-            yv.append("—")
+            yv.append("–")
         while len(tt) < n:
             tt.append("")
         while len(rids) < n:
@@ -4301,7 +4301,7 @@ def mask_power_demand_summary_rows_perimeter_variant_year_display(
         for ix, yr in enumerate(years):
             if _year_applies_to_pd_summary_row_perimeter_variant(row, int(yr)):
                 continue
-            yv[ix] = "—"
+            yv[ix] = "–"
             tt[ix] = ""
             rids[ix] = None
         row["year_values"] = yv
@@ -4381,7 +4381,7 @@ def _clear_summary_row_years_where(
     tt = list(row.get("year_numeric_tooltips") or [])
     rids = list(row.get("year_row_ids") or [])
     while len(yv) < n:
-        yv.append("—")
+        yv.append("–")
     while len(tt) < n:
         tt.append("")
     while len(rids) < n:
@@ -4389,7 +4389,7 @@ def _clear_summary_row_years_where(
     for ix, yr in enumerate(years):
         if not clear_year(int(yr)):
             continue
-        yv[ix] = "—"
+        yv[ix] = "–"
         tt[ix] = ""
         rids[ix] = None
     row["year_values"] = yv
@@ -4401,7 +4401,7 @@ def mask_sakha_yakutia_tites_oes_east_year_membership(
     summary_rows: list[dict[str, Any]],
     years: list[int],
 ) -> None:
-    """Западный/Центральный Саха: ≤2018 только в строках под ТИТЭС, ≥2019 — под ОЭС Востока."""
+    """Западный/Центральный Саха: ≤2018 только в строках под ТИТЭС, ≥2019 – под ОЭС Востока."""
     if not summary_rows or not years:
         return
     sakha_ids = _tites_sakha_yakutia_extra_energy_unit_ids()
@@ -4433,7 +4433,7 @@ def _hide_nt_aggregation_subtree_for_territory_compact(
     """Раньше скрывал блок «Новые территории» в «Сводной таблице».
 
     Сейчас блок управляется только кнопкой «+ НТ» (``pd_pd_nt_extra_row``),
-    в т.ч. при нажатой «Сводная таблица» — как в полном дереве ОЭС.
+    в т.ч. при нажатой «Сводная таблица» – как в полном дереве ОЭС.
     """
     _ = summary_rows
 
@@ -4494,7 +4494,7 @@ def _is_taimyr_norilsk_energy_unit_label(label: object) -> bool:
 def _apply_tites_subtree_territory_compact_rules(
     summary_rows: list[dict[str, Any]],
 ) -> None:
-    """В «Сводной таблице»: блок ТИТЭС — «ТИТЭС» + РЭС Востока и энергорайон Таймыр/Норильск."""
+    """В «Сводной таблице»: блок ТИТЭС – «ТИТЭС» + РЭС Востока и энергорайон Таймыр/Норильск."""
     ues_mn = UnionEnergySystemDemandParameter.__name__
     res_mn = RegionalEnergySystemDemandParameter.__name__
     rd_mn = RegionalDistrictDemandParameter.__name__
@@ -4542,7 +4542,7 @@ def _apply_tites_subtree_territory_compact_rules(
                 and dm == res_mn
                 and _is_norilsk_regional_energy_system_label(label)
             ):
-                # Пустой РЭС Норильска скрываем; вместо него — энергорайон Таймыр/Туруханск/Норильск.
+                # Пустой РЭС Норильска скрываем; вместо него – энергорайон Таймыр/Туруханск/Норильск.
                 row["pd_pd_territory_compact_hide_row"] = True
                 row["pd_pd_territory_detail_row"] = True
             elif in_tites_res_block and dm == eu_mn and _is_taimyr_norilsk_energy_unit_label(
@@ -4830,7 +4830,7 @@ def parse_power_demand_export_territory_compact(*, default: bool = False) -> boo
 
 
 def parse_power_demand_export_hist(*, default: bool = False) -> bool:
-    """GET export_hist=1 — столбец «Ист. макс.» как при нажатой кнопке на экране."""
+    """GET export_hist=1 – столбец «Ист. макс.» как при нажатой кнопке на экране."""
     from flask import request
 
     raw = request.args.get("export_hist")
@@ -4840,7 +4840,7 @@ def parse_power_demand_export_hist(*, default: bool = False) -> bool:
 
 
 def parse_power_demand_export_hide_empty(*, default: bool = False) -> bool:
-    """GET export_hide_empty=1 — скрыть пустые блоки энергосистем (как без «Пустые строки»)."""
+    """GET export_hide_empty=1 – скрыть пустые блоки энергосистем (как без «Пустые строки»)."""
     from flask import request
 
     raw = request.args.get("export_hide_empty")
@@ -4871,7 +4871,7 @@ def _export_cell_has_meaningful_value(value: Any, *, parameter_key: str) -> bool
     if value in (None, ""):
         return False
     s = str(value).strip()
-    if s in ("", "—", "-"):
+    if s in ("", "–", "-"):
         return False
     if parameter_key == "peak_datetime":
         return True
@@ -5028,7 +5028,7 @@ def _round_coeff_k_calc(value: float) -> float:
 def _format_coeff_k_numeric(value: Any, digits: int) -> str:
     """Отображение k: фиксированное число знаков (как «Округл (k)» / JS formatCoeffK), без обрезки нулей."""
     if digits == 0:
-        # «Не округлять» — не более 6 знаков после запятой (как Numeric(25, 6) / расчёт).
+        # «Не округлять» – не более 6 знаков после запятой (как Numeric(25, 6) / расчёт).
         return _dash(
             format_decimal_trim_for_display(value, digits=COEFF_K_CALC_DECIMAL_PLACES)
         )
@@ -5041,7 +5041,7 @@ def _parse_summary_cell_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
     s = str(value).strip()
-    if s in ("—", "-"):
+    if s in ("–", "-"):
         return None
     s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
     s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
@@ -5075,7 +5075,7 @@ def _summary_row_year_float(
 
 
 def _ues_row_uses_standard_oes_aggregation(row: dict[str, Any]) -> bool:
-    """Одна строка ОЭС в суммах/расчётах по РЭС (для вариантов — только территориальный базовый)."""
+    """Одна строка ОЭС в суммах/расчётах по РЭС (для вариантов – только территориальный базовый)."""
     code = row.get("perimeter_variant_code")
     if code is None:
         return True
@@ -5134,7 +5134,7 @@ def _ees_russia_aggregate_ues_sum_perimeter_variant(
 ) -> str | None:
     """Вариант ОЭС для суммы в «ЕЭС России».
 
-    Для «с НТ» база — те же ОЭС, что у «без НТ»; вклад НТ добавляется отдельно
+    Для «с НТ» база – те же ОЭС, что у «без НТ»; вклад НТ добавляется отдельно
     (:func:`_ees_russia_year_sums_with_nt_addon`), чтобы выполнялось
     «ЕЭС с НТ = ЕЭС без НТ + ΣНТ».
     """
@@ -5303,7 +5303,7 @@ def slice_coeff_summary_for_lazy_long_segment(
 ) -> None:
     """
     На экране «Коэффициенты…» не отдаём годы за пределами запрошенных периодов:
-    без include_medium — только до N; без include_long — не отдаём N+7…N+18.
+    без include_medium – только до N; без include_long – не отдаём N+7…N+18.
     Полный диапазон остаётся в экспорте и при coeff_include_long=1.
     """
     context["coeff_include_long"] = include_long
@@ -5413,7 +5413,7 @@ def _res_level_aggregation_year_value(
     *,
     subject_fallback: dict[tuple[int, int], float] | None = None,
 ) -> float | None:
-    """Значение РЭС для агрегата; при пустой строке РЭС — сумма по субъектам этой РЭС."""
+    """Значение РЭС для агрегата; при пустой строке РЭС – сумма по субъектам этой РЭС."""
     add = _summary_row_year_float(res_row, year_index)
     if add is not None:
         return float(add)
@@ -5686,7 +5686,7 @@ def _clear_south_ues_with_nt_formula_years_before(
     summary_rows: list[dict[str, Any]],
     years: list[int],
 ) -> None:
-    """ОЭС Юга с НТ: строки проверки вне периода варианта периметра — пустые.
+    """ОЭС Юга с НТ: строки проверки вне периода варианта периметра – пустые.
 
     Расчётные показатели вне периода не затираем: остаются значения из БД (ввод на
     oes/fo/ez не ограничен «Год с»/«Год по», формулы туда не пишутся).
@@ -5724,13 +5724,13 @@ def _clear_south_ues_with_nt_formula_years_before(
         yv = list(r.get("year_values") or [])
         ynt = list(r.get("year_numeric_tooltips") or [])
         while len(yv) < n_y:
-            yv.append("—")
+            yv.append("–")
         while len(ynt) < n_y:
             ynt.append("")
         for j, y in enumerate(years):
             if _formula_year_applies_to_row_perimeter_variant(r, int(y)):
                 continue
-            yv[j] = "—"
+            yv[j] = "–"
             ynt[j] = ""
         r["year_values"] = yv
         r["year_numeric_tooltips"] = ynt
@@ -5803,7 +5803,7 @@ def enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
 ) -> None:
     """«ОЭС Юга с НТ»: расчётный максимум = сумма по РЭС + сумма combined_on_oes субъектов НТ.
 
-    Если сумма по субъектам «Новые территории» равна 0 или пуста — ячейка пустая.
+    Если сумма по субъектам «Новые территории» равна 0 или пуста – ячейка пустая.
     """
     if not summary_rows or not years:
         return
@@ -5887,22 +5887,22 @@ def _apply_ues_calculated_mw_from_res_sums(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
             if not _pd_should_apply_formula_for_year(r, years[j], year_included):
                 continue
             if _pd_summary_row_is_south_ues_without_nt_manual_row(r):
-                current = yv_p[j] if j < len(yv_p) else "—"
-                if str(current or "").strip() not in ("", "—", "–"):
+                current = yv_p[j] if j < len(yv_p) else "–"
+                if str(current or "").strip() not in ("", "–", "–"):
                     continue
             s = mids[j] if j < len(mids) else None
             if s is not None:
                 yv_p[j] = _format_calculated_max_mw(s)
                 ynt_p[j] = _format_calculated_max_mw(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
@@ -5927,7 +5927,7 @@ def _aggregate_res_combined_on_fo_mw_sum_by_federal_district(
         return out[fid]
 
     for r in _iter_res_level_aggregation_source_rows(summary_rows, "combined_on_fo"):
-        # В т.ч. РЭС ветки ТИТЭС (Норильск и др.): географически в ФО — входят в максимум ФО.
+        # В т.ч. РЭС ветки ТИТЭС (Норильск и др.): географически в ФО – входят в максимум ФО.
         raw_fid = r.get("id_federal_district")
         if raw_fid is None:
             continue
@@ -6063,7 +6063,7 @@ def _apply_fd_parameter_from_res_sums(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
@@ -6078,7 +6078,7 @@ def _apply_fd_parameter_from_res_sums(
                     yv_p[j] = _format_numeric(s, rounding_digits)
                     ynt_p[j] = _format_full_numeric_tooltip(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
@@ -6141,7 +6141,7 @@ def enrich_south_fd_with_nt_calculated_max_from_res_and_nt_subjects(
     """«Южный ФО с НТ»: расчётный max = сумма РЭС (как «без НТ»)
     + сумма combined_on_fo субъектов «Новые территории».
 
-    Если сумма по субъектам НТ равна 0 или пуста — ячейка пустая.
+    Если сумма по субъектам НТ равна 0 или пуста – ячейка пустая.
     """
     if not summary_rows or not years:
         return
@@ -6208,7 +6208,7 @@ def enrich_south_fd_with_nt_calculated_max_from_res_and_nt_subjects(
 
 def _is_far_east_federal_district_name(name: object) -> bool:
     cf = str(name or "").strip().casefold().replace("ё", "е")
-    for prefix in ("фо - ", "фо — "):
+    for prefix in ("фо - ", "фо – "):
         p = prefix.casefold()
         if cf.startswith(p):
             cf = cf[len(p) :].strip()
@@ -6463,7 +6463,7 @@ def enrich_fo_summary_calculated_max_from_res_combined_on_fo(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
@@ -6474,11 +6474,11 @@ def enrich_fo_summary_calculated_max_from_res_combined_on_fo(
                 yv_p[j] = _format_calculated_max_mw(s)
                 ynt_p[j] = _format_calculated_max_mw(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
-        # В «max»-сводках исторический максимум для ФО — не про эту расчётную строку.
+        # В «max»-сводках исторический максимум для ФО – не про эту расчётную строку.
         r["hist_value"] = ""
         r["hist_numeric_tooltip"] = ""
 
@@ -6514,7 +6514,7 @@ def enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
@@ -6525,11 +6525,11 @@ def enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
                 yv_p[j] = _format_calculated_max_mw(s)
                 ynt_p[j] = _format_calculated_max_mw(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
-        # В «max»-сводках исторический максимум для ФО — не про эту расчётную строку.
+        # В «max»-сводках исторический максимум для ФО – не про эту расчётную строку.
         r["hist_value"] = ""
         r["hist_numeric_tooltip"] = ""
 
@@ -6737,7 +6737,7 @@ def _union_energy_system_ids_for_synchronous_area(
 
 
 def _first_sa_ues_exclude_ids_for_nt_group(nt_group: str | None) -> frozenset[int]:
-    """ОЭС, не входящие в сумму первой СЗ (Восток всегда; НТ — только для «без НТ»)."""
+    """ОЭС, не входящие в сумму первой СЗ (Восток всегда; НТ – только для «без НТ»)."""
     excluded: set[int] = set()
     ues_east_id = _resolve_union_energy_system_id_by_name_cf(_UES_EAST_NAME_CF)
     if ues_east_id is not None:
@@ -6802,7 +6802,7 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year(
 ) -> list[float | None]:
     """Для вариантов с ``_kaliningrad`` вычесть combined_on_ees ЭС Калининграда начиная с «Год с».
 
-    «Год с» — со страницы /perimeter_variants/. С этого года Калининград —
+    «Год с» – со страницы /perimeter_variants/. С этого года Калининград –
     отдельная СЗ, поэтому его ЭС убираем из суммы ОЭС первой СЗ.
     """
     if not _perimeter_variant_code_has_kaliningrad(perimeter_variant_code):
@@ -6834,7 +6834,7 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year(
 
 def _summary_row_has_display_year_values(row: dict[str, Any]) -> bool:
     return any(
-        v not in (None, "", "—") for v in (row.get("year_values") or [])
+        v not in (None, "", "–") for v in (row.get("year_values") or [])
     )
 
 
@@ -6893,7 +6893,7 @@ def _copy_pd_summary_row_display_from_reference(
     source_values = list(reference_row.get("year_values") or [])
     source_tooltips = list(reference_row.get("year_numeric_tooltips") or [])
     while len(source_values) < n_y:
-        source_values.append("—")
+        source_values.append("–")
     while len(source_tooltips) < n_y:
         source_tooltips.append("")
     existing_values = list(target_row.get("year_values") or [])
@@ -6903,13 +6903,13 @@ def _copy_pd_summary_row_display_from_reference(
     for index, year in enumerate(years):
         if not _formula_year_applies_to_row_perimeter_variant(target_row, int(year)):
             values.append(
-                existing_values[index] if index < len(existing_values) else "—"
+                existing_values[index] if index < len(existing_values) else "–"
             )
             tooltips.append(
                 existing_tooltips[index] if index < len(existing_tooltips) else ""
             )
             continue
-        values.append(source_values[index] if index < len(source_values) else "—")
+        values.append(source_values[index] if index < len(source_values) else "–")
         tooltips.append(source_tooltips[index] if index < len(source_tooltips) else "")
     target_row["year_values"] = values
     target_row["year_numeric_tooltips"] = tooltips
@@ -7007,9 +7007,9 @@ def enrich_oes_summary_calculated_max_power_sa_from_res_max_power(
 ) -> None:
     """«Расчетное максимальное потребление мощности, МВт» по синхронной зоне.
 
-    Для «Вторая синхронная зона» — сумма «Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт»;
-    для «Синхронная зона Калининградской области» — «Максимальное потребление мощности, МВт» ЭС Калининградской области;
-    для первой синхронной зоны — сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
+    Для «Вторая синхронная зона» – сумма «Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт»;
+    для «Синхронная зона Калининградской области» – «Максимальное потребление мощности, МВт» ЭС Калининградской области;
+    для первой синхронной зоны – сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
     по ОЭС зоны (с/без НТ по варианту); сумма пишется по всем годам (не ограничена «Год с» варианта);
     если в коде периметра есть ``_kaliningrad``, с «Год с» вычитается combined_on_ees ЭС Калининградской области.
     """
@@ -7109,7 +7109,7 @@ def enrich_oes_summary_calculated_max_power_sa_from_res_max_power(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         # Первая СЗ: сумма ОЭС пишется по всем годам; «Год с» влияет только на
@@ -7123,7 +7123,7 @@ def enrich_oes_summary_calculated_max_power_sa_from_res_max_power(
                 yv_p[j] = _format_calculated_max_mw(s)
                 ynt_p[j] = _format_calculated_max_mw(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
@@ -7143,8 +7143,8 @@ def enrich_oes_summary_calculated_max_sa_from_res_combined_on_ees(
 ) -> None:
     """«Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт».
 
-    Для первой и второй синхронной зоны — сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
-    по РЭС зоны; для Калининграда — значение ЭС Калининградской области.
+    Для первой и второй синхронной зоны – сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
+    по РЭС зоны; для Калининграда – значение ЭС Калининградской области.
     """
     res_to_sa_ids = _build_res_to_synchronous_area_ids_map()
     sums = _aggregate_res_combined_on_ees_mw_sum_by_synchronous_area(
@@ -7189,7 +7189,7 @@ def enrich_oes_summary_calculated_max_sa_from_res_combined_on_ees(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
@@ -7200,7 +7200,7 @@ def enrich_oes_summary_calculated_max_sa_from_res_combined_on_ees(
                 yv_p[j] = _format_calculated_max_mw(s)
                 ynt_p[j] = _format_calculated_max_mw(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
@@ -7288,7 +7288,7 @@ def _apply_ez_parameter_from_res_sums(
         yv_p = list(r.get("year_values") or [])
         ynt_p = list(r.get("year_numeric_tooltips") or [])
         while len(yv_p) < n_y:
-            yv_p.append("—")
+            yv_p.append("–")
         while len(ynt_p) < n_y:
             ynt_p.append("")
         for j in range(n_y):
@@ -7303,7 +7303,7 @@ def _apply_ez_parameter_from_res_sums(
                     yv_p[j] = _format_numeric(s, rounding_digits)
                     ynt_p[j] = _format_full_numeric_tooltip(s)
             else:
-                yv_p[j] = "—"
+                yv_p[j] = "–"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
@@ -7367,7 +7367,7 @@ def _enrich_ez_summary_calculated_max_from_res(
         enrich_ez_summary_calculated_combined_on_ees_from_res(
             rows, years, rounding_digits
         )
-    # Расчётные максимумы «ЕЭС России с/без НТ» — как на /summary/oes/ (из demand_rows / формул ОЭС),
+    # Расчётные максимумы «ЕЭС России с/без НТ» – как на /summary/oes/ (из demand_rows / формул ОЭС),
     # а не единая сумма combined_on_ees по энергозонам (раньше была одна строка «ЕЭС России»).
     enrich_cz_russia_calculated_max_power_mw(rows, years, rounding_digits)
 
@@ -7567,7 +7567,7 @@ def _sum_res_combined_on_ees_in_summary_rows(
     allowed_ues_ids: frozenset[int] | None = None,
     year_included: Callable[[int], bool] | None = None,
 ) -> tuple[list[float | None], float | None]:
-    """Сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по строкам РЭС (фильтр по ОЭС — тип «ЕЭС России»)."""
+    """Сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по строкам РЭС (фильтр по ОЭС – тип «ЕЭС России»)."""
     n_y = len(years)
     year_tot: list[float | None] = [None] * n_y
     hist_tot: float | None = None
@@ -7616,7 +7616,7 @@ def _apply_ees_russia_calculated_mw_row(
     yv_p = list(row.get("year_values") or [])
     ynt_p = list(row.get("year_numeric_tooltips") or [])
     while len(yv_p) < n_y:
-        yv_p.append("—")
+        yv_p.append("–")
     while len(ynt_p) < n_y:
         ynt_p.append("")
     for jj in range(n_y):
@@ -7627,7 +7627,7 @@ def _apply_ees_russia_calculated_mw_row(
             yv_p[jj] = _format_numeric(s, CALCULATED_MAX_MW_ROUNDING_DIGITS)
             ynt_p[jj] = _format_calculated_max_mw(s)
         else:
-            yv_p[jj] = "—"
+            yv_p[jj] = "–"
             ynt_p[jj] = ""
     row["year_values"] = yv_p
     row["year_numeric_tooltips"] = ynt_p
@@ -8375,7 +8375,7 @@ def _cz_russia_calculated_max_power_without_nt_year_sums(
 
     = max_power «ЕЭС России без НТ»
       + сумма max_power энергорайонов формулы ЭЭС (Норильск, Сахалин, Камчатка,
-        Чаун-Билибино, Анадырский, Магадан) — та же база, что у расчётного ЭЭС.
+        Чаун-Билибино, Анадырский, Магадан) – та же база, что у расчётного ЭЭС.
     """
     ees_row = _ees_russia_max_power_without_nt_year_sums(
         summary_rows, years, year_included=year_included
@@ -8470,8 +8470,8 @@ def enrich_oes_ees_russia_calculated_max_russia_mw(
 ) -> None:
     """«Расчетный максимум потребления мощности ЕЭС России, МВт» = сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по ОЭС типа «ЕЭС России».
 
-    Для «без НТ» — сумма combined_on_ees по ОЭС (у Юга — вариант без НТ).
-    Для «с НТ» — та же база, что у «без НТ», плюс сумма combined_on_ees субъектов «Новые территории».
+    Для «без НТ» – сумма combined_on_ees по ОЭС (у Юга – вариант без НТ).
+    Для «с НТ» – та же база, что у «без НТ», плюс сумма combined_on_ees субъектов «Новые территории».
     """
     _ = filter_year_list
     if not summary_rows or not years:
@@ -8654,7 +8654,7 @@ def summary_row_allows_coeff_k_row(row: dict[str, Any]) -> bool:
 def tag_summary_rows_coeff_k_row_visibility(
     summary_rows: list[dict[str, Any]] | None,
 ) -> None:
-    """pd_pd_skip_coeff_k_row — не рисовать строку k (ФО/ЭЗ: без k расчётного совмещённого)."""
+    """pd_pd_skip_coeff_k_row – не рисовать строку k (ФО/ЭЗ: без k расчётного совмещённого)."""
     if not summary_rows:
         return
     for row in summary_rows:
@@ -8691,7 +8691,7 @@ def enrich_summary_rows_coeff_k_columns(
     rounding_digits_k: int | None = None,
     coeff_base_year: int | None = None,
 ) -> None:
-    """k = значение показателя / макс. мощность того же года (строка max_power в блоке — знаменатель; для самой строки max_power k не считается)."""
+    """k = значение показателя / макс. мощность того же года (строка max_power в блоке – знаменатель; для самой строки max_power k не считается)."""
     tag_summary_rows_coeff_k_row_visibility(summary_rows)
     rd_k = (
         rounding_digits_k
@@ -8731,7 +8731,7 @@ def enrich_summary_rows_coeff_k_columns(
         for r in block:
             pk = r.get("parameter_key") or ""
             if pk in FO_COEFF_CZ_TOTAL_PARAMETER_KEYS:
-                r["year_k_values"] = ["—"] * n_y
+                r["year_k_values"] = ["–"] * n_y
                 r["year_k_full_tooltips"] = [""] * n_y
                 continue
             dm_n_pre = r.get("demand_model_name")
@@ -8811,7 +8811,7 @@ def enrich_summary_rows_coeff_k_columns(
                 sk_val = yrsk[j] if j < len(yrsk) else None
                 sk_parsed = (
                     _parse_summary_cell_float(sk_val)
-                    if sk_val not in (None, "", "—")
+                    if sk_val not in (None, "", "–")
                     else None
                 )
                 if sk_parsed is not None and pk not in (
@@ -8843,7 +8843,7 @@ def enrich_summary_rows_coeff_k_columns(
                             and _coeff_union_res_sum_year(y, coeff_base_year)
                         ):
                             # МВт для этих лет только что заданы суммой по РЭС (см. выше).
-                            # Старый coeff_k из БД мог относиться к другой семантике — пересчитываем k из year_values/max_power.
+                            # Старый coeff_k из БД мог относиться к другой семантике – пересчитываем k из year_values/max_power.
                             pass
                         else:
                             sk_rounded = _round_coeff_k_calc(sk_parsed)
@@ -8851,7 +8851,7 @@ def enrich_summary_rows_coeff_k_columns(
                             k_tt.append(_format_coeff_k_tooltip(sk_rounded))
                             continue
                 if not formula_year_ok:
-                    k_list.append("—")
+                    k_list.append("–")
                     k_tt.append("")
                     continue
                 if (
@@ -8860,11 +8860,11 @@ def enrich_summary_rows_coeff_k_columns(
                     and not res_oes_or_ees_medium
                     and not ues_plan_k_exempt
                 ):
-                    k_list.append("—")
+                    k_list.append("–")
                     k_tt.append("")
                     continue
                 if pk in ("peak_datetime", "avg_temp", "max_power"):
-                    k_list.append("—")
+                    k_list.append("–")
                     k_tt.append("")
                     continue
                 num = _parse_summary_cell_float(yvals[j] if j < len(yvals) else None)
@@ -8874,10 +8874,10 @@ def enrich_summary_rows_coeff_k_columns(
                     k_list.append(_format_coeff_k_numeric(ratio, rd_k))
                     k_tt.append(_format_coeff_k_tooltip(ratio))
                 else:
-                    k_list.append("—")
+                    k_list.append("–")
                     k_tt.append("")
             # ФО/ЭЗ: у combined_on_fo/ez нет сохранённого k (в отличие от combined_on_oes).
-            # Среднесрочные годы без k — как «используемый k» = СиПР (5 лет) на клиенте.
+            # Среднесрочные годы без k – как «используемый k» = СиПР (5 лет) на клиенте.
             if (
                 coeff_base_year is not None
                 and r.get("demand_model_name") == "RegionalEnergySystemDemandParameter"
@@ -8920,13 +8920,13 @@ def enrich_summary_rows_coeff_k_columns(
             ):
                 yc = list(r.get("year_coeff_k_stored") or [])
                 if len(yc) < n_y:
-                    yc.extend(["—"] * (n_y - len(yc)))
+                    yc.extend(["–"] * (n_y - len(yc)))
                 for j in range(n_y):
                     yt = years[j]
                     if not _formula_year_applies_to_row_perimeter_variant(r, yt):
                         continue
                     if _coeff_union_res_sum_year(yt, coeff_base_year):
-                        yc[j] = k_list[j] if j < len(k_list) else "—"
+                        yc[j] = k_list[j] if j < len(k_list) else "–"
                 r["year_coeff_k_stored"] = yc
             dm_block = r.get("demand_model_name")
             pk_medium_res = (
@@ -8953,7 +8953,7 @@ def enrich_summary_rows_coeff_k_columns(
             if coeff_base_year is not None and dm_block == "RegionalEnergySystemDemandParameter" and pk in pk_medium_res:
                 yv_mw = list(r.get("year_values") or [])
                 if len(yv_mw) < n_y:
-                    yv_mw.extend(["—"] * (n_y - len(yv_mw)))
+                    yv_mw.extend(["–"] * (n_y - len(yv_mw)))
                 ynt = list(r.get("year_numeric_tooltips") or [])
                 if len(ynt) < n_y:
                     ynt.extend([""] * (n_y - len(ynt)))
@@ -8987,7 +8987,7 @@ def enrich_summary_rows_coeff_k_columns(
             ):
                 yv_mw = list(r.get("year_values") or [])
                 if len(yv_mw) < n_y:
-                    yv_mw.extend(["—"] * (n_y - len(yv_mw)))
+                    yv_mw.extend(["–"] * (n_y - len(yv_mw)))
                 ynt = list(r.get("year_numeric_tooltips") or [])
                 if len(ynt) < n_y:
                     ynt.extend([""] * (n_y - len(ynt)))
@@ -9011,7 +9011,7 @@ def enrich_summary_rows_coeff_k_columns(
                 r["year_numeric_tooltips"] = ynt
         i += block_size
     if coeff_base_year is not None:
-        # После подстановки МВт среднесрочных лет по РЭС — пересчёт агрегатов N+1…N+6.
+        # После подстановки МВт среднесрочных лет по РЭС – пересчёт агрегатов N+1…N+6.
         def _coeff_medium_years(y: int) -> bool:
             return (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
 
@@ -9166,11 +9166,11 @@ def _year_coeff_k_stored_for_flat(
     for year in years:
         row = by_slice.get(year)
         if row is None:
-            out.append("—")
+            out.append("–")
             continue
         v = getattr(row, attr, None)
         if v is None:
-            out.append("—")
+            out.append("–")
         else:
             out.append(_format_coeff_k_numeric(v, rounding_digits))
     return out
@@ -9195,8 +9195,8 @@ def _aggregation_level_header_row(
         "parent_id": None,
         "hist_row_id": None,
         "year_row_ids": [None for _ in years],
-        "hist_value": "—",
-        "year_values": ["—" for _ in years],
+        "hist_value": "–",
+        "year_values": ["–" for _ in years],
         "hist_numeric_tooltip": "",
         "year_numeric_tooltips": ["" for _ in years],
         "id_union_energy_system": getattr(entity, "id_union_energy_system", None),
@@ -9297,8 +9297,8 @@ def _flatten_entity(
                 "parent_id": entity.parent_id,
                 "hist_row_id": slice_ids.get("hist"),
                 "year_row_ids": year_row_ids,
-                "hist_value": values.get("hist", "—"),
-                "year_values": [values.get(year, "—") for year in years],
+                "hist_value": values.get("hist", "–"),
+                "year_values": [values.get(year, "–") for year in years],
                 "hist_numeric_tooltip": tt.get("hist", ""),
                 "year_numeric_tooltips": [tt.get(year, "") for year in years],
                 "id_union_energy_system": ues_id_flat,
@@ -9510,7 +9510,7 @@ def _format_calculated_max_mw(value: Any) -> str:
 
 def _dash(value: Any) -> str:
     if value in (None, ""):
-        return "—"
+        return "–"
     return str(value)
 
 
@@ -9823,7 +9823,7 @@ def _south_ues_base_res_subtree_insert_index(
         if row.get("show_entity_cell"):
             if row.get("id_union_energy_system") != south_ues_id:
                 return insert_at
-            # Следующий вариант периметра той же ОЭС (напр. «с НТ») — граница поддерева «без НТ».
+            # Следующий вариант периметра той же ОЭС (напр. «с НТ») – граница поддерева «без НТ».
             if (
                 row.get("entity_kind") == "perimeter_variant"
                 and legacy_nt_group_for_perimeter_code(row.get("perimeter_variant_code"))
@@ -9847,7 +9847,7 @@ def _inject_south_ues_nt_rows_after_res(
     rounding_digits: int,
     avg_temp_uses_global_rounding: bool = False,
 ) -> None:
-    """После всех РЭС «ОЭС Юга без НТ» — блок «Новые территории» (скрыт до кнопки «+ НТ»)."""
+    """После всех РЭС «ОЭС Юга без НТ» – блок «Новые территории» (скрыт до кнопки «+ НТ»)."""
     if not summary_rows or not years:
         return
     south = _find_union_energy_system_by_name("оэс юга")
@@ -9986,8 +9986,8 @@ def _build_centralized_zone_perimeter_entities(
 ) -> list[SummaryEntity]:
     """Строки «ЦЗ России» по привязке centralized_zone (с/без НТ на сводках ОЭС / ФО / ЭЗ).
 
-    Варианты периметра — ``o1_with_nt`` / ``o1_without_nt`` (как в каталоге модуля «Спрос»).
-    Подписи строк — «ЦЗ России с/без НТ» (метка О-1 только в столбце варианта периметра).
+    Варианты периметра – ``o1_with_nt`` / ``o1_without_nt`` (как в каталоге модуля «Спрос»).
+    Подписи строк – «ЦЗ России с/без НТ» (метка О-1 только в столбце варианта периметра).
     """
     binding = resolve_entity_perimeter_binding(
         ENTITY_KIND_CENTRALIZED_ZONE,
@@ -10191,7 +10191,7 @@ def _inject_perimeter_variant_entities(
 
     Для ОЭС на сводке показываем ровно привязанные варианты, в порядке sort_order.
     Дерево РЭС висит у варианта с галочкой «Базовый»; для ОЭС Юга туда же добавляется
-    блок «Новые территории». Позиция самой ОЭС в списке — по display_order справочника ОЭС.
+    блок «Новые территории». Позиция самой ОЭС в списке – по display_order справочника ОЭС.
     """
     ues_mn = UnionEnergySystemDemandParameter.__name__
     replacements: dict[int, tuple[tuple[int, str, int], list[SummaryEntity]]] = {}
@@ -10501,7 +10501,7 @@ def _build_regional_energy_system_entity(
         )
         subject_children = [territorial_entity, subject_entity]
     elif len(regional_districts) > 1:
-        # Строки субъектов внутри РЭС — при двух и более субъектах (как на сводке потребления ЭЭ).
+        # Строки субъектов внутри РЭС – при двух и более субъектах (как на сводке потребления ЭЭ).
         # Сводка по ОЭС: для субъектов РФ не показываем «на ФО» и «на централизованную зону»
         subject_children = [
             _build_regional_district_entity(
@@ -10585,7 +10585,7 @@ def _build_regional_energy_system_entity_for_energy_zone(
     energy_zone_id: int,
     res_parameters: tuple[tuple[str, str], ...] = PARAMETERS_RES,
 ) -> SummaryEntity:
-    """РЭС внутри энергозоны: при одном субъекте в зоне — ЭС под субъектом; при нескольких — только ЭС без строк субъектов."""
+    """РЭС внутри энергозоны: при одном субъекте в зоне – ЭС под субъектом; при нескольких – только ЭС без строк субъектов."""
     regional_districts = sorted(
         [rd for rd in regional_districts_in_zone if _is_valid_named_item(rd)],
         key=_sort_by_name,
@@ -10607,13 +10607,13 @@ def _build_regional_energy_system_entity_for_energy_zone(
         return ez_name not in PLACEHOLDER_NAMES and ez_number not in PLACEHOLDER_NAMES
 
     # Полный показатель РЭС берём, если ни один субъект не привязан к *другой*
-    # реальной энергозоне (привязка к «не указано» не мешает — как у НАО до исправления).
+    # реальной энергозоне (привязка к «не указано» не мешает – как у НАО до исправления).
     fully_in_zone = bool(in_zone_ids) and not any(
         _rd_outside_blocks_full_res(rd) for rd in all_res_districts
     )
     subject_children: list[SummaryEntity]
     if len(regional_districts) > 1:
-        # Сводка по энергозонам: при нескольких субъектах в РЭС не показываем строки по субъектам —
+        # Сводка по энергозонам: при нескольких субъектах в РЭС не показываем строки по субъектам –
         # только энергоузлы РЭС в зоне (как при одном субъекте), без промежуточного уровня «субъект».
         combined_eus: list[EnergyUnit] = []
         seen_eu_ids: set[int] = set()
@@ -10728,7 +10728,7 @@ def _build_energy_zone_entities(
                 inject_zone_id = ez.id
         entities.append(
             SummaryEntity(
-                label=f"{ez.number} — {ez.name}",
+                label=f"{ez.number} – {ez.name}",
                 depth=0,
                 parameters=ez_parameters,
                 demand_rows=dps.get_demand_rows(
@@ -10772,9 +10772,9 @@ def _build_energy_zone_entities(
 def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
     """Строки сводки по ОЭС: одна сущность на каждую синхронную зону.
 
-    «Первая синхронная зона» — варианты периметра with_nt / without_nt (как у «Россия»).
+    «Первая синхронная зона» – варианты периметра with_nt / without_nt (как у «Россия»).
 
-    Порядок зон — по ``SynchronousArea.display_order`` (как в справочнике), затем имя и id.
+    Порядок зон – по ``SynchronousArea.display_order`` (как в справочнике), затем имя и id.
     У первой СЗ внутри: с НТ → без НТ (независимо от sort_order привязок).
     """
     query = SynchronousArea.query
@@ -10951,7 +10951,7 @@ def _energy_units_for_federal_district_subject(
 ) -> list[EnergyUnit]:
     """Энергорайоны субъекта для строки РЭС на сводках по ФО и ОЭС.
 
-    Сначала — энергорайоны, привязанные к выбранной РЭС; в конце — энергорайоны с РЭС
+    Сначала – энергорайоны, привязанные к выбранной РЭС; в конце – энергорайоны с РЭС
     «не указано», не входящие в энергосистемы (как на /energy_consumption/summary/oes/).
     """
     pool: list[EnergyUnit] = []
@@ -11270,7 +11270,7 @@ def _inject_chukotka_rd_calculated_max_rows(
         for ix in range(n_y):
             if not _formula_year_applies_to_row_perimeter_variant(block0, int(years[ix])):
                 year_values.append(
-                    existing_values[ix] if ix < len(existing_values) else "—"
+                    existing_values[ix] if ix < len(existing_values) else "–"
                 )
                 year_tooltips.append(
                     existing_tooltips[ix] if ix < len(existing_tooltips) else ""
@@ -11278,7 +11278,7 @@ def _inject_chukotka_rd_calculated_max_rows(
                 continue
             base = eu_sums[ix]
             if base is None:
-                year_values.append("—")
+                year_values.append("–")
                 year_tooltips.append("")
                 continue
             value = float(base) - float(subtract_mw)
@@ -11358,7 +11358,7 @@ def _build_chukotka_territorial_boundaries_subject_entity(
 
 
 def _build_tites_entity() -> SummaryEntity | None:
-    """Корень ТИТЭС + ДЗ — порядок веток как на /energy_consumption/summary/oes/."""
+    """Корень ТИТЭС + ДЗ – порядок веток как на /energy_consumption/summary/oes/."""
     children = _unwrap_hidden_tites_ues_entities(
         _build_ues_entities_filtered(
             _is_tites_branch,
@@ -11604,7 +11604,7 @@ def _build_federal_district_res_entity(
     subject_parameters: tuple[tuple[str, str], ...] = PARAMETERS_SUBJECT_FD_SUMMARY,
     eu_parameters: tuple[tuple[str, str], ...] = PARAMETERS_ENERGY_UNIT_FD_SUMMARY,
 ) -> SummaryEntity | None:
-    """РЭС под ФО: при >1 субъекте в ФО — субъекты с энергорайонами; при одном — ЭР под РЭС."""
+    """РЭС под ФО: при >1 субъекте в ФО – субъекты с энергорайонами; при одном – ЭР под РЭС."""
     rd_in_fd = [
         rd
         for rd in sorted(res.regional_districts, key=_sort_by_name)
@@ -11841,7 +11841,7 @@ def _sort_by_name(item: Any) -> tuple[str, int]:
 
 
 def _ues_summary_sort_key(ues: UnionEnergySystem) -> tuple[int, str, int]:
-    """Порядок ОЭС на сводке — как в справочнике (display_order, имя, id)."""
+    """Порядок ОЭС на сводке – как в справочнике (display_order, имя, id)."""
     big = 10**9
     return (
         int(ues.display_order) if ues.display_order is not None else big,
@@ -11959,7 +11959,7 @@ def _oes_rd_scope_for_res_subtree(
     f_rd: frozenset[int],
     res_children: list[SummaryEntity],
 ) -> frozenset[int]:
-    """Сужение ds_rd на уровне узла РЭС (прямые потомки — субъекты РФ или энергорайоны)."""
+    """Сужение ds_rd на уровне узла РЭС (прямые потомки – субъекты РФ или энергорайоны)."""
     if not f_rd:
         return frozenset()
     if not f_ues and not f_res:
@@ -12003,13 +12003,13 @@ def _prune_one_oes(
 ) -> SummaryEntity | None:
     filters_on = _oes_territory_filters_active(f_ues, f_res, f_rd, f_eu)
     if e.entity_kind == "synchronous_area":
-        # Синхронные зоны только без территориального фильтра; при выборе ОЭС/РЭС/субъекта/ЭУ — скрываем
+        # Синхронные зоны только без территориального фильтра; при выборе ОЭС/РЭС/субъекта/ЭУ – скрываем
         if filters_on:
             return None
         if f_sa and (e.id_synchronous_area is None or e.id_synchronous_area not in f_sa):
             return None
         return e
-    # Верхние агрегаты по стране/ЕЭС без привязки к ОЭС/РЭС — при фильтрах не показываем
+    # Верхние агрегаты по стране/ЕЭС без привязки к ОЭС/РЭС – при фильтрах не показываем
     if e.entity_kind == "oes_top_aggregate":
         return None if filters_on else e
     # «ЕЭС России без НТ», «ТИТЭС», «Децентрализованная зона»: агрегат + дочерняя ветка
@@ -12106,10 +12106,10 @@ def _fo_res_scope_for_fd_subtree(
     """Ограничение по РЭС для прямых потомков одного узла ФО.
 
     При выбранных в URL ``ds_fd`` и ``ds_res``: если среди отмеченных РЭС есть хотя бы одна
-    из этого ФО — показываем только пересечение; иначе (все отмеченные из других ФО) —
-    для этого ФО поддерева фильтр по РЭС снимаем — все РЭС округа.
+    из этого ФО – показываем только пересечение; иначе (все отмеченные из других ФО) –
+    для этого ФО поддерева фильтр по РЭС снимаем – все РЭС округа.
 
-    Режим только ``ds_res`` (пустой ``f_fd``): без ослабления — глобальный список РЭС.
+    Режим только ``ds_res`` (пустой ``f_fd``): без ослабления – глобальный список РЭС.
     """
     if not f_res:
         return frozenset()
@@ -12126,7 +12126,7 @@ def _fo_res_scope_for_fd_subtree(
 
 def _prune_one_fo(e: SummaryEntity, f_fd: frozenset[int], f_res: frozenset[int]) -> SummaryEntity | None:
     filters_on = bool(f_fd or f_res)
-    # Префикс «Сводной таблицы» (ЦЗ / ЭЭС / ЕЭС / СЗ) — только без территориального фильтра.
+    # Префикс «Сводной таблицы» (ЦЗ / ЭЭС / ЕЭС / СЗ) – только без территориального фильтра.
     if e.entity_kind in ("centralized_zone", "oes_top_aggregate", "synchronous_area"):
         return None if filters_on else e
     res_for_children = f_res
@@ -12187,7 +12187,7 @@ def _flatten_energy_zone_parents_when_res_filtered(
     entities: list[SummaryEntity],
 ) -> list[SummaryEntity]:
     """
-    При фильтре по РЭС (ds_res) не показывать строку-агрегат энергозоны — только РЭС и ниже,
+    При фильтре по РЭС (ds_res) не показывать строку-агрегат энергозоны – только РЭС и ниже,
     аналогично сводке по ФО при фильтре по субъектам.
     """
     out: list[SummaryEntity] = []
@@ -12222,7 +12222,7 @@ def _ez_leaf_matches(e: SummaryEntity, f_ez: frozenset[int], f_res: frozenset[in
 
 def _prune_one_ez(e: SummaryEntity, f_ez: frozenset[int], f_res: frozenset[int]) -> SummaryEntity | None:
     filters_on = bool(f_ez or f_res)
-    # Префикс «Сводной таблицы» (ЦЗ / ЭЭС / ЕЭС / СЗ) — только без территориального фильтра.
+    # Префикс «Сводной таблицы» (ЦЗ / ЭЭС / ЕЭС / СЗ) – только без территориального фильтра.
     if e.entity_kind in (
         "ees_russia",
         "centralized_zone",
@@ -12284,7 +12284,7 @@ def get_demand_summary_filter_refdata() -> dict[str, Any]:
 
     ez_objs = get_energy_zone_list_full()
     ez_objs_sorted = sorted(ez_objs, key=_energy_zone_number_sort_key)
-    energy_zone_list = [{"id": x.id, "name": f"{x.number} — {x.name}"} for x in ez_objs_sorted]
+    energy_zone_list = [{"id": x.id, "name": f"{x.number} – {x.name}"} for x in ez_objs_sorted]
 
     return {
         "union_energy_system_list": union_energy_system_list,
@@ -12299,7 +12299,7 @@ def get_demand_summary_filter_refdata() -> dict[str, Any]:
 def get_power_demand_oes_filter_cascade_data() -> dict[str, Any]:
     """
     Списки и маппинги для каскадных фильтров сводки по ОЭС (как station_list / filters-data).
-    Дополнительно — связи энергорайонов (EnergyUnit) с ОЭС/РЭС/субъектом.
+    Дополнительно – связи энергорайонов (EnergyUnit) с ОЭС/РЭС/субъектом.
     """
     from collections import defaultdict
 
@@ -12465,7 +12465,7 @@ def get_power_demand_ez_filter_cascade_data() -> dict[str, Any]:
     res_objs = get_regional_energy_system_list_full()
     regional_energy_system_list = [{"id": x.id, "name": x.name} for x in res_objs]
 
-    energy_zone_list = [{"id": x.id, "name": f"{x.number} — {x.name}"} for x in zones]
+    energy_zone_list = [{"id": x.id, "name": f"{x.number} – {x.name}"} for x in zones]
 
     return {
         "energy_zone_list": energy_zone_list,

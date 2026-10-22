@@ -155,7 +155,7 @@ def build_gis_tek_excel_stream(kind: str, args, user=None) -> BytesIO:
                 values = []
                 for key, _label, _num in export_columns:
                     val = row.get(key)
-                    if key == "station_affiliation" and val == "—":
+                    if key == "station_affiliation" and val == "–":
                         val = None
                     values.append(val)
                 values += [row["metrics"].get(attr) for attr, _label in value_columns]

@@ -53,6 +53,9 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
     get_year_list_full,
 )
+from app.generation.services.station_services.generation_year_filter_services import (
+    get_filter_year_list,
+)
 from app.common.services.database_version_services import (
     get_current_version_year_range_from_name,
 )
@@ -356,6 +359,7 @@ def _render_machine_details_form_response(
         year_features=year_features,
         version_year_start=version_year_start,
         version_year_end=version_year_end,
+        filter_year_list=get_filter_year_list(),
         all_documents=all_documents,
         machine_logs=[],
         can_create_machine=fuel_can_create_machine,
@@ -537,7 +541,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     fuel_choices = choices_cache.get_choices(Fuel, Fuel.id)
     perf_mark("choices_fetch")
 
-    # В GET больше НЕ создаем отсутствующие записи в БД — только читаем и заполняем форму
+    # В GET больше НЕ создаем отсутствующие записи в БД – только читаем и заполняем форму
 
     # Заполняем форму
     for year_num in range(start_year, end_year + 1):
@@ -636,7 +640,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         if display_name:
             main_form.machine_name.data = display_name
 
-    # В GET не коммитим изменения — исключаем дорогостоящие записи и блокировки
+    # В GET не коммитим изменения – исключаем дорогостоящие записи и блокировки
 
     # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
     all_documents = choices_cache.get_choices(Document, Document.name)
@@ -686,7 +690,7 @@ def _validate_power_ranges(advanced_form, formdata):
             # Если в форме нет *_orig, считаем, что мы не знаем исходное значение
             # и НЕ блокируем сохранение (это важно для старых/негативных значений,
             # загруженных из БД, когда hidden‑поля еще не были добавлены).
-            is_orig_missing = orig_value in (None, "", "—", "-")
+            is_orig_missing = orig_value in (None, "", "–", "-")
 
             # Отрицательные значения в Рогр не блокируют сохранение:
             # показываем только предупреждение и не добавляем ошибку поля.
@@ -734,7 +738,7 @@ def _persist_target_version_id(machine) -> int | None:
 def _resolve_fk_for_machine_persist(model_cls, anchor_id, version_id):
     """
     Сопоставляет id справочника с целевой версией БД.
-    Возвращает (resolved_id, ok). ok=False — поле не менять (нет соответствия в версии).
+    Возвращает (resolved_id, ok). ok=False – поле не менять (нет соответствия в версии).
     """
     if anchor_id in (None, 0, ""):
         return None, True
@@ -857,7 +861,7 @@ def persist_machine_details_all_versions_subset(
     if old_fuel_eg_id != new_fuel_eg_id:
         def _eg_label(eg_id):
             if not eg_id:
-                return "—"
+                return "–"
             eg = EquipmentGroup.query.get(eg_id)
             return (eg.name if eg else None) or f"id={eg_id}"
 
@@ -1015,7 +1019,7 @@ def persist_machine_details_from_validated_forms(
 
         new_v = getattr(main_form, fld).data
 
-        # Пустой номер агрегата — валидное значение при редактировании (храним "").
+        # Пустой номер агрегата – валидное значение при редактировании (храним "").
         if fld == "machine_number":
             if new_v is None or (isinstance(new_v, str) and new_v.strip() == ""):
                 new_v = ""
@@ -1088,7 +1092,7 @@ def persist_machine_details_from_validated_forms(
         "date_update_fact",
     ]
 
-    # Годы диапазона текущей версии БД — нужны для ограничений по ожидаемому году вывода
+    # Годы диапазона текущей версии БД – нужны для ограничений по ожидаемому году вывода
     version_year_start, version_year_end = get_current_version_year_range_from_name()
 
     if can_edit_generation_fields:
@@ -1158,7 +1162,7 @@ def persist_machine_details_from_validated_forms(
 
         # Синхронизация «Ожидаемый год ввода» из «Ожидаемая дата ввода» (правило 01.01.ГГГГ → год-1)
         raw_expl_date = main_form.date_exploitation_date_expected.data
-        if raw_expl_date not in (None, "", "—", "-"):
+        if raw_expl_date not in (None, "", "–", "-"):
             from app.generation.services.station_services.ves_ses_plan_generation_services import (
                 expected_year_from_exploitation_date,
             )
@@ -1189,7 +1193,7 @@ def persist_machine_details_from_validated_forms(
                 changes.append(f"date_commission_year: {old_commission_year_str} → {new_commission_year_str}")
                 setattr(machine, "date_commission_year", new_commission_year)
 
-        # Ввод 4 квартала — только при заполненном ожидаемом годе ввода
+        # Ввод 4 квартала – только при заполненном ожидаемом годе ввода
         has_expected_year = bool(getattr(machine, "date_exploitation_expected", None))
         new_q4 = bool(main_form.is_commissioning_q4.data) if has_expected_year else False
         old_q4 = bool(getattr(machine, "is_commissioning_q4", False)) if not is_new else False
@@ -1245,7 +1249,7 @@ def persist_machine_details_from_validated_forms(
     if old_fuel_eg_id != new_fuel_eg_id:
         def _eg_label(eg_id):
             if not eg_id:
-                return "—"
+                return "–"
             eg = EquipmentGroup.query.get(eg_id)
             return (eg.name if eg else None) or f"id={eg_id}"
 
@@ -1284,8 +1288,8 @@ def persist_machine_details_from_validated_forms(
         if mfp_nt is not None and old_nt != new_nt:
             mfp_nt.nt = new_nt
             db.session.add(mfp_nt)
-            _old_l = "—" if old_nt is None else format_decimal_trim_for_display(old_nt, digits=0)
-            _new_l = "—" if new_nt is None else format_decimal_trim_for_display(new_nt, digits=0)
+            _old_l = "–" if old_nt is None else format_decimal_trim_for_display(old_nt, digits=0)
+            _new_l = "–" if new_nt is None else format_decimal_trim_for_display(new_nt, digits=0)
             changes.append(f"Тепловая мощность, Гкал/ч: {_old_l} → {_new_l}")
 
     # Фильтруем записи с None.year для предотвращения AttributeError
@@ -1313,9 +1317,15 @@ def persist_machine_details_from_validated_forms(
     last_effective_name = None
 
     def _power_field_changed(raw_value, orig_value):
-        if orig_value in (None, "", "—", "-"):
-            return raw_value not in (None, "", "—", "-")
+        if orig_value in (None, "", "–", "-"):
+            return raw_value not in (None, "", "–", "-")
         return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
+
+    def _power_field_cleared(raw_value, orig_value):
+        """Ячейку очистили вручную: сейчас пусто, а до правки в ней было значение."""
+        if raw_value not in (None, "", "–", "-"):
+            return False
+        return orig_value not in (None, "", "–", "-")
 
     any_power_changed = False
     if can_edit_generation_fields and not is_new:
@@ -1394,6 +1404,12 @@ def persist_machine_details_from_validated_forms(
             p_ogr_new = to_decimal(p_ogr_raw)
             p_rasp_new = to_decimal(p_rasp_raw)
 
+            # Очистка ячейки сохраняется так же, как и правка: пустая ячейка с ранее
+            # показанным значением означает «мощности в этом году нет».
+            p_ust_cleared = _power_field_cleared(p_ust_form_raw, p_ust_orig_raw)
+            p_ogr_cleared = _power_field_cleared(p_ogr_form_raw, p_ogr_orig_raw)
+            p_rasp_cleared = _power_field_cleared(p_rasp_form_raw, p_rasp_orig_raw)
+
             power_fields_changed = any_power_changed or (
                 _power_field_changed(p_ust_form_raw, p_ust_orig_raw)
                 or _power_field_changed(p_ogr_form_raw, p_ogr_orig_raw)
@@ -1401,8 +1417,8 @@ def persist_machine_details_from_validated_forms(
             )
             # Сохраняем прежнюю логику автозаполнения:
             # если пользователь не трогал мощности, ничего не пересчитываем.
-            user_modified_p_ogr = p_ogr_raw not in (None, '', '—', '-')
-            user_modified_p_rasp = p_rasp_raw not in (None, '', '—', '-')
+            user_modified_p_ogr = p_ogr_raw not in (None, '', '–', '-')
+            user_modified_p_rasp = p_rasp_raw not in (None, '', '–', '-')
             
             # Для нового агрегата всегда используем значения из формы
             # Для существующего агрегата: если поле не изменено, оставляем старое значение
@@ -1421,17 +1437,24 @@ def persist_machine_details_from_validated_forms(
                     skip_ogr = True
                     skip_rasp = True
                 else:
-                    p_ust = p_ust_new if p_ust_new is not None else (mp.p_ust if mp.p_ust else Decimal(0))
+                    p_ust = None if p_ust_cleared else (
+                        p_ust_new if p_ust_new is not None else (mp.p_ust if mp.p_ust else Decimal(0))
+                    )
                     if user_modified_p_ogr:
                         p_ogr = p_ogr_new if p_ogr_new is not None else Decimal(0)
+                    elif p_ogr_cleared:
+                        p_ogr = None
                     else:
                         p_ogr = mp.p_ogr if mp.p_ogr is not None else Decimal(0)
                     if user_modified_p_rasp:
                         p_rasp = p_rasp_new if p_rasp_new is not None else Decimal(0)
+                    elif p_rasp_cleared:
+                        p_rasp = None
                     else:
                         p_rasp = mp.p_rasp if mp.p_rasp is not None else Decimal(0)
-                    skip_ogr = user_modified_p_ogr
-                    skip_rasp = user_modified_p_rasp
+                    # Очищенные ячейки – тоже «задано пользователем»: автозаполнение их не трогает
+                    skip_ogr = user_modified_p_ogr or p_ogr_cleared
+                    skip_rasp = user_modified_p_rasp or p_rasp_cleared
 
             # Передаем флаги в автозаполнение, чтобы не перезаписывать значения, введенные пользователем
             if is_new:
@@ -1442,6 +1465,13 @@ def persist_machine_details_from_validated_forms(
                 skip_ogr=skip_ogr,
                 skip_rasp=skip_rasp
             )
+            # Очищенные вручную ячейки автозаполнение не восстанавливает
+            if p_ust_cleared:
+                p_ust = None
+            if p_ogr_cleared:
+                p_ogr = None
+            if p_rasp_cleared:
+                p_rasp = None
 
             for attr, val in (("p_ust", p_ust), ("p_ogr", p_ogr), ("p_rasp", p_rasp)):
                 old_val = getattr(mp, attr)
@@ -1539,7 +1569,10 @@ def persist_machine_details_from_validated_forms(
 
         # Название по году (machine_names)
         if can_edit_generation_fields and i < len(advanced_form.machine_names):
-            raw_name = (advanced_form.machine_names[i].year_name.data or "").strip() or None
+            name_entry = advanced_form.machine_names[i]
+            raw_name = (name_entry.year_name.data or "").strip() or None
+            # Значение, которое было показано в ячейке (для распознавания очистки)
+            name_shown = (normalized.get(f"{name_entry.year_name.name}_orig") or "").strip() or None
 
             # Для нового агрегата ТЭС/ГЭС, если для "текущего года" название по годам не задано,
             # автоматически подставляем общее machine_name
@@ -1552,28 +1585,35 @@ def persist_machine_details_from_validated_forms(
             ):
                 raw_name = (machine.machine_name or "").strip() or None
 
+            old_name = mn_obj.name if mn_obj.name else None
+
             # Логика как для мощности:
-            # - если пользователь ввел новое название в каком‑то году, протягиваем его на все последующие годы;
-            # - значения для годов > текущего года версии БД не сохраняем.
-            if is_tes_or_ges and current_year_for_version is not None:
-                if year_num > current_year_for_version:
+            # - если пользователь ввел новое название в каком‑то году, протягиваем его на все
+            #   последующие годы отображаемого периода (включая годы за горизонтом версии БД);
+            # - сохранение идёт по тем же годам, что видны в таблице (start_year..end_year).
+            if is_tes_or_ges:
+                if raw_name:
+                    last_effective_name = raw_name
+                    effective_name = raw_name
+                elif name_shown:
+                    # Ячейку года очистили вручную: сохраняем очистку, а не протягиваем
+                    # предыдущее название (протягивание – только для ещё незаполненных годов).
                     effective_name = None
                 else:
-                    if raw_name:
-                        last_effective_name = raw_name
-                    effective_name = last_effective_name if last_effective_name else raw_name
+                    # Ячейка пустая и до правки (например, год без мощности – значение
+                    # в таблице не показывается): уже сохранённое название не затираем.
+                    effective_name = last_effective_name or old_name
             else:
-                # Для остальных типов станций — без автоподстановки, по году
+                # Для остальных типов станций – без автоподстановки, по году
                 effective_name = raw_name
 
-            old_name = mn_obj.name if mn_obj.name else None
             if old_name != effective_name:
                 mn_obj.name = effective_name
                 flag_modified(mn_obj, "name")
                 if is_new and effective_name:
                     changes.append(f"Название по году {year_num}: {effective_name}")
                 elif not is_new:
-                    changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
+                    changes.append(f"Название по году {year_num}: {old_name or '–'} → {effective_name or '–'}")
                 related_entities_changed = True
 
     # Для ТЭС/ГЭС/ГАЭС: поле "Название агрегата" (текущее + в скобках перспективное)
@@ -1611,7 +1651,7 @@ def persist_machine_details_from_validated_forms(
 
         if form_display_name and form_display_name != (machine.machine_name or None):
             changes.append(
-                f"machine_name: {(machine.machine_name or '—')} → {form_display_name}"
+                f"machine_name: {(machine.machine_name or '–')} → {form_display_name}"
             )
             machine.machine_name = form_display_name
 
@@ -1706,11 +1746,11 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     from werkzeug.datastructures import MultiDict
 
     normalized = MultiDict(form_data)
-    # Поля, в которых запятая — десятичный разделитель (только числовые)
+    # Поля, в которых запятая – десятичный разделитель (только числовые)
     _numeric_key_suffixes = ("p_ust", "p_ogr", "p_rasp", "thermal_power_gcalh")
     for key, value in list(normalized.items()):
         if isinstance(value, str):
-            if value.strip() in {"\u2014", "-", ""}:
+            if value.strip() in {"\u2013", "\u2014", "-", ""}:
                 normalized[key] = ""
             # Запятая/пробелы тысяч → каноническое число (format_decimal даёт «1 234,0»)
             elif _is_machine_power_numeric_form_key(key, _numeric_key_suffixes):
@@ -2168,7 +2208,7 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
         }
 
     # Заполняем powers и pgu_machine_names из БД. Не полагаемся на obj=pgu_machine:
-    # модель использует year_number/name, форма — year/year_name, маппинг не совпадает.
+    # модель использует year_number/name, форма – year/year_name, маппинг не совпадает.
     del pgu_form.powers.entries[:]
     for year in range(start_year, end_year + 1):
         value = existing_powers.get(year).p_ust if existing_powers.get(year) else 0
@@ -2268,7 +2308,7 @@ def _normalize_pgu_form_data(form_data, start_year, end_year):
                     value = value.strip()
                     m = re.search(r'(?:machine_names|powers)-(\d+)-year', key)
                     idx = int(m.group(1)) if m else 0
-                    if value in ('', '—', '-') or not value:
+                    if value in ('', '–', '-') or not value:
                         value = str(start_year + idx)
                     elif '.' in value:
                         try:
@@ -2289,17 +2329,20 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
     redirect_args["rounding_digits"] = rounding_digits
 
     form_data = _normalize_pgu_form_data(form_data, start_year, end_year)
+    from werkzeug.datastructures import MultiDict
+
+    normalized = MultiDict(form_data)
     pgu_form = PGUMachineFilterForm(form_data, prefix='pgu_')
     _fill_pgu_machines_form_choices(pgu_form, machine_id, parent_machine=parent_machine)
 
     # Для ТЭС/ГЭС/ГАЭС machine_name формируется из таблицы pgu_machine_names.
     # Если в форме machine_name пусто, подставляем из первого непустого названия по году,
-    # иначе "Без названия" — чтобы валидатор DataRequired не падал (данные обработаются ниже).
+    # иначе "Без названия" – чтобы валидатор DataRequired не падал (данные обработаются ниже).
     try:
         st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
     except Exception:
         st_name = ""
-    # ТЭЦ, КЭС — подтипы ТЭС; для них тоже название из таблицы по годам
+    # ТЭЦ, КЭС – подтипы ТЭС; для них тоже название из таблицы по годам
     if st_name in ("тэс", "гэс", "гаэс", "тэц", "кэс") and not (pgu_form.machine_name.data or "").strip():
         for name_entry in pgu_form.pgu_machine_names.entries:
             raw = (name_entry.year_name.data or "").strip()
@@ -2339,6 +2382,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             pgu_machine_logs=[],
             year_features=year_features,
             version_year_end=version_year_end,
+            filter_year_list=get_filter_year_list(),
             rounding_digits=rounding_digits,
             all_documents=all_documents,
         )
@@ -2526,7 +2570,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             for power_entry in pgu_form.powers.entries:
                 year = power_entry.year.data
                 if valid_years and year not in valid_years:
-                    continue  # Год отсутствует в gs_sys_years — пропускаем (FK)
+                    continue  # Год отсутствует в gs_sys_years – пропускаем (FK)
                 p_ust = to_decimal(power_entry.p_ust.data)
                 
                 # Логируем изменения мощности
@@ -2551,22 +2595,31 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             for i, name_entry in enumerate(pgu_form.pgu_machine_names.entries):
                 year_num = name_entry.year.data
                 if valid_years and year_num not in valid_years:
-                    continue  # Год отсутствует в gs_sys_years — пропускаем (FK)
+                    continue  # Год отсутствует в gs_sys_years – пропускаем (FK)
                 raw_name = (name_entry.year_name.data or "").strip() or None
-                # Не сохранять как название значение, похожее на год (4 цифры) — возможно, year попал в year_name
+                # Значение, которое было показано в ячейке (для распознавания очистки)
+                name_shown = (normalized.get(f"{name_entry.year_name.name}_orig") or "").strip() or None
+                # Не сохранять как название значение, похожее на год (4 цифры) – возможно, year попал в year_name
                 if raw_name and len(raw_name) == 4 and raw_name.isdigit():
                     raw_name = None
 
                 if is_new and is_tes_or_ges and version_year_end is not None and year_num == version_year_end and not raw_name:
                     raw_name = (pgu_form.machine_name.data or "").strip() or None
 
-                if is_tes_or_ges and version_year_end is not None:
-                    if year_num > version_year_end:
+                existing_pmn = names_map.get(year_num)
+                pmn_old_name = existing_pmn.name if (existing_pmn and existing_pmn.name) else None
+
+                if is_tes_or_ges:
+                    # Как и для мощностей: название протягивается на все годы отображаемого периода
+                    if raw_name:
+                        last_effective_name = raw_name
+                        effective_name = raw_name
+                    elif name_shown:
+                        # Ячейку года очистили вручную: сохраняем очистку, а не протягиваем
                         effective_name = None
                     else:
-                        if raw_name:
-                            last_effective_name = raw_name
-                        effective_name = last_effective_name if last_effective_name else raw_name
+                        # Ячейка пустая и до правки – уже сохранённое название не затираем
+                        effective_name = last_effective_name or pmn_old_name
                 else:
                     effective_name = raw_name
 
@@ -2585,7 +2638,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                     if is_new and effective_name:
                         changes.append(f"Название по году {year_num}: {effective_name}")
                     elif not is_new:
-                        changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
+                        changes.append(f"Название по году {year_num}: {old_name or '–'} → {effective_name or '–'}")
 
             # Для ТЭС/ГЭС/ГАЭС пересчитываем machine_name из pgu_machine_names
             version_year_for_base = version_year_start if version_year_start is not None else version_year_end
@@ -2629,7 +2682,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                             display_name = f"{base_name} ({plan_name})"
                             break
                 if display_name and display_name != (pgu_machine.machine_name or None):
-                    changes.append(f"machine_name: {(pgu_machine.machine_name or '—')} → {display_name}")
+                    changes.append(f"machine_name: {(pgu_machine.machine_name or '–')} → {display_name}")
                     pgu_machine.machine_name = display_name
 
             # Поля date_exploitation, date_exploitation_expected, date_decompressing_expected,
@@ -2638,7 +2691,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
 
         _commit_with_retry()
         
-        # ВАЖНО: ПГУ влияет на агрегаты/агрегации — чистим кэш после мутаций
+        # ВАЖНО: ПГУ влияет на агрегаты/агрегации – чистим кэш после мутаций
         clear_station_aggregation_cache("after PGU save")
         
         # Инвалидация кэша после успешного обновления
@@ -2699,6 +2752,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             pgu_machine_logs=[],
             year_features=year_features,
             version_year_end=version_year_end,
+            filter_year_list=get_filter_year_list(),
             rounding_digits=rounding_digits,
             all_documents=all_documents,
         )
@@ -2741,7 +2795,7 @@ def _apply_fuel_equipment_group_from_form(
 ) -> None:
     """
     Явный выбор группы на machine_details сохраняется как перенос привязки.
-    Авто («по типу») — прежняя синхронизация с EquipmentGroupSet по типу.
+    Авто («по типу») – прежняя синхронизация с EquipmentGroupSet по типу.
     """
     explicit_id = None
     if can_edit_fuel:
@@ -2777,7 +2831,7 @@ def _fill_fuel_equipment_group_choices(main_form, station_id: int, machine=None)
     """Список итоговых групп оборудования электростанции (топливный модуль) + авто-привязка."""
     version_id = get_current_db_version_id()
     tuples = get_station_fuel_equipment_group_choice_tuples(station_id, version_id)
-    auto_label = "— по типу группы и плановому году (авто)"
+    auto_label = "– по типу группы и плановому году (авто)"
     main_form.id_fuel_equipment_group.choices = [
         (choices_cache.EMPTY_VALUE_ID, auto_label)
     ] + tuples
@@ -2798,7 +2852,7 @@ def _fill_fuel_equipment_group_choices(main_form, station_id: int, machine=None)
     if sel and not choices_cache.is_empty_value(sel):
         ids = {c[0] for c in main_form.id_fuel_equipment_group.choices}
         if sel not in ids:
-            # Группа не связана с этой станцией (и не в кластере составной) — не подставлять.
+            # Группа не связана с этой станцией (и не в кластере составной) – не подставлять.
             main_form.id_fuel_equipment_group.data = choices_cache.EMPTY_VALUE_ID
 
 
@@ -2858,9 +2912,9 @@ def _fill_advanced_form_choices(form):
 
 def _fill_pgu_machines_form_choices(form, machine_id, parent_machine=None):
     """Заполняет choices для формы ПГУ с использованием унифицированного кэширования.
-    Для pgu_machine_details parent_machine передается — используем только его, без загрузки всех агрегатов."""
+    Для pgu_machine_details parent_machine передается – используем только его, без загрузки всех агрегатов."""
     if parent_machine is not None:
-        form.id_parent_machine.choices = [(parent_machine.id, parent_machine.machine_name or "—")]
+        form.id_parent_machine.choices = [(parent_machine.id, parent_machine.machine_name or "–")]
     else:
         form.id_parent_machine.choices = choices_cache.get_choices(Machine, Machine.machine_name, name_field='machine_name')
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
@@ -3085,7 +3139,7 @@ def autofill_tes_and_fuel_chain(
     from flask import flash
 
     # Логика типов ТЭС и топлива актуальна только для станций типа ТЭС (id_station_type == 4)
-    # Для ГЭС/СЭС/ВЭС и прочих типов — ничего не делаем и не логируем
+    # Для ГЭС/СЭС/ВЭС и прочих типов – ничего не делаем и не логируем
     try:
         # Используем переданный объект station. Распознаем ТЭС по id или названию
         try:
@@ -3096,7 +3150,7 @@ def autofill_tes_and_fuel_chain(
         if not is_tes_station:
             return
     except Exception:
-        # В случае отсутствия атрибута/ошибок — безопасно выходим
+        # В случае отсутствия атрибута/ошибок – безопасно выходим
         return
 
     def resolve_default_id(names_dict):
@@ -3229,7 +3283,7 @@ def autofill_tes_and_fuel_chain(
             ):
                 old_name = mn.name.strip()
                 mn.name = ""
-                changes.append(f"Название по году: {year_num} год - {old_name} → —")
+                changes.append(f"Название по году: {year_num} год - {old_name} → –")
                 # Обновляем форму, если соответствующая запись существует
                 j = year_num - start_year
                 if 0 <= j < len(advanced_form.machine_names):
@@ -3332,7 +3386,7 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     # Поле `date_exploitation` заполняется пользователем вручную.
 
     # ============================================================
-    # ВАЖНО: авто по мощности — только ОДНО из трёх полей:
+    # ВАЖНО: авто по мощности – только ОДНО из трёх полей:
     # - date_exploitation_expected (ожидаемый год ввода)
     # - date_decompressing_expected (ожидаемый год вывода)
     # - date_modernization_power_change_expected (ожидаемый год модернизации с изменением мощности)
@@ -3340,7 +3394,7 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     # выше очищается вместе с «другой» модернизацией.
     #
     # Выбор делаем по приоритету событий мощности:
-    # 1) вывод (>0 -> 0) — самый приоритетный
+    # 1) вывод (>0 -> 0) – самый приоритетный
     # 2) ввод (0 -> >0)
     # 3) модернизация (>0 -> >0 и изменилось значение)
     # ============================================================
@@ -3375,19 +3429,19 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             machine.date_decompressing_expected = selected_year
         # очищаем остальные два поля (взаимоисключаемость)
         if machine.date_exploitation_expected is not None:
-            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → —")
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → –")
             machine.date_exploitation_expected = None
         if getattr(machine, "is_commissioning_q4", False):
             changes.append("Ввод 4 квартала: да → нет")
             machine.is_commissioning_q4 = False
         if machine.date_modernization_power_change_expected is not None:
             changes.append(
-                f"Ожидаемый год модернизации с изменением мощности: {machine.date_modernization_power_change_expected} → —"
+                f"Ожидаемый год модернизации с изменением мощности: {machine.date_modernization_power_change_expected} → –"
             )
             machine.date_modernization_power_change_expected = None
         if machine.date_modernization_no_power_change_expected is not None:
             changes.append(
-                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → —"
+                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → –"
             )
             machine.date_modernization_no_power_change_expected = None
 
@@ -3397,16 +3451,16 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             flash(f"🧠 Ожидаемый год ввода автоматически определен: {selected_year}", "info")
             machine.date_exploitation_expected = selected_year
         if machine.date_decompressing_expected is not None:
-            changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")
+            changes.append(f"Год вывода: {machine.date_decompressing_expected} → –")
             machine.date_decompressing_expected = None
         if machine.date_modernization_power_change_expected is not None:
             changes.append(
-                f"Ожидаемый год модернизации с изменением мощности: {machine.date_modernization_power_change_expected} → —"
+                f"Ожидаемый год модернизации с изменением мощности: {machine.date_modernization_power_change_expected} → –"
             )
             machine.date_modernization_power_change_expected = None
         if machine.date_modernization_no_power_change_expected is not None:
             changes.append(
-                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → —"
+                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → –"
             )
             machine.date_modernization_no_power_change_expected = None
 
@@ -3423,21 +3477,21 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             machine.date_modernization_power_change_expected = selected_year
         if machine.date_modernization_no_power_change_expected is not None:
             changes.append(
-                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → —"
+                f"Ожидаемый год модернизации без изменения мощности: {machine.date_modernization_no_power_change_expected} → –"
             )
             machine.date_modernization_no_power_change_expected = None
         if machine.date_decompressing_expected is not None:
-            changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")
+            changes.append(f"Год вывода: {machine.date_decompressing_expected} → –")
             machine.date_decompressing_expected = None
         if machine.date_exploitation_expected is not None:
-            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → —")
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → –")
             machine.date_exploitation_expected = None
         if getattr(machine, "is_commissioning_q4", False):
             changes.append("Ввод 4 квартала: да → нет")
             machine.is_commissioning_q4 = False
 
     else:
-        # Ничего не выбрано — не трогаем текущие значения.
+        # Ничего не выбрано – не трогаем текущие значения.
         # Ранее тут было предупреждение про модернизацию; теперь оно не нужно,
         # чтобы не мешать логике взаимоисключаемости.
         pass

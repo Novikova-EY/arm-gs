@@ -4,7 +4,7 @@
 
 {% macro render_summary(payload) %}
     {% if not payload %}
-        <span class="text-muted">—</span>
+        <span class="text-muted">–</span>
     {% else %}
         {% set ns = namespace(parts=[]) %}
         {% if payload.get('deleted') %}

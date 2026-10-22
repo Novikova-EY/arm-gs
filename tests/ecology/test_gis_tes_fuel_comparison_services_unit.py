@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from openpyxl import Workbook
+import pytest
 
 from decimal import Decimal
 
@@ -562,12 +563,15 @@ def test_context_keeps_selected_year(tmp_path, monkeypatch):
     assert context["start_year"] == 2017
     assert context["end_year"] == 2018
     assert context["total_count"] == 1
-    assert [col["key"] for col in context["columns"]] == ["NAME", "numb1120", "Year", "W_en"]
+    assert [col["key"] for col in context["columns"]] == [
+        "NAME", "numb1120", "Year", "W_en", "W_en_generation"
+    ]
     assert context["sticky_col_count"] == 3
     group = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]
     assert len(group["rows"]) == 2
     assert group["rows"][0]["cells"][0] == "ТЭЦ"
-    assert group["rows"][0]["cells"][-1] == "12,4"
+    keys = [col["key"] for col in context["columns"]]
+    assert group["rows"][0]["cells"][keys.index("W_en")] == "12,4"
     header_texts = [cell["text"] for row in context["header_rows"] for cell in row]
     assert "Федеральный округ" not in header_texts
     assert "ОЭС" not in header_texts
@@ -1712,7 +1716,7 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
 
 
 def _station_generation_workbook(path):
-    """«ЗВ_всё» с ТЭП-столбцами NUST/E — для столбцов сверки с «Генерацией»."""
+    """«ЗВ_всё» с ТЭП-столбцами NUST/E – для столбцов сверки с «Генерацией»."""
     wb = Workbook()
     ws = wb.active
     ws.title = "ЗВ_всё"
@@ -1732,11 +1736,8 @@ def _station_generation_workbook(path):
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500])
     for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
-        wb.create_sheet(title)
-        extra = wb[title]
-        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
-        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 1])
-        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 1])
+        extra = wb.copy_worksheet(ws)
+        extra.title = title
     wb.save(path)
     clear_comparison_cache()
 
@@ -1773,11 +1774,12 @@ def _station_generation_context(slug, path, overlay, monkeypatch, **kwargs):
     return context
 
 
-def test_zv_vse_station_generation_columns_follow_tep_columns(tmp_path, monkeypatch):
+@pytest.mark.parametrize("slug", ["zv-vse", "pg-vse", "zv-bez-kot", "pg-bez-kot"])
+def test_station_generation_columns_follow_tep_columns(tmp_path, monkeypatch, slug):
     path = tmp_path / "zv-generation.xlsx"
     _station_generation_workbook(path)
     context = _station_generation_context(
-        "zv-vse",
+        slug,
         path,
         {
             "names_by_numb": {708: "ТЭЦ-1"},
@@ -1837,25 +1839,34 @@ def test_zv_vse_station_generation_columns_follow_tep_columns(tmp_path, monkeypa
     assert rows[1]["cell_mismatch"][keys.index("nust_generation")] is False
 
 
-def test_station_generation_columns_absent_on_bez_kot_sheets(tmp_path, monkeypatch):
-    path = tmp_path / "zv-generation-none.xlsx"
-    _station_generation_workbook(path)
-    context = _station_generation_context(
-        "zv-bez-kot",
-        path,
-        {
-            "names_by_numb": {708: "ТЭЦ-1"},
-            "values_by_numb_year": {(708, 2017): {"nust_generation": 100.0}},
-        },
-        monkeypatch,
+@pytest.mark.parametrize("group", ["pg", "zv"])
+@pytest.mark.parametrize("show_reported", ["0", "1"])
+def test_analysis_tabs_have_identical_columns_and_headers(monkeypatch, group, show_reported):
+    _patch_pg_groups_from_fuel(monkeypatch, [])
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {},
     )
-    assert context is not None
-    keys = [column["key"] for column in context["columns"]]
-    assert "nust_generation" not in keys
-    assert "W_en_generation" not in keys
-    assert context["station_check_pairs"] == {}
-    rows = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"]
-    assert rows[0]["cells"][keys.index("NAME")] == "ТЭЦ-1 (котельная)"
+    clear_comparison_cache()
+    contexts = [
+        build_comparison_table_context(
+            f"{group}-{suffix}",
+            start_year=2017,
+            end_year=2018,
+            request_args={"show_reported": show_reported},
+        )
+        for suffix in ("vse", "bez-kot", "vse")
+    ]
+    assert all(context is not None for context in contexts)
+    assert contexts[0]["columns"] == contexts[1]["columns"] == contexts[2]["columns"]
+    assert contexts[0]["header_rows"] == contexts[1]["header_rows"] == contexts[2]["header_rows"]
+    keys = [column["key"] for column in contexts[1]["columns"]]
+    assert {"nust_generation", "W_en_generation", "station_affiliation"} <= set(keys)
+    if group == "zv":
+        assert {"normir_TVERD_na_energ", "normir_SO2_na_energ", "normir_NOx_na_energ"} <= set(keys)
+        assert not {"c30", "c31", "c33"}.intersection(keys)
+    assert contexts[1]["sheet"]["slug"] == f"{group}-bez-kot"
+    clear_comparison_cache()
 
 
 def test_apply_station_generation_overlay_sets_name_and_values():
@@ -1897,7 +1908,7 @@ def test_station_generation_mismatch_flags_only_filled_cells():
     assert station_generation_mismatch(
         ["100", "", "500", ""], columns, pairs
     ) == [False, False, False, False]
-    # Столбца макета для сверки нет — красного шрифта тоже.
+    # Столбца макета для сверки нет – красного шрифта тоже.
     assert station_generation_mismatch(
         ["90"], [{"key": "nust_generation", "numeric": True}], pairs
     ) == [False]
@@ -1910,7 +1921,7 @@ def test_load_station_generation_overlay_without_app_context():
 
 
 def _station_affiliation_workbook(path):
-    """«ЗВ_всё» с ТЭП-столбцом «Отпуск ТЭ» — для столбца «Принадлежность»."""
+    """«ЗВ_всё» с ТЭП-столбцом «Отпуск ТЭ» – для столбца «Принадлежность»."""
     wb = Workbook()
     ws = wb.active
     ws.title = "ЗВ_всё"
@@ -1933,11 +1944,8 @@ def _station_affiliation_workbook(path):
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500, 30])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500, 30])
     for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
-        wb.create_sheet(title)
-        extra = wb[title]
-        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en", "Teplo"])
-        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 1, 30])
-        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 1, 30])
+        extra = wb.copy_worksheet(ws)
+        extra.title = title
     wb.save(path)
     clear_comparison_cache()
 
@@ -1973,11 +1981,12 @@ def _station_affiliation_context(slug, path, affiliations, monkeypatch):
     return context
 
 
-def test_zv_vse_station_affiliation_column_follows_teplo_column(tmp_path, monkeypatch):
+@pytest.mark.parametrize("slug", ["zv-vse", "pg-vse", "zv-bez-kot", "pg-bez-kot"])
+def test_station_affiliation_column_follows_teplo_column(tmp_path, monkeypatch, slug):
     path = tmp_path / "zv-affiliation.xlsx"
     _station_affiliation_workbook(path)
     context = _station_affiliation_context(
-        "zv-vse", path, {(708, 2017): "отрасль"}, monkeypatch
+        slug, path, {(708, 2017): "отрасль"}, monkeypatch
     )
     assert context is not None
     keys = [column["key"] for column in context["columns"]]
@@ -2007,24 +2016,8 @@ def test_zv_vse_station_affiliation_column_follows_teplo_column(tmp_path, monkey
     rows = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"]
     assert [row["year"] for row in rows] == [2017, 2018]
     assert rows[0]["cells"][keys.index("station_affiliation")] == "отрасль"
-    # Год без данных ГИС ТЭК — «—», как в столбце на страницах ГИС ТЭК.
-    assert rows[1]["cells"][keys.index("station_affiliation")] == "—"
-
-
-def test_station_affiliation_column_absent_on_bez_kot_sheets(tmp_path, monkeypatch):
-    path = tmp_path / "zv-affiliation-none.xlsx"
-    _station_affiliation_workbook(path)
-    context = _station_affiliation_context(
-        "zv-bez-kot", path, {(708, 2017): "отрасль"}, monkeypatch
-    )
-    assert context is not None
-    keys = [column["key"] for column in context["columns"]]
-    assert "station_affiliation" not in keys
-    assert all(
-        cell.get("column_key") != "station_affiliation"
-        for row in context["header_rows"]
-        for cell in row
-    )
+    # Год без данных ГИС ТЭК – «–», как в столбце на страницах ГИС ТЭК.
+    assert rows[1]["cells"][keys.index("station_affiliation")] == "–"
 
 
 def test_apply_station_affiliation_cells_fills_unknown_with_dash():
@@ -2038,13 +2031,13 @@ def test_apply_station_affiliation_cells_fills_unknown_with_dash():
     assert apply_station_affiliation_cells(
         ["ТЭЦ-1", 708, 2017, None], columns, affiliations
     ) == ["ТЭЦ-1", 708, 2017, "промпредприятие"]
-    # Нет данных по группе/году, нет года, нет столбца — «—» или строка без изменений.
+    # Нет данных по группе/году, нет года, нет столбца – «–» или строка без изменений.
     assert apply_station_affiliation_cells(
         ["ТЭЦ-1", 999, 2017, None], columns, affiliations
-    ) == ["ТЭЦ-1", 999, 2017, "—"]
+    ) == ["ТЭЦ-1", 999, 2017, "–"]
     assert apply_station_affiliation_cells(
         ["ТЭЦ-1", 708, None, None], columns, affiliations
-    ) == ["ТЭЦ-1", 708, None, "—"]
+    ) == ["ТЭЦ-1", 708, None, "–"]
     assert apply_station_affiliation_cells(
         ["ТЭЦ-1", 708, 2017, None],
         [column for column in columns if column["key"] != "station_affiliation"],
@@ -2198,10 +2191,11 @@ def test_pg_pages_use_ecology_overlay_before_differences(tmp_path, monkeypatch):
             6.0,
         ]
     )
-    for title in ("ЗВ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.copy_worksheet(ws).title = "ПГ_всё"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -2310,7 +2304,7 @@ def test_header_station_and_affiliation_filters(monkeypatch):
         lambda numbs, years: {
             (1, 2023): "отрасль",
             (2, 2023): "промпредприятие",
-            (3, 2023): "—",
+            (3, 2023): "–",
         },
     )
     columns = [{"key": "Stancia"}, {"key": "station_affiliation"}]
@@ -2325,7 +2319,7 @@ def test_header_station_and_affiliation_filters(monkeypatch):
     )
     assert [group["numb"] for group in kept] == [1, 2, None]
     assert station_choices == ["ТЭЦ-1", "ТЭЦ-2"]
-    # «—» (нет данных ГИС ТЭК) в списке принадлежности не предлагается.
+    # «–» (нет данных ГИС ТЭК) в списке принадлежности не предлагается.
     assert affiliation_choices == ["отрасль", "промпредприятие"]
 
     by_station, _, _ = apply_header_filters(
@@ -2339,7 +2333,7 @@ def test_header_station_and_affiliation_filters(monkeypatch):
     assert [group["numb"] for group in by_affiliation] == [2]
 
     unknown, _, _ = apply_header_filters(
-        groups, columns, {"affiliation_filter": "—"}, [2023]
+        groups, columns, {"affiliation_filter": "–"}, [2023]
     )
     assert [group["numb"] for group in unknown] == [None]
 
@@ -2416,7 +2410,7 @@ def test_safe_math_ignores_source_float_noise():
     assert _safe_subtract(3121, Decimal("3120.2000000000003")) == 0.8
     assert _safe_sum(Decimal("1604.1000000000001"), Decimal("1582.1")) == 3186.2
 
-    # K_gaz_ek = CO2 / расход газа: в «Не округлять» — только значащие цифры.
+    # K_gaz_ek = CO2 / расход газа: в «Не округлять» – только значащие цифры.
     ratio = _safe_divide(Decimal("1275805.8000000000000"), Decimal("802393.6000000001"))
     assert _format_value(ratio, True, 0) == "1,58999997008949"
 
@@ -2434,7 +2428,7 @@ def test_format_value_keeps_significant_digits_when_not_rounding():
 
 
 def test_cell_titles_show_value_whole_regardless_of_rounding():
-    """Подсказка к ячейке — значение целиком, как в БД, без учёта «Округл»."""
+    """Подсказка к ячейке – значение целиком, как в БД, без учёта «Округл»."""
     from app.ecology.services.gis_tes_fuel_comparison_services import cell_titles
 
     columns = [
@@ -2656,7 +2650,7 @@ def test_compute_zv_specific_metrics_matches_layout_formulas():
     energy = _brought_energy_mln_kwh(1810.029, 2697.017)
     gaseous = 778.623 + 366.529 + 2883.29 + 0 + 0 + 19.863
     total_zv = 3.13 + gaseous
-    zv_normir = 3.13 + 778.623 + 2883.29
+    zv_normir = 3.13 + 778.623 + 366.529 + 2883.29
     by_key = {col["key"]: result[index] for index, col in enumerate(columns)}
     assert abs(by_key["GAZ and ZHID"] - gaseous) < 1e-9
     assert abs(by_key["VIBROS_ekol"] - total_zv) < 1e-9
@@ -2818,21 +2812,21 @@ def test_compute_differences():
         {"key": "TvTopl_ek"},
         {"key": "d_tv"},
     ]
-    # Все значения есть — разности вычисляются
+    # Все значения есть – разности вычисляются
     filled = [100.0, 30.0, 999, 50.0, 20.0, 999, 200.0, 50.0, 999]
     result = _compute_differences(filled, columns)
     assert result[2] == 70.0
     assert result[5] == 30.0
     assert result[8] == 150.0
 
-    # Пустые значения — разность None
+    # Пустые значения – разность None
     filled2 = [100.0, None, 999, 50.0, 20.0, 999]
     columns2 = columns[:6]
     result2 = _compute_differences(filled2, columns2)
     assert result2[2] is None
     assert result2[5] == 30.0
 
-    # Нет столбца d_mazut — не падает
+    # Нет столбца d_mazut – не падает
     columns3 = [
         {"key": "MAZUT_6tp"},
         {"key": "MAZUT_ek"},
@@ -2975,10 +2969,11 @@ def test_pg_pages_recompute_difference_columns_and_attach_formulas(tmp_path, mon
             999.0,
         ]
     )
-    for title in ("ЗВ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.copy_worksheet(ws).title = "ПГ_всё"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3088,7 +3083,7 @@ def test_pg_pages_recompute_difference_columns_and_attach_formulas(tmp_path, mon
 
 
 def test_format_related_pg_cells_rounds_emission_coefficients_separately(monkeypatch):
-    """«Округл (k эмис)» округляет только K_*, остальные ячейки — как «Округл»."""
+    """«Округл (k эмис)» округляет только K_*, остальные ячейки – как «Округл»."""
     import app.ecology.services.gis_tes_fuel_comparison_services as svc
 
     monkeypatch.setattr(
@@ -3153,10 +3148,11 @@ def test_emission_rounding_digits_apply_only_to_emission_columns(tmp_path, monke
         ]
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1", 1, 2017, 802393.6, 1275805.8, 999.0, 500.0])
-    for title in ("ЗВ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.copy_worksheet(ws).title = "ПГ_всё"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3304,10 +3300,11 @@ def test_zv_specific_rounding_digits_apply_only_to_specific_columns(tmp_path, mo
             999.0,
         ]
     )
-    for title in ("ПГ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ПГ_всё", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.copy_worksheet(ws).title = "ЗВ_всё"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3419,11 +3416,11 @@ def test_zv_ecology_values_by_key_recomputes_totals_and_specific():
     )
     assert by_key["GAZ and ZHID"] == 15.5
     assert by_key["VIBROS_ekol"] == 25.5
-    assert by_key["ZV_normir"] == 18
+    assert by_key["ZV_normir"] == 22
     assert by_key["energy"] == 1500
     assert abs(by_key["udel_na_energ"] - 25.5 / 1500) < 1e-9
-    assert abs(by_key["normir_ZV_na_ee"] - 18 / 500) < 1e-9
-    assert abs(by_key["normir_ZV_na_energ"] - 18 / 1500) < 1e-9
+    assert abs(by_key["normir_ZV_na_ee"] - 22 / 500) < 1e-9
+    assert abs(by_key["normir_ZV_na_energ"] - 22 / 1500) < 1e-9
     assert abs(by_key["udel_tv"] - 10 * 1000 / 500) < 1e-9
     assert abs(by_key["udel_SO2"] - 5 * 1000 / 500) < 1e-9
     assert abs(by_key["udel_NOx"] - 3 * 1000 / 1500) < 1e-9
@@ -3470,7 +3467,7 @@ def test_save_analysis_zv_ecology_cell_saves_mapped_field(monkeypatch):
 
 
 def test_related_zv_cells_return_full_value_as_title(monkeypatch):
-    """В ответе на правку рядом с округлённым текстом — полное значение для подсказки."""
+    """В ответе на правку рядом с округлённым текстом – полное значение для подсказки."""
     import app.ecology.services.gis_tes_fuel_comparison_services as svc
 
     monkeypatch.setattr(
@@ -3514,7 +3511,10 @@ def test_save_analysis_ecology_cell_dispatches_by_sheet(monkeypatch):
     svc.save_analysis_ecology_cell("zv-bez-kot", 2, 2017, "SO2_gaz", 2, 2, 2, 3)
 
     assert pg_calls == [("pg-vse", 1, 2017, "GAZ_ek", 1, 2, 3)]
-    assert zv_calls == [("zv-bez-kot", 2, 2017, "SO2_gaz", 2, 2, 3)]
+    assert zv_calls == [(
+        "zv-bez-kot", 2, 2017, "SO2_gaz", 2, 2, 3,
+        ("solid_substances", "sulfur_dioxide", "carbon_monoxide", "nitrogen_oxides"),
+    )]
     try:
         svc.save_analysis_ecology_cell("zv-other", 1, 2017, "SO2_gaz", 1)
         assert False, "expected ValueError"
@@ -3623,4 +3623,82 @@ def test_zv_analysis_columns_are_editable_and_use_params_overlay(tmp_path, monke
     assert by_key["VIBROS_ekol"] == "35,5"
     editable = {col["key"] for col in context["columns"] if col.get("editable")}
     assert editable == set(ZV_ECOLOGY_OVERLAY_BY_KEY)
+    clear_comparison_cache()
+
+
+@pytest.mark.parametrize("sheet_slug", ["zv-vse", "zv-bez-kot"])
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        (None, 22),
+        (["solid_substances", "carbon_monoxide"], 14),
+        (list(ZV_ECOLOGY_OVERLAY_BY_KEY.values()), 25.5),
+        (["carbon_monoxide", "carbon_monoxide", "unknown"], 4),
+        ([""], None),
+        (["unknown"], None),
+    ],
+)
+def test_zv_selected_parts_apply_to_rows_summaries_and_export(
+    tmp_path, monkeypatch, sheet_slug, selection, expected
+):
+    from openpyxl import load_workbook
+    from werkzeug.datastructures import MultiDict
+    import app.ecology.services.gis_tes_fuel_comparison_services as svc
+    from app.ecology.services.export_gis_tes_fuel_comparison_services import (
+        export_comparison_table_to_excel,
+    )
+
+    keys = ["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year",
+            *ZV_ECOLOGY_OVERLAY_BY_KEY, "W_en", "Teplo", "ZV_normir", "energy",
+            "VIBROS_ekol", "GAZ and ZHID", "normir_ZV_na_ee", "normir_ZV_na_energ"]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ЗВ_всё"
+    ws.append(keys)
+    ws.append(keys)
+    ws.append(["FD", "UES", "RES", "Station", 708, 2017] + [0] * (len(keys) - 6))
+    wb.copy_worksheet(ws).title = "ЗВ_без кот"
+    path = tmp_path / "selection.xlsx"
+    wb.save(path)
+    clear_comparison_cache()
+    _patch_pg_groups_from_fuel(monkeypatch, [(708, 2017, "Station")])
+    monkeypatch.setattr(svc, "get_year_feature_dict", lambda: {})
+    monkeypatch.setattr(svc, "load_fuel_indicators_by_numb_year",
+                        lambda *args: {(708, 2017): {"e": 2, "q": 0, "ved": 1}})
+    pollutants = dict(zip(ZV_ECOLOGY_OVERLAY_BY_KEY.values(), [10, 5, 4, 3, 2, 1, 0.5]))
+    monkeypatch.setattr(svc, "load_zv_ecology_overlay_by_numb_year",
+                        lambda *args: {(708, 2017): pollutants})
+    args = MultiDict([("show_totals", "1")])
+    for part in selection or []:
+        args.add("norm_zv", part)
+    context = build_comparison_table_context(
+        sheet_slug, start_year=2017, end_year=2017, rounding_digits=0,
+        source_path=path, request_args=args,
+    )
+    columns = context["columns"]
+    index = next(i for i, col in enumerate(columns) if col["key"] == "ZV_normir")
+    source_index = columns[index]["source_index"]
+    est = context["hierarchy"][0]
+    ues = est["ues_list"][0]
+    res = ues["res_list"][0]
+    group = res["groups"][0]
+    assert group["filled_by_year"][2017][source_index] == expected
+    for block in (est, ues, res):
+        assert block["summary"]["rows"][0]["cells"][index] == group["rows"][0]["cells"][index]
+    calculated = svc._zv_ecology_values_by_key(
+        pollutants, {"e": 2, "q": 0}, context["norm_zv_selected"]
+    )
+    assert calculated["ZV_normir"] == expected
+    for key in ("normir_ZV_na_ee", "normir_ZV_na_energ"):
+        metric_index = next(i for i, col in enumerate(columns) if col["key"] == key)
+        raw = group["filled_by_year"][2017][columns[metric_index]["source_index"]]
+        assert raw == (expected / 2 if expected is not None else None)
+        assert calculated[key] == raw
+    assert context["keep_query"]["norm_zv"] == (context["norm_zv_selected"] or [""])
+    assert context["year_reset_query"]["norm_zv"] == context["keep_query"]["norm_zv"]
+    exported = load_workbook(export_comparison_table_to_excel(context)).active
+    assert exported.cell(4, index + 3).value == (expected if expected is not None else None)
+    caption = exported.cell(3, index + 3).value
+    for attr, label in context["norm_zv_options"]:
+        assert (label in caption) == (attr in context["norm_zv_selected"])
     clear_comparison_cache()

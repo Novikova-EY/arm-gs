@@ -183,11 +183,11 @@ def update_electricity_production_cost_type_service(data, user, _retried=False):
                     ElectricityProductionCostType,
                 ).first()
                 if dup:
-                    other = dup.name or "—"
+                    other = dup.name or "–"
                     raise ValueError(
                         f"Код затрат «{cost_code}» уже задан у записи «{other}» (id={dup.id}). "
                         f"Укажите другой код или измените код у той строки. "
-                        f"Колонка «№» — это не код затрат."
+                        f"Колонка «№» – это не код затрат."
                     )
 
             changes = []
@@ -326,7 +326,7 @@ def add_electricity_production_cost_type_service(data, user):
                         ElectricityProductionCostType,
                     ).first()
                     if dup_code:
-                        other = dup_code.name or "—"
+                        other = dup_code.name or "–"
                         raise ValueError(
                             f"Код затрат «{cost_code}» уже задан у записи «{other}» (id={dup_code.id})."
                         )

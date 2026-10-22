@@ -602,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             tr.querySelectorAll("input.pd-coeff-medium-k-input").forEach(function (kinp) {
                 kinp.removeAttribute("data-pd-medium-k-override");
-                /* Смена «используемого k» — пересчитать превью, в т.ч. поверх ранее сохранённых. */
+                /* Смена «используемого k» – пересчитать превью, в т.ч. поверх ранее сохранённых. */
                 kinp.removeAttribute("data-pd-medium-k-stored");
             });
             persistRow(rowKey, String(inp.value || ""), t.value);
@@ -676,7 +676,7 @@ document.addEventListener("DOMContentLoaded", function () {
         /** Расчётные максимумы: до 3 знаков после запятой, без лишних нулей, с разделением разрядов. */
         function formatCalculatedMaxMw(num) {
             if (!Number.isFinite(num)) {
-                return "—";
+                return "–";
             }
             var mult = Math.pow(10, CALCULATED_MAX_ROUNDING_DIGITS);
             var rounded = Math.round(num * mult) / mult;
@@ -724,11 +724,11 @@ document.addEventListener("DOMContentLoaded", function () {
         function formatCoeffK(avg, rd) {
             var n = roundCoeffKCalc(avg);
             if (!Number.isFinite(n)) {
-                return "—";
+                return "–";
             }
             if (rd === 0) {
-                // «Не округлять» — до 6 знаков, без хвостовых нулей и без binary float.
-                return formatCoeffKExactString(n) || "—";
+                // «Не округлять» – до 6 знаков, без хвостовых нулей и без binary float.
+                return formatCoeffKExactString(n) || "–";
             }
             return formatAvg(n, rd);
         }
@@ -749,7 +749,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /** Полное число для title (значащие знаки; без toFixed(20) — иначе 0,999 → 0,998999999…). */
+        /** Полное число для title (значащие знаки; без toFixed(20) – иначе 0,999 → 0,998999999…). */
         function formatNumberFullForTooltip(n) {
             if (n === null || n === undefined || !Number.isFinite(n)) {
                 return "";
@@ -776,7 +776,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /** Годы «произвольной выборки»: отмеченные чекбоксы в выпадающем фильтре; если их нет в разметке — из URL. */
+        /** Годы «произвольной выборки»: отмеченные чекбоксы в выпадающем фильтре; если их нет в разметке – из URL. */
         function selectedSampleYears() {
             var out = [];
             var seen = {};
@@ -815,7 +815,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             var inp = td.querySelector("input, textarea");
             var t = inp ? String(inp.value || "").trim() : String(td.textContent || "").trim();
-            if (t === "" || t === "—") {
+            if (t === "" || t === "–") {
                 return null;
             }
             var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -832,7 +832,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return null;
             }
             var t = String(title).trim().replace(/\s/g, "");
-            if (!t || t === "—") {
+            if (!t || t === "–") {
                 return null;
             }
             if (!/^-?\d+([.,]\d+)?$/.test(t)) {
@@ -844,7 +844,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function formatAvg(avg, rd) {
             if (!Number.isFinite(avg)) {
-                return "—";
+                return "–";
             }
             if (rd === -1) {
                 return applyThousandGrouping(String(Math.round(avg)));
@@ -897,7 +897,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return coeffKRowForMwTr(mwTr);
         }
 
-        /** Строки одного блока «энергосистема + показатели» (только МВт-строки; k — отдельные <tr>). */
+        /** Строки одного блока «энергосистема + показатели» (только МВт-строки; k – отдельные <tr>). */
         function entityBlockFromRow(tr) {
             var row = tr;
             if (row && row.classList.contains("summary-row-coeff-k")) {
@@ -978,7 +978,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function parseManualCoeffInput(val) {
             var t = String(val || "").trim();
-            if (!t || t === "—") {
+            if (!t || t === "–") {
                 return null;
             }
             var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -1107,7 +1107,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             return;
                         }
                         var total = store[gid + "\u0000" + y];
-                        var disp = total === undefined ? "—" : formatMwForParameter(total, pk);
+                        var disp = total === undefined ? "–" : formatMwForParameter(total, pk);
                         var inp = mwCell.querySelector("input.pd-coeff-display-mw");
                         if (inp) {
                             inp.value = disp;
@@ -1225,10 +1225,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     var inp = vCell.querySelector("input.pd-coeff-display-mw, input.fuel-param-input");
                     if (av === null || bv === null) {
                         if (inp) {
-                            inp.value = "—";
+                            inp.value = "–";
                             inp.removeAttribute("title");
                         } else {
-                            vCell.textContent = "—";
+                            vCell.textContent = "–";
                         }
                         vCell.removeAttribute("title");
                         return;
@@ -1382,7 +1382,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             kinp.value = "";
                             kinp.removeAttribute("title");
                         } else {
-                            kCell.textContent = "—";
+                            kCell.textContent = "–";
                         }
                         kCell.removeAttribute("title");
                     });
@@ -1407,7 +1407,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (document.activeElement === kinp) {
                             return;
                         }
-                        /* По умолчанию и при выборе в «используемый k» — значение из источника
+                        /* По умолчанию и при выборе в «используемый k» – значение из источника
                            (СиПР 5 лет / период / ручной ввод), а не «сырой» k из БД. */
                         kinp.removeAttribute("data-pd-medium-k-stored");
                         if (coeff === null) {
@@ -1425,7 +1425,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     } else {
                         if (coeff === null) {
-                            kCell.textContent = "—";
+                            kCell.textContent = "–";
                             kCell.removeAttribute("title");
                         } else {
                             var coeffR2 = roundCoeffKCalc(coeff);
@@ -1496,7 +1496,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var kinp = kCell.querySelector("input.pd-coeff-display-k");
             if (kinp) {
                 kinp.value = displayText;
-                if (displayText === "—") {
+                if (displayText === "–") {
                     kinp.removeAttribute("title");
                     kCell.removeAttribute("title");
                 } else if (fullTooltipNum !== undefined && fullTooltipNum !== null && typeof fullTooltipNum === "number" && Number.isFinite(fullTooltipNum)) {
@@ -1506,7 +1506,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             kCell.textContent = displayText;
-            if (displayText === "—") {
+            if (displayText === "–") {
                 kCell.removeAttribute("title");
             } else if (fullTooltipNum !== undefined && fullTooltipNum !== null && typeof fullTooltipNum === "number" && Number.isFinite(fullTooltipNum)) {
                 setCoeffKCellFullTitle(kCell, fullTooltipNum);
@@ -1536,7 +1536,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (pk.indexOf("cz_total_") === 0) {
                         var kTrCz = coeffKRowForMwTr(trb) || trb;
                         kTrCz.querySelectorAll(".summary-year-k-cell[data-summary-year]").forEach(function (kCzCell) {
-                            setYearKCellDisplay(kCzCell, "—");
+                            setYearKCellDisplay(kCzCell, "–");
                         });
                         continue;
                     }
@@ -1556,11 +1556,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             if (seg === "medium" && pk !== "peak_datetime" && pk !== "avg_temp" && pk !== "max_power") {
                                 return;
                             }
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (pk === "peak_datetime" || pk === "avg_temp") {
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (seg === "medium" && pk !== "max_power") {
@@ -1577,15 +1577,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                         var val = parseCellNumber(mwCell);
                         if (pk === "max_power") {
-                            /* k для строки «Максимум потребления мощности» нигде не считается — всегда прочерк. */
-                            setYearKCellDisplay(kCell, "—");
+                            /* k для строки «Максимум потребления мощности» нигде не считается – всегда прочерк. */
+                            setYearKCellDisplay(kCell, "–");
                             return;
                         }
                         if (val !== null && maxMw !== null && maxMw > 0) {
                             var rat = roundCoeffKCalc(val / maxMw);
                             setYearKCellDisplay(kCell, formatCoeffK(rat, rd), rat);
                         } else {
-                            setYearKCellDisplay(kCell, "—");
+                            setYearKCellDisplay(kCell, "–");
                         }
                     });
                 }
@@ -1605,7 +1605,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power" || pkey.indexOf("cz_total_") === 0) {
-                    gsTd.textContent = "—";
+                    gsTd.textContent = "–";
                     gsTd.removeAttribute("title");
                     return;
                 }
@@ -1621,7 +1621,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    gsTd.textContent = "—";
+                    gsTd.textContent = "–";
                     gsTd.removeAttribute("title");
                     return;
                 }
@@ -1650,7 +1650,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power" || pkey.indexOf("cz_total_") === 0) {
-                    trimTd.textContent = "—";
+                    trimTd.textContent = "–";
                     trimTd.removeAttribute("title");
                     return;
                 }
@@ -1666,7 +1666,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length < 3) {
-                    trimTd.textContent = "—";
+                    trimTd.textContent = "–";
                     trimTd.removeAttribute("title");
                     return;
                 }
@@ -1683,14 +1683,14 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N — базовый год отчётного периода. */
+        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчётного периода. */
         function refreshGs5N4toNAvg() {
             var rd = getRoundingDigitsK();
             var nRaw = table.getAttribute("data-coeff-base-year");
             var n = nRaw ? parseInt(String(nRaw), 10) : NaN;
             if (!Number.isFinite(n)) {
                 table.querySelectorAll("td.summary-coeff-gs5-cell").forEach(function (td) {
-                    td.textContent = "—";
+                    td.textContent = "–";
                     td.removeAttribute("title");
                 });
                 return;
@@ -1709,7 +1709,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power" || pkey.indexOf("cz_total_") === 0) {
-                    g5Td.textContent = "—";
+                    g5Td.textContent = "–";
                     g5Td.removeAttribute("title");
                     return;
                 }
@@ -1729,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    g5Td.textContent = "—";
+                    g5Td.textContent = "–";
                     g5Td.removeAttribute("title");
                     return;
                 }
@@ -1795,7 +1795,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 var inp = mwC.querySelector("input.pd-fo-cz-total-mw");
-                var disp = num === null || !Number.isFinite(num) ? "—" : formatAvg(num, rd);
+                var disp = num === null || !Number.isFinite(num) ? "–" : formatAvg(num, rd);
                 if (inp) {
                     inp.value = disp;
                     if (num === null || !Number.isFinite(num)) {
@@ -1865,12 +1865,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 var pkey = tr.getAttribute("data-parameter-key") || "";
                 if (pkey === "peak_datetime" || pkey === "max_power" || pkey.indexOf("cz_total_") === 0) {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
                 if (yearsSel.length === 0) {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
@@ -1890,7 +1890,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
                 if (nums.length === 0) {
-                    sampleTd.textContent = "—";
+                    sampleTd.textContent = "–";
                     sampleTd.removeAttribute("title");
                     return;
                 }
@@ -2176,7 +2176,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 sessionStorage.setItem(STORAGE_KEY, show ? "1" : "0");
             } catch (e) { /* */ }
-            /* Строки k при скрытии не строились — дорисовать при включении «Коэффициенты». */
+            /* Строки k при скрытии не строились – дорисовать при включении «Коэффициенты». */
             if (
                 show &&
                 !tbodyHasCoeffKRows() &&
@@ -2214,7 +2214,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.__pdPdSummaryTerritoryCompactMode === true) {
                 return true;
             }
-            /* pd_page_size=0 (все секции полного дерева): без строк k — быстрее первый показ */
+            /* pd_page_size=0 (все секции полного дерева): без строк k – быстрее первый показ */
             try {
                 var ps = new URLSearchParams(window.location.search || "").get(
                     "pd_page_size"
@@ -2226,7 +2226,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return true;
         }
 
-        /* Дефолт не пишем в sessionStorage — иначе «все ОЭС» запоминает скрытие k
+        /* Дефолт не пишем в sessionStorage – иначе «все ОЭС» запоминает скрытие k
            и «Сводная таблица» больше не показывает строки k. */
         setCoeffKVisibleClass(readStoredShowK());
         syncCoeffKToggleButton();
@@ -2383,7 +2383,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.__pdPdSummaryHistMode === true) {
                 params.set("export_hist", "1");
             }
-            /* По умолчанию на экране пустые блоки скрыты — то же в Excel. */
+            /* По умолчанию на экране пустые блоки скрыты – то же в Excel. */
             if (window.__pdPdSummaryShowEmptyMode !== true) {
                 params.set("export_hide_empty", "1");
             }
@@ -3187,7 +3187,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     throw new Error((data && data.error) ? data.error : "Не удалось сохранить.");
                 }
                 const savedValue = typeof data.display_value === "string"
-                    ? (data.display_value === "—" ? "" : data.display_value)
+                    ? (data.display_value === "–" ? "" : data.display_value)
                     : value;
                 inp.setAttribute("data-initial", savedValue);
                 if (inp.value === value) {

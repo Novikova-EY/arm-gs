@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Акцепт данных из модуля «Топливо»{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ecology_fuel_review.css') }}?v=1">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3">
+ <div class="page-table-scroll">
+  <h1>Данные из модуля «Топливо» за {{ submission.year_number }} год – {{ scope_label }}</h1>
+  <p>Отправлено: {{ submission.created_at }}. Отправитель: {{ submission.created_by or '–' }}.</p>
+  <p>Слева – принятые показатели экологии, справа – переданный пакет. Акцепт заменяет топливные показатели только категории «{{ scope_label }}» этого года во всех территориях. Данные остальных категорий сохраняются. До акцепта расчёты не меняются.</p>
+  {% if submission.status != 'pending' %}
+  <div class="alert alert-secondary">Этот пакет уже рассмотрен или заменён новой отправкой. Обновите страницу топливных показателей.</div>
+  {% elif not differences %}
+  <div class="alert alert-info">Отличий от принятых показателей нет. Пакет можно акцептовать или отклонить.</div>
+  {% endif %}
+  <div class="table-responsive">
+    <table id="fuel-review-table" class="table table-bordered table-striped">
+      <thead class="table-light"><tr>
+        {% for label in ['Показатель', 'Территория'] %}
+        <th scope="col">{{ label }}
+          <button type="button" class="btn btn-sm btn-outline-secondary d-block mt-1 fuel-review-filter"
+                  data-column="{{ loop.index0 }}" data-label="{{ label }}"
+                  aria-label="Фильтр: {{ label }}" aria-haspopup="dialog" aria-expanded="false" hidden>
+            <i class="bi bi-funnel" aria-hidden="true"></i> <span>Все</span>
+          </button>
+        </th>
+        {% endfor %}
+        <th scope="col">Ед. изм.</th><th scope="col">Принято сейчас</th><th scope="col">Новые данные</th><th scope="col">Разница</th>
+      </tr></thead>
+      <tbody>{% for row in differences %}
+        <tr><th>{{ row.label }}</th><td>{{ row.territory }}</td><td>{{ row.unit }}</td>
+          <td>{{ format_cell(row.before, digits=0) }}</td><td class="table-warning">{{ format_cell(row.after, digits=0) }}</td><td>{{ format_cell(row.delta, digits=0) }}</td></tr>
+      {% endfor %}
+        <tr id="fuel-review-empty" hidden><td colspan="6" class="text-center text-muted">Нет строк, соответствующих фильтрам.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="fuel-review-filter-status" class="text-muted" role="status" hidden></p>
+  <div class="d-flex gap-2 mb-4">
+    {% if can_review and submission.status == 'pending' %}
+    <form method="POST" class="d-flex gap-2">
+      <input type="hidden" name="csrf_token" value="{% if csrf_token is string %}{{ csrf_token }}{% else %}{{ csrf_token() }}{% endif %}">
+      <button name="decision" value="accept" class="btn btn-success btn-lg">Акцептовать</button>
+      <button name="decision" value="reject" class="btn btn-outline-danger btn-lg">Не принимать</button>
+    </form>
+    {% endif %}
+    <a class="btn btn-secondary" href="{{ url_for(return_endpoint, territory_slug='vsego', sheet_slug='toplivo', start_year=request.args.get('start_year', submission.year_number), end_year=request.args.get('end_year', submission.year_number), view_year=submission.year_number, rounding_digits=request.args.get('rounding_digits', 1), capacity_class=capacity_class|default(none)) }}">Назад без решения</a>
+  </div>
+ </div>
+</div>
+<template id="fuel-review-filter-template">
+  <div class="fuel-review-filter-menu p-2 bg-body border rounded shadow" role="dialog" aria-modal="false" hidden>
+    <div class="fw-semibold mb-2" data-filter-title></div>
+    <input type="search" class="form-control form-control-sm mb-2" placeholder="Поиск…" aria-label="Поиск значений">
+    <label class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" data-filter-all> Выбрать все</label>
+    <div class="fuel-review-filter-values d-flex flex-column gap-1"></div>
+    <p class="text-muted my-2" data-filter-no-values hidden>Ничего не найдено</p>
+    <div class="d-flex justify-content-between gap-2 border-top pt-2 mt-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-filter-reset>Сбросить</button>
+      <button type="button" class="btn btn-sm btn-primary" data-filter-apply>ОК</button>
+    </div>
+  </div>
+</template>
+<script src="{{ url_for('static', filename='js/ecology/fuel_review_filters.js') }}?v=1"></script>
+{% endblock %}

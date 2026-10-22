@@ -123,7 +123,7 @@ def get_energy_system_type_id(machine):
 
 
 def _is_current_year_fact_row(power_row: dict) -> bool:
-    """Строка текущего года с bucket=fact — не должна попадать в плановые суммы ОЭС/субъектов."""
+    """Строка текущего года с bucket=fact – не должна попадать в плановые суммы ОЭС/субъектов."""
     if not isinstance(power_row, dict):
         return False
     return str(power_row.get("current_year_bucket") or "").strip().lower() == "fact"

@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 
 def _dash(x):
-    return x if x not in (None, "") else "—"
+    return x if x not in (None, "") else "–"
 
 
 def _to_int_or_none(v, keep_zero=True):
@@ -98,7 +98,7 @@ def _clean_name(value: Any) -> Optional[str]:
     # Заменяем пробел-тире-пробел на пробел-длинное тире-пробел
     name = re.sub(r'\s-\s', ' – ', name)
 
-    # Уже корректные «ёлочки» (в т.ч. вложенные) не трогаем — иначе ломается
+    # Уже корректные «ёлочки» (в т.ч. вложенные) не трогаем – иначе ломается
     # «Группа «Илим»».
     if _has_balanced_angle_quotes(name) and '"' not in name:
         return name
@@ -172,7 +172,7 @@ def to_excel_nbsp(value: Any, *, patterns_only: bool = False) -> Any:
     Преобразует значение для экспорта в Excel: в строках пробелы заменяются на неразрывные.
     None и числа возвращаются без изменений.
 
-    patterns_only=True — только типовые шаблоны (г./с./п., «2025 г.», «№ N», «N кВ», «N МВт»).
+    patterns_only=True – только типовые шаблоны (г./с./п., «2025 г.», «№ N», «N кВ», «N МВт»).
     """
     if value is None:
         return value
@@ -195,7 +195,7 @@ def apply_nbsp_to_row(row, *, patterns_only: bool = False) -> list:
 
 def format_decimal_for_display(value, digits=None):
     if value is None or isinstance(value, Undefined):
-        return "—"
+        return "–"
 
     # Приводим к Decimal
     try:
@@ -239,7 +239,7 @@ def format_decimal_for_display(value, digits=None):
 
 def strip_trailing_fraction_zeros_comma(s: str) -> str:
     """У дробной части после запятой убирает лишние нули (1,50 → 1,5; 3,00 → 3)."""
-    if not s or s == "—" or "," not in s:
+    if not s or s == "–" or "," not in s:
         return s
     int_part, frac = s.split(",", 1)
     frac = frac.rstrip("0")
@@ -248,7 +248,7 @@ def strip_trailing_fraction_zeros_comma(s: str) -> str:
 
 def apply_thousand_grouping_to_display(s: str) -> str:
     """Пробел между каждыми тремя цифрами целой части (как в Excel, ru-RU)."""
-    if not s or s == "—":
+    if not s or s == "–":
         return s
     sign = ""
     if s.startswith("-"):
@@ -271,7 +271,7 @@ def format_decimal_trim_for_display(value, digits=None) -> str:
     Для digits 0 и -1 результат совпадает с format_decimal_for_display.
     """
     s = format_decimal_for_display(value, digits=digits)
-    if not s or s == "—":
+    if not s or s == "–":
         return s
     return strip_trailing_fraction_zeros_comma(s)
 
@@ -279,7 +279,7 @@ def format_decimal_trim_for_display(value, digits=None) -> str:
 def parse_decimal_from_display(raw) -> Decimal | None:
     """
     Разбор числа из UI: пробелы/nbsp группировки тысяч, запятая или точка как десятичный разделитель.
-    Пустое / «—» → None. Невалидная строка → InvalidOperation.
+    Пустое / «–» → None. Невалидная строка → InvalidOperation.
     """
     if raw is None:
         return None
@@ -290,7 +290,7 @@ def parse_decimal_from_display(raw) -> Decimal | None:
     if isinstance(raw, (int, float)):
         return Decimal(str(raw))
     s = str(raw).strip()
-    if s == "" or s in ("—", "-", "–"):
+    if s == "" or s in ("–", "-", "–"):
         return None
     s = (
         s.replace("\u2212", "-")
@@ -307,11 +307,11 @@ def parse_decimal_from_display(raw) -> Decimal | None:
 def format_number_trim_trailing(value) -> str:
     """
     Показ числа со значащей дробной частью, без «хвоста» нулей (85; 85,5; 85,555),
-    а не 85,000000. Разделитель — запятая. Всегда с digits=0 (без квантования к фикс. знакам);
+    а не 85,000000. Разделитель – запятая. Всегда с digits=0 (без квантования к фикс. знакам);
     не читает rounding_digits из запроса (в отличие от шаблонного format_decimal_trim без аргумента).
     """
     if value is None or isinstance(value, Undefined):
-        return "—"
+        return "–"
     return format_decimal_trim_for_display(value, digits=0)
 
 
@@ -330,16 +330,16 @@ def rounded_decimal(value, digits=15):
 
 def values_equal_by_display_precision(old_val, new_val, display_digits=6):
     """
-    True, если ``new_val`` — то, что UI показал бы для ``old_val`` при округлении.
+    True, если ``new_val`` – то, что UI показал бы для ``old_val`` при округлении.
 
-    «Округл» в шапке таблицы — только отображение. Нельзя сравнивать old и new
+    «Округл» в шапке таблицы – только отображение. Нельзя сравнивать old и new
     допуском «полразряда»: при 1 знаке |1.045−1.0296|<0.05, и эталонный k
     молча не сохраняется. Сравниваем posted с округлённым текстом ячейки.
-    Не трогали поле (в POST пришло «1» из ячейки) — считаем равным, полный
-    хвост в БД остаётся. Ввели другое число — это правка, даже если оно
+    Не трогали поле (в POST пришло «1» из ячейки) – считаем равным, полный
+    хвост в БД остаётся. Ввели другое число – это правка, даже если оно
     округляется так же.
 
-    display_digits: знаки после запятой (1, 2, 3); -1 целые; 0 — без округления,
+    display_digits: знаки после запятой (1, 2, 3); -1 целые; 0 – без округления,
     строгое равенство. None и 0 считаются эквивалентными.
     """
     if old_val is None and new_val is None:
@@ -363,7 +363,7 @@ def values_equal_by_display_precision(old_val, new_val, display_digits=6):
         return o == n
 
     shown = format_decimal_trim_for_display(o, digits=display_digits)
-    if not shown or shown == "—":
+    if not shown or shown == "–":
         return n == 0
     try:
         shown_d = parse_decimal_from_display(shown)
@@ -453,7 +453,7 @@ def normalize_date_list(value: str) -> Optional[str]:
 
         dt = convert_to_date(token)
         if dt is None:
-            # Если не смогли распарсить — сохраняем как есть,
+            # Если не смогли распарсить – сохраняем как есть,
             # чтобы не потерять ввод пользователя
             normalized.append(token)
         else:

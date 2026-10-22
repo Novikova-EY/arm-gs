@@ -18,7 +18,7 @@
 {% set pd_summary_hist_restricted = active_summary in ('oes', 'fo', 'ez') %}
 {% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_ees_via_ez_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours', 'peak_combined_on_ees_usage_hours', 'peak_combined_on_oes_usage_hours', 'peak_combined_on_es_usage_hours', 'peak_combined_on_fo_usage_hours', 'peak_combined_on_cz_usage_hours', 'peak_combined_on_ez_usage_hours') %}
 {% set pd_formula_texts = pd_formula_texts | default({}) %}
-{# _pd_* формулы — в контексте из Python (см. inject_pd_formula_template_variables) #}
+{# _pd_* формулы – в контексте из Python (см. inject_pd_formula_template_variables) #}
 {% set show_hist_col = summary_route_variant != 'coeff' %}
 <div class="container-fluid mt-2">
     {% if summary_route_variant == 'coeff' %}
@@ -39,7 +39,7 @@
         {% endif %}
     {% endif %}
 
-    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
+    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов – над шапкой таблицы #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
     <div class="col-12 mb-2">
         <div class="d-flex flex-wrap align-items-start gap-2 w-100">
@@ -231,7 +231,7 @@
         </div>
     </div>
 
-    <!-- Раскрывающийся блок Импорт/Экспорт (внутри липкой панели — как «Фильтры / Поиск») -->
+    <!-- Раскрывающийся блок Импорт/Экспорт (внутри липкой панели – как «Фильтры / Поиск») -->
     <div class="col-12 mb-2">
         <div class="collapse mt-2 power-demand-import-export-collapse" id="importExportCollapse">
             <div class="d-flex justify-content-start align-items-center w-100 flex-wrap gap-2">
@@ -321,11 +321,11 @@
                     class="btn btn-outline-secondary text-nowrap flex-shrink-0"
                     aria-pressed="false"
                     {% if active_summary == 'oes' %}
-                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «ОЭС Юга с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «ОЭС Юга с НТ» и «Первая синхронная зона с НТ»; при выключении – короткие подписи по данным строк без НТ"
                     {% elif active_summary == 'fo' %}
-                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «Первая синхронная зона с НТ», «Южный ФО с НТ» и блок «Новые территории»; при выключении — короткие подписи по данным строк без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «Первая синхронная зона с НТ», «Южный ФО с НТ» и блок «Новые территории»; при выключении – короткие подписи по данным строк без НТ"
                     {% else %}
-                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ» и «Первая синхронная зона с НТ»; при выключении – короткие подписи по данным строк без НТ"
                     {% endif %}>
                 + НТ
             </button>
@@ -413,7 +413,7 @@
     </div><!-- /.pd-ec-summary-sticky-stack -->
 
     <style>
-    /* «Сохранить», «Применить» (годы) — одна базовая ширина кнопки .btn */
+    /* «Сохранить», «Применить» (годы) – одна базовая ширина кнопки .btn */
     #demandSummarySaveBtn,
     #powerDemandSummaryYearForm button[type="submit"],
     #pdPdSummaryVerificationToggle {
@@ -453,10 +453,10 @@
     .pd-summary-filters-form .pd-summary-filter-field .dropdown-menu.filter-dropdown-menu {
         min-width: 100%;
         box-sizing: border-box;
-        /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important — против Popper/Bootstrap */
+        /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important – против Popper/Bootstrap */
         z-index: 1054 !important;
     }
-    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body — задаём класс в JS */
+    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body – задаём класс в JS */
     body .select2-dropdown.pd-summary-filter-select2-dd {
         z-index: 1054 !important;
     }
@@ -469,7 +469,7 @@
         box-sizing: border-box;
         white-space: nowrap;
     }
-    /* Ширина колонок ×3 (37.5rem); высота закрытого поля — как раньше (как у кнопки «Фильтры / Поиск») */
+    /* Ширина колонок ×3 (37.5rem); высота закрытого поля – как раньше (как у кнопки «Фильтры / Поиск») */
     .pd-summary-filters-form .pd-summary-filter-field .dropdown > button.form-select {
         font-size: 1rem;
         line-height: 1.5;
@@ -662,8 +662,8 @@
     </div>
     {% endif %}
 
-    {# «Энергосистема» и «Наименование параметров» — фиксированная ширина; столбцы годов делят остаток ширины таблицы.
-       «Исторический собственный максимум» — та же ширина, что и «Наименование параметров» (не coeff). #}
+    {# «Энергосистема» и «Наименование параметров» – фиксированная ширина; столбцы годов делят остаток ширины таблицы.
+       «Исторический собственный максимум» – та же ширина, что и «Наименование параметров» (не coeff). #}
     {% set summary_entity_col_w = "7cm" %}
     {% set summary_perimeter_variant_col_w = "4.5cm" %}
     {% set summary_parameter_col_w = "18rem" %}
@@ -671,7 +671,7 @@
     {% set _coeff_mixin_num_col_w = "6.5rem" %}
     {% set _coeff_mixin_sample_col_w = "7rem" %}
     {% set _coeff_mixin_source_col_w = "7.5rem" %}
-    {# Для coeff ширины числовых колонок не задаём в % — см. комментарий выше. #}
+    {# Для coeff ширины числовых колонок не задаём в % – см. комментарий выше. #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/power_demand_summary_page.css') }}?v=6">
     <style id="pd-summary-col-vars">
     .power-demand-summary-table {
@@ -730,7 +730,7 @@
         font-size: 0.95rem;
         pointer-events: none;
     }
-    /* Критичные правила скрытия строк — до разметки таблицы (max и coeff). */
+    /* Критичные правила скрытия строк – до разметки таблицы (max и coeff). */
     #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-hidden,
     #powerDemandSummaryTable tbody tr.summary-row-coeff-k.summary-row-hidden,
     #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-empty-block-hidden,
@@ -818,7 +818,7 @@
                {% endif %}>
             <colgroup>
                 {% if years|length > 0 %}
-                {# Фиксированные ширины: энергосистема, параметры, при необходимости «Исторический…» и миксины; годы — авто в остатке. #}
+                {# Фиксированные ширины: энергосистема, параметры, при необходимости «Исторический…» и миксины; годы – авто в остатке. #}
                 {% if show_perimeter_variant_column %}
                 <col class="summary-col-perimeter-variant" style="width: {{ summary_perimeter_variant_col_w }}; min-width: {{ summary_perimeter_variant_col_w }}; max-width: {{ summary_perimeter_variant_col_w }}; box-sizing: border-box;" />
                 {% endif %}
@@ -1293,12 +1293,12 @@
                     <td class="summary-coeff-mixin-cell summary-coeff-mixin-empty summary-coeff-manual-cell"></td>
                     <td class="summary-coeff-mixin-cell summary-coeff-mixin-empty summary-coeff-source-cell"></td>
                     {% elif row.parameter_key == 'peak_datetime' or _cz_fo_tot %}
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-minmax-trim-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs5-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-sample-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-manual-cell"><span class="text-muted">—</span></td>
-                    <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell"><span class="text-muted">—</span></td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-minmax-trim-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-gs5-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-sample-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-manual-cell"><span class="text-muted">–</span></td>
+                    <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell"><span class="text-muted">–</span></td>
                     {% endif %}
                     {% endif %}
                     {% set _pd_south_without_nt_manual = row.get('pd_pd_south_ues_without_nt_manual_row') %}
@@ -1311,7 +1311,7 @@
                     <td class="text-center summary-hist-cell{% if pd_summary_hist_restricted and row.parameter_key not in pd_summary_hist_editable_keys %} summary-hist-cell-disabled{% endif %}"
                         {% if not (pd_summary_hist_restricted and row.parameter_key not in pd_summary_hist_editable_keys) %}
                         {% if row.parameter_key == 'peak_datetime' %}
-                        title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                        title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} – {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
                         {% elif row.hist_numeric_tooltip|default('') %}
                         title="{{ row.hist_numeric_tooltip|e }}"
                         {% endif %}
@@ -1319,7 +1319,7 @@
                         aria-disabled="true"
                         {% endif %}>
                         {% if _can_edit_hist_cell %}
-                        {% set _hv = row.hist_value if row.hist_value != '—' else '' %}
+                        {% set _hv = row.hist_value if row.hist_value != '–' else '' %}
                         {% if row.parameter_key == 'peak_datetime' %}
                         <input type="text"
                                autocomplete="off"
@@ -1328,14 +1328,14 @@
                                data-initial="{{ _hv|e }}"
                                data-slice="hist"
                                data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
-                               title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                               title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} – {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
                                {% if row.hist_numeric_tooltip %}data-db-full="{{ row.hist_numeric_tooltip|e }}"{% endif %}
                                {% if row.hist_row_id is not none %}data-row-id="{{ row.hist_row_id }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум" />
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
@@ -1350,17 +1350,17 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум" />
                         {% endif %}
                         {% elif _hist_param_allowed %}
                         {{ row.hist_value }}
                         {% endif %}
                     </td>
                     {% endif %}
-                    {# Итерация по years, а не по row.year_values — иначе при рассинхроне длин остаются «пустые» столбцы после среднесрочного периода. #}
+                    {# Итерация по years, а не по row.year_values – иначе при рассинхроне длин остаются «пустые» столбцы после среднесрочного периода. #}
                     {% for _yr in years %}
                     {% set ix = loop.index0 %}
-                    {% set value = row.year_values[ix] if row.year_values is defined and (row.year_values|length) > ix else '—' %}
+                    {% set value = row.year_values[ix] if row.year_values is defined and (row.year_values|length) > ix else '–' %}
                     {% set yrid = row.year_row_ids[ix] if row.year_row_ids is defined and (row.year_row_ids|length) > ix else none %}
                     {% set _plan_col = year_is_plan.get(_yr, false) %}
                     {% set _is_medium_year = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
@@ -1382,8 +1382,8 @@
                     {% set _pv_variant_year_out_of_range = _pv_from is not none and _yr < _pv_from %}
                     {% set _pv_variant_year_out_of_range = _pv_variant_year_out_of_range or (_pv_to is not none and _yr > _pv_to) %}
                     {% endif %}
-                    {% if _pv_variant_year_out_of_range %}{% set value = '—' %}{% endif %}
-                    {% set _manual_plan_value = summary_route_variant == 'coeff' and pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and value not in (none, '', '—') %}
+                    {% if _pv_variant_year_out_of_range %}{% set value = '–' %}{% endif %}
+                    {% set _manual_plan_value = summary_route_variant == 'coeff' and pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and value not in (none, '', '–') %}
                     {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _manual_plan_value and not _territory_plan_editable and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _can_edit_year_cell = _can_edit_cell and not _pv_variant_year_out_of_range %}
                     <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide %} summary-plan-empty{% endif %}"
@@ -1393,13 +1393,13 @@
                         data-coeff-year-segment="{% if _yr >= coeff_base_year - 9 and _yr <= coeff_base_year %}reporting{% elif _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}medium{% else %}long{% endif %}"
                         {% endif %}
                         {% if row.parameter_key == 'peak_datetime' %}
-                        title="{% if _yr_tt %}{{ _yr_tt|e }} — {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
+                        title="{% if _yr_tt %}{{ _yr_tt|e }} – {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
                         {% elif _yr_tt %}
                         title="{{ _yr_tt|e }}"
                         {% endif %}>
                         {% if _plan_hide %}
                         {% elif _can_edit_year_cell %}
-                        {% set _yv = value if value != '—' else '' %}
+                        {% set _yv = value if value != '–' else '' %}
                         {% if row.parameter_key == 'peak_datetime' %}
                         <textarea rows="2"
                                autocomplete="off"
@@ -1407,14 +1407,14 @@
                                data-initial="{{ _yv|e }}"
                                data-slice="{{ _yr }}"
                                data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
-                               title="{% if _yr_tt %}{{ _yr_tt|e }} — {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
+                               title="{% if _yr_tt %}{{ _yr_tt|e }} – {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
                                {% if _yr_tt %}data-db-full="{{ _yr_tt|e }}"{% endif %}
                                {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год">{{ _yv }}</textarea>
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год">{{ _yv }}</textarea>
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
@@ -1429,7 +1429,7 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год" />
                         {% endif %}
                         {% else %}
                         {% if _ues_readonly_coeff_display %}
@@ -1437,13 +1437,13 @@
                                class="form-control form-control-lg text-center pd-coeff-display-mw"
                                value="{{ value }}"
                                {% if _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год" />
                         {% elif _cz_fo_tot %}
                         <input type="text" readonly tabindex="-1" lang="ru"
                                class="form-control form-control-lg text-center pd-coeff-display-mw pd-fo-cz-total-mw"
                                value="{{ value }}"
                                {% if _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, {{ _yr }} год" />
                         {% else %}
                         {{ value }}
                         {% endif %}
@@ -1472,7 +1472,7 @@
                                {% if row.entity_note_row_id is not none %}data-row-id="{{ row.entity_note_row_id }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — примечание">{{ _nev }}</textarea>
+                               aria-label="{{ row.entity_label }} – примечание">{{ _nev }}</textarea>
                         {% else %}
                         <span class="text-break">{{ _nev }}</span>
                         {% endif %}
@@ -1553,23 +1553,23 @@
                                autocomplete="off"
                                class="form-control form-control-sm text-center pd-coeff-manual-input"
                                value=""
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, ручной ввод коэффициента совмещения" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, ручной ввод коэффициента совмещения" />
                     </td>
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell">
                         <select class="form-select form-select-sm pd-coeff-source-select"
-                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, используемый коэффициент совмещения">
+                                aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, используемый коэффициент совмещения">
                             <option value="gs5" selected>СиПР (5 лет)</option>
                             <option value="sample">период</option>
                             <option value="manual">ручной ввод</option>
                         </select>
                     </td>
                     {% else %}
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
-                    <td class="text-center summary-coeff-mixin-cell">—</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
+                    <td class="text-center summary-coeff-mixin-cell">–</td>
                     {% endif %}
                     {% set coeff_k_map = {
                         'combined_on_oes': 'coeff_k_combined_on_oes',
@@ -1580,7 +1580,7 @@
                     {% set coeff_k_pkey = coeff_k_map[row.parameter_key] if row.parameter_key in coeff_k_map else '' %}
                     {% for _yr in years %}
                     {% set ix = loop.index0 %}
-                    {% set k_disp = row.year_k_values[ix] if row.year_k_values is defined and (row.year_k_values|length) > ix else '—' %}
+                    {% set k_disp = row.year_k_values[ix] if row.year_k_values is defined and (row.year_k_values|length) > ix else '–' %}
                     {% set k_full_tt = (row.year_k_full_tooltips|default([]))[ix] if (row.year_k_full_tooltips|default([]))|length > ix else '' %}
                     {% set _plan_col = year_is_plan.get(_yr, false) %}
                     {% set _is_medium_year = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
@@ -1592,13 +1592,13 @@
                     {% set _fd_combined_cz_medium_only = _is_medium_year and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'combined_on_cz' %}
                     {% set _ez_calc_plan_uncollapse = row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
                     {% set _ez_combined_ees_medium_only = _is_medium_year and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'combined_on_ees' %}
-                    {% set _manual_plan_k_value = pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and k_disp not in (none, '', '—') %}
+                    {% set _manual_plan_k_value = pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and k_disp not in (none, '', '–') %}
                     {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _manual_plan_k_value and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _is_medium_k = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _medium_k_input = _is_medium_k and _can_edit_cell and row.parameter_key not in ('peak_datetime', 'avg_temp', 'max_power') and not _cz_fo_tot %}
                     {% set yrid = row.year_row_ids[ix] if row.year_row_ids is defined and (row.year_row_ids|length) > ix else none %}
                     {% set _ycoeff = row.year_coeff_k_stored|default([], true) %}
-                    {% set _k_stored_cell = _ycoeff[ix] if _ycoeff|length > ix else '—' %}
+                    {% set _k_stored_cell = _ycoeff[ix] if _ycoeff|length > ix else '–' %}
                     <td class="text-center summary-year-cell summary-year-k-cell{% if _plan_hide %} summary-plan-empty{% endif %}"
                         data-summary-year="{{ _yr }}"
                         {% if coeff_base_year is defined %}
@@ -1610,7 +1610,7 @@
                         <input type="text" readonly tabindex="-1" lang="ru"
                                class="form-control form-control-lg text-center pd-coeff-display-k"
                                value="{{ k_disp }}"
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k, {{ _yr }} год" />
                         {% else %}
                         {{ k_disp }}
                         {% endif %}
@@ -1629,7 +1629,7 @@
                                data-model="{{ row.demand_model_name }}"
                                data-slice="{{ _yr }}"
                                data-initial=""
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
@@ -1639,7 +1639,7 @@
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ row.parameter_key }}"
                                data-initial=""
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% endif %}
                         {% else %}
                         {% if _ues_readonly_coeff_display %}
@@ -1647,7 +1647,7 @@
                                class="form-control form-control-lg text-center pd-coeff-display-k"
                                value="{{ k_disp }}"
                                {% if k_full_tt %}title="{{ k_full_tt|e }}"{% endif %}
-                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k, {{ _yr }} год" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, k, {{ _yr }} год" />
                         {% else %}
                         {{ k_disp }}
                         {% endif %}
@@ -1674,7 +1674,7 @@
         {% if active_summary in ('oes', 'fo', 'ez') and (pd_summary_logs_formatted is defined or pd_summary_logs_lazy | default(false)) %}
         {% set pd_logs_initial_limit = pd_summary_logs_initial_limit | default(10) %}
         {% set pd_logs_load_more_limit = pd_summary_logs_load_more_limit | default(20) %}
-        {# Внутри scroll-wrap: на coeff один Y-скролл (иначе двойной скроллбар — wrap + host). #}
+        {# Внутри scroll-wrap: на coeff один Y-скролл (иначе двойной скроллбар – wrap + host). #}
         <div class="pd-summary-logs-section">
         <h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
         <div class="mt-3">
@@ -1846,7 +1846,7 @@
                 tb.appendChild(tr);
             });
         }
-        /* Журнал не зависит от data.json — грузим сразу, не дожидаясь таблицы. */
+        /* Журнал не зависит от data.json – грузим сразу, не дожидаясь таблицы. */
         startLazyLogsLoad();
     } else {
         fetch(base + "?offset=0&limit=0", { credentials: "same-origin" })

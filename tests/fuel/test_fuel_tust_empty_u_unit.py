@@ -32,7 +32,7 @@ def test_boiler_tust_from_q_turt_when_u_is_empty():
 
 
 def test_boiler_tust_when_consumption_row_missing():
-    """Нет строки U в [byear, cyear] — как пустая U, не Skip: TUST = Q·TURT/1000."""
+    """Нет строки U в [byear, cyear] – как пустая U, не Skip: TUST = Q·TURT/1000."""
     svc = EquipmentGroupFuelCalculationService(session=None)
     fuel_param = SimpleNamespace(
         qotr=None,

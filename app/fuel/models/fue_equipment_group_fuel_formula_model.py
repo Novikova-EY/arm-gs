@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupFuelFormula — формулы топлива для группы оборудования.
+EquipmentGroupFuelFormula – формулы топлива для группы оборудования.
 Аналог источника «Формулы_топлива(Схема)» из Access (toplname: name, year, formtxt, numb1120, numb1, v).
 """
 

@@ -310,7 +310,7 @@ def upgrade():
                 },
             )
 
-    # Снять жёсткий CHECK — коды расширяются через справочник
+    # Снять жёсткий CHECK – коды расширяются через справочник
     conn.execute(
         text(
             f"ALTER TABLE {SCHEMA_PD}.{TABLE_UES} "

@@ -115,7 +115,7 @@ def test_filter_oes_summary_hides_chukotka_territorial_when_variant_absent(monke
 
 
 def test_territory_compact_keeps_new_territories_block_for_nt_toggle():
-    """В «Сводной таблице» блок НТ не скрывается compact — только кнопкой «+ НТ»."""
+    """В «Сводной таблице» блок НТ не скрывается compact – только кнопкой «+ НТ»."""
     rows = [
         {
             "entity_label": "Новые территории",
@@ -288,10 +288,10 @@ def test_territory_compact_export_keeps_top_level_rows():
 
 
 def test_territory_compact_keeps_nt_aggregation_subtree_on_ez_summary_with_nt_flag():
-    """На ЭЗ блок «Новые территории» в compact не скрывается — видимость через «+ НТ»."""
+    """На ЭЗ блок «Новые территории» в compact не скрывается – видимость через «+ НТ»."""
     rows = [
         {
-            "entity_label": "1 — ОЭС Юга",
+            "entity_label": "1 – ОЭС Юга",
             "show_entity_cell": True,
             "entity_rowspan": 1,
             "entity_depth": 0,
@@ -344,7 +344,7 @@ def test_territory_compact_keeps_nt_aggregation_subtree_on_ez_summary_with_nt_fl
         territory_compact_on=True,
     )
     assert [r.get("entity_label") for r in exported] == [
-        "1 — ОЭС Юга",
+        "1 – ОЭС Юга",
         "Новые территории",
         "Запорожская область",
         "Запорожская область",

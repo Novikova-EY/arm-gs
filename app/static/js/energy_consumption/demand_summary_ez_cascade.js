@@ -2,8 +2,8 @@
  * Каскадные фильтры сводки по энергозонам: энергозона ↔ РЭС,
  * логика как при построении дерева сводки (РЭС попадает в зону, если есть субъект зоны в составе РЭС).
  *
- * Таблица (сервер по ds_ez / ds_res): только зоны — все РЭС в них; зоны + РЭС — в зоне, откуда
- * отмечены РЭС, только они; в остальных выбранных зонах — все РЭС зоны; только ds_res — плоский
+ * Таблица (сервер по ds_ez / ds_res): только зоны – все РЭС в них; зоны + РЭС – в зоне, откуда
+ * отмечены РЭС, только они; в остальных выбранных зонах – все РЭС зоны; только ds_res – плоский
  * список по РЭС без строки энергозоны.
  */
 (function () {
@@ -74,7 +74,7 @@
         return result;
     }
 
-    /** См. demand_summary_oes_cascade.js — не терять уже выбранные id при обратных связях. */
+    /** См. demand_summary_oes_cascade.js – не терять уже выбранные id при обратных связях. */
     function unionAllowedWithCurrentSelection(allowedIds, currentSelectedIds) {
         if (!currentSelectedIds || currentSelectedIds.length === 0) {
             return allowedIds;
@@ -204,7 +204,7 @@
 
             const resFromEz = getAllowedIds(currentEz, ezToRes);
             const resCluster = expandResClusterForSelectedRes(currentRes, ezToRes, resToEz);
-            /** При выбранных зонах список РЭС = все РЭС этих зон; сужение таблицы — отметкой РЭС и отправкой формы. */
+            /** При выбранных зонах список РЭС = все РЭС этих зон; сужение таблицы – отметкой РЭС и отправкой формы. */
             let resAllowed =
                 currentEz && currentEz.length > 0
                     ? resFromEz

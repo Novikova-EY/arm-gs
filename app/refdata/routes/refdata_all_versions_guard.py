@@ -10,7 +10,7 @@ def all_versions_requested() -> bool:
 
 def block_all_versions_without_admin(current_user) -> bool:
     """
-    True — запрос следует заблокировать (нужен redirect и flash).
+    True – запрос следует заблокировать (нужен redirect и flash).
     """
     if not all_versions_requested():
         return False
@@ -25,7 +25,7 @@ def block_all_versions_without_admin(current_user) -> bool:
 
 def block_all_versions_without_role_admin(current_user) -> bool:
     """
-    True — запрос следует заблокировать (нужен redirect и flash).
+    True – запрос следует заблокировать (нужен redirect и flash).
     Только роль admin (не generation-admin, fuel-admin и т.п.).
     """
     if not all_versions_requested():

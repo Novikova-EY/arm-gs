@@ -104,7 +104,7 @@ def build_summary_ez_page_context(
     tag_energy_consumption_summary_rows_before_energy_zone_blocks(
         context["summary_rows"]
     )
-    # Сибирь/Восток здесь — основные блоки энергозон, не footer сводной (как на ОЭС/ФО).
+    # Сибирь/Восток здесь – основные блоки энергозон, не footer сводной (как на ОЭС/ФО).
     context["summary_variant_toggle_default_off"] = True
     context["can_edit_summary_cells"] = can_edit_summary_cells
     context["has_active_summary_filters"] = bool(ez_l or res_l)

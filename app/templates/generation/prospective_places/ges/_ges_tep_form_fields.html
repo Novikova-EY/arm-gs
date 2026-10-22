@@ -179,7 +179,7 @@
             </div>
             <div class="col-12 col-lg-2">
                 <label class="fw-semibold d-block mb-1">{{ form.id_year_specific_capital_investment.label.text }}</label>
-                <p class="form-control-plaintext mb-1 py-2 border rounded px-2 bg-body-secondary ges-tep-derived-capital-year-display">{% if entry is defined and entry.ges_specific_capital_year_display is defined %}{{ entry.ges_specific_capital_year_display }}{% else %}{{ ges_specific_capital_year_display|default('—') }}{% endif %}</p>
+                <p class="form-control-plaintext mb-1 py-2 border rounded px-2 bg-body-secondary ges-tep-derived-capital-year-display">{% if entry is defined and entry.ges_specific_capital_year_display is defined %}{{ entry.ges_specific_capital_year_display }}{% else %}{{ ges_specific_capital_year_display|default('–') }}{% endif %}</p>
                 {{ form.id_year_specific_capital_investment() }}
             </div>
         </div>

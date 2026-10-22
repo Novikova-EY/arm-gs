@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Таблица gs_ees_demand_params — параметры нагрузки «ЭЭС» (хаб модуля нагрузки).
+"""Таблица gs_ees_demand_params – параметры нагрузки «ЭЭС» (хаб модуля нагрузки).
 
 Revision ID: q1r2s3t4u5v6
 Revises: p0q1r2s3t4u5

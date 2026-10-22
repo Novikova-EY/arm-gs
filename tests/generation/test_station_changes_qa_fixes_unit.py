@@ -149,7 +149,7 @@ def test_sort_stations_in_hierarchy_by_gen_company():
     assert _station_gen_company_sort_key(b) < _station_gen_company_sort_key(a)
 
 
-# --- I: PGU — only changing parts ---
+# --- I: PGU – only changing parts ---
 
 
 def test_pgu_capacity_change_shows_only_changed_parts():

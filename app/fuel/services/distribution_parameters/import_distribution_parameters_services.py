@@ -50,7 +50,7 @@ _EXCEL_CANONICAL_HEADERS = frozenset(
     }
 )
 
-# Минимально нужные для строки (остальные колонки — по возможности).
+# Минимально нужные для строки (остальные колонки – по возможности).
 _REQUIRED_HEADERS = frozenset({"year"})
 
 # Синонимы шапки: Access, экспорт АРМ, русские подписи.
@@ -87,14 +87,14 @@ _HEADER_ALIASES: dict[str, str] = {
     "numb": "numb",
     "doptim": "doptim",
     "lim": "lim",
-    # Служебное поле Access — игнорируется при разборе шапки.
+    # Служебное поле Access – игнорируется при разборе шапки.
     "wt_recid": "",
 }
 
 _OES_IN_FILTER_RE = re.compile(r"oes\s*=\s*(\d+)", re.IGNORECASE)
 
 # Access «Параметры-распределения».name / nameoes → UnionEnergySystem.name (casefold).
-# В БД Топливо oes=10 — «Норильск» / «Норильск.эн.р-н», в АРМ — «ТИТЭС Сибири».
+# В БД Топливо oes=10 – «Норильск» / «Норильск.эн.р-н», в АРМ – «ТИТЭС Сибири».
 _ACCESS_UES_LABEL_ALIASES: dict[str, str] = {
     "норильск": "титэс сибири",
     "норильск.эн.р-н": "титэс сибири",
@@ -465,7 +465,7 @@ def import_distribution_parameters_from_excel(
 
     if not all_database_version_ids_for_refdata():
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — импорт во все версии невозможен."
+            "В системе нет зарегистрированных версий БД – импорт во все версии невозможен."
         )
 
     wb = load_workbook(file_obj, read_only=True, data_only=True)

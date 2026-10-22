@@ -17,9 +17,6 @@ PAGE_CO = "co"
 PAGE_PG = "pg"
 PAGE_PG_TJ = "pg-tj"
 PAGE_OBEMY = "obemy"
-PAGE_UDEL_E = "udel-e"
-PAGE_UDEL_FUEL = "udel-fuel"
-PAGE_UDEL_EE = "udel-ee"
 PAGE_ANALYSIS_PG_BEZ_KOT = "analysis-pg-bez-kot"
 PAGE_ANALYSIS_PG_VSE = "analysis-pg-vse"
 PAGE_ANALYSIS_ZV_BEZ_KOT = "analysis-zv-bez-kot"
@@ -29,7 +26,6 @@ PAGE_GIS_TEK_ZV = "gis-tek-zv"
 ALL_CALC_PAGES = frozenset(
     {
         PAGE_TOPLIVO,
-        PAGE_SPR,
         PAGE_CHARS,
         PAGE_COEFF,
         PAGE_ZOLA,
@@ -39,19 +35,15 @@ ALL_CALC_PAGES = frozenset(
         PAGE_PG,
         PAGE_PG_TJ,
         PAGE_OBEMY,
-        PAGE_UDEL_E,
-        PAGE_UDEL_FUEL,
-        PAGE_UDEL_EE,
     }
 )
 EMISSION_PAGES = frozenset(
     {PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_CO, PAGE_PG, PAGE_PG_TJ}
 )
-VOLUME_PAGES = frozenset({PAGE_OBEMY, PAGE_UDEL_E, PAGE_UDEL_FUEL, PAGE_UDEL_EE})
+VOLUME_PAGES = frozenset({PAGE_OBEMY})
 
 PAGE_LABELS: dict[str, str] = {
     PAGE_TOPLIVO: "Данные по модулю Топливо (/ecology/operating_tes/vsego/toplivo/)",
-    PAGE_SPR: "Справочник (/ecology/operating_tes/vsego/spravochnik/)",
     PAGE_CHARS: "Характеристики (/ecology/operating_tes/vsego/khar-topl/)",
     PAGE_COEFF: "Коэффициенты (/ecology/operating_tes/vsego/koeff/)",
     PAGE_ZOLA: "Зола (/ecology/operating_tes/vsego/zola/)",
@@ -61,9 +53,6 @@ PAGE_LABELS: dict[str, str] = {
     PAGE_PG: "ПГ (/ecology/operating_tes/vsego/pg/)",
     PAGE_PG_TJ: "ПГ через ТДж (/ecology/operating_tes/vsego/pg-tj/)",
     PAGE_OBEMY: "Объемы (/ecology/operating_tes/vsego/obemy/)",
-    PAGE_UDEL_E: "Удельные по привед Э (/ecology/operating_tes/vsego/udel-e/)",
-    PAGE_UDEL_FUEL: "Удельные по топл (/ecology/operating_tes/vsego/udel-fuel/)",
-    PAGE_UDEL_EE: "Удельные только по ЭЭ (/ecology/operating_tes/vsego/udel-ee/)",
     PAGE_ANALYSIS_PG_BEZ_KOT: (
         "Парниковые газы (без котельных) (/ecology/analysis/pg-bez-kot/)"
     ),
@@ -97,9 +86,6 @@ SHEET_FORMULA_KEYS: dict[str, str] = {
     "pg": "sheet_pg",
     "pg-tj": "sheet_pg_tj",
     "obemy": "sheet_obemy",
-    "udel-e": "sheet_udel_e",
-    "udel-fuel": "sheet_udel_fuel",
-    "udel-ee": "sheet_udel_ee",
 }
 
 NEW_TES_CALC_PAGES = frozenset(
@@ -112,9 +98,6 @@ NEW_TES_CALC_PAGES = frozenset(
         PAGE_CO,
         PAGE_PG,
         PAGE_OBEMY,
-        PAGE_UDEL_E,
-        PAGE_UDEL_FUEL,
-        PAGE_UDEL_EE,
     }
 )
 
@@ -126,9 +109,6 @@ NT_SHEET_FORMULA_KEYS: dict[str, str] = {
     "co": "nt_zv_tonnes",
     "pg": "nt_pg_mass",
     "obemy": "nt_volume",
-    "udel-e": "sheet_udel_e",
-    "udel-fuel": "sheet_udel_fuel",
-    "udel-ee": "sheet_udel_ee",
 }
 
 
@@ -152,7 +132,10 @@ class OperatingTesFormulaDef:
                 for p in sorted(self.pages)
                 if p in NEW_TES_PAGE_LABELS
             )
-        return tuple(PAGE_LABELS[p] for p in sorted(self.pages))
+        return tuple(
+            PAGE_LABELS[p] if p in PAGE_LABELS else NEW_TES_PAGE_LABELS[p]
+            for p in sorted(self.pages)
+        )
 
     def page_labels(self) -> str:
         return "\n".join(self.page_label_lines())
@@ -175,13 +158,41 @@ def _def(
     )
 
 
+_SUM_MOTKH_TEXT = (
+    "ΣМотх = Мотх(Газ) + Мотх(Газ искусственный) + Мотх(Нефтетопливо) "
+    "+ Мотх(Торф) + Мотх(Уголь) + Мотх(Прочее топливо). "
+    "Сумма рассчитывается отдельно для каждого столбца за выбранный год. "
+    "Вложенные виды топлива уже входят в итоги своих групп и повторно не суммируются."
+)
+_CAPTURE_SCOPE_TEXT = (
+    " берется со вкладки «Коэффициенты» за выбранный год: "
+    "для «Всего» – территория «Всего», принадлежность «Все»; "
+    "для «Станции отрасли» и «Промпредприятия» – территория «Всего» "
+    "и соответствующая принадлежность; для ОЭС, ТИТЭС и децентрализованной зоны "
+    "– соответствующая территория, принадлежность «Все». "
+    "Значение используется как доля единицы."
+)
+
+
 OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
     _def(
         "to_natural",
         pages=EMISSION_PAGES,
         aggregation_level="Столбец",
-        cell_name="Перевод в натур. (Вн)",
-        default_text="Вн = В / K (если нет K — т у.т./тн)",
+        cell_name="Перевод в натур. (BH)",
+        default_text="BH = В / (т у.т./тн)",
+    ),
+    _def(
+        "ash_to_natural",
+        pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_CO}),
+        aggregation_level="Столбец",
+        cell_name="Перевод в натур. (BH, зола, сера и CO)",
+        default_text=(
+            "BH = Топливо · 7000 / Qн. "
+            "Топливо – акцептованное значение для данного вида/типа топлива "
+            "со вкладки «Данные по модулю Топливо» за выбранный год и территорию; "
+            "Qн – низшая теплота сгорания в ккал/кг со вкладки «Характеристики»."
+        ),
     ),
     _def(
         "capture",
@@ -195,42 +206,119 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         pages=frozenset({PAGE_ZOLA}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: Мотх=0,01*ВН(аун Ар +qч*Qн/32680)",
+        default_text="Расчетная формула: Мотх = 0,01 · BH · (аун · Aр + qч · Qн / 32680)",
     ),
     _def(
         "ash_motkh",
         pages=frozenset({PAGE_ZOLA, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="Мотх золы, тыс. т",
-        default_text="Мотх = 0,01·Вн·(аун·Ар + qч·QH/32680)",
+        default_text="Мотх = 0,01 · BH · (аун · Aр + qч · Qн / 32680)",
+    ),
+    _def(
+        "ash_motkh_total",
+        pages=frozenset({PAGE_ZOLA}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх золы",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "ash_eta",
+        pages=frozenset({PAGE_ZOLA}),
+        aggregation_level="Итог",
+        cell_name="КПД золоулавливания",
+        default_text="КПД золоулавливания" + _CAPTURE_SCOPE_TEXT,
+    ),
+    _def(
+        "ash_emitted",
+        pages=frozenset({PAGE_ZOLA}),
+        aggregation_level="Итог",
+        cell_name="Мвыб золы",
+        default_text="Мвыб = ΣМотх · (1 − КПД золоулавливания). Расчет отдельно для каждого столбца.",
     ),
     _def(
         "sheet_sera",
         pages=frozenset({PAGE_SERA}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: Мотх=0,02*ВН*Sp(1-x)",
+        default_text="Расчетная формула: Мотх = 0,02 · BH · Sp · (1 − x)",
     ),
     _def(
         "so2_motkh",
         pages=frozenset({PAGE_SERA, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="Мотх SO2, тыс. т",
-        default_text="Мотх = 0,02·Вн·Sp·(1 − x)",
+        default_text=(
+            "Мотх = 0,02 · BH · Sp · (1 − x). "
+            "Sp – сернистость топлива, %; x – доля окислов серы, связываемых золой топлива. "
+            "Оба значения берутся со вкладки «Характеристики» за выбранный год."
+        ),
+    ),
+    _def(
+        "so2_motkh_total",
+        pages=frozenset({PAGE_SERA}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх серы",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "sulfur_eta",
+        pages=frozenset({PAGE_SERA}),
+        aggregation_level="Итог",
+        cell_name="КПД сероочистки",
+        default_text="КПД сероочистки" + _CAPTURE_SCOPE_TEXT,
+    ),
+    _def(
+        "so2_emitted",
+        pages=frozenset({PAGE_SERA}),
+        aggregation_level="Итог",
+        cell_name="Мвыб серы",
+        default_text="Мвыб = ΣМотх · (1 − КПД сероочистки). Расчет отдельно для каждого столбца.",
     ),
     _def(
         "sheet_azot",
         pages=frozenset({PAGE_AZOT}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: МотхNOx=0,001*В*(1-qч/100)*(1-n)*b",
+        default_text="Расчетная формула: МотхNOx = 0,001 · B · (1 − qч / 100) · bj",
     ),
     _def(
         "nox_motkh",
         pages=frozenset({PAGE_AZOT}),
         aggregation_level="Показатель",
         cell_name="Мотх NOx без n, тыс. т",
-        default_text="0,001·В·(1 − qч/100)·bj  (n применяется на всю массу на листе «Объемы»)",
+        default_text=(
+            "МотхNOx = 0,001 · B · (1 − qч / 100) · bj. "
+            "B – акцептованный расход условного топлива со вкладки «Данные по модулю Топливо» "
+            "за выбранный год и территорию, без перевода в натур. "
+            "qч – потери теплоты от механической неполноты сгорания, %; "
+            "bj – коэффициент для данного топлива со вкладки «Характеристики». "
+            "Коэффициент n применяется один раз к сумме Мотх при расчете Мвыб."
+        ),
+    ),
+    _def(
+        "nox_motkh_total",
+        pages=frozenset({PAGE_AZOT}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх NOx",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "nox_n",
+        pages=frozenset({PAGE_AZOT}),
+        aggregation_level="Итог",
+        cell_name="Коэффициент подавления оксидов азота в топке n",
+        default_text="Коэффициент подавления оксидов азота в топке n" + _CAPTURE_SCOPE_TEXT,
+    ),
+    _def(
+        "nox_emitted",
+        pages=frozenset({PAGE_AZOT}),
+        aggregation_level="Итог",
+        cell_name="Мвыб NOx",
+        default_text=(
+            "Мвыб = ΣМотх · (1 − n). Коэффициент n применяется один раз после суммирования "
+            "Мотх всех групп топлива, отдельно для каждого столбца."
+        ),
     ),
     _def(
         "nox_capture",
@@ -244,49 +332,136 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         pages=frozenset({PAGE_CO}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: Мотхco=0,001*Вн*(q3*R*Qн/1013)*(1-q4/100)",
+        default_text="Расчетная формула: МотхCO = 0,001 · BH · (q3 · R · Qн / 1013) · (1 − q4 / 100)",
     ),
     _def(
         "co_motkh",
         pages=frozenset({PAGE_CO, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="Мотх CO, т",
-        default_text="Мотх = 0,001·Вн·(q3·R·QH/1013)·(1 − qч/100)",
+        default_text=(
+            "МотхCO = 0,001 · BH · (q3 · R · Qн / 1013) · (1 − q4 / 100). "
+            "q3 – потери теплоты от химической неполноты сгорания, %; "
+            "q4 – потери теплоты от механической неполноты сгорания, %; "
+            "R – коэффициент химической неполноты сгорания; Qн – низшая теплота сгорания в кДж/кг. "
+            "Характеристики топлива берутся со вкладки «Характеристики» за выбранный год."
+        ),
+    ),
+    _def(
+        "co_motkh_total",
+        pages=frozenset({PAGE_CO}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх CO",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "co_k",
+        pages=frozenset({PAGE_CO}),
+        aggregation_level="Итог",
+        cell_name="Коэф. подавления CO",
+        default_text="Коэф. подавления CO" + _CAPTURE_SCOPE_TEXT,
+    ),
+    _def(
+        "co_emitted",
+        pages=frozenset({PAGE_CO}),
+        aggregation_level="Итог",
+        cell_name="Мвыб CO",
+        default_text="Мвыб = ΣМотх · (1 − Коэф. подавления CO). Расчет отдельно для каждого столбца.",
     ),
     _def(
         "sheet_pg",
         pages=frozenset({PAGE_PG}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: Мотхco2=В*Kco2",
+        default_text="Расчетная формула: МотхCO2 = B · KCO2",
     ),
     _def(
         "pg_motkh",
         pages=frozenset({PAGE_PG, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="Мотх CO2, тыс. т",
-        default_text="Мотх = В · KCO2",
+        default_text=(
+            "МотхCO2 = B · KCO2. B – акцептованный расход условного топлива со вкладки "
+            "«Данные по модулю Топливо» за выбранный год и территорию, без перевода в натур. "
+            "KCO2 – коэффициент выбросов CO2 для данного вида/типа топлива со вкладки "
+            "«Характеристики» за выбранный год."
+        ),
+    ),
+    _def(
+        "pg_motkh_total",
+        pages=frozenset({PAGE_PG}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх ПГ",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "pg_k",
+        pages=frozenset({PAGE_PG, PAGE_PG_TJ}),
+        aggregation_level="Итог",
+        cell_name="Коэффициент подавления ПГ (оксидов углерода)",
+        default_text="Коэффициент подавления ПГ (оксидов углерода)" + _CAPTURE_SCOPE_TEXT,
+    ),
+    _def(
+        "pg_emitted",
+        pages=frozenset({PAGE_PG}),
+        aggregation_level="Итог",
+        cell_name="Мвыб ПГ",
+        default_text=(
+            "Мвыб = ΣМотх · (1 − Коэффициент подавления ПГ). "
+            "Коэффициент применяется один раз после суммирования Мотх всех групп топлива, "
+            "отдельно для каждого столбца."
+        ),
     ),
     _def(
         "sheet_pg_tj",
         pages=frozenset({PAGE_PG_TJ}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="Расчетная формула: Qн*Вн/10^6",
+        default_text="Расчетная формула: МотхCO2 = МДж · KCO2 / 1000",
     ),
     _def(
         "pg_tj_energy",
         pages=frozenset({PAGE_PG_TJ}),
         aggregation_level="Столбец",
         cell_name="МДж (энергия, ТДж)",
-        default_text="TJ = Вн · (QH, кДж/кг) / 10^6",
+        default_text=(
+            "МДж = B / (тут/тн) · (ТДж/тыс. т натур.). "
+            "B – акцептованный расход условного топлива со вкладки «Данные по модулю Топливо» "
+            "за выбранный год и территорию. Оба коэффициента берутся из группы "
+            "«Коэффициенты для расчета как в НД о Кадастре ПГ» во вкладке «Характеристики» "
+            "для данного топлива и года. Энергия выражена в ТДж; «МДж» – название столбца."
+        ),
     ),
     _def(
         "pg_tj_mass",
         pages=frozenset({PAGE_PG_TJ}),
         aggregation_level="Столбец",
-        cell_name="В*Kco2 (масса, млн т)",
-        default_text="М = TJ · (т CO2/ТДж) / 1000",
+        cell_name="Мотх CO2",
+        default_text=(
+            "МотхCO2 = МДж · KCO2 / 1000. МДж – энергия из соседнего столбца. "
+            "KCO2 – коэффициент «т CO2/ТДж» из группы «Коэффициенты для расчета как в НД "
+            "о Кадастре ПГ» во вкладке «Характеристики» для данного топлива и года, "
+            "а не национальный коэффициент эмиссии. Деление на 1000 выполняется один раз; "
+            "результат выражен в тыс. т."
+        ),
+    ),
+    _def(
+        "pg_tj_motkh_total",
+        pages=frozenset({PAGE_PG_TJ}),
+        aggregation_level="Итог",
+        cell_name="ΣМотх ПГ через ТДж",
+        default_text=_SUM_MOTKH_TEXT,
+    ),
+    _def(
+        "pg_tj_emitted",
+        pages=frozenset({PAGE_PG_TJ}),
+        aggregation_level="Итог",
+        cell_name="Мвыб ПГ через ТДж",
+        default_text=(
+            "Мвыб = ΣМотх · (1 − Коэффициент подавления ПГ). "
+            "Коэффициент применяется один раз после суммирования Мотх всех групп топлива, "
+            "отдельно для каждого столбца."
+        ),
     ),
     _def(
         "sheet_obemy",
@@ -294,34 +469,6 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
         default_text="Мвыб = Мотх · (1 − КПД); для NOx: ΣМотх · (1 − n)",
-    ),
-    _def(
-        "equivalent_energy",
-        pages=frozenset({PAGE_UDEL_E}),
-        aggregation_level="Показатель",
-        cell_name="Приведённая энергия, млрд кВт·ч",
-        default_text="(E, млн кВт·ч + Q, тыс. Гкал · 1,163) / 1000",
-    ),
-    _def(
-        "sheet_udel_e",
-        pages=frozenset({PAGE_UDEL_E}),
-        aggregation_level="Лист",
-        cell_name="Заголовок страницы",
-        default_text="г/кВт·ч = тыс. т / приведённая энергия (млрд кВт·ч)",
-    ),
-    _def(
-        "sheet_udel_fuel",
-        pages=frozenset({PAGE_UDEL_FUEL}),
-        aggregation_level="Лист",
-        cell_name="Заголовок страницы",
-        default_text="кг/т у.т. = тыс. т / тыс. т у.т. · 1000",
-    ),
-    _def(
-        "sheet_udel_ee",
-        pages=frozenset({PAGE_UDEL_EE}),
-        aggregation_level="Лист",
-        cell_name="Заголовок страницы",
-        default_text="г/кВт·ч = тыс. т / выработка электроэнергии (млрд кВт·ч)",
     ),
     _def(
         "d_mazut",
@@ -406,7 +553,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
             "UD_CO2_ener = Выброшено ПГ всего, т "
             "/ (выработка электроэнергии, млн кВт·ч + отпуск тепла, тыс. Гкал / 859,8 · 1000) "
             "(CO2 / (W_en + Teplo / 859,8 · 1000)); "
-            "859,8 ккал/кВт·ч — перевод тепла в электроэнергию"
+            "859,8 ккал/кВт·ч – перевод тепла в электроэнергию"
         ),
     ),
     _def(
@@ -445,7 +592,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
             "Приведенная энергия = выработка электроэнергии, млн кВт·ч "
             "+ отпуск тепла, тыс. Гкал / 859,8 · 1000 "
             "(W_en + Teplo / 859,8 · 1000); "
-            "859,8 ккал/кВт·ч — перевод тепла в электроэнергию"
+            "859,8 ккал/кВт·ч – перевод тепла в электроэнергию"
         ),
     ),
     _def(
@@ -553,14 +700,14 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_CO, PAGE_PG}),
         aggregation_level="Столбец",
         cell_name="В, тыс. т у.т.",
-        default_text="В — расход топлива новых ТЭС (d ≠ 1), тыс. т у.т.",
+        default_text="В – расход топлива новых ТЭС (d ≠ 1), тыс. т у.т.",
     ),
     _def(
         "nt_zv_tonnes",
         pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_CO, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="М ЗВ, т",
-        default_text="М, т = В, тыс. т у.т. × У, кг/т у.т.; У — норматив листа «Нормативы» (до 100 МВт / более 100 МВт по Nуст)",
+        default_text="М, т = В, тыс. т у.т. × У, кг/т у.т.; У – норматив листа «Нормативы» (до 100 МВт / более 100 МВт по Nуст)",
     ),
     _def(
         "nt_zv_thous",
@@ -578,7 +725,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
     ),
     _def(
         "nt_zv_sum",
-        pages=frozenset({PAGE_OBEMY, PAGE_UDEL_E, PAGE_UDEL_FUEL, PAGE_UDEL_EE}),
+        pages=frozenset({PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="ВСЕГО ЗВ",
         default_text="ВСЕГО ЗВ = зола + SO2 + NOx + CO (CO в т, остальные в тыс. т на листе «Объемы»)",
@@ -600,18 +747,11 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
         default_text=(
-            "Массовый выброс золы для агрегатов до 100 МВт — в диапазоне 1,76–2,93, "
-            "более 100 МВт — 0,59–1,76 в зависимости от приведенного содержания золы. "
+            "Массовый выброс золы для агрегатов до 100 МВт – в диапазоне 1,76–2,93, "
+            "более 100 МВт – 0,59–1,76 в зависимости от приведенного содержания золы. "
             "Для каменных углей массовый выброс оксидов азота выше, чем у бурых; "
-            "для 2020 года сера не более 5 кг/т у.т. — не учитывали"
+            "для 2020 года сера не более 5 кг/т у.т. – не учитывали"
         ),
-    ),
-    _def(
-        "nt_heat_ee",
-        pages=frozenset({PAGE_UDEL_E}),
-        aggregation_level="Показатель",
-        cell_name="Тепло в млрд кВт·ч",
-        default_text="Отпуск тепла, млрд кВт·ч = отпуск тепла, тыс. Гкал × 1,163 / 1000",
     ),
 )
 

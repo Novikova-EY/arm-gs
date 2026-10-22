@@ -45,7 +45,7 @@ def export_ecology_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
             continue
         header_labels.append(str(label_by_key.get(key) or key or ""))
 
-    # Если есть header_rows — берём текст из последней строки с column_key
+    # Если есть header_rows – берём текст из последней строки с column_key
     if header_rows:
         by_key_text: dict[str, str] = {}
         for row in header_rows:

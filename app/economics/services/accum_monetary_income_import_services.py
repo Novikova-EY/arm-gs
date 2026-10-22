@@ -74,7 +74,7 @@ def _parse_cell_value(cell_value: Any) -> Decimal | None:
     if isinstance(cell_value, (int, float)):
         return Decimal(str(cell_value))
     s = str(cell_value).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:
@@ -95,7 +95,7 @@ def _build_fd_lookup() -> dict[str, int]:
 def _territory_label_tokens(label: str) -> list[str]:
     n = _normalize_label(label)
     tokens = [n]
-    for sep in (" — ", " - ", "–", "—"):
+    for sep in (" – ", " - ", "–", "–"):
         if sep in label:
             left, right = label.split(sep, 1)
             for part in (left, right):
@@ -399,7 +399,7 @@ def import_accum_monetary_income_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
     version_ids = all_database_version_ids_for_import()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — импорт невозможен."
+            "В системе нет зарегистрированных версий БД – импорт невозможен."
         )
 
     user = _username()

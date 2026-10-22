@@ -143,7 +143,7 @@ def load_output_document_payload_for_excel(
     """Загружает JSON-набор для выгрузки в Excel.
 
     Для ``generation_stations`` выработка берётся из БД без округления
-    (в JSON-наборе она округляется до 3 знаков — контракт внешнего API не меняем).
+    (в JSON-наборе она округляется до 3 знаков – контракт внешнего API не меняем).
     """
     from app.api.services.database_versions_api_services import (
         list_database_versions,

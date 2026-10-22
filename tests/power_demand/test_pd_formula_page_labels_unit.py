@@ -22,7 +22,7 @@ def test_pd_page_label_lines_have_no_trailing_semicolon() -> None:
         for line in item.page_label_lines():
             assert not line.endswith(";"), repr(line)
             seen.add(line)
-    # Каждая реальная страница сводки — ровно одна подпись в фильтре.
+    # Каждая реальная страница сводки – ровно одна подпись в фильтре.
     for label in PAGE_LABELS.values():
         assert label in seen
 

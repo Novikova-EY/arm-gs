@@ -173,7 +173,7 @@ def update_version_service(data, user):
                 changes["Описание"] = f"{_dash(obj.description)} → {description}"
                 obj.description = description
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -311,14 +311,14 @@ def add_version_service(data, user):
             extend_years = extend_years_list[idx] if idx < len(extend_years_list) else None
             if parent_id:
                 try:
-                    # Копируем данные годов первыми — до массового копирования справочников.
+                    # Копируем данные годов первыми – до массового копирования справочников.
                     # Если _copy_version_data_staged падает на одной из таблиц (несмотря на SAVEPOINT),
                     # транзакция может оказаться в состоянии aborted, и последующие запросы
                     # получают InFailedSqlTransaction. Копирование year_features до этого устраняет проблему.
                     copy_year_data_from_version(parent_id, new_version_id, user, do_commit=False)
                     _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
 
-                    # При необходимости — продлеваем период и размножаем данные последнего года на новые годы
+                    # При необходимости – продлеваем период и размножаем данные последнего года на новые годы
                     if extend_years is not None and extend_years > 0:
                         extend_version_period_by_copying_last_year(
                             source_version_id=parent_id,
@@ -614,12 +614,12 @@ def add_version_service(data, user):
     except Exception as e:
         db.session.rollback()
         err_msg = str(e)
-        # InFailedSqlTransaction (25P02) — симптом: транзакция уже прервана более ранней ошибкой
+        # InFailedSqlTransaction (25P02) – симптом: транзакция уже прервана более ранней ошибкой
         if _is_in_failed_sql_transaction(e):
             log_to_db(
                 user,
                 "Ошибка сохранения новой версии БД (транзакция прервана ранее)",
-                f"{err_msg}. Проверьте логи — первая ошибка могла возникнуть при копировании таблиц.",
+                f"{err_msg}. Проверьте логи – первая ошибка могла возникнуть при копировании таблиц.",
                 entity_type="database_version")
             raise ValueError(
                 f"Ошибка сохранения новой версии БД: транзакция прервана на предыдущем шаге. "
@@ -710,7 +710,7 @@ def extend_version_period_by_copying_last_year(
         entity_id=target_version_id,
     )
 
-    # 1) Обновляем YearService в целевой версии (если нет — создаем)
+    # 1) Обновляем YearService в целевой версии (если нет – создаем)
     target_service = (
         YearService.query
         .filter_by(database_version_id=target_version_id)
@@ -3996,7 +3996,7 @@ def get_current_version_year_range_from_name():
             print(f"[DB_VERSION] get_current_version_year_range_from_name: version missing for id={version_id}")
             return None, None
 
-        # 1) Пытаемся распарсить годы из НОМЕРА версии (version_number) — там они зашиты явно.
+        # 1) Пытаемся распарсить годы из НОМЕРА версии (version_number) – там они зашиты явно.
         raw_version_number = (version.version_number or "").strip()
         print(f"[DB_VERSION] Parsing years from version_number: id={version_id}, version_number={raw_version_number!r}")
 
@@ -4180,7 +4180,7 @@ def save_version_snapshot(version_id, user):
     )
     
     try:
-        # Путь к директории бэкапов (на сервере — /var/backups/generation-app/versions)
+        # Путь к директории бэкапов (на сервере – /var/backups/generation-app/versions)
         backup_base = current_app.config.get('BACKUP_BASE_DIR', 'backups')
         backup_dir = os.path.join(backup_base, 'versions')
         os.makedirs(backup_dir, exist_ok=True)
@@ -4856,7 +4856,7 @@ def database_version_log_prefix(
     Подпись версии БД для журнала изменений, напр. Версия БД "ГС 2023-2042 (2)".
     """
     if version_id is None:
-        return 'Версия БД "—"'
+        return 'Версия БД "–"'
     num = (version_numbers or {}).get(version_id)
     if not num:
         dv = DatabaseVersion.query.get(version_id)

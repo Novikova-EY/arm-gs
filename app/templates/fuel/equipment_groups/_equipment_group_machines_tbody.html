@@ -1,4 +1,4 @@
-{# Таблица агрегатов по группе оборудования — формат как на station_details (Руст/Ррасп). Строка электростанции (colspan) перед агрегатами с гиперссылкой. Только просмотр (can_edit=False). #}
+{# Таблица агрегатов по группе оборудования – формат как на station_details (Руст/Ррасп). Строка электростанции (colspan) перед агрегатами с гиперссылкой. Только просмотр (can_edit=False). #}
 {% set can_edit = false %}
 
 {% for station, machines in stations_with_machines %}
@@ -6,7 +6,7 @@
 {% set _colspan = 14 + (end_year - start_year + 1) + (end_year - start_year + 1) + 1 %}
 <tr class="station-header-row">
     <td colspan="{{ _colspan }}" class="bg-light border-bottom border-2 py-2">
-        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none fw-bold fs-5">{{ station.name or '—' }}</a>
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none fw-bold fs-5">{{ station.name or '–' }}</a>
     </td>
 </tr>
 {% for machine in machines %}
@@ -30,7 +30,7 @@
     {% if not has_pgu %}
     <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
         <td class="rowspan-td" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
-        <td class="rowspan-td" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
+        <td class="rowspan-td" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "–" }}</td>
         <td class="rowspan-td col-machine-name" rowspan="2">
             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                 {{ machine.display_name or machine.machine_name }}
@@ -39,29 +39,29 @@
         <td class="rowspan-td col-owner" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
         </td>
-        <td class="rowspan-td" rowspan="2">{{ machine.date_commission_year if machine.date_commission_year else '—' }}</td>
-        <td class="rowspan-td" rowspan="2">{{ machine.date_exploitation if machine.date_exploitation else '—' }}</td>
-        <td class="rowspan-td" rowspan="2">{{ machine.decompressing_display or '—' }}</td>
-        <td class="rowspan-td col-modernization" rowspan="2">{{ machine.modernization_display if machine.modernization_display else '—' }}</td>
+        <td class="rowspan-td" rowspan="2">{{ machine.date_commission_year if machine.date_commission_year else '–' }}</td>
+        <td class="rowspan-td" rowspan="2">{{ machine.date_exploitation if machine.date_exploitation else '–' }}</td>
+        <td class="rowspan-td" rowspan="2">{{ machine.decompressing_display or '–' }}</td>
+        <td class="rowspan-td col-modernization" rowspan="2">{{ machine.modernization_display if machine.modernization_display else '–' }}</td>
 
-        <td class="rowspan-td" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
+        <td class="rowspan-td" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '–' }}</td>
         <td class="rowspan-td" rowspan="2">
             {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
                 {{ machine.tes_machine_type.name }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         <td class="rowspan-td col-equipment-group-type text-center" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% if machine.equipment_group and machine.equipment_group.name %}
                 {{ machine.equipment_group.name }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         <td class="rowspan-td col-fuel-type text-center" rowspan="2" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% set fuel_text = (machine.fuel_so or '') %}
-            <span>{{ '—' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
+            <span>{{ '–' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
         </td>
         {% set mfp_nt = machine.machine_fuel_param.nt if machine.machine_fuel_param else none %}
         {% set nt_full = mfp_nt | format_decimal(0) if mfp_nt is not none and mfp_nt != 0 else '' %}
@@ -69,7 +69,7 @@
             {% if mfp_nt is not none and mfp_nt != 0 %}
                 {{ format_decimal(mfp_nt) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
 
@@ -81,7 +81,7 @@
             {% if mp and mp.p_ust and mp.p_ust != 0 %}
                 {{ format_decimal(mp.p_ust) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
@@ -94,16 +94,16 @@
                 {% if (fname|lower != 'не указано') %}
                     {{ fname }}
                 {% else %}
-                    &mdash;
+                    &ndash;
                 {% endif %}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
 
         <td class="rowspan-td col-note" rowspan="2">
-            <div class="machine-note-text">{{ machine.note or '—' }}</div>
+            <div class="machine-note-text">{{ machine.note or '–' }}</div>
         </td>
     </tr>
 
@@ -117,7 +117,7 @@
             {% if p_rasp_value is not none and p_rasp_value != 0 %}
                 {{ format_decimal(p_rasp_value) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
@@ -131,7 +131,7 @@
     <!-- Вариант с ПГУ -->
     <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
         <td class="rowspan-td" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
-        <td class="rowspan-td" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
+        <td class="rowspan-td" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "–" }}</td>
         <td class="col-machine-name">
             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                 {{ machine.display_name or machine.machine_name }}
@@ -140,29 +140,29 @@
         <td class="rowspan-td col-owner" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
         </td>
-        <td>{{ machine.date_commission_year or '—' }}</td>
-        <td>{{ machine.date_exploitation or '—' }}</td>
-        <td>{{ machine.decompressing_display or '—' }}</td>
-        <td class="col-modernization">{{ machine.modernization_display or '—' }}</td>
+        <td>{{ machine.date_commission_year or '–' }}</td>
+        <td>{{ machine.date_exploitation or '–' }}</td>
+        <td>{{ machine.decompressing_display or '–' }}</td>
+        <td class="col-modernization">{{ machine.modernization_display or '–' }}</td>
 
-        <td class="rowspan-td" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
+        <td class="rowspan-td" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '–' }}</td>
         <td>
             {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
                 {{ machine.tes_machine_type.name }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         <td class="rowspan-td col-equipment-group-type text-center" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% if machine.equipment_group and machine.equipment_group.name %}
                 {{ machine.equipment_group.name }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         <td class="rowspan-td col-fuel-type text-center" rowspan="{{ pgu_rowspan }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% set fuel_text = (machine.fuel_so or '') %}
-            <span>{{ '—' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
+            <span>{{ '–' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
         </td>
         {% set mfp_nt = machine.machine_fuel_param.nt if machine.machine_fuel_param else none %}
         {% set nt_full = mfp_nt | format_decimal(0) if mfp_nt is not none and mfp_nt != 0 else '' %}
@@ -170,7 +170,7 @@
             {% if mfp_nt is not none and mfp_nt != 0 %}
                 {{ format_decimal(mfp_nt) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
 
@@ -182,7 +182,7 @@
             {% if mp and mp.p_ust and mp.p_ust != 0 %}
                 {{ format_decimal(mp.p_ust) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
@@ -196,16 +196,16 @@
                 {% if fid != 0 and fid != 100 and (fname|lower != 'не указано') %}
                     {{ fname }}
                 {% else %}
-                    &mdash;
+                    &ndash;
                 {% endif %}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
 
         <td class="col-note">
-            <div class="machine-note-text">{{ machine.note or '—' }}</div>
+            <div class="machine-note-text">{{ machine.note or '–' }}</div>
         </td>
     </tr>
 
@@ -216,17 +216,17 @@
                 {{ pgu.machine_name }}
             </a>
         </td>
-        <td>{{ pgu.date_commission_year or '—' }}</td>
-        <td>{{ pgu.date_exploitation or '—' }}</td>
-        <td>{{ pgu.decompressing_display or '—' }}</td>
-        <td>{{ pgu.modernization_display or '—' }}</td>
+        <td>{{ pgu.date_commission_year or '–' }}</td>
+        <td>{{ pgu.date_exploitation or '–' }}</td>
+        <td>{{ pgu.decompressing_display or '–' }}</td>
+        <td>{{ pgu.modernization_display or '–' }}</td>
         <td>
             {% if pgu.tes_machine_type and pgu.tes_machine_type.id != 0 %}
                 {{ pgu.tes_machine_type.name }}
             {% elif pgu.pgu_tes_machine_type and pgu.pgu_tes_machine_type.id != 0 %}
                 {{ pgu.pgu_tes_machine_type.name }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
 
@@ -238,13 +238,13 @@
             {% if pp and pp.p_ust and pp.p_ust != 0 %}
                 {{ format_decimal(pp.p_ust) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
 
         <td class="col-note">
-            <div class="machine-note-text">{{ pgu.note or '—' }}</div>
+            <div class="machine-note-text">{{ pgu.note or '–' }}</div>
         </td>
     </tr>
     {% endfor %}
@@ -266,7 +266,7 @@
             {% if p_rasp_value is not none and p_rasp_value != 0 %}
                 {{ format_decimal(p_rasp_value) }}
             {% else %}
-                &mdash;
+                &ndash;
             {% endif %}
         </td>
         {% endfor %}
@@ -285,7 +285,7 @@
     {% set nt_station_full = nt_station | format_decimal(0) if nt_station is not none and nt_station != 0 else '' %}
     <td class="text-center" rowspan="2" style="font-weight: bold;" {% if nt_station_full %}title="{{ nt_station_full }}"{% endif %}>
         {% if nt_station is none or nt_station == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(nt_station) }}
         {% endif %}
@@ -296,7 +296,7 @@
     {% set p_ust_full = p_ust_value | format_decimal(0) if p_ust_value is not none and p_ust_value != 0 else '' %}
     <td class="power-column" style="font-weight: bold;" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
         {% if p_ust_value is none or p_ust_value == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(p_ust_value) }}
         {% endif %}
@@ -313,7 +313,7 @@
     {% set p_rasp_full = p_rasp_value | format_decimal(0) if p_rasp_value is not none and p_rasp_value != 0 else '' %}
     <td class="power-column" style="font-weight: bold;" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
         {% if p_rasp_value is none or p_rasp_value == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(p_rasp_value) }}
         {% endif %}
@@ -332,7 +332,7 @@
     {% set nt_grp_full = total_nt_sum | format_decimal(0) if total_nt_sum is not none and total_nt_sum != 0 else '' %}
     <td class="text-center" rowspan="2" style="font-weight: bold;" {% if nt_grp_full %}title="{{ nt_grp_full }}"{% endif %}>
         {% if total_nt_sum is none or total_nt_sum == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(total_nt_sum) }}
         {% endif %}
@@ -343,7 +343,7 @@
     {% set p_ust_full = p_ust_total | format_decimal(0) if p_ust_total is not none and p_ust_total != 0 else '' %}
     <td class="power-column" style="font-weight: bold;" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
         {% if p_ust_total is none or p_ust_total == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(p_ust_total) }}
         {% endif %}
@@ -360,7 +360,7 @@
     {% set p_rasp_full = p_rasp_total | format_decimal(0) if p_rasp_total is not none and p_rasp_total != 0 else '' %}
     <td class="power-column" style="font-weight: bold;" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
         {% if p_rasp_total is none or p_rasp_total == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ format_decimal(p_rasp_total) }}
         {% endif %}

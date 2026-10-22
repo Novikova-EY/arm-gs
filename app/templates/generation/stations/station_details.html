@@ -14,7 +14,7 @@
     background-color: #fff8e1;
 }
 
-/* Область «Агрегаты»: на всю высоту контента; при узком окне — только горизонтальный скролл */
+/* Область «Агрегаты»: на всю высоту контента; при узком окне – только горизонтальный скролл */
 .station-machines-table-viewport {
     width: 100%;
     max-width: 100%;
@@ -22,10 +22,10 @@
     box-sizing: border-box;
     max-height: none !important;
     height: auto !important;
-    /* Перекрываем app/static/css/style.css: .table-responsive { overflow-x: hidden } —
+    /* Перекрываем app/static/css/style.css: .table-responsive { overflow-x: hidden } –
        иначе широкая таблица раздвигает страницу, а не скроллится внутри блока */
     overflow-x: auto !important;
-    /* При overflow-x:auto значение visible для Y в спецификации часто сводится к auto — тогда
+    /* При overflow-x:auto значение visible для Y в спецификации часто сводится к auto – тогда
        появляется лишний вертикальный скролл; clip даёт только горизонтальную прокрутку блока */
     overflow-y: clip;
     -webkit-overflow-scrolling: touch;
@@ -112,7 +112,7 @@
     min-height: 2.2em;
 }
 
-/* Вторая строка шапки — только годы (мощность и топливо); без class power-section/fuel-section */
+/* Вторая строка шапки – только годы (мощность и топливо); без class power-section/fuel-section */
 .machines-table thead tr:nth-child(2) th {
     width: 58px !important;
     min-width: 52px;
@@ -252,7 +252,7 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
     'sort_by', 'sort_dir', 'per_page', 'start_year', 'end_year'
 ] %}
-{# Кнопка «Добавить агрегат» и редактирование — для admin, generation-admin, generation-editor #}
+{# Кнопка «Добавить агрегат» и редактирование – для admin, generation-admin, generation-editor #}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor'] %}
 {% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
 {% set can_edit = can_edit if can_edit is defined else (current_user.role_names | select('in', edit_roles) | list | length > 0) %}
@@ -265,7 +265,7 @@
 {% set is_ves_or_ses_station = is_ves_or_ses_station | default(false) %}
 {% set can_edit_any = can_edit or can_edit_fuel or can_edit_fuel_dz %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
-{# id / external_code / Код КТО — не для reader/guest; только admin и editor #}
+{# id / external_code / Код КТО – не для reader/guest; только admin и editor #}
 {% set can_view_internal_ids = current_user.is_authenticated and (
     current_user.has_admin
     or (current_user.role_names | select('in', [
@@ -349,7 +349,7 @@
 }
 
 /* КПД СНЭЭ в тулбаре выработки: крупнее и жирнее остальных подписей;
-   подпись и поле ввода — одного размера шрифта */
+   подпись и поле ввода – одного размера шрифта */
 .station-snee-efficiency-control {
     font-size: 1.35rem;
 }
@@ -375,7 +375,7 @@
 </style>
 {% if not current_user.is_admin %}
 <style>
-/* Столбец «Удалить» в таблице агрегатов — только для суперадмина (admin) */
+/* Столбец «Удалить» в таблице агрегатов – только для суперадмина (admin) */
 .machines-table .col-delete { display: none; }
 </style>
 {% endif %}
@@ -502,7 +502,7 @@
                                             {{ form.id_station_group(class="form-select", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
-                                        <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '—' }}</span>
+                                        <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -512,13 +512,13 @@
                                     {% if can_edit_station_meta %}
                                         {{ form.id_condition_type(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        {{ (form.id_condition_type.choices | selectattr('0','equalto', form.id_condition_type.data) | map(attribute=1) | list | first) or '—' }}
+                                        {{ (form.id_condition_type.choices | selectattr('0','equalto', form.id_condition_type.data) | map(attribute=1) | list | first) or '–' }}
                                     {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Собственник:</div>
-                                <div class="col-7 text-start">{{ station.gen_companies or '—' }}</div>
+                                <div class="col-7 text-start">{{ station.gen_companies or '–' }}</div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Тип  электростанции:</div>
@@ -526,7 +526,7 @@
                                     {% if can_edit %}
                                         {{ form.id_station_type(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        {{ station.station_type.name if station.station_type else '—' }}
+                                        {{ station.station_type.name if station.station_type else '–' }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -548,7 +548,7 @@
                                             {{ form.note(class="form-control", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
-                                        <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
+                                        <span>{{ form.note.data.label if form.note.data.label else '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -559,7 +559,7 @@
                                     {% if can_edit_external_code %}
                                         {{ form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        {{ station.external_code if station.external_code else '—' }}
+                                        {{ station.external_code if station.external_code else '–' }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -569,7 +569,7 @@
                                     {% if can_edit_external_code %}
                                         {{ form.kto(class="form-control", maxlength="80", spellcheck="false", autocomplete="off", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        {{ station.kto if station.kto else '—' }}
+                                        {{ station.kto if station.kto else '–' }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -616,7 +616,7 @@
                                     {% if can_edit %}
                                         {{ form.id_energy_unit(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '—' }}</span>
+                                        <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -636,7 +636,7 @@
                                             {{ form.id_regional_district(class="form-select", id="id_regional_district", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
-                                        <span>{{ (form.id_regional_district.choices | selectattr('0','equalto', form.id_regional_district.data) | map(attribute=1) | list | first) or '—' }}</span>
+                                        <span>{{ (form.id_regional_district.choices | selectattr('0','equalto', form.id_regional_district.data) | map(attribute=1) | list | first) or '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -648,7 +648,7 @@
                                             {{ form.location(class="form-control", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
-                                        <span>{{ form.location.data.label if form.location.data.label else '—' }}</span>
+                                        <span>{{ form.location.data.label if form.location.data.label else '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -686,7 +686,7 @@
                                         {% set group_entity = group.equipment_group %}
                                         {% set group_display_name = (
                                             group_entity.name if group_entity and group_entity.name
-                                            else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')
+                                            else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')
                                         ) %}
                                         {% set group_input_value = (group_entity.name if group_entity and group_entity.name else '') %}
                                         {% set has_nonempty_links = namespace(value=false) %}
@@ -695,7 +695,7 @@
                                                 {% set has_nonempty_links.value = true %}
                                             {% endif %}
                                         {% endfor %}
-                                        {% set missing_eg_name_row = (group_display_name == '—') and has_nonempty_links.value %}
+                                        {% set missing_eg_name_row = (group_display_name == '–') and has_nonempty_links.value %}
                                         {% set type_names_acc = namespace(names=[]) %}
                                         {% set machines_total = namespace(n=0) %}
                                         {% for li in group.links %}
@@ -705,9 +705,9 @@
                                                 {% set _ = type_names_acc.names.append(tnm) %}
                                             {% endif %}
                                         {% endfor %}
-                                        {% set group_types_cell = (type_names_acc.names | join(', ')) if type_names_acc.names else '—' %}
+                                        {% set group_types_cell = (type_names_acc.names | join(', ')) if type_names_acc.names else '–' %}
                                         <tr>
-                                            <td class="text-center">{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}</td>
+                                            <td class="text-center">{{ group_entity.numb if group_entity and group_entity.numb is not none else '–' }}</td>
                                             <td class="equipment-group-name">
                                                 {% if can_edit and group_entity and group_entity.id %}
                                                 <form method="POST" action="{{ url_for('station_bp.rename_station_equipment_group_v2', station_id=station.id, equipment_group_id=group_entity.id, **request.args) }}" class="d-flex gap-2 align-items-center flex-nowrap" style="max-width: 100%;" id="rename-equipment-group-v2-{{ group_entity.id }}">
@@ -746,13 +746,13 @@
                                                                 <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Удалить привязку типа группы к электростанции в текущей версии БД?');">Удалить</button>
                                                                 <button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Удалить все записи с этой станцией и типом группы во всех версиях БД" onclick="return confirm('Удалить эту привязку во всех версиях БД?');">Удалить во всех версиях</button>
                                                             </div>
-                                                            <p class="small text-body-secondary mb-0">Удаляется только связь «станция — тип группы» и наборы EquipmentGroupSet; карточки групп в Топливе не затрагиваются.</p>
+                                                            <p class="small text-body-secondary mb-0">Удаляется только связь «станция – тип группы» и наборы EquipmentGroupSet; карточки групп в Топливе не затрагиваются.</p>
                                                         </form>
                                                         {% elif can_add_equipment_group %}
                                                         <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-success text-dark btn-sm align-self-start">➕ Создать группу оборудования</a>
                                                         <p class="small text-body-secondary mb-0">После создания привяжите группу к электростанции в «Группы оборудования» (Топливо) или импортом БД Топливо.</p>
                                                         {% elif can_edit %}
-                                                        <span class="small text-body-secondary">Создание группы — администратором в разделе «Топливо».</span>
+                                                        <span class="small text-body-secondary">Создание группы – администратором в разделе «Топливо».</span>
                                                         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-secondary btn-sm align-self-start">Группы оборудования (Топливо)</a>
                                                         {% endif %}
                                                     {% endif %}
@@ -964,7 +964,7 @@
                 box-shadow: 0 0 0 .15rem rgba(var(--bs-danger-rgb), .2);
             }
         </style>
-        <!-- Выработка электроэнергии; для ГАЭС — в одной форме с блоком «Потребление на заряд», кнопки внизу -->
+        <!-- Выработка электроэнергии; для ГАЭС – в одной форме с блоком «Потребление на заряд», кнопки внизу -->
         <div class="container-fluid mt-4">
             <div class="row g-3">
                 <div class="col-12">
@@ -979,7 +979,7 @@
                                 <input type="hidden" name="st_snee_efficiency_percent_orig" value="{{ efficiency_display }}" form="stationUnifiedSaveForm">
                                 <input type="text" id="station-snee-efficiency-percent" class="form-control text-center station-snee-efficiency-input" name="st_snee_efficiency_percent" data-save-kind="snee_efficiency" data-orig="{{ efficiency_display }}" value="{{ efficiency_display }}" inputmode="decimal" autocomplete="off" min="0" max="100" style="width: 7rem" form="stationUnifiedSaveForm" aria-label="КПД электростанции СНЭЭ, процентов">
                                 {% else %}
-                                <span class="station-snee-efficiency-label">{{ efficiency_display if efficiency_display else '—' }}</span>
+                                <span class="station-snee-efficiency-label">{{ efficiency_display if efficiency_display else '–' }}</span>
                                 {% endif %}
                             </div>
                             {% endif %}
@@ -1154,7 +1154,7 @@
                                 .replace(/[\s\u00a0\u202f]/g, '')
                                 .replace(',', '.')
                                 .trim();
-                            if (!normalized || normalized === '—' || normalized === '-') return null;
+                            if (!normalized || normalized === '–' || normalized === '-') return null;
                             var parsed = Number(normalized);
                             return Number.isFinite(parsed) ? parsed : null;
                         }
@@ -1408,7 +1408,7 @@
         document.addEventListener('DOMContentLoaded', resizeAll);
         window.addEventListener('load', resizeAll);
 
-        // При ленивой вставке строк в tbody — ресайзим один раз на кадр
+        // При ленивой вставке строк в tbody – ресайзим один раз на кадр
         const tbody = document.getElementById('machines-tbody');
         if (tbody && 'MutationObserver' in window) {
             let scheduled = false;
@@ -1446,7 +1446,7 @@
             }
         }
 
-        // При изменении — только единая функция обновления, без дублирования логики
+        // При изменении – только единая функция обновления, без дублирования логики
         togglePOgr?.addEventListener('change', () => {
             window.applyPowerRowsUpdate?.();
             syncToggleStyles();
@@ -1591,7 +1591,7 @@
                         // Парсим во временный контейнер и инкрементально вставляем по чанкам
                         const tmp = document.createElement('tbody');
                         tmp.innerHTML = html;
-                        // Скрытые input вне <tr> браузер может оставить соседями строк — перенесём в #machinesForm
+                        // Скрытые input вне <tr> браузер может оставить соседями строк – перенесём в #machinesForm
                         const machinesRoot = document.getElementById('machinesForm');
                         Array.from(tmp.querySelectorAll(':scope > input[type="hidden"]')).forEach(function (inp) {
                             if (machinesRoot) machinesRoot.insertBefore(inp, machinesRoot.firstChild);
@@ -1611,7 +1611,7 @@
                             }
                             tbody.appendChild(frag);
                             if (idx === chunkSize) {
-                                // Первый фрагмент вставлен — обновим rowspan/раскладку
+                                // Первый фрагмент вставлен – обновим rowspan/раскладку
                                 if (typeof window.updateRows === 'function') { window.updateRows(); }
                                 if (typeof window.linkStationUnifiedSaveForm === 'function') {
                                     window.linkStationUnifiedSaveForm();
@@ -1750,7 +1750,7 @@
             // - Федеральный округ определяется по субъекту РФ
             // - Региональная энергосистема / ОЭС / Часть энергосистемы:
             //   * при смене субъекта РФ подставляются по основной РЭС из эндпоинта get_energy_system_data
-            //   * при ручном выборе РЭС — через updateEnergySystemFromRes()
+            //   * при ручном выборе РЭС – через updateEnergySystemFromRes()
             const fdElement = document.getElementById("federal_district");
             const resElement = document.getElementById("regional_energy_system");
             const uesElement = document.getElementById("union_energy_system");
@@ -1773,7 +1773,7 @@
                 const estText = data.energy_system_type || "Нет данных";
 
                 // В режиме просмотра в блоке regional_energy_system просто текст,
-                // в режиме редактирования внутри находится select — текст обновлять не нужно
+                // в режиме редактирования внутри находится select – текст обновлять не нужно
                 if (resElement && !resElement.querySelector("select")) {
                     resElement.innerText = resText;
                 }
@@ -2025,7 +2025,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
                         <td data-user="${log.username_lower}">${log.username}</td>
                         <td><div data-action="${log.action_lower}">${log.action}</div></td>
-                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                        <td data-database-version="${(log.database_version || '–').toString().toLowerCase()}">${log.database_version || '–'}</td>
                         <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
                     `;
                     logsTable.appendChild(row);

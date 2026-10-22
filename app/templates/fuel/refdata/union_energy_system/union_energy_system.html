@@ -243,13 +243,13 @@
                             <td>{{ mapping.external_abbr if mapping and mapping.external_abbr else '' }}</td>
 
                             <!-- Строки таблицы. Столбец "UUID ОЭС" -->
-                            <td>{{ union_energy_system.ref_uuid if union_energy_system else '—' }}</td>
+                            <td>{{ union_energy_system.ref_uuid if union_energy_system else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "ID ОЭС (текущая версия)" -->
-                            <td>{{ union_energy_system.id if union_energy_system else '—' }}</td>
+                            <td>{{ union_energy_system.id if union_energy_system else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "Наименование ОЭС в АРМ" -->
-                            <td>{{ union_energy_system.name if union_energy_system else '—' }}</td>
+                            <td>{{ union_energy_system.name if union_energy_system else '–' }}</td>
                         </tr>
                     {% else %}
                         <tr>
@@ -295,9 +295,9 @@
                             <td>{{ mapping.external_name if mapping.external_name else '' }}</td>
                             <td>{{ mapping.external_nameoes if mapping.external_nameoes else '' }}</td>
                             <td>{{ mapping.external_abbr if mapping.external_abbr else '' }}</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
+                            <td>–</td>
+                            <td>–</td>
+                            <td>–</td>
                         </tr>
                     {% endfor %}
                 {% endif %}

@@ -262,7 +262,7 @@ def update_regional_district_service(data, user):
                     entity_id=regional_district_id)
                 raise ValueError(f"Запись с ID «{regional_district_id}» не найдена.")
 
-            # name_dp NOT NULL: если не передали/пусто — используем fallback
+            # name_dp NOT NULL: если не передали/пусто – используем fallback
             if not name_dp:
                 name_dp = name_full or name
 
@@ -370,7 +370,7 @@ def update_regional_district_service(data, user):
                     changes.append(f"Синхронная зона: {old_name} → {new_name}")
                     obj.id_synchronous_area = new_val
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -433,7 +433,7 @@ def add_regional_district_service(data, user):
                         entity_type="regional_district")
                     raise ValueError(f"Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'federal_district_id'. Данные: {record}")
 
-                # name_dp NOT NULL: если не передали/пусто — используем fallback
+                # name_dp NOT NULL: если не передали/пусто – используем fallback
                 if not name_dp:
                     name_dp = name_full or name
 

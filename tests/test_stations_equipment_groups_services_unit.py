@@ -98,7 +98,7 @@ def test_merge_adjacent_station_entries_for_same_station_id():
 
 
 def test_merge_adjacent_station_entries_does_not_merge_none_stations():
-    """Standalone-группы без станции не склеиваются в один rowspan по ключу «—»."""
+    """Standalone-группы без станции не склеиваются в один rowspan по ключу «–»."""
     blocks = [
         {
             "station_entries": [
@@ -411,7 +411,7 @@ def test_prepare_inherits_station_for_composite_child_boiler():
 
 
 def test_prepare_inherits_station_from_db_when_parent_block_absent(monkeypatch):
-    """Если родителя нет в текущем куске РЭС — станция подтягивается по main→numb."""
+    """Если родителя нет в текущем куске РЭС – станция подтягивается по main→numb."""
     station = _station(6599, "ТЭЦ-16 Мосэнерго")
     child_block = {
         "equipment_group": _equipment_group(
@@ -626,7 +626,7 @@ def test_hierarchy_key_fk_wins_over_obl_mapping():
 
 
 def test_split_uses_station_res_when_group_key_unspecified():
-    """Если у группы нет РЭС, а у станции есть — строка идёт в РЭС станции."""
+    """Если у группы нет РЭС, а у станции есть – строка идёт в РЭС станции."""
     est = SimpleNamespace(id=207)
     ues = SimpleNamespace(id=410, energy_system_type=est)
     res = SimpleNamespace(id=2775, union_energy_system=ues)
@@ -869,7 +869,7 @@ def test_filter_redundant_standalone_keeps_row_without_external_code():
 
 
 def test_filter_redundant_standalone_keeps_shell_when_linked_row_filtered_out():
-    """Связанная копия ушла из выборки — оболочку оставляем."""
+    """Связанная копия ушла из выборки – оболочку оставляем."""
     identity_rows = [
         (14692, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
         (14693, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
@@ -925,7 +925,7 @@ def test_drop_legacy_duplicate_group_cell_blocks_drops_legacy_shell():
 
 
 def test_drop_legacy_duplicate_group_cell_blocks_keeps_unmatched_legacy():
-    """Дубля в текущей версии нет — legacy-строку оставляем."""
+    """Дубля в текущей версии нет – legacy-строку оставляем."""
     legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
     current = _group_block(30555, name="Другая группа", numb=999, version_id=37)
 
@@ -936,7 +936,7 @@ def test_drop_legacy_duplicate_group_cell_blocks_keeps_unmatched_legacy():
 
 
 def test_drop_legacy_duplicate_group_cell_blocks_requires_all_slots_covered():
-    """У legacy-блока есть ещё тип группы, которого нет у блока версии — строку не убираем."""
+    """У legacy-блока есть ещё тип группы, которого нет у блока версии – строку не убираем."""
     legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
     legacy["station_entries"][0]["links"].append(
         {"equipment_group_type": SimpleNamespace(id=1055)}

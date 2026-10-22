@@ -34,7 +34,7 @@ target_db = current_app.extensions["migrate"].db
 
 # ---- Импортируем модели, чтобы заполнить metadata всеми таблицами ----
 # ВАЖНО: перечисли здесь все модули, где объявлены модели во всех схемах.
-# (try/except — чтобы не падать, если чего-то нет в окружении на момент запуска)
+# (try/except – чтобы не падать, если чего-то нет в окружении на момент запуска)
 def import_all_models():
     modules = [
         # auth
@@ -141,7 +141,7 @@ def import_all_models():
 import_all_models()
 
 # ---- Собираем target_metadata ----
-# Обычно у Flask-SQLAlchemy единая metadata (db.metadata) — ее достаточно.
+# Обычно у Flask-SQLAlchemy единая metadata (db.metadata) – ее достаточно.
 # Alembic умеет принимать список MetaData, но в типовой схеме нужен один объект.
 target_metadata = target_db.metadata
 

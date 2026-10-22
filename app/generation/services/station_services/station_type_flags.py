@@ -29,7 +29,7 @@ def is_ves_or_ses_station(station) -> bool:
 
 
 def is_snee_station(station) -> bool:
-    """СНЭЭ — отдельный вид электростанции в карточке генерации."""
+    """СНЭЭ – отдельный вид электростанции в карточке генерации."""
     name = station_type_name_norm(station)
     return name == "снээ" or name.startswith(("снээ ", "снээ("))
 

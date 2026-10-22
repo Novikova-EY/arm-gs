@@ -16,7 +16,7 @@ ROUNDING = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 
 def _fmt(v) -> str:
     if v is None:
-        return "—"
+        return "–"
     q = Decimal(str(v)).quantize(Decimal("0.1") if ROUNDING == 1 else Decimal("0.01"))
     s = f"{q:,.1f}".replace(",", " ").replace(".", ",")
     return s
@@ -108,7 +108,7 @@ def main() -> None:
             south_mark = " ← ОЭС Юга" if south_ues_id == int(ues_id) else ""
             print(
                 f"  + {ues_name}{south_mark}: {_fmt(val)} "
-                f"(вариант периметра: {used or '—'})"
+                f"(вариант периметра: {used or '–'})"
             )
 
         summed = svc._year_values_sum_ues_in_first_sa_with_nt_with_gaes_with_kaliningrad_es(
@@ -129,7 +129,7 @@ def main() -> None:
         print()
 
         print("=" * 72)
-        print("2. Заряд ГАЭС 1-й СЗ (с НТ) — для строки «без заряда»")
+        print("2. Заряд ГАЭС 1-й СЗ (с НТ) – для строки «без заряда»")
         print("   Формула: строка «всего» в блоке «Первая СЗ с НТ (заряд ГАЭС)»")
         print("=" * 72)
 
@@ -222,7 +222,7 @@ def main() -> None:
                 print(f"  {label} [{code}]: {_fmt(val)}")
                 found = True
             if not found:
-                print(f"  {label} [{code}]: — (нет строки в БД)")
+                print(f"  {label} [{code}]: – (нет строки в БД)")
 
         print()
         print("Сравнение с Excel (ожидание):")

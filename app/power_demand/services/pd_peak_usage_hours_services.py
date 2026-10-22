@@ -187,7 +187,7 @@ _CHI_RESULT_DISPLAY_SCALE = 1000.0
 _CHI_ROUNDING_DIGITS = -1
 
 CzHubEcIndex = dict[tuple[str | None, Any], float]
-# (ec_model_name, parent_id, pvc, slice) — ЭЭС / ЕЭС / СЗ / ОЭС со сводной таблицы (+без ГАЭС).
+# (ec_model_name, parent_id, pvc, slice) – ЭЭС / ЕЭС / СЗ / ОЭС со сводной таблицы (+без ГАЭС).
 EesSaHubEcIndex = dict[tuple[str, int, str | None, Any], float]
 
 def _load_oes_summary_table_hub_pipeline_rows(
@@ -493,7 +493,7 @@ def _is_kaliningrad_sa_chi_anchor(anchor: dict[str, Any]) -> bool:
 
 
 def _ec_consumption_pvc_candidates_for_chi(anchor: dict[str, Any]) -> list[str | None]:
-    """Потребление ЭЭ для ЧЧИ — вариант периметра строки (с тем же порядком поиска, что у max_power).
+    """Потребление ЭЭ для ЧЧИ – вариант периметра строки (с тем же порядком поиска, что у max_power).
 
     Для группы «без НТ» в конце добавляется None: в БД старые годы часто лежат
     с perimeter_variant_code IS NULL до явной привязки варианта блока.
@@ -650,7 +650,7 @@ def _lookup_fo_res_aggregate_mln_for_chi(
     """Сумма РЭС по ФО.
 
     ``(has_bucket, value)``: при ``has_bucket=True`` пустой год → ``value=None``
-    (как «—» на EC), без фоллбека к строке ФО в БД.
+    (как «–» на EC), без фоллбека к строке ФО в БД.
     """
     if slice_key == "hist" or not isinstance(slice_key, int):
         return False, None
@@ -680,7 +680,7 @@ def _chi_ec_consumption_mln_for_federal_district(
 
     Не читаем сырые ``*_without_gaes`` из БД ФО: на EC для ФО действует
     ``apply_federal_district_formula`` (Σ РЭС), а в БД without_gaes иногда лежат
-    устаревшие/чужие годы — из‑за них PD расходился с EC.
+    устаревшие/чужие годы – из‑за них PD расходился с EC.
     """
     has_bucket, base_hit = _lookup_fo_res_aggregate_mln_for_chi(
         ec_parent_id, anchor, slice_key
@@ -758,7 +758,7 @@ def _chi_ec_consumption_year_applies_to_anchor(
     """Год попадает в «Год с»/«Год по» варианта периметра строки (как формулы на EC).
 
     Для числителя ЧЧИ и строк «Потребление ЭЭ» на /power_demand/summary/ границы
-    варианта соблюдаем всегда — кроме:
+    варианта соблюдаем всегда – кроме:
 
     - «с НТ»: не режем по 2023; пустота задаётся наличием данных по субъектам
       «Новые территории» (``_chi_nt_subjects_have_consumption``).
@@ -961,7 +961,7 @@ def _hub_indexes_for_summary_blocks(
             EesRussiaDemandParameter.__name__,
             EnergySystemTypeDemandParameter.__name__,
             SynchronousAreaDemandParameter.__name__,
-            # ОЭС: как на EC — «без заряда ГАЭС» (with_gaes − заряд), не сырые *_without_gaes из БД.
+            # ОЭС: как на EC – «без заряда ГАЭС» (with_gaes − заряд), не сырые *_without_gaes из БД.
             UnionEnergySystemDemandParameter.__name__,
         ):
             need_ees_sa = True
@@ -1057,7 +1057,7 @@ def _build_chi_row_for_block(
         )
         hours = _divide_hours(ec_val, mw_val)
         if hours is None:
-            year_values.append("—")
+            year_values.append("–")
             year_tooltips.append("")
         else:
             year_values.append(_format_numeric(hours, _CHI_ROUNDING_DIGITS))
@@ -1077,7 +1077,7 @@ def _build_chi_row_for_block(
     hist_mw = _parse_summary_cell_float(max_power_row.get("hist_value"))
     hist_hours = _divide_hours(hist_ec, hist_mw)
     if hist_hours is None:
-        hist_value = "—"
+        hist_value = "–"
         hist_tooltip = ""
     else:
         hist_value = _format_numeric(hist_hours, _CHI_ROUNDING_DIGITS)
@@ -1238,7 +1238,7 @@ def _build_combined_chi_row_for_block(
         )
         hours = _divide_combined_peak_usage_hours(ec_val, combined_mw)
         if hours is None:
-            year_values.append("—")
+            year_values.append("–")
             year_tooltips.append("")
         else:
             year_values.append(_format_numeric(hours, _CHI_ROUNDING_DIGITS))
@@ -1258,7 +1258,7 @@ def _build_combined_chi_row_for_block(
     hist_combined = _parse_summary_cell_float(combined_row.get("hist_value"))
     hist_hours = _divide_combined_peak_usage_hours(hist_ec, hist_combined)
     if hist_hours is None:
-        hist_value = "—"
+        hist_value = "–"
         hist_tooltip = ""
     else:
         hist_value = _format_numeric(hist_hours, _CHI_ROUNDING_DIGITS)
@@ -1467,7 +1467,7 @@ def _build_energy_consumption_row_for_block(
             ees_sa_hub_index=ees_sa_hub_index,
         )
         if ec_val is None:
-            year_values.append("—")
+            year_values.append("–")
             year_tooltips.append("")
         else:
             year_values.append(_format_numeric(ec_val, rounding_digits))
@@ -1485,7 +1485,7 @@ def _build_energy_consumption_row_for_block(
         ees_sa_hub_index=ees_sa_hub_index,
     )
     if hist_ec is None:
-        hist_value = "—"
+        hist_value = "–"
         hist_tooltip = ""
     else:
         hist_value = _format_numeric(hist_ec, rounding_digits)

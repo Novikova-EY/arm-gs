@@ -438,7 +438,7 @@ def import_ee_transfers_from_excel(file, user: str) -> dict[str, Any]:
     )
     if changed == 0 and unchanged > 0:
         message += (
-            f" Данные за {parsed.year_number} г. уже есть в базе — "
+            f" Данные за {parsed.year_number} г. уже есть в базе – "
             "проверьте диапазон лет на странице (должен включать "
             f"{parsed.year_number} г.)."
         )

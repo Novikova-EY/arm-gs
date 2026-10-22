@@ -35,7 +35,7 @@ depends_on = None
 SCHEMA_PD = "gs_pd"
 
 
-# Короткое имя легаси-таблицы без gs_pd_; второй элемент — колонка FK на справочник или None.
+# Короткое имя легаси-таблицы без gs_pd_; второй элемент – колонка FK на справочник или None.
 _LEGACY_AND_ENTITY_FK: tuple[tuple[str, str | None], ...] = (
     ("gs_centralized_zone_demand_params", None),
     ("gs_ees_demand_params", None),

@@ -45,11 +45,11 @@ def test_inject_energy_consumption_rows_before_max_power():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
         {
             "parameter_key": "avg_temp",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
     ec_index = {
@@ -106,7 +106,7 @@ def test_inject_energy_consumption_rows_for_centralized_zone_uses_hub_index():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
     ec_index = {
@@ -166,7 +166,7 @@ def test_inject_energy_consumption_rows_for_ees_russia_uses_summary_table_hub():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
     ees_sa_hub_index = {
@@ -228,10 +228,10 @@ def test_inject_energy_consumption_rows_for_ees_unified_uses_without_gaes_hub():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
-    # В сыром индексе есть только «с ГАЭС» — раньше ошибочно подставлялось сюда.
+    # В сыром индексе есть только «с ГАЭС» – раньше ошибочно подставлялось сюда.
     ec_index = {
         (
             "EnergySystemTypeEnergyConsumptionParameter",
@@ -300,7 +300,7 @@ def test_inject_energy_consumption_rows_for_second_sa_uses_hub_null_pvc():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
     ees_sa_hub_index = {
@@ -360,7 +360,7 @@ def test_inject_energy_consumption_rows_for_ues_uses_without_gaes_hub():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—", "—"],
+            "year_values": ["–", "–"],
         },
     ]
     # Сырой индекс: устаревшие/битые without_gaes (как 90 947.7 вместо 98 947.7).
@@ -459,7 +459,7 @@ def test_first_sa_without_nt_ee_not_cut_by_kaliningrad_from_year_2025():
     }
     rows = [
         dict(anchor),
-        {"parameter_key": "peak_datetime", "year_values": ["—", "—", "—"]},
+        {"parameter_key": "peak_datetime", "year_values": ["–", "–", "–"]},
     ]
     ees_sa_hub_index = {
         (
@@ -595,7 +595,7 @@ def test_with_nt_ee_empty_until_nt_subjects_have_data():
 
 
 def test_with_nt_ee_shows_before_2023_when_nt_data_exists():
-    """«с НТ» не жёстко с 2023: если по НТ есть данные за 2022 — считаем 2022."""
+    """«с НТ» не жёстко с 2023: если по НТ есть данные за 2022 – считаем 2022."""
     from unittest.mock import patch
 
     from app.common.perimeter_variant.constants import CODE_WITH_NT_WITHOUT_GAES

@@ -47,7 +47,7 @@ _FILL_BY_CSS: dict[str, PatternFill] = {
     "lt-ei-ref-accum-capital": PatternFill("solid", fgColor="E2E8F0"),
     "table-warning": PatternFill("solid", fgColor="FFF3CD"),
 }
-# Стили графиков — как в «02.06.26 Расчет электроемкости. Таблица 1.xlsx»
+# Стили графиков – как в «02.06.26 Расчет электроемкости. Таблица 1.xlsx»
 _CHART_WIDTH = 15
 _CHART_HEIGHT = 7.5
 _CHART_SCATTER_STYLE = "lineMarker"
@@ -258,7 +258,7 @@ class _ExcelExportWriter:
         x_val = entity.get("coefficient_x_display", "")
         for label, value in (("А=", a_val), ("Х=", x_val)):
             self.ws.cell(row=self.row_idx, column=COL_LABEL, value=label)
-            if value not in (None, "", "—"):
+            if value not in (None, "", "–"):
                 self.ws.cell(row=self.row_idx, column=COL_UNIT, value=value)
             self.row_idx += 1
 
@@ -267,8 +267,8 @@ class _ExcelExportWriter:
     ) -> None:
         cells_display = cells_display or {}
         for i, year in enumerate(self.years):
-            disp = cells_display.get(year, "—")
-            if disp is None or disp == "—":
+            disp = cells_display.get(year, "–")
+            if disp is None or disp == "–":
                 continue
             self.ws.cell(row=row_idx, column=YEAR_COL_START + i, value=disp)
 
@@ -288,7 +288,7 @@ class _ExcelExportWriter:
         unit_text = unit or ""
         if ref_row and ref_row.get("has_coefficient_k"):
             k_disp = ref_row.get("coefficient_k_display", "")
-            if k_disp not in (None, "", "—"):
+            if k_disp not in (None, "", "–"):
                 unit_text = str(k_disp)
         if unit_text:
             self.ws.cell(row=row_idx, column=COL_UNIT, value=unit_text)
@@ -595,7 +595,7 @@ def build_electrical_intensity_excel_stream(context: dict[str, Any]) -> BytesIO:
 
         fd_summary = block.get("fd_summary") or {}
         if fd_summary:
-            territory_title = f"{abbr} — {block.get('label', '')}"
+            territory_title = f"{abbr} – {block.get('label', '')}"
             writer.write_fd_summary(
                 fd_summary,
                 unit_label=ei_unit,

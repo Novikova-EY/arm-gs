@@ -43,7 +43,7 @@ _ACCESS_FUEL_TABLE_MARKER_COLS = frozenset(
 )
 
 _FUEL_PARAMS_PAGE_HINT = (
-    "Этот файл — выгрузка Access «Станции» / «Доп_угли». "
+    "Этот файл – выгрузка Access «Станции» / «Доп_угли». "
     "Его нужно загружать на странице «Сведения о работе ТЭС» "
     "(/fuel/stations_equipment_group_fuel_params), а не в словаре групп оборудования."
 )
@@ -59,7 +59,7 @@ _FUEL_DB_IMPORT_HINT = (
 )
 
 _IMENA_ON_FUEL_DB_HINT = (
-    "Этот файл — выгрузка Access «Имена_станций». "
+    "Этот файл – выгрузка Access «Имена_станций». "
     "Его нужно загружать жёлтой кнопкой «Проверить / загрузить флаги» "
     "(при необходимости отметьте «Создать отсутствующие NUMB»), "
     "а не синей «Импорт из Excel». "
@@ -147,9 +147,9 @@ def reject_access_stations_or_extra_fuel_excel(
     context: str = "fuel_db",
 ) -> None:
     """
-    Бросает ValueError, если файл — Access «Станции» / «Доп_угли».
+    Бросает ValueError, если файл – Access «Станции» / «Доп_угли».
 
-    :param context: «fuel_db» | «soft_import» — уточняет текст подсказки.
+    :param context: «fuel_db» | «soft_import» – уточняет текст подсказки.
     """
     by_name = filename_looks_like_access_stations_or_extra_fuel(filename)
     by_headers = headers_look_like_access_stations_or_extra_fuel(file)

@@ -418,14 +418,14 @@
                                 <!-- Столбец "Региональная энергосистема" -->
                                 <td>
                                     <div id="res-display-{{ energy_area.id }}" class="form-control" style="background: transparent; border: none;">
-                                        {{ energy_area.regional_energy_system.name if energy_area.regional_energy_system else '—' }}
+                                        {{ energy_area.regional_energy_system.name if energy_area.regional_energy_system else '–' }}
                                     </div>
                                 </td>
 
                                 <!-- Столбец "ОЭС" -->
                                 <td>
                                     <div id="ues-display-{{ energy_area.id }}" class="form-control" style="background: transparent; border: none;">
-                                        {{ energy_area.union_energy_system.name if energy_area.union_energy_system else '—' }}
+                                        {{ energy_area.union_energy_system.name if energy_area.union_energy_system else '–' }}
                                     </div>
                                 </td>
 
@@ -724,17 +724,17 @@
                             
                             <!-- Столбец "Субъекты РФ" -->
                             <td>
-                                {{ item.regional_district.name if item.regional_district else '—' }}
+                                {{ item.regional_district.name if item.regional_district else '–' }}
                             </td>
 
                             <!-- Столбец "Региональная энергосистема" -->
                             <td>
-                                {{ item.regional_energy_system.name if item.regional_energy_system else '—' }}
+                                {{ item.regional_energy_system.name if item.regional_energy_system else '–' }}
                             </td>
 
                             <!-- Столбец "ОЭС" -->
                             <td>
-                                {{ item.union_energy_system.name if item.union_energy_system else '—' }}
+                                {{ item.union_energy_system.name if item.union_energy_system else '–' }}
                             </td>
                         </tr>
                     {% else %}

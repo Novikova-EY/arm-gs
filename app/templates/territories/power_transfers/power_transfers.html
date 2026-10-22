@@ -359,17 +359,17 @@ block content %} {% if current_user.is_authenticated %}
             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
           </td>
           <td class="col-energy-unit">
-            {{ item.energy_unit.name if item.energy_unit else '—' }}
+            {{ item.energy_unit.name if item.energy_unit else '–' }}
           </td>
           <td class="col-regional-district">
-            {{ item.regional_district.name if item.regional_district else '—' }}
+            {{ item.regional_district.name if item.regional_district else '–' }}
           </td>
-          <td class="col-direction">{{ item.direction or '—' }}</td>
+          <td class="col-direction">{{ item.direction or '–' }}</td>
           {% for year in display_years %} {% set yval =
           power_transfer_year_values.get(item.id, {}).get(year) %}
           <td class="text-center align-middle">
             {% if yval is not none %}{{ yval|format_decimal_trim(1) }}{% else
-            %}—{% endif %}
+            %}–{% endif %}
           </td>
           {% endfor %}
         </tr>

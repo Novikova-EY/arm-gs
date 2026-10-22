@@ -71,7 +71,7 @@ def _rows_same_for_field(group: list[ProspectivePlaceGesTepSource], field: str) 
 
 def _fmt_year_ref(year) -> str:
     if year is None:
-        return "—"
+        return "–"
     return str(year.number)
 
 
@@ -80,7 +80,7 @@ def build_tep_full_current_year_prices(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal],
 ) -> dict[str, str]:
-    """Те же поля, что fmt_tep_source_row_full, но три столбца капзатрат — пересчитаны в цены текущего года."""
+    """Те же поля, что fmt_tep_source_row_full, но три столбца капзатрат – пересчитаны в цены текущего года."""
     base = fmt_tep_source_row_full(r)
     return merge_tep_row_full_with_capital_costs_current_year_prices(
         base, r, target_year, coeff_by_year
@@ -89,20 +89,20 @@ def build_tep_full_current_year_prices(
 
 def _fmt_excel_like(val: Any) -> str:
     if val is None:
-        return "—"
+        return "–"
     s = str(val).strip() if val is not None else ""
     if not s:
-        return "—"
+        return "–"
     return s.replace(".", ",")
 
 
 def _row_identity_cells(r: ProspectivePlaceGesTepSource) -> dict[str, str]:
     return {
         "ppt": _fmt_excel_like(
-            (r.prospective_place_type_ges.name if r.prospective_place_type_ges else None) or "—"
+            (r.prospective_place_type_ges.name if r.prospective_place_type_ges else None) or "–"
         ),
-        "installed_capacity_mw": _fmt_excel_like(r.installed_capacity_mw or "—"),
-        "hydro_turbine_type": _fmt_excel_like(r.hydro_turbine_type or "—"),
+        "installed_capacity_mw": _fmt_excel_like(r.installed_capacity_mw or "–"),
+        "hydro_turbine_type": _fmt_excel_like(r.hydro_turbine_type or "–"),
     }
 
 
@@ -121,12 +121,12 @@ def _row_tep_cells(
             coeff,
         )
     else:
-        semifixed_display = _fmt_excel_like(r.specific_semifixed_operating_costs_thous_rub_per_kw or "—")
+        semifixed_display = _fmt_excel_like(r.specific_semifixed_operating_costs_thous_rub_per_kw or "–")
     return {
         "construction_period_years": format_construction_period_years_display(
             r.construction_period_years
         )
-        or "—",
+        or "–",
         "specific_semifixed_operating_costs_thous_rub_per_kw": semifixed_display,
         "year_specific_semifixed_operating_costs": _fmt_year_ref(
             r.year_specific_semifixed_operating_costs
@@ -145,44 +145,44 @@ def _row_tep_cells(
 
 def fmt_tep_source_row_full(r: ProspectivePlaceGesTepSource) -> dict[str, str]:
     """Все поля перечня ТЭП для таблицы (как на карточке площадки)."""
-    ppt = (r.prospective_place_type_ges.name if r.prospective_place_type_ges else None) or "—"
+    ppt = (r.prospective_place_type_ges.name if r.prospective_place_type_ges else None) or "–"
     note_raw = (r.note or "").strip()
-    note_display = note_raw if note_raw else "—"
+    note_display = note_raw if note_raw else "–"
     inc = {}
     for i in range(1, 13):
         attr = f"construction_increment_year_{i:02d}_mw"
-        inc[attr] = _fmt_excel_like(getattr(r, attr, None) or "—")
+        inc[attr] = _fmt_excel_like(getattr(r, attr, None) or "–")
     result = {
         "ppt": _fmt_excel_like(ppt),
-        "installed_capacity_mw": _fmt_excel_like(r.installed_capacity_mw or "—"),
-        "stage_1_capacity_mw": _fmt_excel_like(r.stage_1_capacity_mw or "—"),
-        "stage_2_capacity_mw": _fmt_excel_like(r.stage_2_capacity_mw or "—"),
-        "startup_complex_capacity_mw": _fmt_excel_like(r.startup_complex_capacity_mw or "—"),
-        "units_count": str(r.units_count) if r.units_count is not None else "—",
-        "unit_capacity_mw": _fmt_excel_like(r.unit_capacity_mw or "—"),
-        "hydro_turbine_type": _fmt_excel_like(r.hydro_turbine_type or "—"),
+        "installed_capacity_mw": _fmt_excel_like(r.installed_capacity_mw or "–"),
+        "stage_1_capacity_mw": _fmt_excel_like(r.stage_1_capacity_mw or "–"),
+        "stage_2_capacity_mw": _fmt_excel_like(r.stage_2_capacity_mw or "–"),
+        "startup_complex_capacity_mw": _fmt_excel_like(r.startup_complex_capacity_mw or "–"),
+        "units_count": str(r.units_count) if r.units_count is not None else "–",
+        "unit_capacity_mw": _fmt_excel_like(r.unit_capacity_mw or "–"),
+        "hydro_turbine_type": _fmt_excel_like(r.hydro_turbine_type or "–"),
         "construction_period_years": format_construction_period_years_display(
             r.construction_period_years
         )
-        or "—",
+        or "–",
         **inc,
         "specific_semifixed_operating_costs_thous_rub_per_kw": _fmt_excel_like(
-            r.specific_semifixed_operating_costs_thous_rub_per_kw or "—"
+            r.specific_semifixed_operating_costs_thous_rub_per_kw or "–"
         ),
         "generation_average_multiyear_million_kwh": _fmt_excel_like(
-            r.generation_average_multiyear_million_kwh or "—"
+            r.generation_average_multiyear_million_kwh or "–"
         ),
         "generation_medium_water_management_year": _fmt_excel_like(
-            r.generation_medium_water_management_year or "—"
+            r.generation_medium_water_management_year or "–"
         ),
         "generation_medium_water_50pct_million_kwh": _fmt_excel_like(
-            r.generation_medium_water_50pct_million_kwh or "—"
+            r.generation_medium_water_50pct_million_kwh or "–"
         ),
         "generation_low_water_management_year": _fmt_excel_like(
-            r.generation_low_water_management_year or "—"
+            r.generation_low_water_management_year or "–"
         ),
         "generation_low_water_95pct_million_kwh": _fmt_excel_like(
-            r.generation_low_water_95pct_million_kwh or "—"
+            r.generation_low_water_95pct_million_kwh or "–"
         ),
         "capital_cost_wo_pir_total_million_rub": _fmt_numeric_million_rub(
             r.capital_cost_wo_pir_total_million_rub
@@ -206,7 +206,7 @@ def fmt_tep_source_row_full(r: ProspectivePlaceGesTepSource) -> dict[str, str]:
     result["year_specific_semifixed_operating_costs"] = _fmt_year_ref(
         r.year_specific_semifixed_operating_costs
     )
-    # Год у удельных капвложений — как у капзатрат «ГЭС (с водохранилищем)» (база расчёта).
+    # Год у удельных капвложений – как у капзатрат «ГЭС (с водохранилищем)» (база расчёта).
     result["year_specific_capital_investment"] = result["year_capital_cost_wo_pir_ges_with_reservoir"]
     return result
 
@@ -240,7 +240,7 @@ def build_tep_view_rows(
 ) -> list[dict[str, Any]]:
     """Строки для шаблона: группировка по электростанции, merged TEP при совпадении значений.
 
-    ``tep_main_scaling_target_year`` — год конца цепочки пересчёта капзатрат (как в подписи
+    ``tep_main_scaling_target_year`` – год конца цепочки пересчёта капзатрат (как в подписи
     «в ценах N года»). Если не передан, используется год «текущий» из справочника годов; при
     расхождении с подписью цепочка коэффициентов могла не совпадать с таблицей коэффициентов.
     """
@@ -301,7 +301,7 @@ def build_tep_view_rows(
                 r.station_prospective_place_ges.site_name
                 if r.station_prospective_place_ges
                 else None
-            ) or "—"
+            ) or "–"
             tep_full = fmt_tep_source_row_full(r)
             if tep_main_current_year_prices:
                 tep_full_current_year = build_tep_full_current_year_prices(

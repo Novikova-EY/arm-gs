@@ -14,7 +14,7 @@ class PGParamCalc(db.Model, AuditMixin):
     Первоначально копируется из PGReportGisTek; далее может
     редактироваться отдельно от отчетных данных.
     Связь с EquipmentGroup: station_numb (numb1120) = EquipmentGroup.numb
-    (без FK на numb — поле не уникально).
+    (без FK на numb – поле не уникально).
     year_number + database_version_id → Year.number + Year.database_version_id.
     """
 
@@ -45,7 +45,7 @@ class PGParamCalc(db.Model, AuditMixin):
     # Страница анализа: pg-vse или pg-bez-kot
     sheet_slug = db.Column(db.String(40), nullable=False, index=True)
 
-    # Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb (без FK — numb не уникален)
+    # Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb (без FK – numb не уникален)
     station_numb = db.Column(db.Integer, nullable=False, index=True)
     equipment_group_by_numb = db.relationship(
         "EquipmentGroup",

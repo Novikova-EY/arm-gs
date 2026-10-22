@@ -189,7 +189,7 @@ def safe_int(value) -> int | None:
             return int(value)
         return None
     s = str(value).strip().replace("\xa0", " ")
-    if not s or s.lower() in ("nan", "none", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "none", "–", "-", "–"):
         return None
     if s.isdigit() or (s.startswith("-") and s[1:].isdigit()):
         return int(s)
@@ -231,10 +231,10 @@ def safe_decimal(value, max_digits: int = 16) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
         value = s.replace(",", ".")
-    # Числовая ячейка Excel — double: у результата арифметики бывает хвост
+    # Числовая ячейка Excel – double: у результата арифметики бывает хвост
     # вроде 105.10000000000001, который в БД хранить нечего.
     from_float = isinstance(value, float)
     try:

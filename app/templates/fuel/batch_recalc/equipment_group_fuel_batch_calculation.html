@@ -2,7 +2,7 @@
 %} {% block content %} {% if current_user.is_authenticated %}
 
 <style>
-  /* Текст после заголовка страницы — крупнее обычного */
+  /* Текст после заголовка страницы – крупнее обычного */
   .fuel-batch-recalc-content {
     font-size: 1.2rem;
     line-height: 1.45;
@@ -44,7 +44,7 @@
   .fuel-batch-recalc-content .fuel-batch-recalc-section .table code {
     font-size: 0.92em;
   }
-  /* Заголовок «Год …» в предпросмотре — как у секций с .fuel-batch-recalc-section */
+  /* Заголовок «Год …» в предпросмотре – как у секций с .fuel-batch-recalc-section */
   .fuel-batch-recalc-content .batch-param-tables-mount h4.card-title {
     font-size: 1.55rem;
     line-height: 1.5;
@@ -250,12 +250,12 @@
           <code>year_number</code> ≤ году расчёта; это
           <strong>не</strong> означает обязательный выбор «предыдущего
           календарного года»: если, например, для 2032 в таблице нет строки за
-          2031, подставится последняя имеющаяся по году — за 2030, 2025 и т.д.),
+          2031, подставится последняя имеющаяся по году – за 2030, 2025 и т.д.),
           <strong>формула топлива</strong> <code>formtxt</code> (вариант из
-          формы; версия БД — по умолчанию) и поля энергобаланса из строки
+          формы; версия БД – по умолчанию) и поля энергобаланса из строки
           параметров топлива: <code>e</code> (Выработка ЭЭ, млн кВтч),
           <code>q</code> (Отпуск ТЭ, тыс.Гкал), <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал),
-          <code>turt</code> (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал) — подписи как в шапках таблицы
+          <code>turt</code> (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал) – подписи как в шапках таблицы
           «Рассчитанные параметры» / основные топливные параметры на этой
           странице.
         </p>
@@ -264,7 +264,7 @@
           <strong>удельных показателей</strong>
           (<code>EquipmentGroupSpecificFuelConsumption</code>) выбирается как
           последняя запись с <code>year_number</code> ≤ году расчёта; строка
-          <strong>формулы</strong> (<code>EquipmentGroupFuelFormula</code>) —
+          <strong>формулы</strong> (<code>EquipmentGroupFuelFormula</code>) –
           как последняя с <code>year_number</code> ≤ году расчёта для выбранного
           <code>variant_number</code> (с учётом версии БД). Сам расчёт
           выполняется через
@@ -294,7 +294,7 @@
                     (<code>EquipmentGroupSpecificFuelConsumption</code>) с
                     <strong>максимальным</strong> <code>year_number</code> среди
                     строк этой группы, где <code>year_number</code> ≤ году
-                    расчёта (в коде —
+                    расчёта (в коде –
                     <code>ORDER BY year_number DESC LIMIT 1</code>; это не
                     «всегда год расчёта минус один», а фактически последняя
                     заведённая строка, не превышающая год расчёта). Поля из неё:
@@ -302,7 +302,7 @@
                     потреблении, кВтч/⁠Гкал), <code>snk</code> (СН на выработку ЭЭ, %), <code>sntp</code> (коэффициент отпуска ЭЭ
                     в теплофикационном режиме),
                     <code>bk</code> (УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч), <code>btp</code> (УРУТ на отпуск ЭЭ
-                    в теплофикационном режиме, г у.т./кВтч) — те же
+                    в теплофикационном режиме, г у.т./кВтч) – те же
                     подписи, что в шапке таблицы «Удельные показатели групп
                     оборудования». И уже сохранённые поля энергобаланса из
                     параметров топлива для этого года: <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал),
@@ -330,7 +330,7 @@
                       <code>eust</code> (Расх топ эл.эн.) =
                       (<code>ekotp</code>·<code>bk</code> +
                       <code>etpotp</code>·<code>btp</code>) / 1000
-                      (<code>bk</code>, <code>btp</code> — из строки удельного
+                      (<code>bk</code>, <code>btp</code> – из строки удельного
                       расхода, см. подписи выше);
                     </li>
                     <li>
@@ -345,7 +345,7 @@
                     </li>
                     <li>
                       <code>b</code> (Расход топлива, всего) =
-                      <code>eust</code> + <code>tust</code> — база для
+                      <code>eust</code> + <code>tust</code> – база для
                       разложения по <code>formtxt</code> на следующем этапе.
                     </li>
                   </ul>
@@ -358,7 +358,7 @@
                 <td>
                   <p class="mb-2">
                     <code>EquipmentGroupFuelParam</code> (перезапись
-                    рассчитанными значениями) — в строку с тем же
+                    рассчитанными значениями) – в строку с тем же
                     <code>year_number</code>, что и
                     <strong>год расчёта</strong> в форме пакета (колонка
                     <code>year_number</code> в
@@ -366,12 +366,12 @@
                     на пару «группа оборудования + этот год»).
                   </p>
                   <ul class="mb-0 ps-3">
-                    <li><code>ewtp</code> — Теплофикационная выработка ЭЭ, тыс.кВтч</li>
-                    <li><code>eotp</code> — Отпуск ЭЭ, млн кВтч</li>
-                    <li><code>eust</code> — Расх топ эл.эн.</li>
-                    <li><code>eurt</code> — УРУТ на отпуск ЭЭ, г у.т./кВтч</li>
-                    <li><code>tust</code> — Расход усл. топлива на ТЭ, тыс. т у.т.</li>
-                    <li><code>b</code> — Расход топлива, всего</li>
+                    <li><code>ewtp</code> – Теплофикационная выработка ЭЭ, тыс.кВтч</li>
+                    <li><code>eotp</code> – Отпуск ЭЭ, млн кВтч</li>
+                    <li><code>eust</code> – Расх топ эл.эн.</li>
+                    <li><code>eurt</code> – УРУТ на отпуск ЭЭ, г у.т./кВтч</li>
+                    <li><code>tust</code> – Расход усл. топлива на ТЭ, тыс. т у.т.</li>
+                    <li><code>b</code> – Расход топлива, всего</li>
                   </ul>
                 </td>
               </tr>
@@ -384,7 +384,7 @@
                     <code>_reset_extra_fuel_fields</code>: в ноль сбрасываются
                     рассчитанные ранее колонки топлива на
                     <code>EquipmentGroupFuelParam</code> (объединение наборов
-                    <code>TOPLS</code> и <code>UGLI</code> — газ/мазут/прочее и
+                    <code>TOPLS</code> и <code>UGLI</code> – газ/мазут/прочее и
                     углеводородные агрегаты) и детальные поля «доп.&nbsp;углей»
                     на <code>EquipmentGroupExtraFuelParam</code> (набор
                     <code>UGLI1</code>).
@@ -393,25 +393,25 @@
                     Строка <code>formtxt</code> берётся из подходящей записи
                     <code>EquipmentGroupFuelFormula</code> (год ≤ году расчёта,
                     нужный <code>variant_number</code>, учёт версии БД при
-                    выборе строки формулы). Разбор —
+                    выборе строки формулы). Разбор –
                     <code>_parse_formtxt</code>:
                   </p>
                   <ul class="mb-2 ps-3">
                     <li>фрагменты через «<code>;</code>»;</li>
                     <li>
-                      вид <code>имя=доля</code> — доля в % от
-                      <code>b</code> (база по умолчанию — полный <code>b</code>;
-                      префикс «<code>/</code>» у имени — доля от
+                      вид <code>имя=доля</code> – доля в % от
+                      <code>b</code> (база по умолчанию – полный <code>b</code>;
+                      префикс «<code>/</code>» у имени – доля от
                       <strong>остатка</strong> после предыдущих долей);
                     </li>
                     <li>
-                      последний фрагмент <strong>без</strong> «<code>=</code>» —
+                      последний фрагмент <strong>без</strong> «<code>=</code>» –
                       остаток <code>b</code> целиком на этот вид (резерв);
                     </li>
                     <li>
                       имена в нижнем регистре; если имя входит в
                       <code>UGLI1</code>, значение пишется в
-                      <code>EquipmentGroupExtraFuelParam</code>, иначе — в поле
+                      <code>EquipmentGroupExtraFuelParam</code>, иначе – в поле
                       с тем же именем на
                       <code>EquipmentGroupFuelParam</code>
                       (<code>_apply_parsed_values</code>).
@@ -431,10 +431,10 @@
                 </td>
                 <td>
                   <p class="mb-2">
-                    <code>EquipmentGroupFuelParam</code> — основные и
+                    <code>EquipmentGroupFuelParam</code> – основные и
                     углеводородные показатели (в т.ч. <code>gaz</code> (Газ),
                     <code>mazut</code> (Мазут), <code>don</code> (Дон),
-                    <code>kuzn</code> (Кузбасс), …); подписи столбцов — как в
+                    <code>kuzn</code> (Кузбасс), …); подписи столбцов – как в
                     шапке таблицы «Рассчитанные параметры» / основные топливные
                     параметры на этой странице и на
                     <a
@@ -445,7 +445,7 @@
                     >.
                   </p>
                   <p class="mb-0">
-                    <code>EquipmentGroupExtraFuelParam</code> — детальные поля
+                    <code>EquipmentGroupExtraFuelParam</code> – детальные поля
                     «доп.&nbsp;углей» и прочие из набора формулы; для каждого
                     <code>nazvl</code> в шапке таблицы «доп.&nbsp;параметры» на
                     этой странице показывается наименование из справочника
@@ -472,9 +472,9 @@
                     <code>EquipmentGroupFuelParam</code> записывается
                     <strong>сумма</strong> дочерних полей с
                     <code>EquipmentGroupExtraFuelParam</code> (например для
-                    <code>pech</code> — <code>intin</code> + <code>vork</code>;
-                    для <code>gaz</code> — <code>gaz_prir</code> +
-                    <code>gazpp</code> — подписи дочерних колонок в шапке
+                    <code>pech</code> – <code>intin</code> + <code>vork</code>;
+                    для <code>gaz</code> – <code>gaz_prir</code> +
+                    <code>gazpp</code> – подписи дочерних колонок в шапке
                     таблицы доп.&nbsp;параметров).
                   </p>
                   <p class="mb-2">
@@ -493,10 +493,10 @@
                 <td>
                   <p class="mb-2">
                     Снова <code>EquipmentGroupFuelParam</code>: обновляются
-                    групповые поля по правилам <code>GROUPS</code> —
+                    групповые поля по правилам <code>GROUPS</code> –
                     <code>pech</code> (Печ), <code>kan</code> (Канск),
                     <code>kuzn</code> (Кузбасс), <code>ural</code> (Урал),
-                    <code>gaz</code> (Газ), <code>mazut</code> (Мазут), … — и
+                    <code>gaz</code> (Газ), <code>mazut</code> (Мазут), … – и
                     итог <code>ugol</code> (Уголь); подписи как в шапке основной
                     таблицы на этой странице.
                   </p>
@@ -517,9 +517,9 @@
               <tr>
                 <td>Сохранение</td>
                 <td>
-                  При стандартных настройках — один коммит транзакции в конце
+                  При стандартных настройках – один коммит транзакции в конце
                   пакета (<code>final_commit</code>); при
-                  <code>commit_each</code> — после каждой группы.
+                  <code>commit_each</code> – после каждой группы.
                 </td>
                 <td>
                   Те же строки БД для выбранного <code>year_number</code> (год в
@@ -551,7 +551,7 @@
             энергобалансу (см. таблицу выше). Он <strong>не</strong> подменяет
             вручную введённые на карточке группы поля удельных показателей
             <code>y</code>, <code>btp</code>, <code>sntp</code>,
-            <code>bk</code>, <code>snk</code>, <code>k</code> — они задаются на
+            <code>bk</code>, <code>snk</code>, <code>k</code> – они задаются на
             странице
             <a
               href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
@@ -568,7 +568,7 @@
             удельным), а не этим пакетом.
           </li>
           <li class="mb-2">
-            <strong>Цена</strong> (<code>xxx_c</code>) на карточке группы —
+            <strong>Цена</strong> (<code>xxx_c</code>) на карточке группы –
             производная от стоимости и количеств топлива; при сохранении
             карточки пересчитывается отдельным шагом, не пакетом на этой
             странице.
@@ -582,7 +582,7 @@
       </div>
     </div>
 
-    <!-- Результат (JSON) — в конце страницы -->
+    <!-- Результат (JSON) – в конце страницы -->
     <div class="station-info mb-5">
       <div class="mb-3 p-3" style="background: transparent; border: none">
         <div

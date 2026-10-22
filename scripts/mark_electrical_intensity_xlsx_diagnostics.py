@@ -45,7 +45,7 @@ def _parse_decimal(value) -> Decimal | None:
     if isinstance(value, (int, float)):
         return Decimal(str(value))
     s = str(value).strip().replace("\u00a0", "").replace(" ", "").replace(",", ".")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     try:
         return Decimal(s)
@@ -145,7 +145,7 @@ def main() -> int:
         "--output",
         type=Path,
         default=None,
-        help="Файл результата (по умолчанию — перезапись входного)",
+        help="Файл результата (по умолчанию – перезапись входного)",
     )
     args = parser.parse_args()
     out_path = args.output or args.input

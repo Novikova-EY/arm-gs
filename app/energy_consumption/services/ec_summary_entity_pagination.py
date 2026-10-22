@@ -46,7 +46,7 @@ def _oes_suffix_block(block: list[dict[str, Any]]) -> bool:
 
 
 def _ez_suffix_block(block: list[dict[str, Any]]) -> bool:
-    """После энергозон — блок «Новые территории»."""
+    """После энергозон – блок «Новые территории»."""
     if not block:
         return False
     label = str(block[0].get("entity_label") or "").casefold()
@@ -82,7 +82,7 @@ _SCOPE_SPECS: dict[str, _PaginationScopeSpec] = {
 
 
 def parse_ec_entity_pagination(scope: str) -> tuple[int, int] | None:
-    """GET pd_page, pd_page_size. pd_page_size=0 — все секции на одной странице."""
+    """GET pd_page, pd_page_size. pd_page_size=0 – все секции на одной странице."""
     if scope not in PAGINATION_SCOPES:
         return None
     raw_size = request.args.get("pd_page_size")

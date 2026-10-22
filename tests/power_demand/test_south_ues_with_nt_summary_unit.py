@@ -82,7 +82,7 @@ def test_south_ues_with_nt_uses_combined_on_oes_from_nt_subjects(
 ) -> None:
     years = [2022, 2024]
     rows = [
-        _south_ues_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
+        _south_ues_row(pk="calculated_max_power_mw", year_values=["–", "–"]),
         _res_row(pk="combined_on_oes", year_values=["50", "200"]),
         _nt_subject_row(pk="combined_on_oes", year_values=["30", "40"]),
         _nt_subject_row(pk="combined_on_es", year_values=["99", "99"]),
@@ -111,7 +111,7 @@ def test_south_ues_with_nt_empty_when_nt_sum_zero(
 ) -> None:
     years = [2022, 2024]
     rows = [
-        _south_ues_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
+        _south_ues_row(pk="calculated_max_power_mw", year_values=["–", "–"]),
         _res_row(pk="combined_on_oes", year_values=["50", "200"]),
         _nt_subject_row(pk="combined_on_oes", year_values=["0", "40"]),
     ]
@@ -121,7 +121,7 @@ def test_south_ues_with_nt_empty_when_nt_sum_zero(
     )
 
     calc = next(r for r in rows if r["parameter_key"] == "calculated_max_power_mw")
-    assert calc["year_values"][0] == "—"
+    assert calc["year_values"][0] == "–"
     assert calc["year_values"][1] == "240"
 
 
@@ -139,7 +139,7 @@ def test_south_ues_with_nt_combined_on_ees_adds_nt_any_year(
 ) -> None:
     years = [2022, 2024]
     rows = [
-        _south_ues_row(pk="calculated_combined_on_ees_mw", year_values=["—", "—"]),
+        _south_ues_row(pk="calculated_combined_on_ees_mw", year_values=["–", "–"]),
         _res_row(pk="combined_on_ees", year_values=["10", "100"]),
         _nt_subject_row(pk="combined_on_ees", year_values=["5", "15"]),
     ]

@@ -17,9 +17,9 @@ ACTION_TITLE = "накопленные денежные доходы насел�
 
 def _fmt_log_value(value: Any) -> str:
     if value is None:
-        return "—"
+        return "–"
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else "—"
+    return s if s else "–"
 
 
 def load_accum_monetary_income_logs_raw(

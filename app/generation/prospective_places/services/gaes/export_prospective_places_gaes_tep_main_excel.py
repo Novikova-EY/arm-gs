@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Excel «ТЭП основных площадок ГАЭС»: как на экране — цены текущего года (без столбцов «год» у капзатрат и удельных) или исходные данные с годами."""
+"""Excel «ТЭП основных площадок ГАЭС»: как на экране – цены текущего года (без столбцов «год» у капзатрат и удельных) или исходные данные с годами."""
 from __future__ import annotations
 
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -54,7 +54,7 @@ def _write_gaes_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) -
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-    # Шапка: очередность — строка 1; удельные без столбцов «год» (как капзатраты в ценах года); строки 2–3 (rowspan);
+    # Шапка: очередность – строка 1; удельные без столбцов «год» (как капзатраты в ценах года); строки 2–3 (rowspan);
     # выработка / остальное как в _tep_machines_table_main.html
     ws.merge_cells(start_row=1, start_column=1, end_row=3, end_column=1)
     c = ws.cell(row=1, column=1, value="№ п/п")

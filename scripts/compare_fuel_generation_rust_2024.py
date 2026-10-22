@@ -274,7 +274,7 @@ def write_workbook(path: Path, year: int, version_id: int | None, stations: dict
     summary.set_column(0, 0, 54)
     summary.set_column(1, 1, 22)
     summary.set_column(2, 2, 94)
-    summary.write(0, 0, "Постанционная сверка «Руст» — ЕЭС/ТЭС", title)
+    summary.write(0, 0, "Постанционная сверка «Руст» – ЕЭС/ТЭС", title)
     summary.write(1, 0, f"Год: {year}; версия БД: {version_id}")
     summary.write_row(3, 0, ["Показатель", "Значение", "Комментарий"], header)
     summary_rows = [
@@ -376,7 +376,7 @@ def write_workbook(path: Path, year: int, version_id: int | None, stations: dict
         percent,
     )
 
-    group_sheet = workbook.add_worksheet("Группы ЕЭС — детализация")
+    group_sheet = workbook.add_worksheet("Группы ЕЭС – детализация")
     group_headers = ["ID группы", "NUMB", "Название группы", "COMP", "MAIN", "VED", "NUST, МВт", "Участвует в сводке", "Кол-во связанных станций", "Связанные станции", "Статус привязки"]
     group_sheet.write_row(0, 0, group_headers, header)
     group_sheet.freeze_panes(1, 2)

@@ -64,7 +64,7 @@ _COLUMN_COMMENTS: dict[str, dict[str, str]] = {
         **_COMMON,
         "station_numb": (
             "Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb "
-            "(без FK — numb не уникален)"
+            "(без FK – numb не уникален)"
         ),
         "gis_tek_station_name": "Электростанция (ГИС ТЭК), наименование из файла",
         "station_type": "Тип станции (КЭС, ТЭЦ и т.п.)",
@@ -83,7 +83,7 @@ _COLUMN_COMMENTS: dict[str, dict[str, str]] = {
         **_COMMON,
         "station_numb": (
             "Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb "
-            "(без FK — numb не уникален)"
+            "(без FK – numb не уникален)"
         ),
         "gis_tek_station_name": "Электростанция (ГИС ТЭК), наименование из файла",
         "station_type": "Тип станции (КЭС, ТЭЦ и т.п.)",
@@ -105,7 +105,7 @@ _COLUMN_COMMENTS: dict[str, dict[str, str]] = {
         "sheet_slug": "Страница анализа: pg-vse или pg-bez-kot",
         "station_numb": (
             "Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb "
-            "(без FK — numb не уникален)"
+            "(без FK – numb не уникален)"
         ),
         "year_number": "Год: Year.number + database_version_id (composite FK)",
         "gas_consumption_tce": "Расход газа, тут (GAZ_ek)",
@@ -153,8 +153,8 @@ _COLUMN_COMMENTS: dict[str, dict[str, str]] = {
         "year_number": "Год: Year.number + database_version_id (composite FK)",
         "row_key": "Ключ строки: вид топлива, ee_generation, heat_output, fuel_total",
         "value": (
-            "Значение: топливо — тыс. тут; выработка ЭЭ — млрд.кВтч; "
-            "отпуск тепла — тыс.Гкал"
+            "Значение: топливо – тыс. тут; выработка ЭЭ – млрд.кВтч; "
+            "отпуск тепла – тыс.Гкал"
         ),
     },
     "gs_eco_operating_tes_formula_texts": {
@@ -197,7 +197,7 @@ _DOWN_COLUMN_COMMENTS: dict[str, dict[str, str | None]] = {
         "station_numb": (
             "№_станции из ГИС ТЭК; связь с группой оборудования (Топливо) по numb"
         ),
-        "gis_tek_station_name": "Электростанция (ГИС ТЭК) — наименование из файла",
+        "gis_tek_station_name": "Электростанция (ГИС ТЭК) – наименование из файла",
         "station_type": "Тип станции из файла ГИС ТЭК",
         "equipment_group_id": (
             "Группа оборудования (Топливо), FK -> gs_fue.gs_fue_equipment_groups"
@@ -216,7 +216,7 @@ _DOWN_COLUMN_COMMENTS: dict[str, dict[str, str | None]] = {
         "station_numb": (
             "№_станции из ГИС ТЭК; связь с группой оборудования (Топливо) по numb"
         ),
-        "gis_tek_station_name": "Электростанция (ГИС ТЭК) — наименование из файла",
+        "gis_tek_station_name": "Электростанция (ГИС ТЭК) – наименование из файла",
         "station_type": "Тип станции из файла ГИС ТЭК",
         "equipment_group_id": (
             "Группа оборудования (Топливо), FK -> gs_fue.gs_fue_equipment_groups"

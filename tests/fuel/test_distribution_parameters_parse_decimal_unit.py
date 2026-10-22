@@ -28,7 +28,7 @@ def test_parse_decimal_roundtrip_e_from_page_display():
 def test_parse_decimal_empty_and_invalid_stay_none():
     assert _parse_decimal(None) is None
     assert _parse_decimal("") is None
-    assert _parse_decimal("—") is None
+    assert _parse_decimal("–") is None
     assert _parse_decimal("12 34abc") is None
     assert _parse_decimal(True) is None
 

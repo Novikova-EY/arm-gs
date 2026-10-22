@@ -260,7 +260,7 @@ FUEL_TCE_OVERLAY_BY_KEY: dict[str, str] = {
     "PROCH_6tp": "proch_tce",
 }
 
-# Подписи столбцов расхода топлива из ТЭП (код Access — отдельно, как на fuel params).
+# Подписи столбцов расхода топлива из ТЭП (код Access – отдельно, как на fuel params).
 FUEL_TCE_HEADER_META: dict[str, dict[str, str]] = {
     "GAZ_All": {"label": "Расход газа, всего, т у.т.", "access_code": "GAZ + ISK_GAZ"},
     "GAZ_6tp": {"label": "газ", "access_code": "GAZ + ISK_GAZ"},
@@ -293,9 +293,9 @@ ZV_DISPLAY_COLUMN_SWAPS: tuple[tuple[str, str], ...] = (
     ("VIBROS_ekol", "VIBR_cnt"),
 )
 
-# Сверка с модулем «Генерация» на вкладках «С котельными»: станционные
+# Сверка с модулем «Генерация» на обеих вкладках анализа: станционные
 # «Руст, МВт» и «Выработка ЭЭ, млн кВтч (Генерация)» из карточки станции.
-STATION_GENERATION_SHEET_SLUGS = VSE_SHEET_SLUGS
+STATION_GENERATION_SHEET_SLUGS = ANALYSIS_SHEET_SLUGS
 STATION_RUST_COLUMN_KEY = "nust_generation"
 STATION_GENERATION_COLUMN_KEY = "W_en_generation"
 # (новый столбец, подпись, столбцы макета: после первого найденного вставляем и с ним сверяем)
@@ -310,22 +310,23 @@ STATION_GENERATION_COLUMN_LABELS: dict[str, str] = {
     key: header for key, header, _macro_keys in STATION_GENERATION_COLUMNS
 }
 # Станция группы оборудования не привязана в модуле «Генерация» (как на /ecology/gis_tek/).
-GENERATION_STATION_UNKNOWN_NAME = "—"
+GENERATION_STATION_UNKNOWN_NAME = "–"
 
-# Столбец «Принадлежность» на вкладках «С котельными»: отрасль / промпредприятие
-# по коду VED строки «Топливо» — те же значения, что на страницах ГИС ТЭК.
-STATION_AFFILIATION_SHEET_SLUGS = VSE_SHEET_SLUGS
+# Столбец «Принадлежность» на обеих вкладках анализа: отрасль / промпредприятие
+# по коду VED строки «Топливо» – те же значения, что на страницах ГИС ТЭК.
+STATION_AFFILIATION_SHEET_SLUGS = ANALYSIS_SHEET_SLUGS
 STATION_AFFILIATION_COLUMN_KEY = "station_affiliation"
 STATION_AFFILIATION_LABEL = "Принадлежность"
 # Вставляется сразу после «Отпуск ТЭ, тыс.Гкал» (Q).
 STATION_AFFILIATION_AFTER_KEY = "Teplo"
-# Нет данных ГИС ТЭК — то же значение, что в столбце на страницах ГИС ТЭК.
-STATION_AFFILIATION_UNKNOWN = "—"
+# Нет данных ГИС ТЭК – то же значение, что в столбце на страницах ГИС ТЭК.
+STATION_AFFILIATION_UNKNOWN = "–"
 
 # Шапка ЗВ как на /ecology/gis_tek/pollutants/: группа + «всего» = сумма слагаемых.
 ZV_GASEOUS_TOTAL_KEY = "GAZ and ZHID"
 ZV_SOLID_KEY = "TVERD_V"
 ZV_TOTAL_KEY = "VIBROS_ekol"
+ZV_NORM_DEFAULT_PARTS = ("solid_substances", "sulfur_dioxide", "carbon_monoxide", "nitrogen_oxides")
 ZV_GASEOUS_PART_KEYS: tuple[str, ...] = (
     "SO2_gaz",
     "CO_gaz",
@@ -366,7 +367,7 @@ ZV_ECOLOGY_EDIT_RELATED_KEYS: dict[str, tuple[str, ...]] = {
 }
 
 # Верхняя строка шапки ПГ: объединение столбцов вместо «Отчет» / «Макет Экология».
-# NUST / W_en / Teplo не группируются — ячейки тянутся на всю высоту шапки.
+# NUST / W_en / Teplo не группируются – ячейки тянутся на всю высоту шапки.
 PG_FUEL_HEADER_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Газ", ("GAZ_All", "GAZ_ESTEST", "GAZ_ek", "d_gaz", "CO2_gaz", "K_gaz_ek")),
     ("Мазут", ("MAZUT_6tp", "MAZUT_ek", "d_mazut", "CO2_mazut", "K_mazut_ek")),
@@ -377,7 +378,7 @@ PG_FUEL_HEADER_GROUP_KEYS: frozenset[str] = frozenset(
 )
 PG_DIFF_HEADER_KEYS = frozenset({"d_gaz", "d_mazut", "d_tv"})
 
-# 2-я строка шапки ПГ: без привязки к виду топлива (вид — в 1-й строке групп).
+# 2-я строка шапки ПГ: без привязки к виду топлива (вид – в 1-й строке групп).
 PG_GENERIC_FUEL_LEAF_LABELS: dict[str, str] = {
     "GAZ_All": "Расход топлива, всего, т у.т.",
     "GAZ_6tp": "Расход топлива, всего, т у.т.",
@@ -526,7 +527,7 @@ def zv_emissions_banner_keys() -> tuple[str, ...]:
 
 ZV_ENERGY_SPECIFIC_BANNER_TITLE = "Удельные по электрической энергии, г/кВтч"
 ZV_ENERGY_SPECIFIC_LEAF_LABELS: dict[str, str] = {
-    "udel_na_energ": "на приведенную (с учетом перевода отпуска тепла)",
+    "udel_na_energ": "всего ЗВ как на приведенную (с учетом перевода отпуска тепла)",
     "normir_ZV_na_ee": "на выработку электроэнергии",
     "normir_ZV_na_energ": "нормируемые ЗВ на приведенную (с учетом перевода отпуска тепла)",
 }
@@ -536,10 +537,9 @@ def zv_energy_specific_banner_keys() -> tuple[str, ...]:
     """Ключи под шапкой «Удельные по электрической энергии, г/кВтч»."""
     _title, ingredient_keys, _labels = zv_normir_ingredient_header_group()
     return (
-        "udel_na_energ",
         ZV_EE_SPECIFIC_KEY,
         "normir_ZV_na_energ",
-    ) + ingredient_keys
+    ) + ingredient_keys + ("udel_na_energ",)
 
 
 def bundled_xlsx_path() -> Path:

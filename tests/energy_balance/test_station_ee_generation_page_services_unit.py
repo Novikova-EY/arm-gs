@@ -50,9 +50,9 @@ def _mock_station_placement(monkeypatch):
     [
         (STATION_SIGN_ESPP, True, "да"),
         ("true", True, STATION_SIGN_ESPP),
-        ("false", False, "—"),
-        (None, False, "—"),
-        ("", False, "—"),
+        ("false", False, "–"),
+        (None, False, "–"),
+        ("", False, "–"),
     ],
 )
 def test_station_sign_display_formats_import_and_native_values(
@@ -119,7 +119,7 @@ def test_build_generation_aggregates_after_2018_keeps_espp_stations():
         period_columns=[(2024, "2024")],
     )
 
-    # С 2019 свод ЭСПП не добавляем — только станции, включая ЭСПП.
+    # С 2019 свод ЭСПП не добавляем – только станции, включая ЭСПП.
     assert aggregates["total"][2024] == Decimal("140")
 
 

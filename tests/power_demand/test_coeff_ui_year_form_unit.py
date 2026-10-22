@@ -43,7 +43,7 @@ def test_apply_coeff_ui_year_form_context_sets_flags(monkeypatch):
 
 
 def test_apply_coeff_ui_year_form_context_keeps_table_years(monkeypatch):
-    """Форма 2021–2031 не режет колонки таблицы: скрытие — на клиенте."""
+    """Форма 2021–2031 не режет колонки таблицы: скрытие – на клиенте."""
     app = Flask(__name__)
     monkeypatch.setattr(routes, "_filter_year_list_for_summary", lambda: list(range(2010, 2041)))
     table_years = list(range(2016, 2032))

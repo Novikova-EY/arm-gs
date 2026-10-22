@@ -69,7 +69,7 @@ def save_machine_details_across_versions(
     external_code = (getattr(anchor_machine, "external_code", None) or "").strip()
     if not external_code:
         flash(
-            "У агрегата отсутствует external_code — синхронизация во всех версиях невозможна.",
+            "У агрегата отсутствует external_code – синхронизация во всех версиях невозможна.",
             "warning",
         )
         return redirect(

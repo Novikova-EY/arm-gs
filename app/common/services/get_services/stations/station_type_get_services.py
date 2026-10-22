@@ -8,7 +8,7 @@ from app.common.services.database_version_services import get_current_version
 def get_station_type_list_full():
     """Полный список типов электростанций текущей версии БД.
 
-    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache —
+    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache –
     после завершения запроса сессия закрывается, и повторное обращение к атрибутам
     даёт DetachedInstanceError.
     """

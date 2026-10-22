@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ГЭС/ГАЭС: срок строительства — numeric(12,1) вместо integer.
+"""ГЭС/ГАЭС: срок строительства – numeric(12,1) вместо integer.
 
 Revision ID: r3s4t5u6v7w8
 Revises: p1q2r3s4t5u6

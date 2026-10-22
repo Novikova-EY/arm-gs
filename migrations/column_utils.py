@@ -88,7 +88,7 @@ def column_is_nullable(conn: Connection, schema: str, table: str, column: str) -
 def database_versions_physical_table_name(conn: Connection, schema: str = "gs_sys") -> str | None:
     """Таблица версий БД для FK.
 
-    После e0f1a2b3c4d5 базовая таблица — gs_sys_database_versions.
+    После e0f1a2b3c4d5 базовая таблица – gs_sys_database_versions.
     Совместимый объект gs_database_versions из y2z3a4b5c6d7 может быть VIEW;
     CREATE TABLE … REFERENCES … недопустим к VIEW в PostgreSQL.
     """
@@ -110,7 +110,7 @@ def database_versions_physical_table_name(conn: Connection, schema: str = "gs_sy
 
 
 def station_prospective_place_aes_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_station_prospective_place_aes, до — station_prospective_place_aes."""
+    """После c2d3e4f5a6b7 – gs_gen_station_prospective_place_aes, до – station_prospective_place_aes."""
     if table_exists(conn, schema, "gs_gen_station_prospective_place_aes"):
         return "gs_gen_station_prospective_place_aes"
     if table_exists(conn, schema, "station_prospective_place_aes"):
@@ -119,7 +119,7 @@ def station_prospective_place_aes_table_name(conn: Connection, schema: str) -> s
 
 
 def machine_prospective_place_aes_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_machine_prospective_place_aes, до — machine_prospective_place_aes."""
+    """После c2d3e4f5a6b7 – gs_gen_machine_prospective_place_aes, до – machine_prospective_place_aes."""
     if table_exists(conn, schema, "gs_gen_machine_prospective_place_aes"):
         return "gs_gen_machine_prospective_place_aes"
     if table_exists(conn, schema, "machine_prospective_place_aes"):
@@ -128,7 +128,7 @@ def machine_prospective_place_aes_table_name(conn: Connection, schema: str) -> s
 
 
 def prospective_place_types_aes_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_gs_prospective_place_types, до — gs_prospective_place_types."""
+    """После c2d3e4f5a6b7 – gs_gen_gs_prospective_place_types, до – gs_prospective_place_types."""
     if table_exists(conn, schema, "gs_gen_gs_prospective_place_types"):
         return "gs_gen_gs_prospective_place_types"
     if table_exists(conn, schema, "gs_prospective_place_types"):
@@ -137,7 +137,7 @@ def prospective_place_types_aes_table_name(conn: Connection, schema: str) -> str
 
 
 def prospective_place_types_ges_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_gs_prospective_place_types_ges, до — gs_prospective_place_types_ges."""
+    """После c2d3e4f5a6b7 – gs_gen_gs_prospective_place_types_ges, до – gs_prospective_place_types_ges."""
     if table_exists(conn, schema, "gs_gen_gs_prospective_place_types_ges"):
         return "gs_gen_gs_prospective_place_types_ges"
     if table_exists(conn, schema, "gs_prospective_place_types_ges"):
@@ -146,7 +146,7 @@ def prospective_place_types_ges_table_name(conn: Connection, schema: str) -> str
 
 
 def station_prospective_place_ges_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_station_prospective_place_ges, до — station_prospective_place_ges."""
+    """После c2d3e4f5a6b7 – gs_gen_station_prospective_place_ges, до – station_prospective_place_ges."""
     if table_exists(conn, schema, "gs_gen_station_prospective_place_ges"):
         return "gs_gen_station_prospective_place_ges"
     if table_exists(conn, schema, "station_prospective_place_ges"):
@@ -155,7 +155,7 @@ def station_prospective_place_ges_table_name(conn: Connection, schema: str) -> s
 
 
 def ges_tep_source_project_indicators_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_ges_tep_source_project_indicators, до — ges_tep_source_project_indicators."""
+    """После c2d3e4f5a6b7 – gs_gen_ges_tep_source_project_indicators, до – ges_tep_source_project_indicators."""
     if table_exists(conn, schema, "gs_gen_ges_tep_source_project_indicators"):
         return "gs_gen_ges_tep_source_project_indicators"
     if table_exists(conn, schema, "ges_tep_source_project_indicators"):
@@ -164,7 +164,7 @@ def ges_tep_source_project_indicators_table_name(conn: Connection, schema: str) 
 
 
 def prospective_place_types_gaes_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_gs_prospective_place_types_gaes, до — gs_prospective_place_types_gaes."""
+    """После c2d3e4f5a6b7 – gs_gen_gs_prospective_place_types_gaes, до – gs_prospective_place_types_gaes."""
     if table_exists(conn, schema, "gs_gen_gs_prospective_place_types_gaes"):
         return "gs_gen_gs_prospective_place_types_gaes"
     if table_exists(conn, schema, "gs_prospective_place_types_gaes"):
@@ -173,7 +173,7 @@ def prospective_place_types_gaes_table_name(conn: Connection, schema: str) -> st
 
 
 def station_prospective_place_gaes_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_station_prospective_place_gaes, до — station_prospective_place_gaes."""
+    """После c2d3e4f5a6b7 – gs_gen_station_prospective_place_gaes, до – station_prospective_place_gaes."""
     if table_exists(conn, schema, "gs_gen_station_prospective_place_gaes"):
         return "gs_gen_station_prospective_place_gaes"
     if table_exists(conn, schema, "station_prospective_place_gaes"):
@@ -182,7 +182,7 @@ def station_prospective_place_gaes_table_name(conn: Connection, schema: str) -> 
 
 
 def gaes_tep_source_project_indicators_table_name(conn: Connection, schema: str) -> str | None:
-    """После c2d3e4f5a6b7 — gs_gen_gaes_tep_source_project_indicators, до — gaes_tep_source_project_indicators."""
+    """После c2d3e4f5a6b7 – gs_gen_gaes_tep_source_project_indicators, до – gaes_tep_source_project_indicators."""
     if table_exists(conn, schema, "gs_gen_gaes_tep_source_project_indicators"):
         return "gs_gen_gaes_tep_source_project_indicators"
     if table_exists(conn, schema, "gaes_tep_source_project_indicators"):
@@ -191,7 +191,7 @@ def gaes_tep_source_project_indicators_table_name(conn: Connection, schema: str)
 
 
 def gs_gen_stations_table_name(conn: Connection, schema: str) -> str | None:
-    """После b1c2d3e4f5a6 — gs_gen_stations, до — stations."""
+    """После b1c2d3e4f5a6 – gs_gen_stations, до – stations."""
     if table_exists(conn, schema, "gs_gen_stations"):
         return "gs_gen_stations"
     if table_exists(conn, schema, "stations"):
@@ -200,7 +200,7 @@ def gs_gen_stations_table_name(conn: Connection, schema: str) -> str | None:
 
 
 def pgu_machine_names_table_name(conn: Connection, schema: str) -> str | None:
-    """После b1c2d3e4f5a6 — gs_gen_pgu_machine_names, до переименования — pgu_machine_names."""
+    """После b1c2d3e4f5a6 – gs_gen_pgu_machine_names, до переименования – pgu_machine_names."""
     if table_exists(conn, schema, "gs_gen_pgu_machine_names"):
         return "gs_gen_pgu_machine_names"
     if table_exists(conn, schema, "pgu_machine_names"):
@@ -217,7 +217,7 @@ def gs_pd_demand_params_physical_table_name(
 
     До переименования: gs_energy_area_demand_params; после: gs_pd_energy_area_demand_params.
     Имена индексов часто остаются с прежним корнем (до rename), а относятся к уже
-    переименованной таблице — нельзя создавать вторую таблицу со старым именем.
+    переименованной таблице – нельзя создавать вторую таблицу со старым именем.
 
     Если таблицы нет, возвращает None.
     """
@@ -240,7 +240,7 @@ def gs_pd_demand_params_physical_table_name(
 
 
 def machines_table_name(conn: Connection, schema: str) -> str | None:
-    """После b1c2d3e4f5a6 — gs_gen_machines, до — machines."""
+    """После b1c2d3e4f5a6 – gs_gen_machines, до – machines."""
     if table_exists(conn, schema, "gs_gen_machines"):
         return "gs_gen_machines"
     if table_exists(conn, schema, "machines"):
@@ -249,7 +249,7 @@ def machines_table_name(conn: Connection, schema: str) -> str | None:
 
 
 def pgu_machines_table_name(conn: Connection, schema: str) -> str | None:
-    """Имя таблицы ПГУ: после b1c2d3e4f5a6 это gs_gen_pgu_machines, до — pgu_machines."""
+    """Имя таблицы ПГУ: после b1c2d3e4f5a6 это gs_gen_pgu_machines, до – pgu_machines."""
     if table_exists(conn, schema, "gs_gen_pgu_machines"):
         return "gs_gen_pgu_machines"
     if table_exists(conn, schema, "pgu_machines"):

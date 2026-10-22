@@ -14,7 +14,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_ust_value = energy_units_yearly_p_ust.get(current_eu_id, {}).get(year, 0) %}
                 {% if p_ust_value is none or p_ust_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_ust_value | format_decimal }}
                 {% endif %}
@@ -31,7 +31,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_ogr_value = energy_units_yearly_p_ogr.get(current_eu_id, {}).get(year, 0) %}
                 {% if p_ogr_value is none or p_ogr_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_ogr_value | format_decimal }}
                 {% endif %}
@@ -48,7 +48,7 @@
             <td class="power-column" style="font-weight: bold;">
                 {% set p_rasp_value = energy_units_yearly_p_rasp.get(current_eu_id, {}).get(year, 0) %}
                 {% if p_rasp_value is none or p_rasp_value == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ p_rasp_value | format_decimal }}
                 {% endif %}

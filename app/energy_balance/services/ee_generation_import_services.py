@@ -247,7 +247,7 @@ def _parse_prom_sign_value(value) -> str | None:
 def _is_name_header(header_norm: str) -> bool:
     if "признак" in header_norm:
         return False
-    # «Наименование Энергосистемы» — колонка РЭС, не название объекта/показателя.
+    # «Наименование Энергосистемы» – колонка РЭС, не название объекта/показателя.
     if "энергосистем" in header_norm:
         return False
     if header_norm == "электростанция":

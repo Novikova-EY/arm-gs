@@ -57,7 +57,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="fuelFormulaAddYearBase">Базовый год</label>
                         <select name="id_base_year" id="fuelFormulaAddYearBase" class="form-select form-select-lg" aria-label="Базовый год" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -97,7 +97,7 @@
                     <div class="mb-3">
                         <label class="form-label" for="fuelFormulaAddPeriodBase">Базовый год</label>
                         <select name="id_base_year" id="fuelFormulaAddPeriodBase" class="form-select form-select-lg" aria-label="Базовый год для периода" required>
-                            <option value="">—</option>
+                            <option value="">–</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -174,7 +174,7 @@
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
-                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                                 {% if group_block.get('is_composite_total_row') %}
                                 {% set group_name = group_name ~ ', всего' %}
                                 {% endif %}
@@ -196,7 +196,7 @@
             {% for group_rows in equipment_group_fuel_formula_row_groups|default([]) %}
                 {% set row_span = group_rows|length %}
                 {% set group_entity = group_rows[0][0] %}
-                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                 {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
                 {% for row in group_rows %}
                 {% set param = row[1] %}
@@ -273,7 +273,7 @@
         width: 100%;
         max-width: 100%;
     }
-    /* Вся страница (кнопки, заголовок, фильтры, таблица) — 0,75 ширины */
+    /* Вся страница (кнопки, заголовок, фильтры, таблица) – 0,75 ширины */
     .fuel-calc-edit-shell .fuel-calc-edit-pane-content {
         width: 75%;
         max-width: 75%;
@@ -347,7 +347,7 @@
         font-size: inherit;
         font-family: inherit;
     }
-    /* Поля formtxt — как на ТЭП (specific_fc): без «белых окон» внутри строки */
+    /* Поля formtxt – как на ТЭП (specific_fc): без «белых окон» внутри строки */
     #fuelFormulaTable tbody td.fuel-formula-formtxt-cell:has(> input.form-control) {
         padding: 0 !important;
         vertical-align: middle;
@@ -375,7 +375,7 @@
     }
     /*
       overflow на #stationsTableContainer ломает sticky у thead относительно .fuel-calc-edit-top.
-      Горизонтальный и вертикальный скролл — у .fuel-calc-edit-top (overflow-auto).
+      Горизонтальный и вертикальный скролл – у .fuel-calc-edit-top (overflow-auto).
     */
     .fuel-calc-edit-shell #stationsTableContainer {
         max-height: none !important;

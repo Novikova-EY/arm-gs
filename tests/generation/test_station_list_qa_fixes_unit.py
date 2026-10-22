@@ -181,7 +181,7 @@ def test_parse_machine_commission_year():
 
 
 def test_commission_year_sort_ungrouped_voronezh_2042_not_first():
-    """Без группы оборудования каждый агрегат — отдельный блок; раньше порядок шёл по id."""
+    """Без группы оборудования каждый агрегат – отдельный блок; раньше порядок шёл по id."""
     machines = [
         _sort_machine(id=10, date_commission_year=2042, machine_name="а"),
         _sort_machine(id=11, date_commission_year=2031, machine_name="б"),
@@ -205,7 +205,7 @@ def test_commission_year_sort_odd_then_even_lipetsk():
 
 
 def test_commission_year_sort_new_ses_group_even_then_odd():
-    """«Новые СЭС»: пустое топливо дробит блоки по id — годы должны идти по возрастанию."""
+    """«Новые СЭС»: пустое топливо дробит блоки по id – годы должны идти по возрастанию."""
     machines = [
         _sort_machine(id=20, machine_group="Новые СЭС", date_commission_year=2032),
         _sort_machine(id=21, machine_group="Новые СЭС", date_commission_year=2034),
@@ -231,7 +231,7 @@ def test_commission_year_sort_new_ses_mixed_buryatia():
 
 
 def test_tes_numbered_units_keep_number_order_not_year():
-    """Нумерные ТЭС: ст. № 1, 2, 3 — не год ввода первым."""
+    """Нумерные ТЭС: ст. № 1, 2, 3 – не год ввода первым."""
     machines = [
         _sort_machine(id=30, machine_number="3", machine_group="ТЭС", date_commission_year=2020),
         _sort_machine(id=31, machine_number="1", machine_group="ТЭС", date_commission_year=2025),
@@ -415,7 +415,7 @@ def test_tes_type_filter_uses_year_range_on_station_list():
     from pathlib import Path
 
     svc = Path("app/generation/services/station_services/station_services.py").read_text(encoding="utf-8")
-    # Основной отбор станций — between по диапазону, не только current_year
+    # Основной отбор станций – between по диапазону, не только current_year
     assert "MachineTesType.year_number.between(_sy, _ey)" in svc
     filt = Path("app/generation/services/station_services/filters_services.py").read_text(encoding="utf-8")
     assert "MachineTesType.year_number.between(_sy, _ey)" in filt

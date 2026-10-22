@@ -170,7 +170,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         Агрегированное текстовое поле с названием(ями) РЭС.
         Приоритет: прямая связь id_regional_energy_system, затем связь через субъект РФ.
         """
-        # 1) Если у электростанции явно указана РЭС — используем ее
+        # 1) Если у электростанции явно указана РЭС – используем ее
         if self.regional_energy_system_obj:
             return self.regional_energy_system_obj.name
 
@@ -185,7 +185,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         Агрегированное текстовое поле ОЭС.
         Приоритет: прямая связь РЭС у электростанции, затем связь через субъект РФ.
         """
-        # 1) Если у электростанции явно указана РЭС с ОЭС — используем ее
+        # 1) Если у электростанции явно указана РЭС с ОЭС – используем ее
         if self.regional_energy_system_obj and self.regional_energy_system_obj.union_energy_system:
             return self.regional_energy_system_obj.union_energy_system.name
 
@@ -209,7 +209,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         Агрегированное текстовое поле «Часть энергосистемы России».
         Приоритет: прямая связь РЭС у электростанции, затем связь через субъект РФ.
         """
-        # 1) Если у электростанции явно указана РЭС с типом энергосистемы — используем ее
+        # 1) Если у электростанции явно указана РЭС с типом энергосистемы – используем ее
         if (
             self.regional_energy_system_obj
             and self.regional_energy_system_obj.union_energy_system

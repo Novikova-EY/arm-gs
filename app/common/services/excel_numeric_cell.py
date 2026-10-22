@@ -14,7 +14,7 @@ from typing import Any
 def excel_number_format(rounding_digits: int) -> str:
     """Числовой формат Excel (US-код в файле; отображение по локали ОС).
 
-    В OOXML десятичный разделитель — точка, тысячи — запятая. В русской локали
+    В OOXML десятичный разделитель – точка, тысячи – запятая. В русской локали
     Excel покажет пробел и запятую.
     """
     if rounding_digits == -1:
@@ -38,7 +38,7 @@ def parse_excel_numeric(value: Any) -> float | None:
         return x if math.isfinite(x) else None
 
     s = str(value).strip()
-    if s in ("", "—", "-"):
+    if s in ("", "–", "-"):
         return None
     s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
     negative = s.startswith("-")
@@ -64,11 +64,11 @@ def excel_numeric_cell_value(
     parsed = parse_excel_numeric(value)
     if parsed is None:
         if value in (None, ""):
-            return "—", False
+            return "–", False
         s = str(value).strip()
-        if s in ("—", "-"):
-            return "—", False
-        return value if value not in (None, "") else "—", False
+        if s in ("–", "-"):
+            return "–", False
+        return value if value not in (None, "") else "–", False
     if zero_as_dash and parsed == 0 and not verification:
-        return "—", False
+        return "–", False
     return parsed, True

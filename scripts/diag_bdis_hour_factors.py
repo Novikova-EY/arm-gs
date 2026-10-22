@@ -239,9 +239,9 @@ def main():
         )
         for r in focus_lines:
             leak = "Y" if r["leak"] else "."
-            acc_h = f"{r['acc_h']:.1f}" if r["acc_h"] is not None else "—"
-            acc_e = f"{r['acc_e']:.3f}" if r["acc_e"] is not None else "—"
-            impl = f"{r['implied_kopt_ke']:.5f}" if r["implied_kopt_ke"] is not None else "—"
+            acc_h = f"{r['acc_h']:.1f}" if r["acc_h"] is not None else "–"
+            acc_e = f"{r['acc_e']:.3f}" if r["acc_e"] is not None else "–"
+            impl = f"{r['implied_kopt_ke']:.5f}" if r["implied_kopt_ke"] is not None else "–"
             print(
                 f"{r['numb']:6d} {r['obl'] or 0:3d} {leak:>4} {d0(r['bk']):7.1f} {r['koptim']:7.4f} {r['ke']:5.3f} "
                 f"{r['hb']:8.1f} {r['own_hb']:8.1f} {r['h_pred']:8.1f} {acc_h:>8} "

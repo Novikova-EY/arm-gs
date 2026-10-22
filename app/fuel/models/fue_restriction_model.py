@@ -155,7 +155,7 @@ FUEL_RESTRICTION_LIST_COLUMN_HEADINGS: list[tuple[str, str, str]] = [
 ]
 
 # Подсказки-формулы для шапок расчётных колонок (иконка i).
-# Дефолты; эффективные тексты — get_restriction_column_formulas().
+# Дефолты; эффективные тексты – get_restriction_column_formulas().
 FUEL_RESTRICTION_COLUMN_FORMULAS: dict[str, str] = {
     "etp": (
         "Расчётная величина на этапе «Распред» (Ограничения_Click): "

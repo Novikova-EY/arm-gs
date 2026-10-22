@@ -32,7 +32,7 @@ def view_logs():
     date_from = _parse_date_arg(date_from_raw)
     date_to = _parse_date_arg(date_to_raw)
 
-    # Доступ к чувствительным данным — строго только для роли admin
+    # Доступ к чувствительным данным – строго только для роли admin
     role_names = getattr(current_user, "role_names", []) or []
     if not isinstance(role_names, (list, tuple, set)):
         role_names = [role_names]
@@ -43,7 +43,7 @@ def view_logs():
             or "admin" in role_names
         )
     )
-    # Столбец «Версия» и фильтр по версии доступны всем; ранее — только admin
+    # Столбец «Версия» и фильтр по версии доступны всем; ранее – только admin
     database_version_filter = request.args.get('database_version_id', '').strip()
     sort_by = request.args.get('sort_by', 'timestamp')
     sort_dir = request.args.get('sort_dir', 'desc')
@@ -118,9 +118,9 @@ def view_logs():
             log.timestamp_msk = None
 
         log.database_version_display = (
-            versions_map.get(log.database_version_id, '—')
+            versions_map.get(log.database_version_id, '–')
             if log.database_version_id
-            else '—'
+            else '–'
         )
 
     # ✦ Контрольные часы (один раз за запрос)

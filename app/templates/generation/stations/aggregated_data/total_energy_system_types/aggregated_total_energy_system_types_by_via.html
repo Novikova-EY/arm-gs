@@ -15,7 +15,7 @@
             {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -34,7 +34,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -53,7 +53,7 @@
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {% if val is none or val == 0 %}
-                    &mdash;
+                    &ndash;
                 {% else %}
                     {{ val | format_decimal }}
                 {% endif %}
@@ -80,7 +80,7 @@
                     <td class="power-column">
                         {% set p_ust_value = total_energy_system_types_by_station_types_yearly_p_ust.get(station_type_id, {}).get(y, 0) %}
                         {% if p_ust_value is none or p_ust_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_ust_value | format_decimal }}
                         {% endif %}
@@ -97,7 +97,7 @@
                     <td class="power-column">
                         {% set p_ogr_value = total_energy_system_types_by_station_types_yearly_p_ogr.get(station_type_id, {}).get(y, 0) %}
                         {% if p_ogr_value is none or p_ogr_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_ogr_value | format_decimal }}
                         {% endif %}
@@ -114,7 +114,7 @@
                     <td class="power-column">
                         {% set p_rasp_value = total_energy_system_types_by_station_types_yearly_p_rasp.get(station_type_id, {}).get(y, 0) %}
                         {% if p_rasp_value is none or p_rasp_value == 0 %}
-                            &mdash;
+                            &ndash;
                         {% else %}
                             {{ p_rasp_value | format_decimal }}
                         {% endif %}

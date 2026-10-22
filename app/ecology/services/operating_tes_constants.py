@@ -19,8 +19,8 @@ GROUP_SPECIAL = "special"
 
 TERRITORIES: tuple[dict[str, Any], ...] = (
     {'slug': 'vsego', 'sheet_name': 'Всего', 'group': 'territory'},
-    {'slug': 'minen', 'sheet_name': 'МинЭн', 'group': 'special'},
-    {'slug': 'prompred', 'sheet_name': 'ПромПред', 'group': 'special'},
+    {'slug': 'minen', 'sheet_name': 'Станции отрасли', 'group': 'special'},
+    {'slug': 'prompred', 'sheet_name': 'Пром-предприятия', 'group': 'special'},
     {'slug': 'severo-zapad', 'sheet_name': 'ОЭС Северо-Запада', 'group': 'territory'},
     {'slug': 'centr', 'sheet_name': 'ОЭС Центра', 'group': 'territory'},
     {'slug': 'srednyaya-volga', 'sheet_name': 'ОЭС Средней Волги', 'group': 'territory'},
@@ -28,70 +28,84 @@ TERRITORIES: tuple[dict[str, Any], ...] = (
     {'slug': 'ural', 'sheet_name': 'ОЭС Урала', 'group': 'territory'},
     {'slug': 'sibir', 'sheet_name': 'ОЭС Сибири', 'group': 'territory'},
     {'slug': 'vostok', 'sheet_name': 'ОЭС Востока', 'group': 'territory'},
-    {'slug': 'isolated-dv', 'sheet_name': 'Из.узлы Дальнего Востока', 'group': 'special'},
-    {'slug': 'nikolaevsky', 'sheet_name': 'Николаевский э.р.', 'group': 'special'},
-    {'slug': 'norilsk', 'sheet_name': 'Норильск.эн.р-н', 'group': 'special'},
+    {'slug': 'norilsk', 'sheet_name': 'ТИТЭС Сибири', 'group': 'special'},
+    {'slug': 'isolated-dv', 'sheet_name': 'ТИТЭС Востока', 'group': 'special'},
+    {'slug': 'nikolaevsky', 'sheet_name': 'Децентрализованная зона (Николаевский энергорайон)', 'group': 'special'},
 )
 
+COEFFICIENT_TERRITORIES: tuple[dict[str, Any], ...] = (
+    *(item for item in TERRITORIES if item["slug"] not in {
+        "minen", "prompred", "isolated-dv", "nikolaevsky", "norilsk"
+    }),
+    {"slug": "tites-sibir", "sheet_name": "ТИТЭС Сибири"},
+    {"slug": "tites-vostok", "sheet_name": "ТИТЭС Востока"},
+    {"slug": "decentralized-zone", "sheet_name": "Децентрализованная зона (Николаевский энергорайон)"},
+)
+COEFFICIENT_AFFILIATIONS = (
+    {"slug": "minen", "label": "Станции отрасли"},
+    {"slug": "prompred", "label": "Промпредприятия"},
+)
+
+
+def get_coefficient_territory(slug: str) -> dict[str, Any] | None:
+    return next((item for item in COEFFICIENT_TERRITORIES if item["slug"] == slug), None)
+
+
 CALC_SHEETS: tuple[dict[str, Any], ...] = (
-    {'slug': 'toplivo', 'sheet_name': 'Данные по модулю Топливо', 'page_title': 'Топливные показатели (модуль Топливо)', 'unit': 'тыс. т у.т.', 'layout': 'fuel'},
-    {'slug': 'spravochnik', 'sheet_name': 'Справочник', 'page_title': 'Справочник характеристик топлива', 'unit': '', 'layout': 'spravochnik'},
+    {'slug': 'toplivo', 'sheet_name': 'Данные по модулю Топливо', 'page_title': 'Количество сжигаемого топлива по действующим тепловым электростанциям, тыс.т у.т./год', 'unit': 'тыс. т у.т.', 'layout': 'fuel'},
     {'slug': 'khar-topl', 'sheet_name': 'Характеристики', 'page_title': 'Характеристика топлив, продуктов сгорания, удельных выбросов', 'unit': '', 'layout': 'chars'},
     {'slug': 'koeff', 'sheet_name': 'Коэффициенты', 'unit': '', 'layout': 'coeff'},
-    {'slug': 'zola', 'sheet_name': 'Зола', 'page_title': 'Выбросы твердых веществ в атмосферу', 'unit': 'тыс. т', 'layout': 'emission'},
+    {'slug': 'zola', 'sheet_name': 'Зола', 'page_title': 'Выбросы твердых веществ в атмосферу, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission'},
     {'slug': 'sera', 'sheet_name': 'Сера', 'page_title': 'Выбросы диоксидов серы МвыбSO2, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission'},
     {'slug': 'azot', 'sheet_name': 'Азот', 'page_title': 'Выбросы оксидов азота в атмосферу МвыбNOx, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission'},
     {'slug': 'co', 'sheet_name': 'CO', 'page_title': 'Выбросы монооксидов углерода в атмосферу МвыбCO, т/год', 'unit': 'т', 'layout': 'emission'},
-    {'slug': 'pg', 'sheet_name': 'ПГ', 'page_title': 'Выбросы ПАРНИКОВЫХ ГАЗОВ (оксидов углерода) в атмосферу МвыбCO2, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission'},
-    {'slug': 'pg-tj', 'sheet_name': 'ПГ через ТДж', 'page_title': 'Выбросы ПАРНИКОВЫХ ГАЗОВ (оксидов углерода) в атмосферу МвыбCO2, млн т/год', 'unit': 'млн т', 'layout': 'emission_tj'},
-    {'slug': 'obemy', 'sheet_name': 'Объемы', 'unit': 'тыс. т', 'layout': 'volumes'},
-    {'slug': 'udel-e', 'sheet_name': 'Удельные по привед Э', 'unit': 'г/кВт·ч', 'layout': 'specific_e'},
-    {'slug': 'udel-fuel', 'sheet_name': 'Удельные по топл', 'unit': 'кг/т у.т.', 'layout': 'specific_fuel'},
-    {'slug': 'udel-ee', 'sheet_name': 'Удельные только по ЭЭ', 'unit': 'г/кВт·ч', 'layout': 'specific_ee'},
+    {'slug': 'pg', 'sheet_name': 'ПГ', 'page_title': 'Выбросы парниковых газов (оксидов углерода) в атмосферу МвыбCO2, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission'},
+    {'slug': 'pg-tj', 'sheet_name': 'ПГ через ТДж', 'page_title': 'Выбросы парниковых газов (оксидов углерода) в атмосферу МвыбCO2, тыс.т/год', 'unit': 'тыс. т', 'layout': 'emission_tj'},
+    {'slug': 'obemy', 'sheet_name': 'Объемы выбросов действующих ТЭС', 'page_title': 'Ожидаемые объемы выбросов вредных веществ и парниковых газов в атмосферу, тыс. т', 'unit': 'тыс. т', 'layout': 'volumes'},
 )
 
 # Отображение листов выбросов как в xls: два столбца на территорию (Зола/Сера/CO/ПГ через ТДж)
-# или один (Азот без n, ПГ = В*Kco2). Мотх. — до улавливания; КПД применяется на «Объемах».
+# или один (Азот без n, ПГ = В*Kco2). Мотх. – до улавливания; КПД применяется на «Объемах».
 EMISSION_SHEET_VIEW: dict[str, dict[str, Any]] = {
     'zola': {
         'kind': 'pair',
-        'left_metric': 'bn',
+        'left_metric': 'heat_bn',
         'right_metric': 'ash_motkh',
         'left_title': 'Перевод в натур.',
         'right_title': 'Мотх.',
-        'formula': 'Мотх=0,01*ВН(аун Ар +qч*Qн/32680)',
+        'formula': 'Мотх = 0,01 · BH · (аун · Aр + qч · Qн / 32680)',
         'show_unit_column': False,
     },
     'sera': {
         'kind': 'pair',
-        'left_metric': 'bn',
+        'left_metric': 'heat_bn',
         'right_metric': 'so2_motkh',
         'left_title': 'Перевод в натур.',
         'right_title': 'Мотх.',
-        'formula': 'Мотх=0,02*ВН*Sp(1-x)',
+        'formula': 'Мотх = 0,02 · BH · Sp · (1 − x)',
         'show_unit_column': False,
     },
     'azot': {
         'kind': 'single',
         'metric': 'nox_raw',
-        'col_title': '0,001*В*(1-qч /100)*b',
-        'formula': 'МотхNOx=0,001*В*(1-qч/100)*(1-n)*b',
+        'col_title': 'Мотх.',
+        'formula': 'МотхNOx = 0,001 · B · (1 − qч / 100) · bj',
         'show_unit_column': False,
     },
     'co': {
         'kind': 'pair',
-        'left_metric': 'bn',
+        'left_metric': 'heat_bn',
         'right_metric': 'co_motkh',
         'left_title': 'Перевод в натур.',
         'right_title': 'Мотх.',
-        'formula': 'Мотхco=0,001*Вн*(q3*R*Qн/1013)*(1-q4/100)',
+        'formula': 'МотхCO = 0,001 · BH · (q3 · R · Qн / 1013) · (1 − q4 / 100)',
         'show_unit_column': False,
     },
     'pg': {
         'kind': 'single',
         'metric': 'pg_motkh',
-        'col_title': 'В*Kco2',
-        'formula': 'Мотхco2=В*Kco2',
+        'col_title': 'Мотх.',
+        'formula': 'МотхCO2 = B · KCO2',
         'show_unit_column': False,
     },
     'pg-tj': {
@@ -99,15 +113,15 @@ EMISSION_SHEET_VIEW: dict[str, dict[str, Any]] = {
         'left_metric': 'energy_tj',
         'right_metric': 'pg_tj_motkh',
         'left_title': 'МДж',
-        'right_title': 'В*Kco2',
-        'formula': 'Qн*Вн/10^6',
+        'right_title': 'Мотх.',
+        'formula': 'МотхCO2 = МДж · KCO2 / 1000',
         'show_unit_column': False,
     },
 }
 
 # Ключи строк макета → Fuel.nazvl / колонки gs_fue (справочник /refdata/fuel).
-# Агрегаты (gaz, isk_gaz, mazut, бассейны) — EquipmentGroupFuelParam;
-# листья (gaz_prir, domen_g, kuzngd, …) — EquipmentGroupExtraFuelParam.
+# Агрегаты (gaz, isk_gaz, mazut, бассейны) – EquipmentGroupFuelParam;
+# листья (gaz_prir, domen_g, kuzngd, …) – EquipmentGroupExtraFuelParam.
 FUEL_PARAM_FIELDS: dict[str, str] = {
     "gas": "gaz",
     "gas_natural": "gaz_prir",
@@ -409,77 +423,77 @@ PARENT_CHILDREN: dict[str, tuple[str, ...]] = {
 }
 
 DEFAULT_CHARACTERISTICS: dict[str, dict[str, float | None]] = {
-    'gas_natural': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 33812.2, 'qh_kcal': 8077.999999999999, 'bj': 2.7, 'k_co2': 1.59, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.154, 'tj_per_kt': 33.82, 't_co2_per_tj': 54.4, 'k_natural': 1.1772392519737258},
-    'gas_associated': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 38099.88, 'qh_kcal': 8077.999999999999, 'bj': 2.7, 'k_co2': 1.695, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.154, 'tj_per_kt': 33.82, 't_co2_per_tj': 57.166666666666664, 'k_natural': 1.2689360498356468},
-    'blast_furnace_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 4190.9868, 'qh_kcal': 1000.9999999999999, 'bj': 2.7, 'k_co2': 7.2, 'r_chem': 0.5, 'q_chem': 1.5, 'tut_per_t': 0.143, 'tj_per_kt': 4.2, 't_co2_per_tj': 260.0, 'k_natural': 0.13771812594618504},
-    'coke_oven_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 16705.332, 'qh_kcal': 3989.9999999999995, 'bj': 2.7, 'k_co2': 1.3, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 0.57, 'tj_per_kt': 16.71, 't_co2_per_tj': 44.4, 'k_natural': 0.5644817679105085},
-    'npz_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 43961.399999999994, 'qh_kcal': 10500.0, 'bj': 2.7, 'k_co2': 1.3, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.5, 'tj_per_kt': 43.96, 't_co2_per_tj': 57.6, 'k_natural': 1.1819554586973922},
-    'mazut': {'ash': 0.05, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.2, 'sulfur_share': 0.02, 'qh_kj': 40141.0, 'qh_kcal': 9590.0, 'bj': 3.2, 'k_co2': 2.27, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.37, 'tj_per_kt': 40.15, 't_co2_per_tj': 77.64, 'k_natural': 1.366148321553468},
-    'diesel': {'ash': 0.025, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.3, 'sulfur_share': 0.02, 'qh_kj': 42620.0, 'qh_kcal': 10180.0, 'bj': 3.2, 'k_co2': 2.17, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.45, 'tj_per_kt': 42.5, 't_co2_per_tj': 74.32, 'k_natural': 1.4538711956021007},
-    'other_oil': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.3, 'sulfur_share': 0.02, 'qh_kj': 41899.0, 'qh_kcal': 10010.0, 'bj': 3.2, 'k_co2': 2.17, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.43, 'tj_per_kt': 41.91, 't_co2_per_tj': 77.4, 'k_natural': 1.5839237691352916},
-    'peat': {'ash': 6.3, 'ash_share': 0.9, 'q_mech': 2.2, 'sulfur': 0.1, 'sulfur_share': 0.15, 'qh_kj': 8120.0, 'qh_kcal': 1940.0, 'bj': 8.2, 'k_co2': 3.11, 'r_chem': 1.0, 'q_chem': 0.75, 'tut_per_t': 0.34, 'tj_per_kt': 9.96, 't_co2_per_tj': 106.0, 'k_natural': 0.2990437690226185},
-    'other_solid': {'ash': 0.6, 'ash_share': 0.9, 'q_mech': 1.8, 'sulfur': 0.1, 'sulfur_share': 0.1, 'qh_kj': 7793.8, 'qh_kcal': 1862.0, 'bj': 4.8, 'k_co2': 3.14, 'r_chem': 1.0, 'q_chem': 0.75, 'tut_per_t': 0.266, 'tj_per_kt': 7.8, 't_co2_per_tj': 112.0, 'k_natural': 0.2412486296645667},
-    'lpg': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 46012.932, 'qh_kcal': 10990.0, 'bj': 2.7, 'k_co2': 1.85, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.57, 'tj_per_kt': 46.01, 't_co2_per_tj': 63.2, 'k_natural': 1.8967826534913126},
-    'other_misc': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 11810.9628, 'qh_kcal': 2821.0, 'bj': 3.2, 'k_co2': 4.19, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 0.403, 'tj_per_kt': 29.31, 't_co2_per_tj': 143.0, 'k_natural': 0.4544929215233868},
-    'donetsk': {'ash': 25.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 2.5, 'sulfur_share': 0.1, 'qh_kj': 18500.0, 'qh_kcal': 4420.0, 'bj': 5.6, 'k_co2': 2.65, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.876, 'tj_per_kt': 25.67, 't_co2_per_tj': 90.2, 'k_natural': 0.804},
-    'moscow': {'ash': 30.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.6, 'sulfur_share': 0.1, 'qh_kj': 8670.0, 'qh_kcal': 2070.0, 'bj': 4.2, 'k_co2': 2.79, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.335, 'tj_per_kt': 9.82, 't_co2_per_tj': 95.0, 'k_natural': 0.24},
-    'inta': {'ash': 25.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 2.0, 'sulfur_share': 0.1, 'qh_kj': 17540.0, 'qh_kcal': 4190.0, 'bj': 7.03, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.649, 'tj_per_kt': 19.02, 't_co2_per_tj': 93.1, 'k_natural': 0.343},
-    'vorkuta': {'ash': 23.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.8, 'sulfur_share': 0.1, 'qh_kj': 20600.0, 'qh_kcal': 4920.0, 'bj': 7.03, 'k_co2': 2.71, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.822, 'tj_per_kt': 24.09, 't_co2_per_tj': 92.6, 'k_natural': 0.608},
-    'kuzn_gd': {'ash': 16.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 21900.0, 'qh_kcal': 5230.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.867, 'tj_per_kt': 25.41, 't_co2_per_tj': 91.9, 'k_natural': 0.712},
-    'kuzn_t': {'ash': 14.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 25120.0, 'qh_kcal': 6000.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.75, 'tj_per_kt': 21.975, 't_co2_per_tj': 91.9, 'k_natural': 0.764},
-    'kuzn_ss': {'ash': 16.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 25330.0, 'qh_kcal': 6050.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.8, 'tj_per_kt': 23.44, 't_co2_per_tj': 91.9, 'k_natural': 0.831},
-    'kuzn_other': {'ash': 30.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.7, 'sulfur_share': 0.1, 'qh_kj': 20934.0, 'qh_kcal': 5000.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.867, 'tj_per_kt': 25.41, 't_co2_per_tj': 91.9, 'k_natural': 0.714},
-    'sverdlovsk': {'ash': 30.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 11010.0, 'qh_kcal': 2630.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.33, 'tj_per_kt': 9.67, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'chelyabinsk': {'ash': 29.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.0, 'sulfur_share': 0.1, 'qh_kj': 12770.0, 'qh_kcal': 3050.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.552, 'tj_per_kt': 16.18, 't_co2_per_tj': 94.9, 'k_natural': 0.528},
-    'kizel': {'ash': 31.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 6.1, 'sulfur_share': 0.1, 'qh_kj': 19590.0, 'qh_kcal': 4680.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.753, 'tj_per_kt': 22.07, 't_co2_per_tj': 94.3, 'k_natural': None},
-    'bashkir': {'ash': 14.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 7450.0, 'qh_kcal': 1780.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.264, 'tj_per_kt': 7.737206400000001, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'nazarov': {'ash': 7.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 13812.857142857143, 'qh_kcal': 3300.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.47, 'tj_per_kt': 13.770999999999999, 't_co2_per_tj': 94.2, 'k_natural': 0.468},
-    'borodino': {'ash': 6.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 15659.0, 'qh_kcal': 3740.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.57, 'tj_per_kt': 16.701, 't_co2_per_tj': 94.2, 'k_natural': 0.573},
-    'berezovsky': {'ash': 4.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.2, 'qh_kj': 15659.0, 'qh_kcal': 3740.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.53, 'tj_per_kt': 15.529000000000002, 't_co2_per_tj': 94.2, 'k_natural': 0.522},
-    'pereyaslav': {'ash': 5.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.05, 'sulfur_share': 0.1, 'qh_kj': 18340.0, 'qh_kcal': 4400.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.58, 'tj_per_kt': 16.994, 't_co2_per_tj': 94.2, 'k_natural': 0.591},
-    'irbey': {'ash': 10.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16990.0, 'qh_kcal': 4055.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.56, 'tj_per_kt': 16.408, 't_co2_per_tj': 94.2, 'k_natural': 0.555},
-    'kansk': {'ash': 5.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.48, 'sulfur_share': 0.1, 'qh_kj': 16931.214285714286, 'qh_kcal': 4045.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.516, 'tj_per_kt': 15.12, 't_co2_per_tj': 98.1, 'k_natural': None},
-    'zheron': {'ash': 24.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 1.0, 'qh_kj': 19880.0, 'qh_kcal': 4770.0, 'bj': 5.0, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.65, 'tj_per_kt': 19.045, 't_co2_per_tj': 94.2, 'k_natural': 0.6},
-    'karabul': {'ash': 15.2, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.0, 'sulfur_share': 1.0, 'qh_kj': 23615.8, 'qh_kcal': 5642.0, 'bj': 5.0, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.754, 'tj_per_kt': 22.1, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'azey': {'ash': 16.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 15990.0, 'qh_kcal': 3820.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.483, 'tj_per_kt': 14.16, 't_co2_per_tj': 93.9, 'k_natural': 0.58},
-    'mugun': {'ash': 15.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.9, 'sulfur_share': 0.1, 'qh_kj': 17290.0, 'qh_kcal': 4130.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.57, 'tj_per_kt': 16.701, 't_co2_per_tj': 94.2, 'k_natural': 0.571},
-    'cheremkhovo': {'ash': 27.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.1, 'sulfur_share': 0.1, 'qh_kj': 17880.0, 'qh_kcal': 4270.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.752, 'tj_per_kt': 22.0, 't_co2_per_tj': 94.0, 'k_natural': 0.63},
-    'khakass': {'ash': 15.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 20560.0, 'qh_kcal': 4910.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.727, 'tj_per_kt': 21.3, 't_co2_per_tj': 94.4, 'k_natural': 0.757},
-    'tuva': {'ash': 14.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 25410.0, 'qh_kcal': 6070.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.906, 'tj_per_kt': 26.55, 't_co2_per_tj': 94.2, 'k_natural': 0.9},
-    'gusinoozersk': {'ash': 18.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16408.0, 'qh_kcal': 3920.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.8, 't_co2_per_tj': 94.9, 'k_natural': None},
-    'tugnuy': {'ash': 18.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 24277.14285714286, 'qh_kcal': 5800.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.692, 'tj_per_kt': 20.3, 't_co2_per_tj': 94.2, 'k_natural': 0.749},
-    'okino': {'ash': 21.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.86, 'sulfur_share': 0.1, 'qh_kj': 17496.285714285717, 'qh_kcal': 4180.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.64, 'tj_per_kt': 18.752000000000002, 't_co2_per_tj': 94.2, 'k_natural': 0.619},
-    'kharanor': {'ash': 8.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12477.0, 'qh_kcal': 2980.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1, 'k_natural': 0.457},
-    'urtuy': {'ash': 8.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 15905.714285714284, 'qh_kcal': 3800.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.52, 'tj_per_kt': 15.236, 't_co2_per_tj': 94.4, 'k_natural': 0.542},
-    'tataurovo': {'ash': 10.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 14690.0, 'qh_kcal': 3510.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.51, 'tj_per_kt': 14.943000000000001, 't_co2_per_tj': 94.2, 'k_natural': 0.526},
-    'tarbagatai': {'ash': 15.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.8, 'sulfur_share': 0.1, 'qh_kj': 15780.0, 'qh_kcal': 3770.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.526, 'tj_per_kt': 15.42, 't_co2_per_tj': 99.3, 'k_natural': None},
-    'zab_hard': {'ash': 13.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 24570.0, 'qh_kcal': 5870.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.5, 't_co2_per_tj': 94.6, 'k_natural': None},
-    'nerungri': {'ash': 12.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 24530.0, 'qh_kcal': 5860.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.987, 'tj_per_kt': 28.93, 't_co2_per_tj': 94.2, 'k_natural': 0.806},
-    'zyryan': {'ash': 10.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 23440.0, 'qh_kcal': 5600.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.82, 'tj_per_kt': 24.026, 't_co2_per_tj': 94.2, 'k_natural': 0.824},
-    'yakut_other': {'ash': 16.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 24430.0, 'qh_kcal': 5860.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.751, 'tj_per_kt': 22.01, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'raychikhinsk': {'ash': 7.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12557.142857142857, 'qh_kcal': 3000.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.43, 'tj_per_kt': 12.599, 't_co2_per_tj': 94.2, 'k_natural': 0.438},
-    'erkovets': {'ash': 12.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12138.57142857143, 'qh_kcal': 2900.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.42, 'tj_per_kt': 12.306, 't_co2_per_tj': 94.2, 'k_natural': 0.415},
-    'ogodzha': {'ash': 33.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 23021.428571428572, 'qh_kcal': 5500.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.447, 'tj_per_kt': 13.1, 't_co2_per_tj': 94.2, 'k_natural': 0.723},
-    'urgal': {'ash': 29.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 19970.0, 'qh_kcal': 4770.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.7, 'tj_per_kt': 20.509999999999998, 't_co2_per_tj': 94.2, 'k_natural': 0.644},
-    'ushumun': {'ash': 22.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 11210.0, 'qh_kcal': 2690.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1, 'k_natural': None},
-    'bikin': {'ash': 22.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 9043.0, 'qh_kcal': 2160.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.31, 'tj_per_kt': 9.083, 't_co2_per_tj': 94.2, 'k_natural': 0.294},
-    'razdolnensky': {'ash': 36.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16540.0, 'qh_kcal': 3950.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1, 'k_natural': None},
-    'khanka': {'ash': 14.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 9960.0, 'qh_kcal': 2380.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1, 'k_natural': None},
-    'magadan': {'ash': 11.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 17920.0, 'qh_kcal': 4280.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.701, 'tj_per_kt': 20.54, 't_co2_per_tj': 93.1, 'k_natural': 0.643},
-    'sakhalin': {'ash': 22.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 17580.0, 'qh_kcal': 4200.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.58, 'tj_per_kt': 16.994, 't_co2_per_tj': 94.2, 'k_natural': 0.534},
-    'kamchatka': {'ash': 29.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.51, 'sulfur_share': 0.1, 'qh_kj': 19960.0, 'qh_kcal': 4770.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.323, 'tj_per_kt': 9.47, 't_co2_per_tj': 93.1, 'k_natural': 0.714},
-    'anadyr': {'ash': 11.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.1, 'sulfur_share': 0.1, 'qh_kj': 17920.0, 'qh_kcal': 4280.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2, 'k_natural': 0.594},
-    'beringovsky': {'ash': 16.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.9, 'sulfur_share': 0.1, 'qh_kj': 25114.285714285714, 'qh_kcal': 6000.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'ekibastuz': {'ash': 38.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.02, 'qh_kj': 18880.0, 'qh_kcal': 4510.0, 'bj': 8.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.628, 'tj_per_kt': 18.41, 't_co2_per_tj': 94.6, 'k_natural': 0.57},
-    'maikuben': {'ash': 23.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 14530.0, 'qh_kcal': 3000.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.6, 'tj_per_kt': 17.58, 't_co2_per_tj': 94.6, 'k_natural': 0.624},
-    'karaganda': {'ash': 40.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.6, 'sulfur_share': 0.1, 'qh_kj': 18835.714285714286, 'qh_kcal': 4500.0, 'bj': 7.1, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.726, 'tj_per_kt': 21.28, 't_co2_per_tj': 94.2, 'k_natural': None},
-    'karazhyra': {'ash': 25.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 20097.0, 'qh_kcal': 4800.0, 'bj': 8.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.75, 'tj_per_kt': 21.975, 't_co2_per_tj': 94.6, 'k_natural': 0.764},
-    'teniz': {'ash': 32.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.775, 'sulfur_share': 0.1, 'qh_kj': 15068.571428571428, 'qh_kcal': 3600.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2, 'k_natural': None},
+    'gas_natural': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 33812.2, 'qh_kcal': 8077.999999999999, 'bj': 2.7, 'k_co2': 1.59, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.154, 'tj_per_kt': 33.82, 't_co2_per_tj': 54.4},
+    'gas_associated': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 38099.88, 'qh_kcal': 8077.999999999999, 'bj': 2.7, 'k_co2': 1.695, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.154, 'tj_per_kt': 33.82, 't_co2_per_tj': 57.166666666666664},
+    'blast_furnace_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 4190.9868, 'qh_kcal': 1000.9999999999999, 'bj': 2.7, 'k_co2': 7.2, 'r_chem': 0.5, 'q_chem': 1.5, 'tut_per_t': 0.143, 'tj_per_kt': 4.2, 't_co2_per_tj': 260.0},
+    'coke_oven_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 16705.332, 'qh_kcal': 3989.9999999999995, 'bj': 2.7, 'k_co2': 1.3, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 0.57, 'tj_per_kt': 16.71, 't_co2_per_tj': 44.4},
+    'npz_gas': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 43961.399999999994, 'qh_kcal': 10500.0, 'bj': 2.7, 'k_co2': 1.3, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.5, 'tj_per_kt': 43.96, 't_co2_per_tj': 57.6},
+    'mazut': {'ash': 0.05, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.2, 'sulfur_share': 0.02, 'qh_kj': 40141.0, 'qh_kcal': 9590.0, 'bj': 3.2, 'k_co2': 2.27, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.37, 'tj_per_kt': 40.15, 't_co2_per_tj': 77.64},
+    'diesel': {'ash': 0.025, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.3, 'sulfur_share': 0.02, 'qh_kj': 42620.0, 'qh_kcal': 10180.0, 'bj': 3.2, 'k_co2': 2.17, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.45, 'tj_per_kt': 42.5, 't_co2_per_tj': 74.32},
+    'other_oil': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.02, 'sulfur': 0.3, 'sulfur_share': 0.02, 'qh_kj': 41899.0, 'qh_kcal': 10010.0, 'bj': 3.2, 'k_co2': 2.17, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 1.43, 'tj_per_kt': 41.91, 't_co2_per_tj': 77.4},
+    'peat': {'ash': 6.3, 'ash_share': 0.9, 'q_mech': 2.2, 'sulfur': 0.1, 'sulfur_share': 0.15, 'qh_kj': 8120.0, 'qh_kcal': 1940.0, 'bj': 8.2, 'k_co2': 3.11, 'r_chem': 1.0, 'q_chem': 0.75, 'tut_per_t': 0.34, 'tj_per_kt': 9.96, 't_co2_per_tj': 106.0},
+    'other_solid': {'ash': 0.6, 'ash_share': 0.9, 'q_mech': 1.8, 'sulfur': 0.1, 'sulfur_share': 0.1, 'qh_kj': 7793.8, 'qh_kcal': 1862.0, 'bj': 4.8, 'k_co2': 3.14, 'r_chem': 1.0, 'q_chem': 0.75, 'tut_per_t': 0.266, 'tj_per_kt': 7.8, 't_co2_per_tj': 112.0},
+    'lpg': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 46012.932, 'qh_kcal': 10990.0, 'bj': 2.7, 'k_co2': 1.85, 'r_chem': 0.5, 'q_chem': 0.1, 'tut_per_t': 1.57, 'tj_per_kt': 46.01, 't_co2_per_tj': 63.2},
+    'other_misc': {'ash': 0.0, 'ash_share': 0.9, 'q_mech': 0.0, 'sulfur': 0.0, 'sulfur_share': 0.0, 'qh_kj': 11810.9628, 'qh_kcal': 2821.0, 'bj': 3.2, 'k_co2': 4.19, 'r_chem': 0.65, 'q_chem': 0.5, 'tut_per_t': 0.403, 'tj_per_kt': 29.31, 't_co2_per_tj': 143.0},
+    'donetsk': {'ash': 25.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 2.5, 'sulfur_share': 0.1, 'qh_kj': 18500.0, 'qh_kcal': 4420.0, 'bj': 5.6, 'k_co2': 2.65, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.876, 'tj_per_kt': 25.67, 't_co2_per_tj': 90.2},
+    'moscow': {'ash': 30.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.6, 'sulfur_share': 0.1, 'qh_kj': 8670.0, 'qh_kcal': 2070.0, 'bj': 4.2, 'k_co2': 2.79, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.335, 'tj_per_kt': 9.82, 't_co2_per_tj': 95.0},
+    'inta': {'ash': 25.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 2.0, 'sulfur_share': 0.1, 'qh_kj': 17540.0, 'qh_kcal': 4190.0, 'bj': 7.03, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.649, 'tj_per_kt': 19.02, 't_co2_per_tj': 93.1},
+    'vorkuta': {'ash': 23.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.8, 'sulfur_share': 0.1, 'qh_kj': 20600.0, 'qh_kcal': 4920.0, 'bj': 7.03, 'k_co2': 2.71, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.822, 'tj_per_kt': 24.09, 't_co2_per_tj': 92.6},
+    'kuzn_gd': {'ash': 16.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 21900.0, 'qh_kcal': 5230.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.867, 'tj_per_kt': 25.41, 't_co2_per_tj': 91.9},
+    'kuzn_t': {'ash': 14.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 25120.0, 'qh_kcal': 6000.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.75, 'tj_per_kt': 21.975, 't_co2_per_tj': 91.9},
+    'kuzn_ss': {'ash': 16.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 25330.0, 'qh_kcal': 6050.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.8, 'tj_per_kt': 23.44, 't_co2_per_tj': 91.9},
+    'kuzn_other': {'ash': 30.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.7, 'sulfur_share': 0.1, 'qh_kj': 20934.0, 'qh_kcal': 5000.0, 'bj': 7.3, 'k_co2': 2.69, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.867, 'tj_per_kt': 25.41, 't_co2_per_tj': 91.9},
+    'sverdlovsk': {'ash': 30.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 11010.0, 'qh_kcal': 2630.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.33, 'tj_per_kt': 9.67, 't_co2_per_tj': 94.2},
+    'chelyabinsk': {'ash': 29.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.0, 'sulfur_share': 0.1, 'qh_kj': 12770.0, 'qh_kcal': 3050.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.552, 'tj_per_kt': 16.18, 't_co2_per_tj': 94.9},
+    'kizel': {'ash': 31.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 6.1, 'sulfur_share': 0.1, 'qh_kj': 19590.0, 'qh_kcal': 4680.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.753, 'tj_per_kt': 22.07, 't_co2_per_tj': 94.3},
+    'bashkir': {'ash': 14.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 7450.0, 'qh_kcal': 1780.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.264, 'tj_per_kt': 7.737206400000001, 't_co2_per_tj': 94.2},
+    'nazarov': {'ash': 7.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 13812.857142857143, 'qh_kcal': 3300.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.47, 'tj_per_kt': 13.770999999999999, 't_co2_per_tj': 94.2},
+    'borodino': {'ash': 6.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 15659.0, 'qh_kcal': 3740.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.57, 'tj_per_kt': 16.701, 't_co2_per_tj': 94.2},
+    'berezovsky': {'ash': 4.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.2, 'qh_kj': 15659.0, 'qh_kcal': 3740.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.53, 'tj_per_kt': 15.529000000000002, 't_co2_per_tj': 94.2},
+    'pereyaslav': {'ash': 5.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.05, 'sulfur_share': 0.1, 'qh_kj': 18340.0, 'qh_kcal': 4400.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.58, 'tj_per_kt': 16.994, 't_co2_per_tj': 94.2},
+    'irbey': {'ash': 10.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16990.0, 'qh_kcal': 4055.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.56, 'tj_per_kt': 16.408, 't_co2_per_tj': 94.2},
+    'kansk': {'ash': 5.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.48, 'sulfur_share': 0.1, 'qh_kj': 16931.214285714286, 'qh_kcal': 4045.0, 'bj': 4.8, 'k_co2': 2.87, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.516, 'tj_per_kt': 15.12, 't_co2_per_tj': 98.1},
+    'zheron': {'ash': 24.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 1.0, 'qh_kj': 19880.0, 'qh_kcal': 4770.0, 'bj': 5.0, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.65, 'tj_per_kt': 19.045, 't_co2_per_tj': 94.2},
+    'karabul': {'ash': 15.2, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.0, 'sulfur_share': 1.0, 'qh_kj': 23615.8, 'qh_kcal': 5642.0, 'bj': 5.0, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.754, 'tj_per_kt': 22.1, 't_co2_per_tj': 94.2},
+    'azey': {'ash': 16.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 15990.0, 'qh_kcal': 3820.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.483, 'tj_per_kt': 14.16, 't_co2_per_tj': 93.9},
+    'mugun': {'ash': 15.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.9, 'sulfur_share': 0.1, 'qh_kj': 17290.0, 'qh_kcal': 4130.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.57, 'tj_per_kt': 16.701, 't_co2_per_tj': 94.2},
+    'cheremkhovo': {'ash': 27.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.1, 'sulfur_share': 0.1, 'qh_kj': 17880.0, 'qh_kcal': 4270.0, 'bj': 4.6, 'k_co2': 2.75, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.752, 'tj_per_kt': 22.0, 't_co2_per_tj': 94.0},
+    'khakass': {'ash': 15.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 20560.0, 'qh_kcal': 4910.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.727, 'tj_per_kt': 21.3, 't_co2_per_tj': 94.4},
+    'tuva': {'ash': 14.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 25410.0, 'qh_kcal': 6070.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.906, 'tj_per_kt': 26.55, 't_co2_per_tj': 94.2},
+    'gusinoozersk': {'ash': 18.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16408.0, 'qh_kcal': 3920.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.8, 't_co2_per_tj': 94.9},
+    'tugnuy': {'ash': 18.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 24277.14285714286, 'qh_kcal': 5800.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.692, 'tj_per_kt': 20.3, 't_co2_per_tj': 94.2},
+    'okino': {'ash': 21.5, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.86, 'sulfur_share': 0.1, 'qh_kj': 17496.285714285717, 'qh_kcal': 4180.0, 'bj': 4.2, 'k_co2': 2.78, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.64, 'tj_per_kt': 18.752000000000002, 't_co2_per_tj': 94.2},
+    'kharanor': {'ash': 8.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12477.0, 'qh_kcal': 2980.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1},
+    'urtuy': {'ash': 8.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 15905.714285714284, 'qh_kcal': 3800.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.52, 'tj_per_kt': 15.236, 't_co2_per_tj': 94.4},
+    'tataurovo': {'ash': 10.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 14690.0, 'qh_kcal': 3510.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.51, 'tj_per_kt': 14.943000000000001, 't_co2_per_tj': 94.2},
+    'tarbagatai': {'ash': 15.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 1.8, 'sulfur_share': 0.1, 'qh_kj': 15780.0, 'qh_kcal': 3770.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.526, 'tj_per_kt': 15.42, 't_co2_per_tj': 99.3},
+    'zab_hard': {'ash': 13.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 24570.0, 'qh_kcal': 5870.0, 'bj': 4.2, 'k_co2': 2.9, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.5, 't_co2_per_tj': 94.6},
+    'nerungri': {'ash': 12.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 24530.0, 'qh_kcal': 5860.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.987, 'tj_per_kt': 28.93, 't_co2_per_tj': 94.2},
+    'zyryan': {'ash': 10.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 23440.0, 'qh_kcal': 5600.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.82, 'tj_per_kt': 24.026, 't_co2_per_tj': 94.2},
+    'yakut_other': {'ash': 16.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 24430.0, 'qh_kcal': 5860.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.751, 'tj_per_kt': 22.01, 't_co2_per_tj': 94.2},
+    'raychikhinsk': {'ash': 7.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12557.142857142857, 'qh_kcal': 3000.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.43, 'tj_per_kt': 12.599, 't_co2_per_tj': 94.2},
+    'erkovets': {'ash': 12.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 12138.57142857143, 'qh_kcal': 2900.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.42, 'tj_per_kt': 12.306, 't_co2_per_tj': 94.2},
+    'ogodzha': {'ash': 33.4, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 23021.428571428572, 'qh_kcal': 5500.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.447, 'tj_per_kt': 13.1, 't_co2_per_tj': 94.2},
+    'urgal': {'ash': 29.6, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 19970.0, 'qh_kcal': 4770.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.7, 'tj_per_kt': 20.509999999999998, 't_co2_per_tj': 94.2},
+    'ushumun': {'ash': 22.3, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.2, 'sulfur_share': 0.1, 'qh_kj': 11210.0, 'qh_kcal': 2690.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1},
+    'bikin': {'ash': 22.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 9043.0, 'qh_kcal': 2160.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.31, 'tj_per_kt': 9.083, 't_co2_per_tj': 94.2},
+    'razdolnensky': {'ash': 36.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 16540.0, 'qh_kcal': 3950.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1},
+    'khanka': {'ash': 14.8, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.3, 'sulfur_share': 0.1, 'qh_kj': 9960.0, 'qh_kcal': 2380.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.506, 'tj_per_kt': 14.83, 't_co2_per_tj': 93.1},
+    'magadan': {'ash': 11.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 17920.0, 'qh_kcal': 4280.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.701, 'tj_per_kt': 20.54, 't_co2_per_tj': 93.1},
+    'sakhalin': {'ash': 22.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 17580.0, 'qh_kcal': 4200.0, 'bj': 4.2, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.58, 'tj_per_kt': 16.994, 't_co2_per_tj': 94.2},
+    'kamchatka': {'ash': 29.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.51, 'sulfur_share': 0.1, 'qh_kj': 19960.0, 'qh_kcal': 4770.0, 'bj': 4.2, 'k_co2': 2.73, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.323, 'tj_per_kt': 9.47, 't_co2_per_tj': 93.1},
+    'anadyr': {'ash': 11.9, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.1, 'sulfur_share': 0.1, 'qh_kj': 17920.0, 'qh_kcal': 4280.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2},
+    'beringovsky': {'ash': 16.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.9, 'sulfur_share': 0.1, 'qh_kj': 25114.285714285714, 'qh_kcal': 6000.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2},
+    'ekibastuz': {'ash': 38.1, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.02, 'qh_kj': 18880.0, 'qh_kcal': 4510.0, 'bj': 8.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.628, 'tj_per_kt': 18.41, 't_co2_per_tj': 94.6},
+    'maikuben': {'ash': 23.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.5, 'sulfur_share': 0.1, 'qh_kj': 14530.0, 'qh_kcal': 3000.0, 'bj': 4.2, 'k_co2': 2.96, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.6, 'tj_per_kt': 17.58, 't_co2_per_tj': 94.6},
+    'karaganda': {'ash': 40.7, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.6, 'sulfur_share': 0.1, 'qh_kj': 18835.714285714286, 'qh_kcal': 4500.0, 'bj': 7.1, 'k_co2': 2.76, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.726, 'tj_per_kt': 21.28, 't_co2_per_tj': 94.2},
+    'karazhyra': {'ash': 25.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.4, 'sulfur_share': 0.1, 'qh_kj': 20097.0, 'qh_kcal': 4800.0, 'bj': 8.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.75, 'tj_per_kt': 21.975, 't_co2_per_tj': 94.6},
+    'teniz': {'ash': 32.0, 'ash_share': 0.9, 'q_mech': 2.0, 'sulfur': 0.775, 'sulfur_share': 0.1, 'qh_kj': 15068.571428571428, 'qh_kcal': 3600.0, 'bj': 4.2, 'k_co2': 2.77, 'r_chem': 1.0, 'q_chem': 0.5, 'tut_per_t': 0.768, 'tj_per_kt': 22.51, 't_co2_per_tj': 94.2},
 }
 
 VOLUME_ROWS: tuple[dict[str, Any], ...] = (
-    {'key': 'pollutants_total', 'label': 'ВСЕГО', 'indent': 0, 'kind': KIND_TOTAL, 'group': 'zv'},
-    {'key': 'ash', 'label': 'в т.ч.: твердые частицы (зола)', 'indent': 1, 'kind': KIND_VALUE, 'group': 'zv'},
+    {'key': 'pollutants_total', 'label': 'Всего, в т.ч.', 'indent': 0, 'kind': KIND_TOTAL, 'group': 'zv'},
+    {'key': 'ash', 'label': 'твердые частицы (зола)', 'indent': 1, 'kind': KIND_VALUE, 'group': 'zv'},
     {'key': 'so2', 'label': 'диоксид серы (SO2)', 'indent': 1, 'kind': KIND_VALUE, 'group': 'zv'},
     {'key': 'nox', 'label': 'оксиды азота (NOx)', 'indent': 1, 'kind': KIND_VALUE, 'group': 'zv'},
     {'key': 'co', 'label': 'монооксид углерода (CO)', 'indent': 1, 'kind': KIND_VALUE, 'group': 'zv'},
@@ -509,7 +523,6 @@ CHAR_COLUMNS: tuple[tuple[str, str], ...] = (
     ('tut_per_t', 'т у.т./тн'),
     ('tj_per_kt', 'ТДж/тыс т натур'),
     ('t_co2_per_tj', 'т СО2/ТДж'),
-    ('k_natural', 'K'),
 )
 
 CHAR_HEADER_GROUPS: tuple[dict[str, Any], ...] = (
@@ -527,20 +540,9 @@ CHAR_HEADER_GROUPS: tuple[dict[str, Any], ...] = (
         "title": "Коэффициенты для расчета как в НД о Кадастре ПГ",
         "keys": ("tut_per_t", "tj_per_kt", "t_co2_per_tj"),
     },
-    {
-        "title": "К перехода к натур топливу по данным формы ГИСТЭК 27-30",
-        "keys": ("k_natural",),
-        "rowspan": 2,
-    },
 )
 
-# Лист «Справочник»: те же характеристики, без кадастровых К и Kнатур.
-SPR_COLUMNS: tuple[tuple[str, str], ...] = CHAR_COLUMNS[:11]
-SPR_HEADER_GROUPS: tuple[dict[str, Any], ...] = CHAR_HEADER_GROUPS[:-2]
-
-# Источники значений листа «Справочник» (легенда C17–C18 макета Excel).
-# Цвета — Interior.Color легенды, BGR → CSS; для «методических указаний»
-# взят RGB-вид #d58d53, как на цветной подписи «кузнецкий прочий».
+# Источники характеристик топлива.
 CHAR_SOURCE_OPTIONS: tuple[dict[str, str], ...] = (
     {
         "key": "thermal",
@@ -548,7 +550,6 @@ CHAR_SOURCE_OPTIONS: tuple[dict[str, str], ...] = (
         "label": (
             "«Тепловой расчет котлов (нормативный метод)» ВТИ, СПб 1989 г."
         ),
-        "color": "#b7e8e8",
     },
     {
         "key": "method",
@@ -556,7 +557,6 @@ CHAR_SOURCE_OPTIONS: tuple[dict[str, str], ...] = (
         "label": (
             "«Методические указания по проектированию развития энергосистем», 2022 г."
         ),
-        "color": "#d58d53",
     },
     {
         "key": "industry",
@@ -565,50 +565,24 @@ CHAR_SOURCE_OPTIONS: tuple[dict[str, str], ...] = (
             "Отраслевая методика расчета количества отходящих, улавливаемых "
             "и выбрасываемых вредных веществ предприятиями по добыче угля, г. Пермь 2003 г."
         ),
-        "color": "#e6b8b7",
     },
     {
         "key": "table21",
         "short": "Таблица 2.1",
         "label": (
             "Таблица 2.1. «Справочник по котельным установкам малой производительности» "
-            "под ред. К.Ф. Роддатиса. — М.: Энергоатомиздат, 1989."
+            "под ред. К.Ф. Роддатиса. – М.: Энергоатомиздат, 1989."
         ),
-        "color": "#a6a6a6",
     },
     {
         "key": "rosstat",
         "short": "Приказ Росстата",
         "label": (
             "Приказ Росстата от 22.11.2023 № 591 (коэффициент низшей теплоты сгорания; "
-            "зольность и сернистость — среднее из справочника)"
+            "зольность и сернистость – среднее из справочника)"
         ),
-        "color": "#44d89b",
     },
 )
-
-CHAR_SOURCE_KEYS = frozenset(item["key"] for item in CHAR_SOURCE_OPTIONS)
-CHAR_SOURCE_COLORS: dict[str, str] = {
-    item["key"]: item["color"] for item in CHAR_SOURCE_OPTIONS
-}
-
-# Заливка «Вид топлива» из макета, если источник не выбран (серый бассейнов без легенды).
-FUEL_LABEL_COLORS: dict[str, str] = {
-    "donetsk": "#bfbfbf",
-    "inta": "#bfbfbf",
-    "vorkuta": "#bfbfbf",
-    "sverdlovsk": "#bfbfbf",
-    "chelyabinsk": "#bfbfbf",
-    "kizel": "#bfbfbf",
-    "cheremkhovo": "#bfbfbf",
-    "khakass": "#bfbfbf",
-    "raychikhinsk": "#bfbfbf",
-    "anadyr": "#bfbfbf",
-    "ekibastuz": "#bfbfbf",
-}
-
-# Красный шрифт в макете: принятые значения при отсутствии справочных данных.
-FUEL_ADOPTED_KEYS = frozenset({"irbey", "kansk"})
 
 DEFAULT_CHAR_SOURCES: dict[str, str] = {
     "gas_natural": "rosstat",
@@ -687,30 +661,22 @@ DEFAULT_CHAR_NOTES: dict[str, str] = {
 }
 
 
-def fuel_label_bg(fuel_key: str, source_key: str | None) -> str | None:
-    """Цвет столбца «Вид топлива»: сначала источник, иначе заливка макета."""
-    wanted = str(source_key or "").strip()
-    if wanted:
-        return CHAR_SOURCE_COLORS.get(wanted)
-    return FUEL_LABEL_COLORS.get(fuel_key)
-
-
 TOP_INPUT_ROWS: tuple[dict[str, Any], ...] = (
     {'key': 'ee_generation', 'label': 'Выработка электроэнергии', 'unit': 'млрд.кВтч', 'kind': KIND_VALUE},
     {'key': 'heat_output', 'label': 'Отпуск тепла', 'unit': 'тыс.Гкал', 'kind': KIND_VALUE},
 )
 
 EMISSION_FORMULAS = {
-    "zola": "Мотх = 0,01·Вн·(аун·Ар + qч·QH/32680); Мвыб = Мотх·(1 − КПД золоулавливания)",
-    "sera": "Мотх = 0,02·Вн·Sp·(1 − x); Мвыб = Мотх·(1 − КПД сероочистки)",
-    "azot": "Мотх = 0,001·В·(1 − qч/100)·bj; Мвыб = ΣМотх·(1 − n)",
-    "co": "Мотх = 0,001·Вн·(q3·R·QH/1013)·(1 − qч/100); Мвыб = Мотх·(1 − kCO)",
-    "pg": "Мотх = В·KCO2; Мвыб = Мотх·(1 − kПГ)",
-    "pg-tj": "TJ = Вн·(QH, кДж/кг)/1000; М = TJ·(т CO2/ТДж)/1000",
+    "zola": "Мотх = 0,01·BH·(аун·Ар + qч·QH/32680); Мвыб = Мотх·(1 − КПД золоулавливания)",
+    "sera": "Мотх = 0,02·BH·Sp·(1 − x); Мвыб = Мотх·(1 − КПД сероочистки)",
+    "azot": "МотхNOx = 0,001 · B · (1 − qч / 100) · bj; Мвыб = ΣМотх · (1 − n)",
+    "co": "МотхCO = 0,001 · BH · (q3 · R · Qн / 1013) · (1 − q4 / 100); Мвыб = Мотх·(1 − kCO)",
+    "pg": "МотхCO2 = B · KCO2; Мвыб = ΣМотх · (1 − kПГ)",
+    "pg-tj": "МДж = B / (тут/тн) · (ТДж/тыс. т натур.); МотхCO2 = МДж · KCO2 / 1000",
 }
 
 # Запасные КПД/коэффициенты подавления, если нет записи в БД.
-# Год 2024 и далее — как в макете на 2024.
+# Год 2024 и далее – как в макете на 2024.
 _COEFF_BY_YEAR: dict[int, dict[str, dict[str, float]]] = {
     2021: {
         "ash_eta": {"vsego": 0.975, "*": 0.975},

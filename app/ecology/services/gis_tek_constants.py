@@ -7,7 +7,7 @@ REPORT_PG = "pg"
 REPORT_ZV = "zv"
 
 # Колонка «Тип станции» страниц ГИС ТЭК: тип станции по коду VED строки «Топливо»
-# (подписи — как у FUEL_PARAM_VED_LABELS для кодов 1–4, без номера кода).
+# (подписи – как у FUEL_PARAM_VED_LABELS для кодов 1–4, без номера кода).
 VED_STATION_TYPE_BY_CODE: dict[int, str] = {
     1: "КЭС, отрасль",
     2: "ТЭЦ, отрасль",
@@ -15,7 +15,7 @@ VED_STATION_TYPE_BY_CODE: dict[int, str] = {
     4: "КЭС, промпредприятия",
 }
 
-# Колонка «Принадлежность»: та же группировка VED (1, 2 — отрасль; 3, 4 — промпредприятия).
+# Колонка «Принадлежность»: та же группировка VED (1, 2 – отрасль; 3, 4 – промпредприятия).
 VED_AFFILIATION_BY_CODE: dict[int, str] = {
     1: "отрасль",
     2: "отрасль",
@@ -44,6 +44,24 @@ PG_VALUE_COLUMNS: list[tuple[str, str]] = [
     ("co2_from_solid_fuel_t", "Выбросы СО2 от сжигания твердого топлива, т"),
 ]
 
+# Расчётные итоги не входят в PG_VALUE_COLUMNS: при импорте нужны только исходные поля.
+PG_TOTAL_COLUMNS: list[tuple[str, str]] = [
+    ("total_fuel_consumption_tce", "Расход топлива, т у.т."),
+    ("total_co2_from_fuel_t", "Выбросы СО2 от сжигания топлива, т"),
+]
+PG_TOTAL_PARTS: dict[str, tuple[str, ...]] = {
+    "total_fuel_consumption_tce": (
+        "gas_consumption_tce",
+        "oil_fuel_consumption_tce",
+        "solid_fuel_consumption_tce",
+    ),
+    "total_co2_from_fuel_t": (
+        "co2_from_gas_t",
+        "co2_from_oil_fuel_t",
+        "co2_from_solid_fuel_t",
+    ),
+}
+
 # Двухрядная шапка страницы ПГ: вид топлива в 1-й строке, общие подписи во 2-й.
 PG_VALUE_COLUMN_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     (
@@ -67,6 +85,7 @@ PG_VALUE_COLUMN_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
             ("co2_from_solid_fuel_t", "Выбросы СО2 от сжигания топлива, т"),
         ],
     ),
+    ("Всего", PG_TOTAL_COLUMNS),
 ]
 
 ZV_VALUE_COLUMNS: list[tuple[str, str]] = [
@@ -84,7 +103,7 @@ ZV_VALUE_COLUMNS: list[tuple[str, str]] = [
 # Верхняя строка шапки ЗВ: объединяет «всего», твёрдые и газообразные/жидкие.
 ZV_EMISSIONS_BANNER_TITLE = "Всего выброшено в атмосферу ЗВ за год, т"
 
-# Двухрядная шапка ЗВ под баннером: пустая 2-я подпись — столбец на всю высоту группы.
+# Двухрядная шапка ЗВ под баннером: пустая 2-я подпись – столбец на всю высоту группы.
 ZV_VALUE_COLUMN_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ("всего", [("total", "")]),
     ("Твердые вещества", [("solid_substances", "")]),
@@ -102,7 +121,7 @@ ZV_VALUE_COLUMN_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ),
 ]
 
-# «Газообразные и жидкие вещества» — сумма слагаемых, не берётся из Excel.
+# «Газообразные и жидкие вещества» – сумма слагаемых, не берётся из Excel.
 ZV_GASEOUS_AND_LIQUID_PARTS: tuple[str, ...] = (
     "sulfur_dioxide",
     "carbon_monoxide",
@@ -120,7 +139,7 @@ ZV_UNSTORED_ATTRS = frozenset({"total"})
 ZV_GASEOUS_AND_LIQUID_FORMULA_KEY = "gaseous_and_liquid"
 ZV_TOTAL_FORMULA_KEY = "zv_total"
 
-# Столбец «Нормируемые ЗВ» — сумма выбранных в шапке слагаемых (кроме столбцов «всего»).
+# Столбец «Нормируемые ЗВ» – сумма выбранных в шапке слагаемых (кроме столбцов «всего»).
 # Показывается справа от столбцов ЗВ; в Excel выгружается, при импорте игнорируется.
 ZV_NORM_ATTR = "norm_zv"
 ZV_NORM_PARAM = "norm_zv"

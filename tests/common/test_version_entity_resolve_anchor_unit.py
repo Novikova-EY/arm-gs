@@ -26,7 +26,7 @@ class _FakeSession:
 
 
 def test_load_by_id_with_version_or_anchor_returns_resolved_row(monkeypatch):
-    """Строка текущей версии найдена — якорную не подставляем."""
+    """Строка текущей версии найдена – якорную не подставляем."""
     resolved = SimpleNamespace(id=30555, database_version_id=37)
     monkeypatch.setattr(
         version_entity_resolve_services, "load_by_id_with_version", lambda *a, **k: resolved
@@ -46,7 +46,7 @@ def test_load_by_id_with_version_or_anchor_returns_resolved_row(monkeypatch):
 
 
 def test_load_by_id_with_version_or_anchor_falls_back_to_anchor(monkeypatch):
-    """Группы нет в текущей версии — открываем саму запись, а не 404."""
+    """Группы нет в текущей версии – открываем саму запись, а не 404."""
     anchor = SimpleNamespace(id=14693, database_version_id=None)
     monkeypatch.setattr(
         version_entity_resolve_services, "load_by_id_with_version", lambda *a, **k: None
@@ -78,7 +78,7 @@ def test_load_by_id_with_version_or_anchor_falls_back_through_query_factory(monk
 
 
 def test_load_by_id_with_version_or_anchor_returns_none_for_missing_id(monkeypatch):
-    """Ни текущей версии, ни якоря — по-прежнему None (роут отдаст 404)."""
+    """Ни текущей версии, ни якоря – по-прежнему None (роут отдаст 404)."""
     monkeypatch.setattr(
         version_entity_resolve_services, "load_by_id_with_version", lambda *a, **k: None
     )

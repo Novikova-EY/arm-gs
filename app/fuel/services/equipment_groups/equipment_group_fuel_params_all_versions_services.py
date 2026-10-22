@@ -218,7 +218,7 @@ def update_equipment_group_fuel_params_all_versions_from_form(
     if not anchor:
         return {"error": "Группа оборудования не найдена", "no_changes": True}
 
-    group_name = (anchor.name or anchor.name_ext or "—").strip() or "—"
+    group_name = (anchor.name or anchor.name_ext or "–").strip() or "–"
     external_code = (anchor.external_code or "").strip()
     request_meta = request_meta or {}
 
@@ -426,7 +426,7 @@ def _log_all_versions_result(
 ) -> None:
     log_lines = [
         "Синхронизация топливных параметров группы оборудования во всех версиях БД.",
-        f"Группа: {(anchor.name or anchor.name_ext or '—')} (id={anchor.id}, external_code={external_code or '—'})",
+        f"Группа: {(anchor.name or anchor.name_ext or '–')} (id={anchor.id}, external_code={external_code or '–'})",
         f"Пользователь: {user}",
         f"Годы: {start_year}–{end_year}",
         f"Затронуто версий БД: {versions_touched}",
@@ -457,10 +457,10 @@ def _log_all_versions_result(
     log_equipment_group_fuel_param_changes(
         user,
         anchor.id,
-        (anchor.name or anchor.name_ext or "—"),
+        (anchor.name or anchor.name_ext or "–"),
         aggregate_details,
         action_suffix="(детализация по таблицам, все версии)",
         header_lines=[
-            f"Сводка по таблицам после синхронизации во всех версиях (external_code={external_code or '—'}).",
+            f"Сводка по таблицам после синхронизации во всех версиях (external_code={external_code or '–'}).",
         ],
     )

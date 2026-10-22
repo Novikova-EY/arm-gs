@@ -1,6 +1,6 @@
 #!/bin/bash
 # Бэкап PostgreSQL для generation-app (custom format, с ротацией).
-# Предназначен для cron / systemd timer на сервере — вне дерева релиза.
+# Предназначен для cron / systemd timer на сервере – вне дерева релиза.
 set -euo pipefail
 
 ENV_FILE="${ENV_FILE:-/etc/generation-app/app.env}"

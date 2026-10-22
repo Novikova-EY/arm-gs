@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Уникальные identity-UUID в пределах версии БД.
 
-Один и тот же UUID у копий одной сущности в разных версиях — нормально.
+Один и тот же UUID у копий одной сущности в разных версиях – нормально.
 В одной версии (database_version_id, uuid) должен быть один.
 Записи не удаляются: лишним копиям выдаётся новый UUID.
 """
@@ -57,7 +57,7 @@ def choose_identity_uuid(
 ) -> str:
     """
     Копии одной сущности в других версиях могут делить UUID.
-    Если preferred уже занят в этой версии — выдаём новый, не занятый ни в одной версии.
+    Если preferred уже занят в этой версии – выдаём новый, не занятый ни в одной версии.
     """
     preferred_raw = (preferred or "").strip()
     preferred_key = norm_uuid(preferred_raw)
@@ -84,7 +84,7 @@ def identity_uuid_taken(
     version_id=_ALL_VERSIONS,
     exclude_id: int | None = None,
 ) -> bool:
-    """Есть ли уже строка с этим UUID. version_id=_ALL_VERSIONS — любая версия."""
+    """Есть ли уже строка с этим UUID. version_id=_ALL_VERSIONS – любая версия."""
     schema = _assert_ident(schema, "schema")
     table = _assert_ident(table, "table")
     column = _assert_ident(column, "column")

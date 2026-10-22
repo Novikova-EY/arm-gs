@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ProspectivePlaceTypeGAES — тип перспективной площадки ГАЭС (справочник refdata).
+ProspectivePlaceTypeGAES – тип перспективной площадки ГАЭС (справочник refdata).
 
-Три канонических наименования (как у справочника ГЭС) — см. PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES.
+Три канонических наименования (как у справочника ГЭС) – см. PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES.
 """
 from sqlalchemy.sql import func
 from app.extensions import db

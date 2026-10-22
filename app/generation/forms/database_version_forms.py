@@ -120,10 +120,10 @@ class AddDatabaseVersionForm(FlaskForm):
     def validate_extend_years(self, field):
         """
         При создании на основе существующей версии просим указать,
-        на сколько лет продлить период (можно 0 — без продления).
+        на сколько лет продлить период (можно 0 – без продления).
         """
         parent_value = (self.parent_version_id.data or "").strip()
         if parent_value and parent_value not in ("empty", "None", "none"):
             if field.data is None:
-                raise ValidationError("Укажите, на сколько лет продлить период (можно 0 — без продления).")
+                raise ValidationError("Укажите, на сколько лет продлить период (можно 0 – без продления).")
 

@@ -1,6 +1,6 @@
 -- Уникальные индексы: одна строка на (сущность, год, версия БД).
 -- COALESCE для legacy-строк с database_version_id IS NULL.
--- CONCURRENTLY — без блокировки записи; выполнять вне транзакции.
+-- CONCURRENTLY – без блокировки записи; выполнять вне транзакции.
 -- Перед первым запуском: scripts/fix_machine_duplicates_all_versions.sql
 
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_machine_fuels_machine_year_ver

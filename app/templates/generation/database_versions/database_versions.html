@@ -242,7 +242,7 @@
                                 {% if version.parent_version %}
                                     {{ version.parent_version.version_number }}
                                 {% else %}
-                                    —
+                                    –
                                 {% endif %}
                             </td>
 
@@ -326,7 +326,7 @@
                                 {% if not version.is_active %}
                                     <input type="checkbox" name="version_delete[]" value="{{ version.id }}" class="form-check-input" onchange="checkDeleteButtons()">
                                 {% else %}
-                                    <span class="text-muted">—</span>
+                                    <span class="text-muted">–</span>
                                 {% endif %}
                             </td>
                             {% endif %}
@@ -377,7 +377,7 @@
                             {% if version.parent_version %}
                                 {{ version.parent_version.version_number }}
                             {% else %}
-                                —
+                                –
                             {% endif %}
                         </td>
                         <td class="text-center">

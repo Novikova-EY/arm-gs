@@ -135,7 +135,7 @@ def test_fuel_params_detect_by_headers_when_name_unknown():
 
 
 def test_fuel_params_detect_otet_svodnaya_by_headers():
-    # Шапка не в первой строке — как в реальной сводной ОТЭТ.
+    # Шапка не в первой строке – как в реальной сводной ОТЭТ.
     rows = [
         [None, None, None, None],
         ["Наименование", "С н.ээ", "С.н. тыс.кВтч", "NUMB1120"],
@@ -202,7 +202,7 @@ def test_specific_fuel_cost_filename_must_contain_stoimost():
 
 
 def test_get_or_create_fuel_param_finds_existing_row_ignoring_version(monkeypatch):
-    """uq — (группа, год); строка с другой database_version_id должна обновляться, не INSERT."""
+    """uq – (группа, год); строка с другой database_version_id должна обновляться, не INSERT."""
     from app.fuel.services.fuel_imports.import_equipment_group_fuel_params_services import (
         _get_or_create_equipment_group_fuel_param,
     )

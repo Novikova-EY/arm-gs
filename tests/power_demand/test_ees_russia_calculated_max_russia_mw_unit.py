@@ -52,7 +52,7 @@ def _ees_russia_block(*, variant: str | None = None) -> list[dict]:
             "show_entity_cell": False,
             "entity_rowspan": 1,
             "perimeter_variant_code": variant,
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
     ]
@@ -88,7 +88,7 @@ def test_ees_russia_calculated_max_sums_ues_combined_on_ees(_mock_ues_ids) -> No
     return_value=frozenset({10}),
 )
 def test_ees_russia_calculated_max_via_es_sums_res_with_subject_fallback(_mock_ues_ids) -> None:
-    """«Через РЭС» = сумма combined_on_ees по РЭС; пустая РЭС — сумма по субъектам."""
+    """«Через РЭС» = сумма combined_on_ees по РЭС; пустая РЭС – сумма по субъектам."""
     from app.power_demand.services.demand_summary_services import (
         enrich_oes_ees_russia_calculated_max_via_es,
     )
@@ -101,7 +101,7 @@ def test_ees_russia_calculated_max_via_es_sums_res_with_subject_fallback(_mock_u
             "show_entity_cell": False,
             "entity_rowspan": 1,
             "perimeter_variant_code": "without_nt_without_gaes",
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
         _ues_row(ues_id=10, pk="combined_on_ees", year_values=[""], show_entity_cell=True),
@@ -112,7 +112,7 @@ def test_ees_russia_calculated_max_via_es_sums_res_with_subject_fallback(_mock_u
             "parent_id": 101,
             "id_union_energy_system": 10,
             "id_regional_energy_system": 101,
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
             "show_entity_cell": True,
             "entity_rowspan": 1,
@@ -193,7 +193,7 @@ def test_ees_russia_with_nt_equals_without_nt_plus_nt_subjects(
             "show_entity_cell": False,
             "entity_rowspan": 1,
             "perimeter_variant_code": "with_nt",
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
     ]
@@ -207,7 +207,7 @@ def test_ees_russia_with_nt_equals_without_nt_plus_nt_subjects(
                 year_values=["10 000"],
                 show_entity_cell=True,
             ),
-            # ОЭС Юга без НТ — база для обеих агрегаций ЕЭС.
+            # ОЭС Юга без НТ – база для обеих агрегаций ЕЭС.
             _ues_row(
                 ues_id=2,
                 pk="combined_on_ees",
@@ -215,7 +215,7 @@ def test_ees_russia_with_nt_equals_without_nt_plus_nt_subjects(
                 show_entity_cell=True,
                 perimeter_variant_code="without_nt",
             ),
-            # ОЭС Юга с НТ — заниженное значение; не должно уменьшать ЕЭС с НТ.
+            # ОЭС Юга с НТ – заниженное значение; не должно уменьшать ЕЭС с НТ.
             _ues_row(
                 ues_id=2,
                 pk="combined_on_ees",
@@ -272,7 +272,7 @@ def test_ees_russia_calculated_max_via_ez_sums_energy_zone_combined_on_ees() -> 
             "show_entity_cell": False,
             "entity_rowspan": 1,
             "perimeter_variant_code": "without_nt_without_gaes",
-            "year_values": ["—"],
+            "year_values": ["–"],
             "year_numeric_tooltips": [""],
         },
         {
@@ -285,7 +285,7 @@ def test_ees_russia_calculated_max_via_ez_sums_energy_zone_combined_on_ees() -> 
             "year_numeric_tooltips": ["10 000"],
             "show_entity_cell": True,
             "entity_rowspan": 1,
-            "entity_label": "1 — Зона А",
+            "entity_label": "1 – Зона А",
             "entity_kind": "group",
         },
         {
@@ -298,7 +298,7 @@ def test_ees_russia_calculated_max_via_ez_sums_energy_zone_combined_on_ees() -> 
             "year_numeric_tooltips": ["7 500"],
             "show_entity_cell": True,
             "entity_rowspan": 1,
-            "entity_label": "2 — Зона Б",
+            "entity_label": "2 – Зона Б",
             "entity_kind": "group",
         },
         {

@@ -12,7 +12,7 @@
 
 Не содержит математики топлива, UI, построения таблиц и import-логики.
 
-Поля wname, uname, toplname, dopname в DistributionParameter — информационные
+Поля wname, uname, toplname, dopname в DistributionParameter – информационные
 (трассируемость, UI, миграции); не участвуют в ветвлении бизнес-логики здесь.
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ class DistributionParameterCalculationService:
     """
     Запуск пересчёта по «Параметры-распределения».
 
-    Строка filter_text не парсится здесь — только через AccessFilterAdapter
+    Строка filter_text не парсится здесь – только через AccessFilterAdapter
     (справочник + oes/obl/ved рабочей строки топлива).
 
     Логика:

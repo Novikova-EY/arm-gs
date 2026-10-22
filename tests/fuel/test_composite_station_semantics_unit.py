@@ -63,7 +63,7 @@ def test_equipment_group_type_display_name_parent_is_station():
     assert equipment_group_type_display_name(parent, group_type) == COMPOSITE_PARENT_GROUP_TYPE_LABEL
     assert equipment_group_type_display_name(parent, group_type) == "станция"
     assert equipment_group_type_display_name(child, group_type) == "ТЭЦ-130 ата"
-    assert equipment_group_type_display_name(child, None) == "—"
+    assert equipment_group_type_display_name(child, None) == "–"
     p, children = classify_station_groups([parent, child])
     assert p is parent
     assert children == [child]
@@ -127,12 +127,12 @@ def test_display_clusters_uses_parent_by_numb_for_title():
     assert c["station_name"] == "Владимирская ТЭЦ-2"
     assert c["composite_parent_eg_id"] == 1
     assert c["treat_as_composite"] is True
-    assert len(c["group_blocks"]) == 2  # родитель не в rows — только дети
+    assert len(c["group_blocks"]) == 2  # родитель не в rows – только дети
 
 
 
 def test_display_clusters_lone_parent_not_composite():
-    """Одиночный comp=1 без детей — не treat_as_composite и не composite-ключ."""
+    """Одиночный comp=1 без детей – не treat_as_composite и не composite-ключ."""
     parent = SimpleNamespace(main=None, comp=1, numb=1, id=1, name_ext="Arkhangelsk")
     blocks = [{"equipment_group": parent, "rows": []}]
     clusters = build_display_clusters(
@@ -146,7 +146,7 @@ def test_display_clusters_lone_parent_not_composite():
 
 def test_display_clusters_lone_parent_shares_station_with_plain():
     """
-    Мурманская ТЭЦ (comp=1 без детей) + Котельные на той же Station —
+    Мурманская ТЭЦ (comp=1 без детей) + Котельные на той же Station –
     один station-кластер, без дубля composite:/station:.
     """
     parent = SimpleNamespace(
@@ -457,7 +457,7 @@ def test_standalone_uses_obl_mapping_res_not_unspecified():
 
 
 def test_standalone_uses_district_res_when_fk_empty():
-    """Standalone без FK РЭС, но с субъектом — первая РЭС субъекта, не «Не указано»."""
+    """Standalone без FK РЭС, но с субъектом – первая РЭС субъекта, не «Не указано»."""
     ues = SimpleNamespace(id=410, id_energy_system_type=207)
     res = SimpleNamespace(id=2775, union_energy_system=ues)
     rd = SimpleNamespace(id=3082, regional_energy_systems=[res])

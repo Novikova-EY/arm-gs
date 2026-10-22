@@ -81,7 +81,7 @@ def test_filter_core_only_excludes_calc_chi_verify_nt():
 
 
 def test_filter_core_includes_summary_perimeter_variant_rows():
-    """Варианты из /perimeter_variants/ всегда в core — даже «с НТ» и без данных в БД."""
+    """Варианты из /perimeter_variants/ всегда в core – даже «с НТ» и без данных в БД."""
     binding_block = _block(
         {
             "parameter_key": "max_power",
@@ -102,7 +102,7 @@ def test_filter_core_includes_summary_perimeter_variant_rows():
 
 
 def test_filter_perimeter_variant_calc_rows_in_calc_max_not_core():
-    """Расчётные строки варианта периметра — сегмент calc_max (с обогащением), не core."""
+    """Расчётные строки варианта периметра – сегмент calc_max (с обогащением), не core."""
     binding_block = _block(
         {
             "parameter_key": "max_power",
@@ -161,7 +161,7 @@ def test_filter_nt_extra_segment():
 
 
 def test_filter_nt_aggregation_level_header_in_core_not_nt_extra():
-    """Заголовок «Новые территории» под ОЭС Юга — в core (позиция дерева), не в nt_extra."""
+    """Заголовок «Новые территории» под ОЭС Юга – в core (позиция дерева), не в nt_extra."""
     agg_row = {
         "entity_label": "Новые территории",
         "entity_kind": "aggregation_level",
@@ -205,7 +205,7 @@ def test_filter_chi_segment_includes_nt_extra_chi_rows():
 
 
 def test_filter_verify_segment_includes_nt_extra_verify_rows():
-    """Строки «Проверка …» для «ОЭС Юга с НТ» — сегмент verify (как ЧЧИ), не nt_extra."""
+    """Строки «Проверка …» для «ОЭС Юга с НТ» – сегмент verify (как ЧЧИ), не nt_extra."""
     rows = _block(
         {
             "parameter_key": "verify_for_calculated_max_power_mw",

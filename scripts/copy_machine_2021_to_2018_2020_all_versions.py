@@ -128,7 +128,7 @@ def main() -> None:
         print(f"Агрегатов с database_version_id: {len(machines)}")
         print(
             "Режим: "
-            + ("ЗАПИСЬ" if args.apply else "DRY-RUN — без сохранения в БД")
+            + ("ЗАПИСЬ" if args.apply else "DRY-RUN – без сохранения в БД")
         )
 
         if args.apply and not args.yes:

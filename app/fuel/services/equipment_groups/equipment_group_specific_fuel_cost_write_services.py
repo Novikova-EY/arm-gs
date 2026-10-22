@@ -35,13 +35,13 @@ NUMERIC_ATTRS = frozenset(SPECIFIC_FUEL_COST_EDITABLE_ATTRS)
 
 def _format_val(value):
     if value is None:
-        return "—"
+        return "–"
     if isinstance(value, bool):
         return str(value)
     if isinstance(value, (Decimal, int, float)):
         return format_number_trim_trailing(value)
     if isinstance(value, str):
-        return value.strip() or "—"
+        return value.strip() or "–"
     return str(value)
 
 

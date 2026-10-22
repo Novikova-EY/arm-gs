@@ -53,7 +53,7 @@ def no_autoflush(func):
         )
         temp_ctx = nullcontext()
 
-        # Если у сессии нет корректного no_autoflush — временно подменяем
+        # Если у сессии нет корректного no_autoflush – временно подменяем
         if session and need_temp_ctx:
             try:
                 setattr(session, "no_autoflush", temp_ctx)

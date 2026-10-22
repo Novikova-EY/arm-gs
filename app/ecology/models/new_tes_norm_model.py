@@ -37,7 +37,7 @@ class NewTesNorm(db.Model, AuditMixin):
     # Ключ вида топлива (как в расчёте по действующим ТЭС)
     fuel_key = db.Column(db.String(80), nullable=False, index=True)
 
-    # le100 — агрегаты до 100 МВт включительно; gt100 — более 100 МВт
+    # le100 – агрегаты до 100 МВт включительно; gt100 – более 100 МВт
     capacity_class = db.Column(db.String(16), nullable=False, index=True)
 
     year_number = db.Column(db.Integer, nullable=False, index=True)

@@ -160,7 +160,7 @@ def main(*, dry_run: bool = False) -> None:
 
         if dry_run:
             db.session.rollback()
-            print("DRY RUN — rollback")
+            print("DRY RUN – rollback")
         else:
             db.session.commit()
             # verify

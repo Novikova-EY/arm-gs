@@ -17,11 +17,11 @@
                     {% if current_year_split is not none and y == current_year_split %}
                         <td class="power-column"></td>
                         <td class="power-column">
-                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                            {{ yearly_data.get(y) | default('–') | format_decimal if yearly_data.get(y) is not none }}
                         </td>
                     {% else %}
                         <td class="power-column">
-                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                            {{ yearly_data.get(y) | default('–') | format_decimal if yearly_data.get(y) is not none }}
                         </td>
                     {% endif %}
                 {% endfor %}
@@ -36,13 +36,13 @@
                         {% endfor %}
                         {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                     {% else %}
-                        —
+                        –
                     {% endif %}
                 </td>
                 <td></td>
             </tr>
 
-            {# При фильтре «Тип агрегата ТЭС» / для ТЭС — строки по типам агрегатов (с учётом event) #}
+            {# При фильтре «Тип агрегата ТЭС» / для ТЭС – строки по типам агрегатов (с учётом event) #}
             {% if st_name == 'ТЭС' and regional_districts_by_tes_machine_types_yearly_p_ust is defined %}
                 {% for tes_type_id, tes_map in regional_districts_by_tes_machine_types_yearly_p_ust.get(current_rd_id, {}).items() %}
                     {% for tm_id, tm_events in (tes_map or {}).items() %}
@@ -60,11 +60,11 @@
                                     {% if current_year_split is not none and y == current_year_split %}
                                         <td class="power-column"></td>
                                         <td class="power-column">
-                                            {{ tm_yearly.get(y) | default('—') | format_decimal if tm_yearly.get(y) is not none }}
+                                            {{ tm_yearly.get(y) | default('–') | format_decimal if tm_yearly.get(y) is not none }}
                                         </td>
                                     {% else %}
                                         <td class="power-column">
-                                            {{ tm_yearly.get(y) | default('—') | format_decimal if tm_yearly.get(y) is not none }}
+                                            {{ tm_yearly.get(y) | default('–') | format_decimal if tm_yearly.get(y) is not none }}
                                         </td>
                                     {% endif %}
                                 {% endfor %}
@@ -79,7 +79,7 @@
                                         {% endfor %}
                                         {% if ns_tm.v != 0 %}{{ ns_tm.v | format_decimal }}{% endif %}
                                     {% else %}
-                                        —
+                                        –
                                     {% endif %}
                                 </td>
                                 <td></td>

@@ -112,7 +112,7 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
     try:
         if isinstance(value, Decimal):
@@ -155,7 +155,7 @@ def _numb1120_for_match(value) -> str | None:
 
 
 def _resolve_equipment_groups_from_row(row):
-    """Цели записи во все версии БД (numb + external_code; без ГО — (None, version))."""
+    """Цели записи во все версии БД (numb + external_code; без ГО – (None, version))."""
     from app.fuel.services.fuel_imports.fuel_import_all_versions import (
         resolve_equipment_group_import_targets,
     )

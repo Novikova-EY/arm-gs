@@ -1,0 +1,19 @@
+<div id="otTerritoryFilterMenu" class="ot-territory-filter-menu border rounded bg-body shadow p-3" hidden
+     role="dialog" aria-label="Отображаемые столбцы"{% if territory_filter_storage_key %} data-storage-key="{{ territory_filter_storage_key }}"{% endif %}>
+  <div class="fw-bold mb-2">Отображаемые столбцы</div>
+  <label class="d-flex align-items-center gap-2 mb-2">
+    <input type="checkbox" data-territory-all checked> Выбрать все
+  </label>
+  <div class="ot-territory-filter-values d-flex flex-column gap-2 mb-3">
+    {% for col in territory_columns %}
+    <label class="d-flex align-items-center gap-2">
+      <input type="checkbox" value="{{ col.slug }}" data-territory-option checked>
+      {{ col.sheet_name }}
+    </label>
+    {% endfor %}
+  </div>
+  <div class="d-flex justify-content-between gap-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-territory-reset>Сбросить</button>
+    <button type="button" class="btn btn-sm btn-primary" data-territory-apply>Применить</button>
+  </div>
+</div>

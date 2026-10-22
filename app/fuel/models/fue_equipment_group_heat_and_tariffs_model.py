@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupHeatAndTariffs — тепло и тарифы из схем теплоснабжения (СТ).
+EquipmentGroupHeatAndTariffs – тепло и тарифы из схем теплоснабжения (СТ).
 Источник Access: «Тепло из схем теплоснабжения» (+ нормализованные Q/TARIF).
 """
 from sqlalchemy import ForeignKeyConstraint, UniqueConstraint
@@ -13,7 +13,7 @@ class EquipmentGroupHeatAndTariffs(db.Model):
     """
     Тепло (Q) и тариф (TARIF) из схем теплоснабжения.
     Связь с EquipmentGroup через equipment_group_id и numb1120 = EquipmentGroup.numb
-    (без FK на numb — поле не уникально).
+    (без FK на numb – поле не уникально).
     year_number + database_version_id → Year.number + Year.database_version_id.
     """
 
@@ -61,7 +61,7 @@ class EquipmentGroupHeatAndTariffs(db.Model):
     var_razv = db.Column(db.Integer, nullable=True)
     name_eto = db.Column(db.Text, nullable=True)
 
-    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK — numb не уникален)
+    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK – numb не уникален)
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     equipment_group_by_numb = db.relationship(
         "EquipmentGroup",

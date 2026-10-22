@@ -317,7 +317,7 @@
                                                     {{ regional_district.name }}<br>
                                                 {% endfor %}
                                             {% else %}
-                                                —
+                                                –
                                             {% endif %}
                                         </div>
                                     </div>
@@ -580,14 +580,14 @@
                                                 <input type="hidden" name="regional_districts_{{ regional_energy_system.id }}[]" value="{{ regional_district.id }}">
                                             {% endfor %}
                                         {% else %}
-                                            —
+                                            –
                                         {% endif %}
                                     </div>
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "ОЭС" -->
                                 <td>
-                                    {% set ns = namespace(title="—") %}
+                                    {% set ns = namespace(title="–") %}
                                     {% for u in union_energy_system_list %}
                                         {% if u[0] == regional_energy_system.id_union_energy_system %}
                                             {% set ns.title = u[1] %}

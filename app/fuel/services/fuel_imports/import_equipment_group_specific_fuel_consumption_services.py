@@ -96,7 +96,7 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
     try:
         if isinstance(value, Decimal):
@@ -148,7 +148,7 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
     K привязан к году: записывается в consumption.k для (equipment_group_id, year_number).
     Формат: таблица со столбцами NAME, k, NUMB, numb1. Используются NUMB и k.
     По NUMB ищем EquipmentGroup.numb, создаем/обновляем consumption для года year.
-    :param year: обязателен — год, для которого импортируются значения K.
+    :param year: обязателен – год, для которого импортируются значения K.
     """
     if year is None:
         raise ValueError("Год обязателен для импорта коэффициента K. Укажите год в фильтре.")
@@ -375,7 +375,7 @@ def _numb1120_for_match(value) -> str | None:
 
 
 def _resolve_equipment_groups_for_calc(row):
-    """Цели записи во все версии БД (numb + external_code; без ГО — (None, version))."""
+    """Цели записи во все версии БД (numb + external_code; без ГО – (None, version))."""
     from app.fuel.services.fuel_imports.fuel_import_all_versions import (
         resolve_equipment_group_import_targets,
     )
@@ -479,7 +479,7 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
                 if equipment_group_id is not None
                 else None
             )
-            # Всегда берём numb из группы; Excel — только запасной вариант
+            # Всегда берём numb из группы; Excel – только запасной вариант
             eg_numb = _safe_int(getattr(eg, "numb", None)) if eg is not None else None
             resolved_numb1120 = eg_numb if eg_numb is not None else numb1120_val
 

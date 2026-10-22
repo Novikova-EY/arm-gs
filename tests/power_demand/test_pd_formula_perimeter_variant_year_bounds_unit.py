@@ -24,7 +24,7 @@ def test_formula_year_applies_ignores_skip_flag(monkeypatch):
 def test_formula_write_respects_perimeter_variant_year_bounds_even_when_input_unrestricted(
     monkeypatch,
 ):
-    """Формулы на oes/fo/ez пишутся только в «Год с»…«Год по»; вне периода — данные из БД."""
+    """Формулы на oes/fo/ez пишутся только в «Год с»…«Год по»; вне периода – данные из БД."""
     years = [2022, 2023, 2024, 2025]
 
     def _fake_bounds(code: str):

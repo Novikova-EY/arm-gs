@@ -203,7 +203,7 @@ def test_split_ez_summary_rows_by_energy_zone():
     )
     ez1 = _block(
         {
-            "entity_label": "1 — Северо-Запад",
+            "entity_label": "1 – Северо-Запад",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": EZ,
@@ -214,7 +214,7 @@ def test_split_ez_summary_rows_by_energy_zone():
     )
     ez2 = _block(
         {
-            "entity_label": "2 — Центр",
+            "entity_label": "2 – Центр",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": EZ,
@@ -241,6 +241,6 @@ def test_split_ez_summary_rows_by_energy_zone():
     page_rows, meta = paginate_summary_rows_for_scope(rows, "ez", page=2, page_size=1)
     labels = [r["entity_label"] for r in page_rows if r.get("show_entity_cell")]
     assert "ЕЭС России" not in labels
-    assert "2 — Центр" in labels
+    assert "2 – Центр" in labels
     assert "Новые территории" in labels
     assert meta["all_label"] == "Все энергозоны"

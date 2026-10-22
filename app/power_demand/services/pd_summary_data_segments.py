@@ -149,7 +149,7 @@ def segments_for_parameter_keys(keys: set[str] | frozenset[str], *, scope: str) 
 
 
 def parse_pd_data_segments(scope: str) -> frozenset[str]:
-    """GET pd_data_segments=core,calc_max — по умолчанию только core."""
+    """GET pd_data_segments=core,calc_max – по умолчанию только core."""
     raw = request.args.get("pd_data_segments")
     if raw is None or str(raw).strip() == "":
         return DEFAULT_PD_SUMMARY_DATA_SEGMENTS
@@ -182,7 +182,7 @@ def _row_in_data_segments(
     # Заголовок «Новые территории» помечен pd_pd_nt_extra_row, но всегда в core (позиция в дереве ОЭС Юга).
     if row.get("pd_pd_aggregation_level_row"):
         return PD_SUMMARY_SEGMENT_CORE in segments
-    # «Проверка …» у «с НТ» (в т.ч. ОЭС Юга с НТ) — сегмент verify, не nt_extra.
+    # «Проверка …» у «с НТ» (в т.ч. ОЭС Юга с НТ) – сегмент verify, не nt_extra.
     if row.get("pd_pd_verify_for_row"):
         return PD_SUMMARY_SEGMENT_VERIFY in segments
 

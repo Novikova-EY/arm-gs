@@ -63,7 +63,7 @@
             return false;
         }
         // Блок «Новые территории» в «Сводной таблице» показывается кнопкой «+ НТ»,
-        // как в полном дереве ОЭС — не отсекаем его режимом compact.
+        // как в полном дереве ОЭС – не отсекаем его режимом compact.
         if (row.pd_pd_nt_extra_row || isNtAggregationHeaderRow(row)) {
             return false;
         }
@@ -369,8 +369,8 @@
 
     /**
      * Предпочтительная видимость строк k (sessionStorage + дефолт).
-     * Полное дерево при pd_page_size=0: по умолчанию скрываем k — иначе DOM ~×2.
-     * «Сводная таблица» тоже ставит page_size=0, но таблица короткая — k показываем.
+     * Полное дерево при pd_page_size=0: по умолчанию скрываем k – иначе DOM ~×2.
+     * «Сводная таблица» тоже ставит page_size=0, но таблица короткая – k показываем.
      */
     function preferCoeffKColumnsVisible() {
         try {
@@ -417,7 +417,7 @@
         applyInitialCoeffKVisibilityClass;
     applyInitialCoeffKVisibilityClass();
 
-    /** Строки k в DOM нужны только когда блоки k видимы (иначе — лишний объём). */
+    /** Строки k в DOM нужны только когда блоки k видимы (иначе – лишний объём). */
     function coeffKColumnsVisibleInDom() {
         var table = document.getElementById("powerDemandSummaryTable");
         if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
@@ -483,7 +483,7 @@
             manualRange && base != null && y > base &&
             y >= manualRange.sy && y <= manualRange.ey &&
             displayValue != null && String(displayValue).trim() !== "" &&
-            String(displayValue).trim() !== "—"
+            String(displayValue).trim() !== "–"
         ) {
             return false;
         }
@@ -781,11 +781,11 @@
     /** Как «Максимальное потребление мощности, МВт»: пробел между разрядами. */
     function formatCalculatedMaxMwDisplay(raw) {
         if (raw == null) {
-            return "—";
+            return "–";
         }
         var t = String(raw).trim();
-        if (!t || t === "—") {
-            return t || "—";
+        if (!t || t === "–") {
+            return t || "–";
         }
         var n = parseFloat(
             t.replace(/\u00a0/g, "").replace(/\s/g, "").replace(",", ".")
@@ -864,7 +864,7 @@
         if (isHistParameterAllowed(row, cfg)) {
             if (pk === "peak_datetime") {
                 var peakTitle =
-                    (tooltip ? escapeAttr(tooltip) + " — " : "") +
+                    (tooltip ? escapeAttr(tooltip) + " – " : "") +
                     "Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ";
                 td.setAttribute("title", peakTitle.replace(/&#39;/g, "'"));
             } else if (tooltip) {
@@ -874,7 +874,7 @@
 
         if (canEditHistCell(row, cfg)) {
             clearHistCellDisabled(td);
-            var hv = row.hist_value && row.hist_value !== "—" ? String(row.hist_value) : "";
+            var hv = row.hist_value && row.hist_value !== "–" ? String(row.hist_value) : "";
             var inp = document.createElement("input");
             inp.type = "text";
             inp.autocomplete = "off";
@@ -886,7 +886,7 @@
             inp.setAttribute("data-model", row.demand_model_name || "");
             inp.setAttribute(
                 "aria-label",
-                (row.entity_label || "") + " — " + (row.parameter_label || "") + ", исторический максимум"
+                (row.entity_label || "") + " – " + (row.parameter_label || "") + ", исторический максимум"
             );
             if (pk === "peak_datetime") {
                 inp.setAttribute("data-bs-toggle", "tooltip");
@@ -924,13 +924,13 @@
         var rowIds = row.year_row_ids || [];
         var tooltips = row.year_numeric_tooltips || [];
         var value =
-            ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+            ix < values.length && values[ix] != null ? String(values[ix]) : "–";
         value = displayMwValueForRow(row, value);
         var yrid = ix < rowIds.length ? rowIds[ix] : null;
         var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
         var pvYearOutOfRange = summaryYearOutOfRange(row, year);
         if (pvYearOutOfRange) {
-            value = "—";
+            value = "–";
             yrid = null;
             yrTt = "";
         }
@@ -959,7 +959,7 @@
         if (pk === "peak_datetime") {
             td.setAttribute(
                 "title",
-                (yrTt ? yrTt + " — " : "") +
+                (yrTt ? yrTt + " – " : "") +
                     "Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
             );
         } else if (yrTt) {
@@ -974,7 +974,7 @@
             coeff && isCoeffResSumCalcMaxRow(row);
 
         if (canEditCell(row, cfg) && !pvYearOutOfRange) {
-            var yv = value !== "—" ? value : "";
+            var yv = value !== "–" ? value : "";
             if (pk === "peak_datetime") {
                 var ta = document.createElement("textarea");
                 ta.rows = 2;
@@ -992,7 +992,7 @@
                 ta.setAttribute(
                     "aria-label",
                     (row.entity_label || "") +
-                        " — " +
+                        " – " +
                         (row.parameter_label || "") +
                         ", " +
                         year +
@@ -1026,7 +1026,7 @@
                 inp.setAttribute(
                     "aria-label",
                     (row.entity_label || "") +
-                        " — " +
+                        " – " +
                         (row.parameter_label || "") +
                         ", " +
                         year +
@@ -1061,7 +1061,7 @@
             ro.setAttribute(
                 "aria-label",
                 (row.entity_label || "") +
-                    " — " +
+                    " – " +
                     (row.parameter_label || "") +
                     ", " +
                     year +
@@ -1102,7 +1102,7 @@
             tr.appendChild(source);
             return;
         }
-        // peak_datetime / cz totals — заглушки «—»
+        // peak_datetime / cz totals – заглушки «–»
         var classes = [
             "summary-coeff-gs10-cell",
             "summary-coeff-gs10-minmax-trim-cell",
@@ -1120,10 +1120,10 @@
             ) {
                 var span = document.createElement("span");
                 span.className = "text-muted";
-                span.textContent = "—";
+                span.textContent = "–";
                 td.appendChild(span);
             } else {
-                td.textContent = "—";
+                td.textContent = "–";
             }
             tr.appendChild(td);
         });
@@ -1230,7 +1230,7 @@
             manInp.setAttribute(
                 "aria-label",
                 (row.entity_label || "") +
-                    " — " +
+                    " – " +
                     (row.parameter_label || "") +
                     ", ручной ввод коэффициента совмещения"
             );
@@ -1244,7 +1244,7 @@
             sel.setAttribute(
                 "aria-label",
                 (row.entity_label || "") +
-                    " — " +
+                    " – " +
                     (row.parameter_label || "") +
                     ", используемый коэффициент совмещения"
             );
@@ -1267,7 +1267,7 @@
             for (var mi = 0; mi < 6; mi++) {
                 var dash = document.createElement("td");
                 dash.className = "text-center summary-coeff-mixin-cell";
-                dash.textContent = "—";
+                dash.textContent = "–";
                 tr.appendChild(dash);
             }
         }
@@ -1280,7 +1280,7 @@
             var kDisp =
                 ix < kValues.length && kValues[ix] != null
                     ? String(kValues[ix])
-                    : "—";
+                    : "–";
             var kTt = ix < kTooltips.length ? kTooltips[ix] || "" : "";
             var planHide = coeffPlanHideYear(row, year, yearIsPlan, cfg, kDisp);
             td.className = "text-center summary-year-cell summary-year-k-cell";
@@ -1312,7 +1312,7 @@
                 kRo.setAttribute(
                     "aria-label",
                     (row.entity_label || "") +
-                        " — " +
+                        " – " +
                         (row.parameter_label || "") +
                         ", k, " +
                         year +
@@ -1464,7 +1464,7 @@
             if (row.parent_id != null) {
                 ta.setAttribute("data-parent-id", String(row.parent_id));
             }
-            ta.setAttribute("aria-label", (row.entity_label || "") + " — примечание");
+            ta.setAttribute("aria-label", (row.entity_label || "") + " – примечание");
             wrap.classList.add("pd-summary-note-editable");
             wrap.appendChild(ta);
         } else {
@@ -1676,8 +1676,8 @@
     }
 
     /**
-     * Одна логическая строка → 1–2 <tr> (на coeff — показатель + строка k).
-     * Если следом идёт «Проверка …» для этого показателя — k откладывается
+     * Одна логическая строка → 1–2 <tr> (на coeff – показатель + строка k).
+     * Если следом идёт «Проверка …» для этого показателя – k откладывается
      * и рисуется сразу после проверки (расчётный → проверка → k).
      * opts: { prevRow, nextRow } из соседних summary_rows.
      */
@@ -1705,7 +1705,7 @@
         if (!isCoeffRoute(cfg)) {
             return nodes;
         }
-        /* Не создавать строки k, пока они скрыты — при pd_page_size=0 это ~половина DOM. */
+        /* Не создавать строки k, пока они скрыты – при pd_page_size=0 это ~половина DOM. */
         if (!coeffKColumnsVisibleInDom()) {
             return nodes;
         }
@@ -2075,7 +2075,7 @@
                     (blockRows[ai].getAttribute("data-parameter-key") || "") ===
                     afterPk
                 ) {
-                    // «Проверка …» — сразу после якоря, перед его строкой k (если есть).
+                    // «Проверка …» – сразу после якоря, перед его строкой k (если есть).
                     if (isVerifyParameterKey(pk)) {
                         var maybeK = coeffKRowAfterParamTr(blockRows[ai]);
                         if (maybeK) {
@@ -2383,7 +2383,7 @@
                 break;
             }
             if (st.getAttribute("data-pd-pd-nt-extra") === "1") {
-                // Уже вставленные субъекты НТ не сдвигают якорь — заголовок
+                // Уже вставленные субъекты НТ не сдвигают якорь – заголовок
                 // должен остаться перед ними.
                 break;
             }
@@ -2398,7 +2398,7 @@
                 continue;
             }
             if (!inBaseSouth) {
-                // ЭЗ: якорь — зона ОЭС Юга без варианта периметра.
+                // ЭЗ: якорь – зона ОЭС Юга без варианта периметра.
                 if (
                     ezId &&
                     stEz === ezId &&
@@ -2560,7 +2560,7 @@
             if (td.classList.contains("summary-plan-empty")) {
                 var year = years[ix];
                 var updatedValue =
-                    ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+                    ix < values.length && values[ix] != null ? String(values[ix]) : "–";
                 updatedValue = displayMwValueForRow(row, updatedValue);
                 if (
                     isCoeffRoute(cfg) && !summaryYearOutOfRange(row, year) &&
@@ -2571,7 +2571,7 @@
                 return;
             }
             var value =
-                ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+                ix < values.length && values[ix] != null ? String(values[ix]) : "–";
             value = displayMwValueForRow(row, value);
             var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
             var inp = td.querySelector(
@@ -2583,7 +2583,7 @@
                 if (normInputForCompare(initial) !== normInputForCompare(current)) {
                     return;
                 }
-                var nextVal = value !== "—" ? value : "";
+                var nextVal = value !== "–" ? value : "";
                 inp.value = nextVal;
                 // Синхронизировать initial, иначе value≠data-initial → ложное «грязное»
                 // состояние и массовое сохранение / откат после подгрузки сегментов.
@@ -2619,7 +2619,7 @@
                         // (формула и т.п.) ниже всё равно можно обновить.
                     } else {
                         var nextHist =
-                            histValue && histValue !== "—" ? histValue : "";
+                            histValue && histValue !== "–" ? histValue : "";
                         histInp.value = nextHist;
                         histInp.setAttribute("data-initial", nextHist);
                         if (histTt) {
@@ -3183,7 +3183,7 @@
                     };
                     continue;
                 }
-                // Субъекты / строки под «Новые территории» — сразу после заголовка агрегации.
+                // Субъекты / строки под «Новые территории» – сразу после заголовка агрегации.
                 var afterNtSubtree = findInsertAfterForNtSubtreeRow(tbody, row);
                 var insertedStart;
                 if (afterNtSubtree) {
@@ -3202,7 +3202,7 @@
                         return !!r.pd_pd_summary_table_only_row;
                     })
                 ) {
-                    // Prefix «с НТ» без якоря — не в конец tbody.
+                    // Prefix «с НТ» без якоря – не в конец tbody.
                     continue;
                 } else {
                     var baseStart = findBaseBlockStartForNtRow(tbody, row);
@@ -3263,7 +3263,7 @@
                 })
             ) {
                 // Prefix (ЦЗ / ЕЭС / 1-я СЗ): без блока-якоря в DOM не дописывать
-                // в конец страницы — иначе «Расчетное максимальное…» оказывается внизу.
+                // в конец страницы – иначе «Расчетное максимальное…» оказывается внизу.
                 continue;
             } else {
                 var insertedBaseStart = insertBlockAfter(
@@ -3500,7 +3500,7 @@
     }
 
     function effectiveEntityPaginationPageSize() {
-        // «Сводная таблица» (compact): список короткий — всё на одной странице.
+        // «Сводная таблица» (compact): список короткий – всё на одной странице.
         if (window.__pdPdSummaryTerritoryCompactMode === true) {
             return entityPaginationAllPageSize();
         }
@@ -3549,7 +3549,7 @@
         ) {
             syncEntityPaginationUrl(1, entityPaginationAllPageSize());
         }
-        // Compact shows the whole short table — no pager.
+        // Compact shows the whole short table – no pager.
         if (
             window.__pdPdSummaryTerritoryCompactMode === true ||
             !meta ||
@@ -3576,7 +3576,7 @@
             page +
             " из " +
             totalPages +
-            (titles.length ? " — " + titles.join(", ") : "");
+            (titles.length ? " – " + titles.join(", ") : "");
 
         var ul = document.createElement("ul");
         ul.className = "pagination justify-content-center mb-0 flex-wrap";
@@ -3962,7 +3962,7 @@
             return Promise.reject(new Error("tbody не найден"));
         }
         // Skip remesh when already loaded. Callers that rebuild tbody
-        // (pagination / «Сводная таблица») must clear loadedSegments first —
+        // (pagination / «Сводная таблица») must clear loadedSegments first –
         // otherwise merge + pd-summary-rows-rendered can loop forever.
         if (loadedSegments[segmentName]) {
             return Promise.resolve();

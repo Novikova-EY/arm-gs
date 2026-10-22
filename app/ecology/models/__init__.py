@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Модели раздела «Экология» (таблицы схемы gs_eco).
 from . import (  # noqa: F401
+    fuel_exchange_model,
     new_tes_norm_model,
     operating_tes_coefficient_model,
     operating_tes_fuel_characteristic_model,

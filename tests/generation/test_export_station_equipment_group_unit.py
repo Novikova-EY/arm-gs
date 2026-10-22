@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Unit tests: колонка «Группа оборудования» в полном Excel-экспорте — тип группы."""
+"""Unit tests: колонка «Группа оборудования» в полном Excel-экспорте – тип группы."""
 
 from types import SimpleNamespace
 
@@ -15,9 +15,9 @@ def test_type_display_name():
 
 
 def test_type_display_name_skips_unset():
-    assert equipment_group_type_display_name(None) == "—"
-    assert equipment_group_type_display_name(SimpleNamespace(name="")) == "—"
-    assert equipment_group_type_display_name(SimpleNamespace(name="не указано")) == "—"
+    assert equipment_group_type_display_name(None) == "–"
+    assert equipment_group_type_display_name(SimpleNamespace(name="")) == "–"
+    assert equipment_group_type_display_name(SimpleNamespace(name="не указано")) == "–"
 
 
 def test_resolve_uses_equipment_group_type_not_fuel_name():
@@ -56,4 +56,4 @@ def test_resolve_empty_without_type():
             equipment_group=SimpleNamespace(name="Название группы")
         ),
     )
-    assert resolve_machine_equipment_group_label(machine) == "—"
+    assert resolve_machine_equipment_group_label(machine) == "–"

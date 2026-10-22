@@ -227,7 +227,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
 
 
 def _ei_tooltip_digits_for_row_kind(row_kind: str | None) -> int | None:
-    """None — полное значение без фиксированного округления."""
+    """None – полное значение без фиксированного округления."""
     if row_kind in EI_INTENSITY_VALUE_ROW_KINDS:
         return EI_INTENSITY_TOOLTIP_ROUNDING_DIGITS
     if row_kind == ROW_KIND_GRAPH_POINT:
@@ -247,9 +247,9 @@ def _format_cell_tooltip(value: Any, *, row_kind: str | None = None) -> str:
 
 def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
-        return "—"
+        return "–"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return apply_thousand_grouping_to_display(shown) if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "–"
 
 
 def _ei_current_year_number() -> int | None:
@@ -699,7 +699,7 @@ def _attach_rf_section_scatter_chart(
     current_year: int | None,
     calculated_cells: dict[int, Decimal | None] | None = None,
 ) -> None:
-    """График секции РФ: факт ≤ текущего года, расчётная кривая — с текущего."""
+    """График секции РФ: факт ≤ текущего года, расчётная кривая – с текущего."""
     ref_rows = section.get("reference_rows") or []
     accum_row = _find_ref_row_in_list(ref_rows, REF_ROW_ACCUM_FIXED_CAPITAL)
     if accum_row is None:
@@ -1866,7 +1866,7 @@ def _parse_decimal(raw: str | None) -> Decimal | None:
     if raw is None:
         return None
     s = str(raw).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:
@@ -1931,7 +1931,7 @@ def _coef_display_fields(
         "coefficient_a_manual_tooltip": _format_full_numeric_tooltip(coef_a_manual),
         "coefficient_a_computed_tooltip": _format_full_numeric_tooltip(coef_a_computed),
         "coefficient_x_tooltip": _format_full_numeric_tooltip(coef_x),
-        # Обратная совместимость (экспорт и пр.): A — значение из БД.
+        # Обратная совместимость (экспорт и пр.): A – значение из БД.
         "coefficient_a_display": _format_cell_display(coef_a_manual, rounding_digits),
         "coefficient_a_tooltip": _format_full_numeric_tooltip(coef_a_manual),
     }
@@ -2240,7 +2240,7 @@ def _scale_forecast_cells_from_anchor(
     display_years: list[int],
     anchor_year: int | None,
 ) -> dict[int, Decimal | None]:
-    """Прогноз строки без выпуска продукции — по темпу роста опорной суммы."""
+    """Прогноз строки без выпуска продукции – по темпу роста опорной суммы."""
     if anchor_year is None:
         return cells
     anchor_val = cells.get(anchor_year)
@@ -4771,13 +4771,13 @@ def calculate_and_save_all_graph_points(
             else:
                 skipped += 1
 
-    # Кэш сбрасываем в route после commit — иначе другой worker может
+    # Кэш сбрасываем в route после commit – иначе другой worker может
     # снова положить в Redis устаревшие значения до фиксации транзакции.
     return updated, skipped
 
 
 def _ei_row_calc_json_payload(gp_row: dict[str, Any], *, display_years: list[int]) -> dict[str, Any]:
-    """Сериализация строки graph_point для AJAX (ключи годов — строки)."""
+    """Сериализация строки graph_point для AJAX (ключи годов – строки)."""
     current_year = _ei_current_year_number()
     computed_years = _ei_years_through_current(display_years, current_year)
     cells: dict[str, str] = {}
@@ -4791,7 +4791,7 @@ def _ei_row_calc_json_payload(gp_row: dict[str, Any], *, display_years: list[int
             continue
         key = str(year)
         cells[key] = str(val)
-        cells_display[key] = gp_row.get("cells_display", {}).get(year, "—")
+        cells_display[key] = gp_row.get("cells_display", {}).get(year, "–")
         cell_tooltips[key] = gp_row.get("cell_tooltips", {}).get(year, "")
     diag_raw = gp_row.get("cell_diagnostic_notes") or {}
     cell_diagnostic_notes = {str(y): t for y, t in diag_raw.items() if t}

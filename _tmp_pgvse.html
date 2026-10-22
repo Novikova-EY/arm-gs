@@ -134,7 +134,7 @@
                     }
                     clearStickyTheadRowVars(table);
                     /*
-                     * offsetTop — позиция в вёрстке. getBoundingClientRect() у <tr> — объединение
+                     * offsetTop – позиция в вёрстке. getBoundingClientRect() у <tr> – объединение
                      * ячеек, и после прокрутки в него попадают уже «залипшие» th / rowspan,
                      * из‑за этого top второй строки шапки завышается: строки тела заезжают
                      * в щель под нижней строкой шапки.
@@ -236,7 +236,7 @@
             window.armGsUpdatePdSummaryControlsStickyHeight = updatePdSummaryControlsStickyHeight;
             window.armGsUpdateHorizontalScrollFlags = updateHorizontalScrollFlags;
 
-            /** Высота viewport для блока таблицы коэффициентов: скролл и полосы — у #powerDemandSummaryScrollWrap. */
+            /** Высота viewport для блока таблицы коэффициентов: скролл и полосы – у #powerDemandSummaryScrollWrap. */
             function updatePdCoeffTableHostMaxHeight() {
                 document.querySelectorAll('.page-table-scroll .pd-coeff-summary-scroll-wrap').forEach(function (host) {
                     if (host.style.visibility === 'hidden') {
@@ -334,7 +334,7 @@
                 // Для страниц справочников/обычных таблиц, где используется bootstrap `.table-responsive`
                 // (там тоже overflow-x:auto и может появляться "пустая" полоса).
                 document.querySelectorAll('.table-responsive').forEach(function (el) {
-                    // если таблица уже живет внутри page-table-scroll — x-скролл управляется wrapper'ом или host'ом
+                    // если таблица уже живет внутри page-table-scroll – x-скролл управляется wrapper'ом или host'ом
                     if (el.closest('.page-table-scroll')) return;
                     const needsX = (el.scrollWidth - el.clientWidth) > 1;
                     el.classList.toggle('has-x-scroll', needsX);
@@ -345,11 +345,11 @@
             // чтобы при прокрутке скрывалось все над шапкой таблицы.
             function wrapTablePages() {
                 document.querySelectorAll('.container-fluid.mt-2').forEach(function (container) {
-                    // BODY тоже имеет class="container-fluid mt-2" — его нельзя оборачивать, иначе появляются 2 scroll-контейнера
+                    // BODY тоже имеет class="container-fluid mt-2" – его нельзя оборачивать, иначе появляются 2 scroll-контейнера
                     if (container.tagName === 'BODY') return;
                     if (!container.querySelector('table')) return;
                     if (container.querySelector(':scope > .page-table-scroll')) return;
-                    // Если страница уже вручную использует stationsTableContainer — не дублируем wrapper
+                    // Если страница уже вручную использует stationsTableContainer – не дублируем wrapper
                     if (container.querySelector('#stationsTableContainer')) return;
 
                     const wrapper = document.createElement('div');
@@ -452,7 +452,7 @@
             if (!e.persisted) show(); // только при реальном уходе
         });
 
-        // Клик по ссылкам — без preventDefault!
+        // Клик по ссылкам – без preventDefault!
         document.body.addEventListener('click', function (e) {
             const a = e.target.closest('a');
             if (!a) return;
@@ -579,7 +579,7 @@
                         return isMatch || String(opt.value) === current;
                     });
 
-                // UX: текущий выбранный — вверху (если есть)
+                // UX: текущий выбранный – вверху (если есть)
                 res.sort(function (a, b) {
                     var aSel = String(a.value) === current ? 0 : 1;
                     var bSel = String(b.value) === current ? 0 : 1;
@@ -616,7 +616,7 @@
                     // Подсветка текущего элемента навигации
                     if (idx === highlightedIndex) el.classList.add('active');
 
-                    el.textContent = opt.text || '—';
+                    el.textContent = opt.text || '–';
 
                     el.dataset.value = String(opt.value);
                     el.dataset.index = String(idx);
@@ -787,14 +787,14 @@
             document.addEventListener('mousedown', function (e) {
                 var el = e.target;
                 if (!isSearchableSelect(el)) return;
-                if (isSelect2Enhanced(el)) return; // если работает Select2 — не мешаем
+                if (isSelect2Enhanced(el)) return; // если работает Select2 – не мешаем
                 // не открываем нативный select, используем наш список
                 e.preventDefault();
                 e.stopPropagation();
                 openOverlay(el, '');
             }, true);
 
-            // Если пользователь начинает печатать, когда фокус на select — тоже открываем поиск
+            // Если пользователь начинает печатать, когда фокус на select – тоже открываем поиск
             document.addEventListener('keydown', function (e) {
                 var el = e.target;
                 if (!isSearchableSelect(el)) return;

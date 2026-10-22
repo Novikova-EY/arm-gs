@@ -3,14 +3,14 @@
 Write/update-слой для EquipmentGroupSpecificFuelConsumption.
 
 Ручной ввод полей k, y, btp, sntp, bk, snk (и др.) с карточки группы.
-На странице расчётного модуля edit_data — те же столбцы, что на
+На странице расчётного модуля edit_data – те же столбцы, что на
 stations_equipment_group_specific_fuel_consumption: numb1120, k, y/y_calc,
 btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc;
 numb1120 только просмотр, при сохранении = EquipmentGroup.numb;
-годы «факт» — входные и *_calc только чтение; для остальных признаков (в т.ч. «план»)
+годы «факт» – входные и *_calc только чтение; для остальных признаков (в т.ч. «план»)
 входные и *_calc редактируются.
 
-Справочно: полный список колонок таблицы — SPECIFIC_FUEL_CONSUMPTION_COLUMNS в
+Справочно: полный список колонок таблицы – SPECIFIC_FUEL_CONSUMPTION_COLUMNS в
 equipment_group_specific_fuel_consumption_services.
 """
 from __future__ import annotations
@@ -55,13 +55,13 @@ NUMERIC_DECIMAL_ATTRS = frozenset(
 
 def _format_val(value):
     if value is None:
-        return "—"
+        return "–"
     if isinstance(value, bool):
         return str(value)
     if isinstance(value, (Decimal, int, float)):
         return format_number_trim_trailing(value)
     if isinstance(value, str):
-        return value.strip() or "—"
+        return value.strip() or "–"
     return str(value)
 
 
@@ -70,7 +70,7 @@ def _parse_int_for_k(value):
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     s = str(value).strip()
-    if not s or s.lower() in ("nan", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "–", "-", "–"):
         return None
     try:
         return int(round(float(s.replace(",", "."))))
@@ -82,7 +82,7 @@ def _parse_decimal(value):
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     s = str(value).strip()
-    if not s or s.lower() in ("nan", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "–", "-", "–"):
         return None
     try:
         return Decimal(s.replace(",", "."))
@@ -175,8 +175,8 @@ def update_specific_fuel_consumption_fields(
 ) -> dict:
     """
     Обновляет поля строки и возвращает change_details {attr: {old, new}}.
-    По умолчанию — только CONSUMPTION_FORM_INPUT_ATTRS;
-    при allow_calc_attrs — также SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS.
+    По умолчанию – только CONSUMPTION_FORM_INPUT_ATTRS;
+    при allow_calc_attrs – также SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS.
     """
     change_details = {}
     allowed_attrs = list(CONSUMPTION_FORM_INPUT_ATTRS)
@@ -238,7 +238,7 @@ def save_specific_fuel_consumption_for_year(
     if allow_calc_attrs:
         allowed.update(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
     filtered = {k: v for k, v in values.items() if k in allowed}
-    # numb1120 не из формы/values — всегда EquipmentGroup.numb при сохранении строки
+    # numb1120 не из формы/values – всегда EquipmentGroup.numb при сохранении строки
     filtered.pop("numb1120", None)
 
     if row is None:
@@ -313,7 +313,7 @@ def save_specific_fuel_consumption_bulk(
 
 
 # Поля ручного ввода на странице расчётного модуля.
-# Входные (кроме годов «факт»); *_calc — для всех признаков, кроме «план».
+# Входные (кроме годов «факт»); *_calc – для всех признаков, кроме «план».
 CALC_EDIT_PAGE_FORM_INPUT_ATTRS = ("k", "y", "btp", "sntp", "bk", "snk")
 CALC_EDIT_PAGE_CALC_ATTRS = tuple(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
 
@@ -350,8 +350,8 @@ def apply_specific_fuel_consumption_bulk_save_from_form(
 ) -> tuple[int, list[str]]:
     """
     Массовое сохранение удельных показателей со страницы расчётного модуля.
-    Входные k — кроме годов «факт».
-    *_calc — кроме годов «факт» (для «план» и прочих признаков — редактируются).
+    Входные k – кроме годов «факт».
+    *_calc – кроме годов «факт» (для «план» и прочих признаков – редактируются).
     numb1120 подставляется из EquipmentGroup.numb.
     Поля формы: g{id}_specific_fc_{year}_{attr}.
     """

@@ -32,7 +32,7 @@ def _rows_from_group_block(gb: dict) -> list:
 
 
 def _rows_for_summary(rows: list) -> list:
-    """Как в hierarchy: при наличии ved — только ved>0; иначе legacy все строки."""
+    """Как в hierarchy: при наличии ved – только ved>0; иначе legacy все строки."""
     has_any_ved = any(
         param is not None and getattr(param, "ved", None) is not None
         for _eg, param in rows
@@ -58,7 +58,7 @@ def _station_block_key(station_block: dict | None) -> tuple:
 
     Нужен cluster_key: иначе два разных кластера с одним station_id/name
     (например lone comp=1 и соседняя EG на той же Station) сливаются и
-    выводятся дважды — по разу на каждый исходный station_block.
+    выводятся дважды – по разу на каждый исходный station_block.
     """
     sb = station_block or {}
     return (
@@ -113,7 +113,7 @@ def _station_block_out_from(
 
 
 def count_fuel_eg_groups_in_hierarchy(hierarchy_flat: list | None) -> int:
-    """Число блоков групп оборудования в иерархии (как на странице — по group_blocks)."""
+    """Число блоков групп оборудования в иерархии (как на странице – по group_blocks)."""
     n = 0
     for est_block in hierarchy_flat or []:
         for ues_block in est_block.get("ues_list", []):
@@ -165,7 +165,7 @@ def _flatten_fuel_eg_hierarchy(hierarchy_flat: list | None) -> list[dict[str, An
 
 def _fuel_res_boundary_key(item: dict[str, Any]) -> tuple:
     """
-    Граница soft-пагинации — РЭС внутри ОЭС/ЕЭС
+    Граница soft-пагинации – РЭС внутри ОЭС/ЕЭС
     (аналог субъекта РФ на station_list).
     """
     return (item.get("est_id"), item.get("ues_id"), item.get("res_id"))
@@ -292,7 +292,7 @@ def paginate_fuel_eg_station_hierarchy(
       - число страниц (с учётом soft-границ РЭС);
       - номер текущей страницы.
 
-    children_by_parent — опционально: для страниц, где родительские столбцы
+    children_by_parent – опционально: для страниц, где родительские столбцы
     считаются суммой листовых полей (доп. топливные параметры).
     """
     flat_items = _flatten_fuel_eg_hierarchy(hierarchy_flat)
@@ -322,8 +322,8 @@ def paginate_fuel_eg_station_hierarchy(
     )
     page_items = flat_items[start_idx:end_idx]
 
-    # Итоги ОЭС/ЕЭС считаются по всей выборке, но отображаются один раз —
-    # на странице, завершающей соответствующий блок. Россия — на последней странице.
+    # Итоги ОЭС/ЕЭС считаются по всей выборке, но отображаются один раз –
+    # на странице, завершающей соответствующий блок. Россия – на последней странице.
     last_est_item_index = {}
     last_ues_item_index = {}
     for index, item in enumerate(flat_items):
@@ -380,7 +380,7 @@ def paginate_fuel_eg_station_hierarchy(
                         continue
                     seen.add(st_key)
                     # Soft-граница РЭС: на странице либо весь РЭС, либо ничего
-                    # из него — берём исходный порядок group_blocks станции.
+                    # из него – берём исходный порядок group_blocks станции.
                     src_gbs = station_block.get("group_blocks") or []
                     if len(gbs) == len(src_gbs) and src_gbs:
                         gbs = src_gbs
@@ -420,7 +420,7 @@ def paginate_fuel_eg_station_hierarchy(
                     for gb in sb.get("group_blocks", []):
                         all_res_rows.extend(_rows_from_group_block(gb))
 
-                # Полный РЭС на странице — сохраняем исходный res_summary,
+                # Полный РЭС на странице – сохраняем исходный res_summary,
                 # если он уже посчитан на полной иерархии.
                 src_res_summary = res_block.get("res_summary")
                 if (

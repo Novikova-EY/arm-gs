@@ -166,7 +166,7 @@ def upgrade():
             schema=SCHEMA_EC,
         )
 
-        # Одна строка на (сущность,) год и версию БД; отдельно — не более одной строки с year_number IS NULL.
+        # Одна строка на (сущность,) год и версию БД; отдельно – не более одной строки с year_number IS NULL.
         if fk_col:
             op.execute(
                 sa.text(
@@ -224,4 +224,4 @@ def downgrade():
     for table, _, _ in reversed(TABLE_SPECS):
         if _table_exists(conn, SCHEMA_EC, table):
             op.execute(sa.text(f'DROP TABLE IF EXISTS "{SCHEMA_EC}"."{table}" CASCADE'))
-    # схему gs_ec не удаляем — могут появиться другие объекты
+    # схему gs_ec не удаляем – могут появиться другие объекты

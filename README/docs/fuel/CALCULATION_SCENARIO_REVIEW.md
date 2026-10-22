@@ -6,19 +6,19 @@
 
 Математика сценария «Расчёт» для строк **`EquipmentGroupFuelParam`** / **`EquipmentGroupExtraFuelParam`** на заданный **год** сосредоточена в:
 
-- `EquipmentGroupFuelCalculationService.calculate_group_year` — `app/fuel/services/equipment_group_fuel_calculation_services.py` (логика, перенесённая из Access).
+- `EquipmentGroupFuelCalculationService.calculate_group_year` – `app/fuel/services/equipment_group_fuel_calculation_services.py` (логика, перенесённая из Access).
 
 Пакетный слой только перебирает группы и коммитит транзакции:
 
-- `EquipmentGroupFuelBatchCalculationService.calculate_for_many_groups` — `app/fuel/services/equipment_group_fuel_batch_calculation_services.py`.
+- `EquipmentGroupFuelBatchCalculationService.calculate_for_many_groups` – `app/fuel/services/equipment_group_fuel_batch_calculation_services.py`.
 
-Снимок полей после расчёта для API (в т.ч. годы исходных строк удельных и формулы) — `fuel_calculation_snapshot_for_api` в том же batch-файле.
+Снимок полей после расчёта для API (в т.ч. годы исходных строк удельных и формулы) – `fuel_calculation_snapshot_for_api` в том же batch-файле.
 
 **Входы на один год расчёта (как в пакете):**
 
 - строка удельных `EquipmentGroupSpecificFuelConsumption`: последняя с `year_number` в `[базовый год, год расчёта]` (Seek Access; нет строк → Skip);
 - строка формулы `EquipmentGroupFuelFormula`: то же окно `[базовый год, год расчёта]` для `variant_number` (и версии БД); нет строки на базовый год и позже → Skip;
-- поля энергобаланса в строке `EquipmentGroupFuelParam` за **этот же год расчёта** (`e`, `q`, `qotr`, `turt` и т.д. — как в описании на странице пакета).
+- поля энергобаланса в строке `EquipmentGroupFuelParam` за **этот же год расчёта** (`e`, `q`, `qotr`, `turt` и т.д. – как в описании на странице пакета).
 
 **Что сценарий «Расчёт» не делает:** не перезаписывает вручную заданные на карточке входные удельные `k, y, btp, sntp, bk, snk`; не считает `*_calc` удельных (это отдельный recalc после сохранения карточки); не считает цену `xxx_c` (отдельный пересчёт цены).
 
@@ -30,7 +30,7 @@
 
 **Сохранение:**
 
-- Основные/доп. параметры топлива, входные удельные, стоимость — через `equipment_group_details_params_update_services` и write-сервисы.
+- Основные/доп. параметры топлива, входные удельные, стоимость – через `equipment_group_details_params_update_services` и write-сервисы.
 - После изменения входных удельных вызывается `recalculate_all_specific_fuel_consumption_calc` для `*_calc`.
 - Цена пересчитывается `recalculate_specific_fuel_prices_for_equipment_group`, поля цены с формы не пишутся.
 
@@ -40,9 +40,9 @@
 
 ## 3. Пакетный UI
 
-**Страница:** `fuel_bp.equipment_group_fuel_batch_calculation_page` — шаблон `fuel/batch_recalc/equipment_group_fuel_batch_calculation.html`.
+**Страница:** `fuel_bp.equipment_group_fuel_batch_calculation_page` – шаблон `fuel/batch_recalc/equipment_group_fuel_batch_calculation.html`.
 
-**API расчёта:** `POST .../equipment_group_fuel_batch_calculation/batch` — разбор территориальных фильтров → список `equipment_group_ids` → тот же `EquipmentGroupFuelBatchCalculationService`.
+**API расчёта:** `POST .../equipment_group_fuel_batch_calculation/batch` – разбор территориальных фильтров → список `equipment_group_ids` → тот же `EquipmentGroupFuelBatchCalculationService`.
 
 **Сверка:** блок «Сверка с карточкой группы и сценарием «Расчёт»» на странице; JSON-ответ содержит сведения о пакете; предпросмотр таблиц подтягивает сохранённые данные после успешного прогона.
 
@@ -52,14 +52,14 @@
 
 **Модель:** `DistributionParameter` (`gs_fue_distribution_parameters`), поле **`filter_text`** обрабатывается через **`AccessFilterAdapter.build_expression`** (не произвольный SQL в сервисе).
 
-**Сервис:** `DistributionParameterCalculationService` — `app/fuel/services/distribution_parameter_calculation_services.py`.
+**Сервис:** `DistributionParameterCalculationService` – `app/fuel/services/distribution_parameter_calculation_services.py`.
 
 **Цепочка:** строка `DistributionParameter` → отбор `EquipmentGroup` по фильтру и версии БД → **`EquipmentGroupFuelBatchCalculationService.calculate_for_many_groups`** с `year_number` из строки параметра.
 
 **API:**
 
-- `POST .../equipment_group_fuel_batch_calculation/distribution` — один `distribution_param_id`;
-- `POST .../equipment_group_fuel_batch_calculation/distribution_multi` — несколько id / имя / год.
+- `POST .../equipment_group_fuel_batch_calculation/distribution` – один `distribution_param_id`;
+- `POST .../equipment_group_fuel_batch_calculation/distribution_multi` – несколько id / имя / год.
 
 Параметры `commit_each`, `final_commit`, `stop_on_error`, `strict_formula_validation` согласованы с пакетным batch API.
 
@@ -74,7 +74,7 @@
 **Рекомендуемый порядок:**
 
 1. Зафиксировать **год расчёта**, **variant_number**, **версию БД**.
-2. Выбрать **1–2 контрольные группы** с полными данными: удельные, формула, баланс за год, при необходимости — стоимость (для цены не для пакета fuel param).
+2. Выбрать **1–2 контрольные группы** с полными данными: удельные, формула, баланс за год, при необходимости – стоимость (для цены не для пакета fuel param).
 3. Выполнить расчёт одним из способов:
    - пакетный UI по фильтру, включающему только эти группы; или
    - API `distribution` с параметром распределения, в котором `filter_text` отбирает те же группы; или

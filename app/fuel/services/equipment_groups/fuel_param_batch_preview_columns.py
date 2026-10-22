@@ -118,8 +118,8 @@ def resolve_fuel_param_preview_columns(
     column_set: str | None,
 ) -> tuple[list[tuple[str, str, bool]], list[str]]:
     """
-    column_set: «full» (по умолчанию) или «calculation» — только поля баланса и расчётных показателей по строке.
-    Возвращает (список колонок, атрибуты для сворачивания блока углей; для calculation — пусто).
+    column_set: «full» (по умолчанию) или «calculation» – только поля баланса и расчётных показателей по строке.
+    Возвращает (список колонок, атрибуты для сворачивания блока углей; для calculation – пусто).
     """
     key = (column_set or "full").strip().lower()
     if key == "calculation":

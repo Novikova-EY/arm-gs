@@ -352,13 +352,13 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
             continue
         names_by_machine[mn.id_machine][mn.year_number] = mn.name.strip()
 
-    # Признаки годов (план/факт) — как в handle_machine_get
+    # Признаки годов (план/факт) – как в handle_machine_get
     if year_features is None:
         year_features = get_year_feature_dict()
 
     # Диапазон лет текущей версии (start = текущий/факт, end = план)
     version_year_start, version_year_end = get_current_version_year_range_from_name()
-    # Базовое имя — из года начала диапазона (текущий/факт), иначе из конца
+    # Базовое имя – из года начала диапазона (текущий/факт), иначе из конца
     version_year_for_base = version_year_start if version_year_start is not None else version_year_end
 
     for m in machines:
@@ -415,7 +415,7 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
                     display_name_before = before_name
                     display_name_after = after_name
 
-        # Если по годам имя уже записано как «до (после)» — разбираем строку
+        # Если по годам имя уже записано как «до (после)» – разбираем строку
         if not display_name_before or not display_name_after:
             parsed_before, parsed_after = _split_display_name_before_after(display_name)
             if parsed_before and parsed_after:
@@ -515,8 +515,8 @@ def _build_station_note_search_condition(note_filter_value):
 
 def _station_union_energy_system_sql_filter(union_energy_system_filter):
     """
-    ОЭС: как Station.union_energy_system — сначала прямая РЭС станции,
-    и только если РЭС не задана — fallback через субъект РФ.
+    ОЭС: как Station.union_energy_system – сначала прямая РЭС станции,
+    и только если РЭС не задана – fallback через субъект РФ.
 
     Без ограничения на «РЭС is NULL» субъект вроде Красноярского края
     (связан и с ОЭС Сибири, и с ТИТЭС Сибири / Норильск) тянет в фильтр
@@ -593,7 +593,7 @@ def get_stations_list(
         machine_query = filter_by_db_version(machine_query, Machine)
 
         if filters.get("tes_type_filter"):
-            # Тип ТЭС — по любому году в выбранном диапазоне (иначе теряются вводы/выводы в периоде)
+            # Тип ТЭС – по любому году в выбранном диапазоне (иначе теряются вводы/выводы в периоде)
             _sy = int(start_year if start_year is not None else get_filter_start_year())
             _ey = int(end_year if end_year is not None else get_filter_end_year())
             machine_query = machine_query.filter(
@@ -861,7 +861,7 @@ def get_stations_list(
     else:
         raw_station_ids = [row[0] for row in station_ids_query.all()]
 
-    # 4a. При наличии фильтров по датам — добавляем электростанции, где PGUMachine совпадает по датам
+    # 4a. При наличии фильтров по датам – добавляем электростанции, где PGUMachine совпадает по датам
     date_filters_present = any([
         filters.get("date_commission_filter"),
         filters.get("date_exploitation_filter"),
@@ -883,7 +883,7 @@ def get_stations_list(
         pgu_station_query = filter_by_db_version(pgu_station_query, Station)
         for cond in build_date_filters_for_pgu(PGUMachine, filters):
             pgu_station_query = pgu_station_query.filter(cond)
-        # Для фильтра «агрегаты без группы» — родительский Machine без топливной группы
+        # Для фильтра «агрегаты без группы» – родительский Machine без топливной группы
         if filters.get("machines_without_equipment_group"):
             from app.generation.services.station_services.filters_services import (
                 build_machines_without_equipment_group_filter,
@@ -892,7 +892,7 @@ def get_stations_list(
             pgu_station_query = pgu_station_query.filter(
                 build_machines_without_equipment_group_filter(Machine)
             )
-        # Те же машинные фильтры, что и в machine_query — иначе «Ввод»+«Тип ТЭС» ломается
+        # Те же машинные фильтры, что и в machine_query – иначе «Ввод»+«Тип ТЭС» ломается
         # (станции с ПГУ по дате добавлялись без проверки типа ТЭС).
         if filters.get("tes_type_filter"):
             _sy = int(start_year if start_year is not None else get_filter_start_year())
@@ -1940,7 +1940,7 @@ def determine_first_headers(stations_on_page, prev_page_last_station_info=None):
 def get_regional_districts_count_per_res():
     """
     Возвращает словарь {res_id: количество субъектов РФ в этой РЭС}.
-    РЭС/субъекты — общие справочники, не фильтруются по версии.
+    РЭС/субъекты – общие справочники, не фильтруются по версии.
     """
     from collections import defaultdict
     res_to_rd_count = defaultdict(int)
@@ -2028,7 +2028,7 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
         """
         Режим per_page='all':
         - Показываем итоги по всем уровням (ОЭС, РЭС, типы энергосистем, энергоузлы, Россия),
-          а по субъектам РФ — только если в РЭС >1 субъекта по БД и >1 субъекта имеют электростанции.
+          а по субъектам РФ – только если в РЭС >1 субъекта по БД и >1 субъекта имеют электростанции.
         """
         from app.extensions import db  # локальный импорт, чтобы избежать циклических зависимостей
         from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
@@ -2065,7 +2065,7 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 all_rd_ids.add(station.id_regional_district)
 
             # Определяем РЭС с приоритетом прямой связи электростанции (id_regional_energy_system),
-            # затем — через субъект РФ (как ранее)
+            # затем – через субъект РФ (как ранее)
             selected_res = None
             if getattr(station, "id_regional_energy_system", None):
                 # Пытаемся использовать уже загруженный объект, чтобы не делать лишний запрос
@@ -2114,7 +2114,7 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
             'union_energy_systems': {ues_id: True for ues_id in union_energy_system_ids},
             # Типы энергосистем (без децентрализованной зоны)
             'energy_system_types': {est_id: True for est_id in energy_system_type_ids},
-            # Итог по России (без децентрализованной зоны — см. aggregate_all_at_once)
+            # Итог по России (без децентрализованной зоны – см. aggregate_all_at_once)
             'total': True,
             'decentralized_zone': has_decentralized_zone,
             'decentralized_zone_est_id': decentralized_zone_est_id if has_decentralized_zone else None,
@@ -3096,7 +3096,7 @@ def get_station_list_data(
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
 
-        # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
+        # Отображаемое название: как на machine_details – MachineName за год версии, иначе machine_name; при отличии в плане – "<текущ.> (<план>)"
         _apply_machine_display_names(machines)
             
         # Обеспечиваем, что station_totals содержит данные для всех станций
@@ -3139,7 +3139,7 @@ def get_station_list_data(
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
 
-        # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
+        # Отображаемое название: как на machine_details – MachineName за год версии, иначе machine_name; при отличии в плане – "<текущ.> (<план>)"
         _apply_machine_display_names(machines)
             
         # Обеспечиваем, что station_totals содержит данные для всех станций
@@ -3338,7 +3338,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     import time
     start_time = time.time()
 
-    # Порядок ОЭС/ЕЭС ниже — из справочника (union_energy_system_list); hierarchy_data только для совместимости вызовов.
+    # Порядок ОЭС/ЕЭС ниже – из справочника (union_energy_system_list); hierarchy_data только для совместимости вызовов.
     _ = hierarchy_data
 
     year_features = get_year_feature_dict()
@@ -3466,7 +3466,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     fd_to_ues_mapping = get_fd_to_ues_ids_map()
     fd_to_est_mapping = get_fd_to_est_ids_map()
 
-    # Порядок ОЭС как в справочнике (порядковый номер / display_order — см. get_union_energy_system_list_full).
+    # Порядок ОЭС как в справочнике (порядковый номер / display_order – см. get_union_energy_system_list_full).
     # По нему же упорядочиваются типы ЕЭС: сначала тот тип, у которого минимальный индекс ОЭС среди фактических данных.
     ues_order_index = {ues["id"]: idx for idx, ues in enumerate(union_energy_system_list)}
 
@@ -3504,7 +3504,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     from app.common.services.database_version_services import get_current_version
     from app.extensions import db
     
-    # Очищаем LRU кэш отфильтрованного списка энергоузлов (полный список без @lru_cache — см. energy_unit_get_services)
+    # Очищаем LRU кэш отфильтрованного списка энергоузлов (полный список без @lru_cache – см. energy_unit_get_services)
     from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list
     get_energy_unit_list.cache_clear()
     
@@ -4042,7 +4042,7 @@ def build_total_energy_system_type_aggregates(data):
         """
         В агрегатах по России ключом верхнего уровня является ID версии БД.
         Для шаблонов нужно получить словарь {year: value} (или аналогичные вложенные структуры).
-        Берем текущую версию, а при ее отсутствии — первый доступный ключ.
+        Берем текущую версию, а при ее отсутствии – первый доступный ключ.
         """
         current_version_id = get_current_db_version_id()
         if isinstance(values_dict, dict):
@@ -4568,7 +4568,7 @@ def update_station_from_form_service(
         def _is_unspecified_text(v) -> bool:
             """Считает 'не указано' и пустые значения эквивалентом None."""
             s = _norm_text(v).lower()
-            return s in {"", "не указано", "не указан", "не указана", "—", "-"}
+            return s in {"", "не указано", "не указан", "не указана", "–", "-"}
 
         def _normalize_angle_quotes(value: str | None) -> str | None:
             """Normalize «» pairs; keep already-correct nested ёлочки intact."""
@@ -4578,7 +4578,7 @@ def update_station_from_form_service(
             if "«" not in text and "»" not in text:
                 return text
             from app.common.services.help_services import _has_balanced_angle_quotes
-            # АО «Группа «Илим»» — already valid nested quotes; do not flatten.
+            # АО «Группа «Илим»» – already valid nested quotes; do not flatten.
             if _has_balanced_angle_quotes(text) and '"' not in text:
                 return text
             normalized = []
@@ -4969,14 +4969,14 @@ def _station_numeric_field_changed(raw_value, orig_value) -> bool:
     """
     Сравнивает ввод формы с исходным значением.
 
-    Пустое поле и 0 — разные значения: очистка нуля должна сохраняться.
+    Пустое поле и 0 – разные значения: очистка нуля должна сохраняться.
     """
     from app.generation.services.machine_services.machine_services import (
         is_same_decimal,
         to_decimal,
     )
 
-    empty_markers = (None, "", "—", "-", "–")
+    empty_markers = (None, "", "–", "-", "–")
     raw_empty = raw_value in empty_markers or (
         isinstance(raw_value, str) and not raw_value.strip()
     )
@@ -5511,7 +5511,7 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
         machines_to_delete = Machine.query.filter(Machine.id.in_(machine_ids_to_delete)).all()
         for machine in machines_to_delete:
             # Полагаться на каскадные связи ORM: дети удаляются автоматически
-            changes.append(f"Агрегат {machine.machine_number or '—'} удален")
+            changes.append(f"Агрегат {machine.machine_number or '–'} удален")
             db.session.delete(machine)
 
         _commit_with_retry()

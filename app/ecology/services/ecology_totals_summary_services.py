@@ -224,7 +224,7 @@ def build_ecology_totals_summary_context(
     else:
         agg_types = list(aggregation_types)
     if not agg_types:
-        # Годы/округление в URL без aggregation_type — как при первом заходе, показываем ЕЭС.
+        # Годы/округление в URL без aggregation_type – как при первом заходе, показываем ЕЭС.
         agg_types = ["ees"]
     source_columns = parsed["columns"]
     if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:

@@ -1,0 +1,83 @@
+{% macro year_heading(year) -%}
+  {{ year }}{% if year_features.get(year) %}<div class="small fw-normal">{{ year_features[year] }}</div>{% endif %}
+{%- endmacro %}
+{% set is_chars = sheet.layout == 'chars' %}
+{% set is_pair = emission_view and emission_view.kind == 'pair' %}
+<colgroup>
+  <col class="ot-col-label" />
+  {% if is_chars %}
+    {% for field in char_columns %}{% for year in years %}<col class="ot-col-year" />{% endfor %}{% endfor %}
+  {% else %}
+    {% for column in value_columns %}
+    {% if is_pair %}<col class="ot-col-terr-half" /><col class="ot-col-terr-half" />{% else %}<col class="ot-col-year" />{% endif %}
+    {% endfor %}
+  {% endif %}
+</colgroup>
+<thead class="table-success">
+  <tr class="text-center align-middle">
+    <th rowspan="2" class="ot-label-col">{{ 'Вид топлива' if is_chars or emission_view else 'Наименование' }}</th>
+    {% if is_chars %}
+      {% for cell in char_header_cells %}
+      <th colspan="{{ years|length }}" class="ot-char-title" title="{{ cell.title }}">{{ cell.title }}</th>
+      {% endfor %}
+    {% else %}
+      {% for terr in territory_columns %}
+      <th colspan="{{ years|length * (2 if is_pair else 1) }}" class="ot-terr-col">
+        {{ terr.sheet_name }}
+        {% if sheet.layout == 'coeff' %}<div class="small fw-normal">{% if affiliation == 'minen' %}Станции отрасли{% elif affiliation == 'prompred' %}Промпредприятия{% else %}Все принадлежности{% endif %}</div>{% endif %}
+      </th>
+      {% endfor %}
+    {% endif %}
+  </tr>
+  {% if is_chars %}
+  <tr class="text-center align-middle">
+    {% for field in char_columns %}{% for year in years %}<th class="ot-year-col" data-year="{{ year }}">{{ year_heading(year) }}</th>{% endfor %}{% endfor %}
+  </tr>
+  {% else %}
+  <tr class="text-center align-middle">
+    {% for column in value_columns %}<th class="ot-year-col" data-year="{{ column.year }}" {% if is_pair %}colspan="2"{% endif %}>{{ year_heading(column.year) }}</th>{% endfor %}
+  </tr>
+  {% if is_pair %}
+  <tr class="text-center align-middle">
+    {% for column in value_columns %}
+    <th class="ot-pair-sub">{{ emission_view.left_title }}{% if emission_view.left_title == 'Перевод в натур.' %} (B<sup>H</sup>){% endif %}</th>
+    <th class="ot-pair-sub">{{ emission_view.right_title }}</th>
+    {% endfor %}
+  </tr>
+  {% endif %}
+  {% endif %}
+</thead>
+<tbody>
+  {% for row in rows %}
+  <tr class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}" data-row-key="{{ row.key }}" data-editable-field="{{ row.editable_field|default('') or '' }}">
+    <td class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
+      {{ row.label }}
+      {% if row.formula_tooltip %}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" title="{{ row.formula_tooltip|e }}" aria-label="Формула"></i>{% endif %}
+    </td>
+    {% if is_chars %}
+      {% for field in char_columns %}{% for year in years %}
+      <td class="text-center ot-year-cell ot-char-cell" data-year="{{ year }}">
+        {% if row.editable_values and can_edit %}
+        <input type="text" class="form-control form-control-sm ot-edit-value" data-year="{{ year }}" data-field="{{ field.key }}"
+               value="{{ row.char_values[year][field.key] }}" inputmode="decimal" aria-label="{{ row.label }}, {{ field.short }}, {{ year }}" />
+        {% else %}{{ row.char_values[year][field.key] }}{% endif %}
+      </td>
+      {% endfor %}{% endfor %}
+    {% else %}
+      {% for column in value_columns %}
+        {% if is_pair %}
+        <td class="text-center ot-pair-cell" data-year="{{ column.year }}">{{ row.pair_values[column.slug].left }}</td>
+        <td class="text-center ot-pair-cell" data-year="{{ column.year }}">{{ row.pair_values[column.slug].right }}</td>
+        {% else %}
+        <td class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}" data-year="{{ column.year }}">
+          {% if row.editable_values and can_edit %}
+          <input type="text" class="form-control form-control-sm ot-edit-value" data-year="{{ column.year }}" data-territory="{{ column.territory_slug }}"
+                 value="{{ row.col_values[column.slug] }}" inputmode="decimal" aria-label="{{ row.label }}, {{ column.sheet_name }}, {{ column.year }}" />
+          {% else %}{{ row.col_values[column.slug] }}{% endif %}
+        </td>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  </tr>
+  {% endfor %}
+</tbody>

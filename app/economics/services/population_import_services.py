@@ -4,7 +4,7 @@
 Поддерживаемые форматы:
 - экспорт страницы (территория в столбце 1, годы с столбца 2);
 - шаблон «Численность населения_для загрузки.xlsx» (лист «тысяч человек»:
-  аббревиатура ФО в столбце 2, годы с столбца 3, шапка годов — строка 2).
+  аббревиатура ФО в столбце 2, годы с столбца 3, шапка годов – строка 2).
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def _parse_cell_value(cell_value: Any) -> Decimal | None:
     if isinstance(cell_value, (int, float)):
         return Decimal(str(cell_value))
     s = str(cell_value).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:
@@ -92,7 +92,7 @@ def _build_fd_lookup() -> dict[str, int]:
 def _territory_label_tokens(label: str) -> list[str]:
     n = _normalize_label(label)
     tokens = [n]
-    for sep in (" — ", " - ", "–", "—"):
+    for sep in (" – ", " - ", "–", "–"):
         if sep in label:
             left, right = label.split(sep, 1)
             for part in (left, right):
@@ -145,7 +145,7 @@ def _detect_territory_column(
     *,
     max_scan_rows: int = 20,
 ) -> int:
-    """Столбец с подписью ФО: 1 — экспорт UI, 2 — шаблон загрузки."""
+    """Столбец с подписью ФО: 1 – экспорт UI, 2 – шаблон загрузки."""
     hits_col1 = 0
     hits_col2 = 0
     end_row = min(header_row + max_scan_rows, sheet.max_row)
@@ -304,7 +304,7 @@ def import_population_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
     version_ids = all_database_version_ids_for_import()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — импорт невозможен."
+            "В системе нет зарегистрированных версий БД – импорт невозможен."
         )
 
     user = _username()

@@ -34,14 +34,14 @@ _COMMON_COLUMNS = {
     "database_version_id": "Версия базы данных (FK -> gs_sys.gs_database_versions)",
     "note": "Примечание",
     "year_number": "Номер года",
-    "perimeter_variant_code": "Код варианта периметра (NULL — без варианта)",
+    "perimeter_variant_code": "Код варианта периметра (NULL – без варианта)",
     "formula_key": "Ключ формулы",
     "formula_text": "Текст формулы",
     "external_code": "Внешний код (UUID)",
     "external_id": "Внешний идентификатор",
     "external_name": "Внешнее наименование",
     "name": "Наименование",
-    "is_historical_maximum": "Признак исторического максимума (true — без года)",
+    "is_historical_maximum": "Признак исторического максимума (true – без года)",
     "parameter_value": "Значение показателя за год (числовое, зависит от row_kind)",
     "row_kind": "Тип строки показателя (intensity, graph_point, calculated, delta)",
 }
@@ -582,7 +582,7 @@ def main() -> None:
 
     OUTPUT.write_text(generate_migration(schema_comments), encoding="utf-8")
     counts = {s: len(schema_comments[s]) for s in SCHEMAS}
-    print(f"Written {OUTPUT} — tables: {counts}")
+    print(f"Written {OUTPUT} – tables: {counts}")
 
     bad = []
     for table, cols in schema_comments["gs_fue"].items():

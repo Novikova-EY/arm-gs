@@ -54,7 +54,7 @@ def totals_summary():
         if (at or "").strip()
     ]
     # По умолчанию показываем ЕЭС только при "чистом" первом заходе на страницу (без query-параметров).
-    # Если пользователь снял все кнопки агрегации, в запросе останутся start_year/end_year, но aggregation_type не будет —
+    # Если пользователь снял все кнопки агрегации, в запросе останутся start_year/end_year, но aggregation_type не будет –
     # в этом случае НИЧЕГО не показываем (и точно не подставляем ЕЭС обратно).
     if not aggregation_types:
         aggregation_types = ["ees"] if len(request.args) == 0 else []
@@ -75,7 +75,7 @@ def totals_summary():
                 pass  # Игнорируем невалидные sync_area_
     aggregation_types = filtered_aggregation_types
     if not aggregation_types:
-        # Если не выбран ни один тип агрегации — показываем ЕЭС по умолчанию.
+        # Если не выбран ни один тип агрегации – показываем ЕЭС по умолчанию.
         aggregation_types = ["ees"]
 
     try:
@@ -178,7 +178,7 @@ def totals_summary():
                 _kaliningrad_ids.append(_sid)
 
     _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
-    # Остальные зоны — в исходном порядке (display_order)
+    # Остальные зоны – в исходном порядке (display_order)
     _rest_ids = [i for i in _sa_ids if i not in set(_kaliningrad_ids)]
     sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
 
@@ -215,7 +215,7 @@ def totals_summary():
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
     # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС);
-    # для остальных (ДЭС, ДГА и т.д.) — показывать разбивку по видам топлива.
+    # для остальных (ДЭС, ДГА и т.д.) – показывать разбивку по видам топлива.
     def _tes_type_skips_fuel_breakdown(tt_name: str) -> bool:
         n = (tt_name or "").strip().upper()
         if not n:

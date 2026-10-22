@@ -122,7 +122,7 @@ def test_cached_load_after_invalidate_reloads_fresh_payload(app):
                     assert page_cache.cached_load_pd_summary_data("oes", loader) == {
                         "v": "stale"
                     }
-                    # Повтор без invalidate — из кэша, loader не зовётся.
+                    # Повтор без invalidate – из кэша, loader не зовётся.
                     assert page_cache.cached_load_pd_summary_data("oes", loader) == {
                         "v": "stale"
                     }

@@ -47,7 +47,7 @@ from app.energy_balance.services.station_ee_generation_page_services import (
 
 DEFAULT_AGGREGATION_TYPES = ("russia", "ees", "sz", "oes")
 VALID_AGGREGATION_TYPES = frozenset({"ees", "tites", "sz", "oes", "russia"})
-_UNSPECIFIED_NAMES = frozenset({"", "не указано", "не указ", "—", "-"})
+_UNSPECIFIED_NAMES = frozenset({"", "не указано", "не указ", "–", "-"})
 
 
 def resolve_rounding_digits(raw: Any, default: int = 1) -> int:

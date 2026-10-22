@@ -184,14 +184,14 @@ def _write_sign_group_rows(
     for station_idx, station_row in enumerate(stations):
         station_periods = station_row.get("periods") or {}
         static_values = [
-            station_row.get("kto_display") or "—",
-            station_row.get("station_name") or "—",
-            station_row.get("station_type_name") or "—",
-            station_row.get("station_sign_display") or "—",
-            station_row.get("tes_types") or "—",
-            station_row.get("tes_machine_type") or "—",
-            station_row.get("primary_fuel") or "—",
-            station_row.get("fuel_so") or "—",
+            station_row.get("kto_display") or "–",
+            station_row.get("station_name") or "–",
+            station_row.get("station_type_name") or "–",
+            station_row.get("station_sign_display") or "–",
+            station_row.get("tes_types") or "–",
+            station_row.get("tes_machine_type") or "–",
+            station_row.get("primary_fuel") or "–",
+            station_row.get("fuel_so") or "–",
         ]
         period_values = []
         for period_key, _label in period_columns:
@@ -291,14 +291,14 @@ def export_ee_generation_to_excel(
     row_idx = 2
     for est_block in hierarchy:
         row_idx = write_merged_section_row(
-            ws, row_idx, num_cols, est_block.get("est_name") or "—", FILL_EST
+            ws, row_idx, num_cols, est_block.get("est_name") or "–", FILL_EST
         )
         for ues_block in est_block.get("ues_list") or []:
             row_idx = write_merged_section_row(
                 ws,
                 row_idx,
                 num_cols,
-                ues_block.get("ues_name") or "—",
+                ues_block.get("ues_name") or "–",
                 FILL_UES,
             )
             for res_block in ues_block.get("res_list") or []:
@@ -307,13 +307,13 @@ def export_ee_generation_to_excel(
                     ws,
                     row_idx,
                     num_cols,
-                    res_block.get("res_name") or "—",
+                    res_block.get("res_name") or "–",
                     FILL_RES_HEADER,
                 )
                 show_rd_level = res_show_rd_level_map.get(res_id, False)
                 for rd_block in res_block.get("rd_list") or []:
                     rd_id = rd_block.get("rd_id")
-                    rd_name = rd_block.get("rd_name") or "—"
+                    rd_name = rd_block.get("rd_name") or "–"
                     show_rd_totals = (
                         show_rd_level
                         and should_show_totals.get("regional_districts", {}).get(rd_id)
@@ -324,7 +324,7 @@ def export_ee_generation_to_excel(
                         )
                     for eu_block in rd_block.get("eu_list") or []:
                         eu_id = eu_block.get("eu_id")
-                        eu_name = eu_block.get("eu_name") or "—"
+                        eu_name = eu_block.get("eu_name") or "–"
                         skip_eu = (not eu_id) or eu_name.lower() in ("не указано", "без энергоузла")
                         if not skip_eu and eu_name.lower() != "не указано":
                             row_idx = write_merged_section_row(
@@ -356,7 +356,7 @@ def export_ee_generation_to_excel(
                             fill=FILL_STATION_SUMMARY,
                         )
                 if should_show_totals.get("regional_energy_systems", {}).get(res_id):
-                    res_name = res_block.get("res_name") or "—"
+                    res_name = res_block.get("res_name") or "–"
                     row_idx = _write_total_row(
                         ws,
                         row_idx,
@@ -377,7 +377,7 @@ def export_ee_generation_to_excel(
                         )
             ues_id = ues_block.get("ues_id")
             if should_show_totals.get("union_energy_systems", {}).get(ues_id):
-                ues_label = ues_block.get("ues_name") or "—"
+                ues_label = ues_block.get("ues_name") or "–"
                 row_idx = _write_total_row(
                     ws,
                     row_idx,

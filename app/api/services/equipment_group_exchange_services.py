@@ -118,7 +118,7 @@ def build_equipment_group_params_rows(
     years: list[int],
     param_map: dict[tuple[int, int], EquipmentGroupFuelParam],
 ) -> list[dict[str, Any]]:
-    """Группа × год; без строки топливных параметров в году — не отдаём."""
+    """Группа × год; без строки топливных параметров в году – не отдаём."""
     rows: list[dict[str, Any]] = []
     for group in groups:
         station, group_type = group_station_and_type(group)

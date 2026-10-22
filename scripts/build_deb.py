@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
         "--compress",
         choices=("default", "gzip", "xz", "zstd", "none"),
         default="default",
-        help="Тип сжатия для dpkg-deb -Z. «default» — как у dpkg. "
+        help="Тип сжатия для dpkg-deb -Z. «default» – как у dpkg. "
         "При EIO/zstd попробуйте xz или gzip.",
     )
     parser.add_argument(

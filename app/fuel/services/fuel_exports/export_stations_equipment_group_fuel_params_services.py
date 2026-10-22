@@ -95,26 +95,26 @@ def _format_cell_value(param, attr, is_numeric, name_maps, rounding_digits, grou
         val = getattr(param, "numb1120", None) if param is not None else None
         if val is None and group_entity is not None:
             val = getattr(group_entity, "numb", None)
-        return str(val) if val is not None else "—"
+        return str(val) if val is not None else "–"
     if param is None:
-        return "—"
+        return "–"
     val = getattr(param, attr, None)
     if val is None:
-        return "—"
+        return "–"
     if attr == "obor" and name_maps.get("obor_name_map"):
-        return name_maps["obor_name_map"].get(val, val) or "—"
+        return name_maps["obor_name_map"].get(val, val) or "–"
     if attr == "obl" and name_maps.get("obl_name_map"):
-        return name_maps["obl_name_map"].get(val, val) or "—"
+        return name_maps["obl_name_map"].get(val, val) or "–"
     if attr == "dep" and name_maps.get("dep_name_map"):
-        return name_maps["dep_name_map"].get(val, val) or "—"
+        return name_maps["dep_name_map"].get(val, val) or "–"
     if attr == "oes" and name_maps.get("oes_name_map"):
-        return name_maps["oes_name_map"].get(val, val) or "—"
+        return name_maps["oes_name_map"].get(val, val) or "–"
     if attr == "er" and name_maps.get("er_name_map"):
-        return name_maps["er_name_map"].get(val, val) or "—"
+        return name_maps["er_name_map"].get(val, val) or "–"
     if attr == "gk" and name_maps.get("gk_name_map"):
-        return name_maps["gk_name_map"].get(val, val) or "—"
+        return name_maps["gk_name_map"].get(val, val) or "–"
     if attr == "be" and name_maps.get("be_name_map"):
-        return name_maps["be_name_map"].get(val, val) or "—"
+        return name_maps["be_name_map"].get(val, val) or "–"
     if attr == "ved":
         s = str(val)
         if s == "1":
@@ -131,15 +131,15 @@ def _format_cell_value(param, attr, is_numeric, name_maps, rounding_digits, grou
         return val
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
-    return str(val) if val is not None else "—"
+    return str(val) if val is not None else "–"
 
 
 def _format_summary_value(summary, attr, is_numeric, rounding_digits):
     if summary is None or attr not in summary:
-        return "—"
+        return "–"
     val = summary.get(attr)
     if val is None:
-        return "—"
+        return "–"
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
     return str(val)
@@ -211,7 +211,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
     def _write_aggregate_rows(label, aggregate_rows, fill):
         for aggregate_row in aggregate_rows or []:
             summary = aggregate_row.get("summary") or {}
-            row_data = ["—", label]
+            row_data = ["–", label]
             for attr, _column_label, is_numeric in FUEL_PARAM_COLUMNS:
                 row_data.append(
                     _format_summary_value(
@@ -231,21 +231,21 @@ def export_stations_equipment_group_fuel_params_to_excel(
             )
             continue
 
-        title = est_block.get("est_name") or "—"
+        title = est_block.get("est_name") or "–"
         _bump_lengths([title] + [""] * (num_cols - 1))
         write_merged_section_row(
             ws, next_data_row_index(ws), num_cols, title, FILL_EST
         )
 
         for ues_block in est_block.get("ues_list") or []:
-            ues_title = ues_block.get("ues_name") or "—"
+            ues_title = ues_block.get("ues_name") or "–"
             _bump_lengths([ues_title] + [""] * (num_cols - 1))
             write_merged_section_row(
                 ws, next_data_row_index(ws), num_cols, ues_title, FILL_UES
             )
 
             for res_block in ues_block.get("res_list") or []:
-                res_title = res_block.get("res_name") or "—"
+                res_title = res_block.get("res_name") or "–"
                 _bump_lengths([res_title] + [""] * (num_cols - 1))
                 write_merged_section_row(
                     ws,
@@ -265,7 +265,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
                                 if group_entity and group_entity.name_ext
                                 else None
                             )
-                            or "—"
+                            or "–"
                         )
                         is_total = bool(group_block.get("is_composite_total_row"))
                         if is_total and not str(group_name).endswith(", всего"):
@@ -278,7 +278,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
                                 else (
                                     str(getattr(group_entity, "numb", None))
                                     if getattr(group_entity, "numb", None) is not None
-                                    else "—"
+                                    else "–"
                                 ),
                                 group_name,
                             ]
@@ -290,7 +290,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
                                         str(getattr(group_entity, "numb", None))
                                         if group_entity is not None
                                         and getattr(group_entity, "numb", None) is not None
-                                        else "—"
+                                        else "–"
                                     )
                                 elif is_total or group_block.get("use_station_summary"):
                                     row_data.append(
@@ -316,13 +316,13 @@ def export_stations_equipment_group_fuel_params_to_excel(
                                     ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
                                 )
 
-                    # Жёлтая «станция, всего» отключена — итог на строке родителя.
+                    # Жёлтая «станция, всего» отключена – итог на строке родителя.
 
                 if res_block.get("group_blocks") and not res_block.get("hide_res_summary"):
-                    res_nm = res_block.get("res_name") or "—"
+                    res_nm = res_block.get("res_name") or "–"
                     label = f"{res_nm}, всего"
                     summary = res_block.get("res_summary") or {}
-                    row_data = ["—", label]
+                    row_data = ["–", label]
                     for attr, _label, is_numeric in FUEL_PARAM_COLUMNS:
                         row_data.append(
                             _format_summary_value(summary, attr, is_numeric, rounding_digits)

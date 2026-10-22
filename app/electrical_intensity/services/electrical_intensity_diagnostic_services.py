@@ -114,7 +114,7 @@ def _local_x(
     inv_cur: Decimal | None,
     inv_prev: Decimal | None,
 ) -> Decimal | None:
-    """LN(Yt/Yt-1) / LN(It/It-1) — локальный коэффициент X между соседними годами."""
+    """LN(Yt/Yt-1) / LN(It/It-1) – локальный коэффициент X между соседними годами."""
     if (
         y_cur is None
         or y_prev is None

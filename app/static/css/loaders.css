@@ -1,10 +1,10 @@
 /*
  * Набор CSS-спиннеров для прелоадера и overlay.
  * Чтобы сменить вид: в base.html замените класс loader-orbit на один из:
- *   loader-orbit   — кольцо с бегущей точкой (по умолчанию)
- *   loader-dual-ring — два контр-вращающихся кольца
- *   loader-dots    — три прыгающие точки
- *   loader-wave    — волна из полосок (SpinKit)
+ *   loader-orbit   – кольцо с бегущей точкой (по умолчанию)
+ *   loader-dual-ring – два контр-вращающихся кольца
+ *   loader-dots    – три прыгающие точки
+ *   loader-wave    – волна из полосок (SpinKit)
  */
 
 :root {

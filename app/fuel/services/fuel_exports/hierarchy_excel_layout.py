@@ -9,11 +9,11 @@ EQUIPMENT_GROUP_ID_HEADER = "EquipmentGroup.id"
 
 
 def equipment_group_id_cell(equipment_group) -> str:
-    """Значение ячейки идентификатора группы оборудования; для строк без группы — «—»."""
+    """Значение ячейки идентификатора группы оборудования; для строк без группы – «–»."""
     if equipment_group is None:
-        return "—"
+        return "–"
     eid = getattr(equipment_group, "id", None)
-    return str(eid) if eid is not None else "—"
+    return str(eid) if eid is not None else "–"
 
 
 def next_data_row_index(ws) -> int:

@@ -23,7 +23,7 @@ def test_summary_row_year_float_prefers_tooltip_over_rounded_display() -> None:
 
 
 def test_fo_combined_on_fo_aggregate_uses_tooltip_precision() -> None:
-    """Как Сибирский ФО при округлении «до целого»: display округлён, title — полный."""
+    """Как Сибирский ФО при округлении «до целого»: display округлён, title – полный."""
     years = [2022, 2024]
     rows = [
         {

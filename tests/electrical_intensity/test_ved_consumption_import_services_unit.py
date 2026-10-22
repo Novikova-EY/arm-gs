@@ -31,11 +31,11 @@ def test_detect_import_columns_structure_file(structure_fo_xlsx_bytes):
 
 
 def test_territory_and_ved_label_helpers():
-    assert vis._is_russia_marker("РФ — Российская Федерация")
+    assert vis._is_russia_marker("РФ – Российская Федерация")
     assert vis._is_russia_marker("РОССИЯ")
     fd_lookup = {vis._normalize_label("ЦФО"): 1}
     assert vis._is_fd_marker("ЦФО", fd_lookup)
-    assert vis._resolve_fd_id("ЦФО — Центральный", fd_lookup) == 1
+    assert vis._resolve_fd_id("ЦФО – Центральный", fd_lookup) == 1
     ved_lookup = {vis._normalize_label("Промышленное производство"): 10}
     assert vis._resolve_ved_id("Промышленное производство, в том числе:", ved_lookup) == 10
 

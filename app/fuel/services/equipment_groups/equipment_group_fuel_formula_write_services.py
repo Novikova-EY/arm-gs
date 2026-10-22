@@ -2,10 +2,10 @@
 """
 Write/update-слой для EquipmentGroupFuelFormula.
 
-Импорт Excel остаётся в import_equipment_group_fuel_formula_services.py; здесь —
+Импорт Excel остаётся в import_equipment_group_fuel_formula_services.py; здесь –
 единый create/update для UI и возможной унификации с импортом.
 
-Выбор формулы для расчёта года — только в equipment_group_fuel_calculation_services.
+Выбор формулы для расчёта года – только в equipment_group_fuel_calculation_services.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ FORMULA_EDITABLE_ATTRS = [
 # Поля, допустимые для обновления уже существующей строки (год/вариант задают identity)
 FORMULA_UPDATABLE_ATTRS = frozenset(["name", "formtxt", "numb1120", "numb1"])
 
-# Годы с этими признаками — formtxt редактируется на странице формул
+# Годы с этими признаками – formtxt редактируется на странице формул
 FORMULA_FORMTXT_EDITABLE_YEAR_FEATURES = frozenset(
     {
         "текущий",
@@ -51,13 +51,13 @@ FORMULA_FORMTXT_EDITABLE_YEAR_FEATURES = frozenset(
 
 def _format_val(value):
     if value is None:
-        return "—"
+        return "–"
     if isinstance(value, bool):
         return str(value)
     if isinstance(value, (Decimal, int, float)):
         return format_number_trim_trailing(value)
     if isinstance(value, str):
-        return value.strip() or "—"
+        return value.strip() or "–"
     return str(value)
 
 
@@ -174,7 +174,7 @@ def update_equipment_group_fuel_formula_fields(
     display_digits: int = 6,
 ) -> dict:
     """
-    Обновляет только FORMULA_UPDATABLE_ATTRS (год/вариант не меняются — это другая строка).
+    Обновляет только FORMULA_UPDATABLE_ATTRS (год/вариант не меняются – это другая строка).
     """
     change_details = {}
 
@@ -400,7 +400,7 @@ def copy_fuel_formulas_between_years_for_filters(
                     database_version_id=version_id,
                     commit=False,
                 )
-                # Даже если значения совпали — считаем операцию (как «добавить год» на ТЭП)
+                # Даже если значения совпали – считаем операцию (как «добавить год» на ТЭП)
                 if change_details or row is not None:
                     copied += 1
 

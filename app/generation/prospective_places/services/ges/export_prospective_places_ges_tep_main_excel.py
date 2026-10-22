@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Excel «ТЭП основных площадок» ГЭС: как на экране — режим текущего года (_tep_machines_table_main) или исходные данные (_tep_machines_table_main_v2)."""
+"""Excel «ТЭП основных площадок» ГЭС: как на экране – режим текущего года (_tep_machines_table_main) или исходные данные (_tep_machines_table_main_v2)."""
 from __future__ import annotations
 
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -40,7 +40,7 @@ def _apply_border_to_range(ws, min_row, max_row, min_col, max_col, border):
 def write_tep_main_screen_sheet(
     ws, tep_groups: list[dict], *, source_prices: bool = False
 ) -> None:
-    """ТЭП основных площадок: как на экране — «текущий год» или «исходные данные» (годы у капзатрат)."""
+    """ТЭП основных площадок: как на экране – «текущий год» или «исходные данные» (годы у капзатрат)."""
     if source_prices:
         _write_ges_tep_main_sheet_source_prices(ws, tep_groups)
     else:
@@ -50,9 +50,9 @@ def write_tep_main_screen_sheet(
 def _write_ges_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) -> None:
     """
     Лист как на экране «в ценах текущего года»: без столбцов «год» у капзатрат.
-    Суммы капзатрат — из tep_full_current_year (пересчёт), если переданы в tep_groups.
-    Шапка — 4 строки: 2-я — «Установленная мощность» + агрегаты…срок (на 3 строки) + «Выработка…»;
-    3–4-я — детализация мощности (всего…2 очередь на две строки), выработка, очередь, стоимость.
+    Суммы капзатрат – из tep_full_current_year (пересчёт), если переданы в tep_groups.
+    Шапка – 4 строки: 2-я – «Установленная мощность» + агрегаты…срок (на 3 строки) + «Выработка…»;
+    3–4-я – детализация мощности (всего…2 очередь на две строки), выработка, очередь, стоимость.
     """
     thin = _thin_border()
     header_fill = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
@@ -61,7 +61,7 @@ def _write_ges_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) ->
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-    # --- Шапка: 4 строки (вторая — «Выработка электроэнергии…» под «Основными параметрами»), колонки 1–33 ---
+    # --- Шапка: 4 строки (вторая – «Выработка электроэнергии…» под «Основными параметрами»), колонки 1–33 ---
     ws.merge_cells(start_row=1, start_column=1, end_row=4, end_column=1)
     c = ws.cell(row=1, column=1, value="№ п/п")
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
@@ -114,7 +114,7 @@ def _write_ges_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) ->
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
     _apply_border_to_range(ws, 1, 4, 33, 33, thin)
 
-    # Строка 2: «Установленная мощность» (3–6); столбцы 7–10 — три строки шапки; выработка (11–15)
+    # Строка 2: «Установленная мощность» (3–6); столбцы 7–10 – три строки шапки; выработка (11–15)
     ws.merge_cells(start_row=2, start_column=3, end_row=2, end_column=6)
     c = ws.cell(row=2, column=3, value="Установленная мощность, МВт")
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)

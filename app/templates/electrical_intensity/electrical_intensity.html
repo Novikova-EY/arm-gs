@@ -20,7 +20,7 @@
     <input type="hidden" name="coef_ved_id[]" value="{{ ved_id if ved_id is not none else '' }}">
     <input type="text" name="coef_a[]" class="text-center fuel-param-input lt-ei-coef-input"
            inputmode="decimal" autocomplete="off"
-           value="{% if coef_a_manual_display != '—' %}{{ coef_a_manual_display }}{% endif %}"
+           value="{% if coef_a_manual_display != '–' %}{{ coef_a_manual_display }}{% endif %}"
            {% if coef_a_manual_tooltip %}title="{{ coef_a_manual_tooltip|e }}" data-db-full="{{ coef_a_manual_tooltip|e }}"{% endif %}>
     <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч') }}
     <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
@@ -47,7 +47,7 @@
 <input type="hidden" name="fd_total_k_row_kind[]" value="{{ row_kind }}">
 <input type="text" name="fd_total_k_value[]" class="text-center fuel-param-input lt-ei-coef-input lt-ei-fd-total-k-input"
        inputmode="decimal" autocomplete="off"
-       value="{% if k_display != '—' %}{{ k_display }}{% endif %}"
+       value="{% if k_display != '–' %}{{ k_display }}{% endif %}"
        {% if k_tooltip %}title="{{ k_tooltip|e }}" data-db-full="{{ k_tooltip|e }}"{% endif %}>
 {% else %}
 <span class="lt-ei-coef-readonly-val">{{ k_display }}</span>
@@ -363,7 +363,7 @@
         font-size: 1em;
     }
     /* Строки коэффициентов: липнут слева при горизонтальном скролле (как левые столбцы).
-       overflow: visible обязателен — иначе sticky у .lt-ei-coef-inline не срабатывает. */
+       overflow: visible обязателен – иначе sticky у .lt-ei-coef-inline не срабатывает. */
     #powerDemandSummaryScrollWrap tr.lt-ei-coef-row > td.lt-ei-coef-cell {
         padding: 0;
         vertical-align: middle;
@@ -496,7 +496,7 @@
         pointer-events: auto;
     }
     /* Заголовки ФО/ВЭД: по центру видимой области при горизонтальном скролле (как график).
-       overflow: visible обязателен — иначе sticky left:50% привязывается к ячейке, а не к экрану. */
+       overflow: visible обязателен – иначе sticky left:50% привязывается к ячейке, а не к экрану. */
     #powerDemandSummaryScrollWrap tr.lt-ei-territory-header-row > td {
         padding: 0;
         vertical-align: middle;
@@ -952,7 +952,7 @@ window.__ltEiYearSegBoot = {
                 <tr class="lt-ei-territory-header-row"
                     data-lt-ei-group-key="t:{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}">
                     <td colspan="{{ years|length + lt_ei_fixed_cols }}">
-                        <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-territory-header-label">{{ block.abbr }} — {{ block.label }}</div>
+                        <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-territory-header-label">{{ block.abbr }} – {{ block.label }}</div>
                     </td>
                 </tr>
                 {% if block.fd_summary %}
@@ -971,7 +971,7 @@ window.__ltEiYearSegBoot = {
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ ref_row.unit_label or '' }}</td>
                     {% for y in years %}
-                    {% set disp = ref_row.cells_display.get(y, '—') if ref_row.cells_display is defined else '—' %}
+                    {% set disp = ref_row.cells_display.get(y, '–') if ref_row.cells_display is defined else '–' %}
                     {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
@@ -992,7 +992,7 @@ window.__ltEiYearSegBoot = {
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ unit_label }}</td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
@@ -1007,7 +1007,7 @@ window.__ltEiYearSegBoot = {
                         <div class="lt-ei-chart-sticky-center">
                             <div class="lt-ei-scatter-chart-host" data-lt-ei-chart-host="1"
                                  data-lt-ei-chart-key="{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}|fd_summary">
-                                <div class="lt-ei-chart-caption">{{ block.abbr }} — {{ block.label }}</div>
+                                <div class="lt-ei-chart-caption">{{ block.abbr }} – {{ block.label }}</div>
                                 <div class="lt-ei-chart-plot">
                                     <script type="application/json" class="lt-ei-chart-data">{{ block.fd_summary.scatter_chart | tojson }}</script>
                                     <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроёмкости: {{ block.label|e }}"></canvas>
@@ -1054,7 +1054,7 @@ window.__ltEiYearSegBoot = {
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ ref_row.unit_label or '' }}</td>
                     {% for y in years %}
-                    {% set disp = ref_row.cells_display.get(y, '—') if ref_row.cells_display is defined else '—' %}
+                    {% set disp = ref_row.cells_display.get(y, '–') if ref_row.cells_display is defined else '–' %}
                     {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
@@ -1085,7 +1085,7 @@ window.__ltEiYearSegBoot = {
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ section.unit_label if section.unit_label is defined else unit_label }}</td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
@@ -1098,12 +1098,12 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_ved_id[]" value="{{ section.ved_id if section.ved_id is not none else '' }}">
                         <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
-                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}{{ disp }}{% endif %}">
-                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}1{% endif %}">
+                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}{{ disp }}{% endif %}">
+                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}1{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
-                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
-                               {% if row.row_kind == 'graph_point' and disp != '—' %}data-initial-display="{{ disp }}"{% endif %}
+                               value="{% if disp != '–' %}{{ disp }}{% endif %}"
+                               {% if row.row_kind == 'graph_point' and disp != '–' %}data-initial-display="{{ disp }}"{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}
@@ -1158,7 +1158,7 @@ window.__ltEiYearSegBoot = {
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ unit_label }}</td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
@@ -1171,12 +1171,12 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_ved_id[]" value="">
                         <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
-                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}{{ disp }}{% endif %}">
-                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}1{% endif %}">
+                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}{{ disp }}{% endif %}">
+                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}1{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
-                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
-                               {% if row.row_kind == 'graph_point' and disp != '—' %}data-initial-display="{{ disp }}"{% endif %}
+                               value="{% if disp != '–' %}{{ disp }}{% endif %}"
+                               {% if row.row_kind == 'graph_point' and disp != '–' %}data-initial-display="{{ disp }}"{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}
@@ -1463,7 +1463,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             /*
-             * Полная таблица даёт POST ~1.2+ MiB / 30k+ полей — на nginx с
+             * Полная таблица даёт POST ~1.2+ MiB / 30k+ полей – на nginx с
              * client_max_body_size 1m сохранение падает «через раз».
              * В POST уходят только изменённые ячейки/коэффициенты.
              */
@@ -1612,9 +1612,9 @@ document.addEventListener("DOMContentLoaded", function () {
                             var inp = td.querySelector('input[name="cell_value[]"]');
                             var origInp = td.querySelector('input[name="cell_orig_value[]"]');
                             if (inp) {
-                                inp.value = (disp && disp !== "—") ? disp : "";
+                                inp.value = (disp && disp !== "–") ? disp : "";
                                 if (origInp) {
-                                    origInp.value = (disp && disp !== "—") ? disp : "";
+                                    origInp.value = (disp && disp !== "–") ? disp : "";
                                 }
                                 if (titleText) {
                                     inp.title = titleText;
@@ -1625,7 +1625,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     inp.removeAttribute("data-db-full");
                                 }
                             } else if (disp !== undefined) {
-                                td.textContent = disp || "—";
+                                td.textContent = disp || "–";
                             }
                             if (titleText) {
                                 td.title = titleText;

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationOwnerEnergyGeneration — выработка электроэнергии электростанцией
+StationOwnerEnergyGeneration – выработка электроэнергии электростанцией
 (от собственника) по годам, млн кВтч. Только для ВЭС и СЭС.
 year_number без FK: у справочника годов составной ключ (number, database_version_id).
 """

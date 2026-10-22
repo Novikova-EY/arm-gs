@@ -153,9 +153,9 @@
                                                     {% set equipment_group_id = group.grouper %}
                                                     {% set fuel_equipment_group = station_equipment_group_name_map.get((station.id, equipment_group_id)) %}
                                                     {% set group_name = (
-                                                        (fuel_equipment_group.name or fuel_equipment_group.name_ext or '—')
+                                                        (fuel_equipment_group.name or fuel_equipment_group.name_ext or '–')
                                                         if fuel_equipment_group
-                                                        else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                                        else (group.list[0].equipment_group.name if group.list[0].equipment_group else '–')
                                                     ) %}
                                                     {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                                     {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
@@ -179,23 +179,23 @@
                                                                     {% set _ = rendered_groups.values.append(group_key) %}
                                                                 {% endif %}
                                                             {% endif %}
-                                                        <td>{{ machine.machine_number or '—' }}</td>
+                                                        <td>{{ machine.machine_number or '–' }}</td>
                                                         <td>
                                                             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                                                {{ machine.machine_name or '—' }}
+                                                                {{ machine.machine_name or '–' }}
                                                             </a>
                                                         </td>
-                                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
-                                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
-                                                        <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
-                                                        <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
-                                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
-                                                        <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
-                                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
-                                                        <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
-                                                        <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '–' }}</td>
+                                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '–' }}</td>
+                                                        <td>{{ tp.stname if tp and tp.stname else '–' }}</td>
+                                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '–' }}</td>
+                                                        <td>{{ tp.numb if tp and tp.numb is not none else '–' }}</td>
+                                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '–' }}</td>
+                                                        <td>{{ tp.opesname if tp and tp.opesname else '–' }}</td>
+                                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}–{% endif %}</td>
+                                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '–' }}</td>
+                                                        <td>{{ tp.dem if tp and tp.dem is not none else '–' }}</td>
+                                                        <td>{{ tp.note if tp and tp.note is not none else '–' }}</td>
                                                         </tr>
                                                     {% endfor %}
                                                 {% endfor %}
@@ -204,7 +204,7 @@
                                                         {% set tp = machine.machine_fuel_param %}
                                                         <tr class="text-center align-middle">
                                                             {% if loop.first %}
-                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">–</td>
                                                                 {% if not station_cell.printed %}
                                                                     <td rowspan="{{ total_machines }}">
                                                                         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
@@ -214,23 +214,23 @@
                                                                     {% set station_cell.printed = true %}
                                                                 {% endif %}
                                                             {% endif %}
-                                                            <td>{{ machine.machine_number or '—' }}</td>
+                                                            <td>{{ machine.machine_number or '–' }}</td>
                                                             <td>
                                                                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                                                    {{ machine.machine_name or '—' }}
+                                                                    {{ machine.machine_name or '–' }}
                                                                 </a>
                                                             </td>
-                                                            <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
-                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
-                                                            <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
-                                                            <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
-                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
-                                                            <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
-                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
-                                                            <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
-                                                            <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                                            <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '–' }}</td>
+                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '–' }}</td>
+                                                            <td>{{ tp.stname if tp and tp.stname else '–' }}</td>
+                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '–' }}</td>
+                                                            <td>{{ tp.numb if tp and tp.numb is not none else '–' }}</td>
+                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '–' }}</td>
+                                                            <td>{{ tp.opesname if tp and tp.opesname else '–' }}</td>
+                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}–{% endif %}</td>
+                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '–' }}</td>
+                                                            <td>{{ tp.dem if tp and tp.dem is not none else '–' }}</td>
+                                                            <td>{{ tp.note if tp and tp.note is not none else '–' }}</td>
                                                         </tr>
                                                     {% endfor %}
                                                 {% endif %}
@@ -274,9 +274,9 @@
                                 {% set equipment_group_id = group.grouper %}
                                 {% set fuel_equipment_group = station_equipment_group_name_map.get((station.id, equipment_group_id)) %}
                                 {% set group_name = (
-                                    (fuel_equipment_group.name or fuel_equipment_group.name_ext or '—')
+                                    (fuel_equipment_group.name or fuel_equipment_group.name_ext or '–')
                                     if fuel_equipment_group
-                                    else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                    else (group.list[0].equipment_group.name if group.list[0].equipment_group else '–')
                                 ) %}
                                 {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                 {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
@@ -300,23 +300,23 @@
                                                 {% set _ = rendered_groups.values.append(group_key) %}
                                             {% endif %}
                                         {% endif %}
-                                    <td>{{ machine.machine_number or '—' }}</td>
+                                    <td>{{ machine.machine_number or '–' }}</td>
                                     <td>
                                         <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                            {{ machine.machine_name or '—' }}
+                                            {{ machine.machine_name or '–' }}
                                         </a>
                                     </td>
-                                    <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
-                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
-                                                            <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
-                                                            <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
-                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
-                                                            <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
-                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
-                                                            <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
-                                                            <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                    <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '–' }}</td>
+                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '–' }}</td>
+                                                            <td>{{ tp.stname if tp and tp.stname else '–' }}</td>
+                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '–' }}</td>
+                                                            <td>{{ tp.numb if tp and tp.numb is not none else '–' }}</td>
+                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '–' }}</td>
+                                                            <td>{{ tp.opesname if tp and tp.opesname else '–' }}</td>
+                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}–{% endif %}</td>
+                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '–' }}</td>
+                                                            <td>{{ tp.dem if tp and tp.dem is not none else '–' }}</td>
+                                                            <td>{{ tp.note if tp and tp.note is not none else '–' }}</td>
                                                         </tr>
                                                     {% endfor %}
                                                 {% endfor %}
@@ -325,7 +325,7 @@
                                     {% set tp = machine.machine_fuel_param %}
                                     <tr class="text-center align-middle">
                                         {% if loop.first %}
-                                            <td rowspan="{{ machines_without_group|length }}">—</td>
+                                            <td rowspan="{{ machines_without_group|length }}">–</td>
                                             {% if not station_cell.printed %}
                                                 <td rowspan="{{ total_machines }}">
                                                     <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
@@ -335,23 +335,23 @@
                                                 {% set station_cell.printed = true %}
                                             {% endif %}
                                         {% endif %}
-                                        <td>{{ machine.machine_number or '—' }}</td>
+                                        <td>{{ machine.machine_number or '–' }}</td>
                                         <td>
                                             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                                {{ machine.machine_name or '—' }}
+                                                {{ machine.machine_name or '–' }}
                                             </a>
                                         </td>
-                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
-                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
-                                        <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
-                                        <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
-                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
-                                        <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
-                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
-                                        <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
-                                        <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '–' }}</td>
+                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '–' }}</td>
+                                        <td>{{ tp.stname if tp and tp.stname else '–' }}</td>
+                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '–' }}</td>
+                                        <td>{{ tp.numb if tp and tp.numb is not none else '–' }}</td>
+                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '–' }}</td>
+                                        <td>{{ tp.opesname if tp and tp.opesname else '–' }}</td>
+                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}–{% endif %}</td>
+                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '–' }}</td>
+                                        <td>{{ tp.dem if tp and tp.dem is not none else '–' }}</td>
+                                        <td>{{ tp.note if tp and tp.note is not none else '–' }}</td>
                                     </tr>
                                 {% endfor %}
                             {% endif %}

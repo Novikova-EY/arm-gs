@@ -206,9 +206,9 @@
             <tbody>
                 {% for row in accum_monetary_income_rows %}
                 <tr>
-                    <td class="summary-parameter-cell text-wrap">{{ row.abbr }} — {{ row.label }}</td>
+                    <td class="summary-parameter-cell text-wrap">{{ row.abbr }} – {{ row.label }}</td>
                     {% for y in years %}
-                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set inp = row.cells_input.get(y, '') if row.cells_input is defined else '' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell" data-ec-summary-col-year="{{ y }}"

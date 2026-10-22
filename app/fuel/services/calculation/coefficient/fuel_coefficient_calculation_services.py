@@ -63,7 +63,7 @@ def _obor_int(obor) -> int | None:
 
 def _access_k_coefficients_from_h(row: DistributionParameter, ch: Decimal) -> tuple[Decimal, Decimal, Decimal]:
     """
-    Access: knps = hnps/ch, kngt = hngt/ch, knpg = hnpg/ch — только
+    Access: knps = hnps/ch, kngt = hngt/ch, knpg = hnpg/ch – только
     hnps_BeforeUpdate / hngt_AfterUpdate / hnpg_AfterUpdate, не Кнопка5.
     При ch <= 0 коэффициенты обнуляем.
     """
@@ -91,7 +91,7 @@ def _access_kn_from_new_capacity(
     knpg: Decimal,
     form_kn: Decimal,
 ) -> Decimal:
-    """Access Кнопка5: If cnustn > 0 Then kn = … — иначе поле kn на форме не трогаем."""
+    """Access Кнопка5: If cnustn > 0 Then kn = … – иначе поле kn на форме не трогаем."""
     if cnustn > 0:
         return (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) / cnustn
     return form_kn
@@ -336,7 +336,7 @@ class FuelCoefficientCalculationService:
             for (gid,) in specific_q.distinct().all()
             if gid is not None
         }
-        # Как _latest_specific_row: если с фильтром версии пусто — запасной поиск без версии.
+        # Как _latest_specific_row: если с фильтром версии пусто – запасной поиск без версии.
         still_missing = fuel_eg_ids - with_specific
         if still_missing:
             fallback_q = self.session.query(
@@ -469,7 +469,7 @@ class FuelCoefficientCalculationService:
             cur_row = fp
             equipment_group_id = cur_row.equipment_group_id
 
-            # Access: bnust1 — NUST последней строки byear курсора, не Seek по этой станции.
+            # Access: bnust1 – NUST последней строки byear курсора, не Seek по этой станции.
             base_nust = cursor.bnust1
 
             spec = resolve_access_ud_seek(
@@ -519,7 +519,7 @@ class FuelCoefficientCalculationService:
         cqotr = csumqotr
 
         bptp = betp / be * Decimal("100") if be > 0 else Decimal("0")
-        # Access Кнопка5_Click: cptp = csumetp / E * 100 — E это Ераспред на форме (поле e параметра).
+        # Access Кнопка5_Click: cptp = csumetp / E * 100 – E это Ераспред на форме (поле e параметра).
         # Если E не задан (=0), в качестве знаменателя используем ΣE по строкам расчётного года.
         denom_cptp = e_target if e_target > 0 else sum_e_cyear
         cptp = cetp / denom_cptp * Decimal("100") if denom_cptp > 0 else Decimal("0")
@@ -739,7 +739,7 @@ class FuelCoefficientCalculationService:
 
             base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
 
-            # Без удельника и без уже заданного EWTP — как Access Skip.
+            # Без удельника и без уже заданного EWTP – как Access Skip.
             spec = self._latest_specific_row(
                 equipment_group_id, cyear, effective_db_version, byear=byear
             )

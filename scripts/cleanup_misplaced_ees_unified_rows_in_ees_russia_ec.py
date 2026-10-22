@@ -10,7 +10,7 @@ with_nt / without_nt; варианты с ГАЭС относятся к тип�
   python scripts/cleanup_misplaced_ees_unified_rows_in_ees_russia_ec.py
   python scripts/cleanup_misplaced_ees_unified_rows_in_ees_russia_ec.py --apply --yes
 
-На сервере — то же, в venv приложения, с теми же флагами после бэкапа БД.
+На сервере – то же, в venv приложения, с теми же флагами после бэкапа БД.
 """
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Выполнить удаление (без флага — только отчёт).",
+        help="Выполнить удаление (без флага – только отчёт).",
     )
     parser.add_argument(
         "--yes",
@@ -113,7 +113,7 @@ def main() -> int:
             db.session.delete(row)
         _commit_with_retry()
         print(f"\nУдалено строк: {len(rows)} (modified_by не применяется при DELETE).")
-        print("Повторите импорт Excel — «ЕЭС России» запишется в gs_ec_energy_system_type_consumption_params.")
+        print("Повторите импорт Excel – «ЕЭС России» запишется в gs_ec_energy_system_type_consumption_params.")
     return 0
 
 

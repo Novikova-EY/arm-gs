@@ -1,0 +1,19 @@
+<nav class="d-flex flex-nowrap gap-2 mb-2 overflow-auto pb-1" aria-label="Территория коэффициентов">
+  {% for item in coefficient_territories %}
+  <a href="{{ url_for(table_endpoint, territory_slug=item.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), affiliation=affiliation) }}"
+     class="btn {{ 'btn-success' if item.slug == territory.slug else 'btn-outline-success' }} text-nowrap flex-shrink-0"
+     {% if item.slug == territory.slug %}aria-current="page"{% endif %}>{{ item.sheet_name }}</a>
+  {% endfor %}
+</nav>
+<nav class="d-flex flex-wrap align-items-center gap-2 mb-2" aria-label="Принадлежность коэффициентов">
+  <span class="fw-bold">Принадлежность:</span>
+  <a href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), affiliation='all') }}"
+     class="btn {{ 'btn-success' if affiliation == 'all' else 'btn-outline-success' }} text-nowrap"
+     {% if affiliation == 'all' %}aria-current="page"{% endif %}>Все принадлежности</a>
+  {% for item in coefficient_affiliations %}
+  <a href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), affiliation='all' if affiliation == item.slug else item.slug) }}"
+     class="btn {{ 'btn-success' if affiliation == item.slug else 'btn-outline-success' }} text-nowrap"
+     title="{{ 'Снять фильтр принадлежности' if affiliation == item.slug else item.label }}"
+     {% if affiliation == item.slug %}aria-current="page"{% endif %}>{{ item.label }}</a>
+  {% endfor %}
+</nav>

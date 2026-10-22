@@ -12,7 +12,7 @@ class ZVReportGisTek(db.Model, AuditMixin):
     """Строка листа «СБОРКА ЗВ»: выбросы загрязняющих веществ по году.
 
     Связь с EquipmentGroup через equipment_group_id и station_numb = EquipmentGroup.numb
-    (без FK на numb — поле не уникально).
+    (без FK на numb – поле не уникально).
     year_number + database_version_id → Year.number + Year.database_version_id.
     """
 
@@ -39,7 +39,7 @@ class ZVReportGisTek(db.Model, AuditMixin):
     # Уникальный идентификатор записи
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb (без FK — numb не уникален)
+    # Код группы оборудования: station_numb (numb1120) = EquipmentGroup.numb (без FK – numb не уникален)
     station_numb = db.Column(db.Integer, nullable=False, index=True)
     equipment_group_by_numb = db.relationship(
         "EquipmentGroup",

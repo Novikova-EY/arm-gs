@@ -26,7 +26,7 @@ def _sa_calc_row(
         "id_synchronous_area": sa_id,
         "entity_label": entity_label,
         "perimeter_variant_code": perimeter_variant_code,
-        "year_values": ["—"] * n,
+        "year_values": ["–"] * n,
         "year_numeric_tooltips": [""] * n,
         "show_entity_cell": True,
         "entity_rowspan": 1,

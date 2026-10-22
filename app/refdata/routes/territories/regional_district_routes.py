@@ -212,7 +212,7 @@ def regional_district_list():
     from app.refdata.models.territories.federal_district_model import FederalDistrict
     form.federal_district.choices = choices_cache.get_choices(FederalDistrict, FederalDistrict.id)
 
-    # Энергозоны — для формы (пары) и для таблицы (тройки) с фильтрацией по версии БД
+    # Энергозоны – для формы (пары) и для таблицы (тройки) с фильтрацией по версии БД
     from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
     energy_zones = get_energy_zone_list_full()
     form.energy_zone.choices = [(ez.id, f"{ez.number} ({ez.name})") for ez in energy_zones]

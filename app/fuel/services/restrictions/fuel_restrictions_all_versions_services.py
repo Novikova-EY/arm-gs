@@ -12,7 +12,7 @@ from app.refdata.services.refdata_all_versions_common import (
     all_database_version_ids_for_refdata,
 )
 
-# Поля данных (кроме ключа и database_version_id) — копируются во все версии.
+# Поля данных (кроме ключа и database_version_id) – копируются во все версии.
 FR_SYNC_DATA_ATTRS: tuple[str, ...] = (
     "restriction_name",
     "emin",
@@ -106,7 +106,7 @@ def upsert_fuel_restriction_in_all_versions(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — "
+            "В системе нет зарегистрированных версий БД – "
             "нельзя сохранить ограничения во всех версиях."
         )
 
@@ -118,7 +118,7 @@ def upsert_fuel_restriction_in_all_versions(
         row = find_restriction_by_key_in_version(
             version_id=vid, year=match_y, oes=match_o, obl=match_b
         )
-        # Если ключ сменился — ищем ещё и по новому ключу (на случай коллизии).
+        # Если ключ сменился – ищем ещё и по новому ключу (на случай коллизии).
         if row is None and (match_y, match_o, match_b) != (year_v, oes_v, obl_v):
             row = find_restriction_by_key_in_version(
                 version_id=vid, year=year_v, oes=oes_v, obl=obl_v

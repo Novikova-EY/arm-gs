@@ -37,7 +37,7 @@
       var cell = tr.querySelector('[data-live-field="' + field + '"]');
       var payload = row[field];
       if (!cell || !payload) return;
-      var next = payload.text || "—";
+      var next = payload.text || "–";
       if (cell.textContent.trim() !== next) {
         cell.textContent = next;
         flashCell(cell);
@@ -52,7 +52,7 @@
       var cell = document.querySelector('#fuelCalcRestrictionsTable [data-total-field="' + field + '"]');
       var payload = totals[field];
       if (!cell || !payload) return;
-      var next = payload.text || "—";
+      var next = payload.text || "–";
       if (cell.textContent.trim() !== next) {
         cell.textContent = next;
         flashCell(cell);
@@ -87,12 +87,12 @@
     if (status) {
       status.hidden = false;
       if (event.type === "start") {
-        status.textContent = "старт · k=" + ((event.k && event.k.text) || "—");
+        status.textContent = "старт · k=" + ((event.k && event.k.text) || "–");
       } else if (event.type === "pass") {
         status.textContent =
           "проход " + event.outer + " / " + event.outer_max +
-          " · k=" + ((event.k && event.k.text) || "—") +
-          " · ΣE=" + ((event.sum_e && event.sum_e.text) || "—");
+          " · k=" + ((event.k && event.k.text) || "–") +
+          " · ΣE=" + ((event.sum_e && event.sum_e.text) || "–");
       }
     }
   }
@@ -120,8 +120,8 @@
     if (status && event.result) {
       status.hidden = false;
       status.textContent =
-        "готово · проходов " + (event.result.restriction_outer_iterations || "—") +
-        " · k=" + (event.result.final_k || "—");
+        "готово · проходов " + (event.result.restriction_outer_iterations || "–") +
+        " · k=" + (event.result.final_k || "–");
     }
     var text = event.message || "";
     if (event.composite_warning) {

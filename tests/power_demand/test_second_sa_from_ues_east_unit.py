@@ -98,7 +98,7 @@ def test_apply_second_sa_from_ues_east_copies_all_parameters(_sa_mock, _ues_mock
 
 
 def test_resolve_synchronous_area_id_matches_name_full() -> None:
-    """Краткое имя «2-ая СЗ», полное — «Вторая синхронная зона» (как в справочнике)."""
+    """Краткое имя «2-ая СЗ», полное – «Вторая синхронная зона» (как в справочнике)."""
     sa = SimpleNamespace(id=22, name="2-ая СЗ", name_full="Вторая синхронная зона")
     assert _synchronous_area_matches_name_prefix(sa, "вторая синхронная зона")
     assert not _synchronous_area_matches_name_prefix(
@@ -119,7 +119,7 @@ def test_apply_second_sa_prefers_labeled_ues_east_row(_sa_mock, _ues_mock) -> No
     """Не копировать пустой вариант периметра, если есть строка «ОЭС Востока»."""
     years = [2024]
     rows = [
-        _ues_row(7, "max_power", ["—", "—"], entity_label="ОЭС Востока с НТ"),
+        _ues_row(7, "max_power", ["–", "–"], entity_label="ОЭС Востока с НТ"),
         _ues_row(7, "max_power", ["500"], entity_label="ОЭС Востока"),
         _sa_row(2, "max_power"),
     ]

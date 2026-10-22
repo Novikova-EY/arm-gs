@@ -29,7 +29,7 @@ def strip_gaes_charge_marker_from_entity_label(label: str) -> str:
 
 
 def _patch_gaes_charge_page_ees_russia_nt_screen_labels(rows: list[dict[str, Any]]) -> None:
-    """Кнопка +НТ: выкл. — строка без НТ в колонке как «ЕЭС России …»; вкл. — обе строки.
+    """Кнопка +НТ: выкл. – строка без НТ в колонке как «ЕЭС России …»; вкл. – обе строки.
 
     После общего ``tag_energy_consumption_*`` задаёт надёжно ``compact_nt`` и ``pd_ec_nt_extra_row``.
     """
@@ -65,7 +65,7 @@ def _patch_gaes_charge_page_ees_russia_nt_screen_labels(rows: list[dict[str, Any
 def _reset_gaes_charge_page_row_visibility_flags(rows: list[dict[str, Any]]) -> None:
     """На отдельной странице заряда ГАЭС не скрывать строки «+ Заряд ГАЭС» / сводной таблицы.
 
-    ``pd_ec_nt_extra_row`` не трогаем — переключатель «+ НТ» управляет строками ЕЭС России.
+    ``pd_ec_nt_extra_row`` не трогаем – переключатель «+ НТ» управляет строками ЕЭС России.
     """
     for row in rows:
         row["pd_ec_gaes_extra_row"] = False
@@ -105,7 +105,7 @@ def build_energy_consumption_gaes_charge_only_context(base: dict[str, Any]) -> d
     out["summary_rows"] = filtered
     out["page_title"] = "Заряд ГАЭС"
     out["energy_consumption_gaes_charge_only_page"] = True
-    # Правку ячеек (администратор) задаёт базовый context маршрута — не отключать на этой странице.
+    # Правку ячеек (администратор) задаёт базовый context маршрута – не отключать на этой странице.
     return out
 
 
@@ -152,7 +152,7 @@ def remove_gaes_charge_rows_from_summary_context(
     """Сводка без строк заряда ГАЭС (страница /summary/energy_zones/).
 
     При ``preserve_summary_table_top_aggregate_rows`` строки заряда в общем верху
-    (Россия / ЦЗ / ЭЭС / ЕЭС / СЗ до блоков энергозон) сохраняются — как на
+    (Россия / ЦЗ / ЭЭС / ЕЭС / СЗ до блоков энергозон) сохраняются – как на
     /summary/oes/ и /summary/federal_districts/ в режиме «Сводная таблица».
     """
     from app.energy_consumption.services.energy_consumption_summary_services import (

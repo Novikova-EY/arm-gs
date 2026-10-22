@@ -869,7 +869,7 @@ block content %} {% if current_user.is_authenticated %}
         .replace(/\u202f/g, '')
         .replace(/\s/g, '')
         .replace(',', '.');
-      if (!s || s === '—' || s === '-' || s === '–') return 0;
+      if (!s || s === '–' || s === '-' || s === '–') return 0;
       const n = Number(s);
       return Number.isFinite(n) ? n : 0;
     }

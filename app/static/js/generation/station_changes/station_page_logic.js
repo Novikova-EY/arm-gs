@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // === 2.1. Кнопки "Ок" / "Сбросить" для годовых фильтров в шапке таблицы
     function setupHeaderDateFilterButtons() {
-        // Кнопка "Ок" — применяем значения фильтра и перегружаем страницу
+        // Кнопка "Ок" – применяем значения фильтра и перегружаем страницу
         document.querySelectorAll('.filter-apply-btn').forEach(button => {
             button.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
-        // Кнопка "Сбросить" — просто снимает галочки (без перезагрузки)
+        // Кнопка "Сбросить" – просто снимает галочки (без перезагрузки)
         document.querySelectorAll('.filter-reset-btn').forEach(button => {
             button.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // === 2.2. Кнопка "X" рядом с фильтром в шапке таблицы — сброс выбранного фильтра
+    // === 2.2. Кнопка "X" рядом с фильтром в шапке таблицы – сброс выбранного фильтра
     function setupHeaderFilterClearButtons() {
         document.querySelectorAll('.filter-clear-btn').forEach(button => {
             button.addEventListener('click', function (e) {
@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // При изменении — автосабмит формы
+        // При изменении – автосабмит формы
         togglePOgr?.addEventListener('change', () => {
             form.submit();
         });

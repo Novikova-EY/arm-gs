@@ -195,13 +195,13 @@
                             <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
 
                             <!-- Строки таблицы. Столбец "UUID ФО" -->
-                            <td>{{ federal_district.ref_uuid if federal_district else '—' }}</td>
+                            <td>{{ federal_district.ref_uuid if federal_district else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "ID ФО (текущая версия)" -->
-                            <td>{{ federal_district.id if federal_district else '—' }}</td>
+                            <td>{{ federal_district.id if federal_district else '–' }}</td>
 
                             <!-- Строки таблицы. Столбец "Наименование ФО в АРМ" -->
-                            <td>{{ federal_district.name if federal_district else '—' }}</td>
+                            <td>{{ federal_district.name if federal_district else '–' }}</td>
                         </tr>
                     {% else %}
                         <tr>

@@ -20,7 +20,7 @@ from app.ecology.services.gis_tes_pg_from_fuel_services import (
 
 
 def _patch_station_links(monkeypatch, linked_numbs=None):
-    """Привязка групп к станциям «Генерации»: по умолчанию — все запрошенные NUMB."""
+    """Привязка групп к станциям «Генерации»: по умолчанию – все запрошенные NUMB."""
     import app.ecology.services.gis_tes_fuel_comparison_services as cmp
 
     linked = None if linked_numbs is None else set(linked_numbs)
@@ -37,7 +37,7 @@ def _patch_station_links(monkeypatch, linked_numbs=None):
 
 @pytest.fixture(autouse=True)
 def _station_links_for_composition_tests(monkeypatch):
-    """Состав групп в тестах — как на странице: группы привязаны к станциям."""
+    """Состав групп в тестах – как на странице: группы привязаны к станциям."""
     _patch_station_links(monkeypatch)
 
 
@@ -71,7 +71,7 @@ def test_boiler_without_parent_group_requires_main():
     # "С котельными" показываем только котельные в составе станции: MAIN заполнен.
     assert _boiler_without_parent_group(SimpleNamespace(main=None, comp=None))
     assert _boiler_without_parent_group(SimpleNamespace(main=0, comp=None))
-    # Оболочка станции, разбитой на группы: COMP=1 и пустой MAIN — тоже вне состава.
+    # Оболочка станции, разбитой на группы: COMP=1 и пустой MAIN – тоже вне состава.
     assert _boiler_without_parent_group(SimpleNamespace(main=None, comp=1))
     # Котельная в составе станции: MAIN = код родителя.
     assert not _boiler_without_parent_group(SimpleNamespace(main=708, comp=None))
@@ -105,7 +105,7 @@ def test_hidden_boiler_numbs_follow_tab_rule(monkeypatch):
     monkeypatch.setattr(mod, "_boiler_numbs", lambda version_id=None: {38, 999})
     monkeypatch.setattr(mod, "_boiler_numbs_without_parent", lambda version_id=None: {38})
 
-    # «С котельными» — котельные в составе станции, «Без котельных» — все котельные.
+    # «С котельными» – котельные в составе станции, «Без котельных» – все котельные.
     assert mod.hidden_boiler_numbs_for_sheet("pg-vse", 1) == {38}
     assert mod.hidden_boiler_numbs_for_sheet("zv-vse", 1) == {38}
     assert mod.hidden_boiler_numbs_for_sheet("pg-bez-kot", 1) == {38, 999}
@@ -790,7 +790,7 @@ def test_with_boilers_tabs_keep_only_station_boilers(monkeypatch):
         lambda **kwargs: {"rows": rows_in, "numb1120_filter_choices": [708, 999, 3595]},
     )
     monkeypatch.setattr(fced, "_expand_fuel_param_rows_for_year_interval", lambda rows, start, end: rows)
-    # Как и настоящий сборощик, возвращает блоки всех групп из rows_in — в том числе тех,
+    # Как и настоящий сборощик, возвращает блоки всех групп из rows_in – в том числе тех,
     # чьи строки уже отфильтрованы (без отбора по группам такая станция всплывёт).
     monkeypatch.setattr(
         egfps,
@@ -829,7 +829,7 @@ def test_with_boilers_tabs_keep_only_station_boilers(monkeypatch):
         ],
     )
     monkeypatch.setattr(egfps, "should_suppress_aggregate_rows_for_filters", lambda filters: False)
-    # «С котельными» убирает котельные вне станции (999), «Без котельных» — все котельные.
+    # «С котельными» убирает котельные вне станции (999), «Без котельных» – все котельные.
     monkeypatch.setattr(mod, "_boiler_numbs", lambda version_id=None: {999, 3595})
     monkeypatch.setattr(mod, "_boiler_numbs_without_parent", lambda version_id=None: {999})
     monkeypatch.setattr(aps, "seed_missing_analysis_pg_params_from_reports", lambda *a, **k: 0)
@@ -1091,7 +1091,7 @@ def test_merge_composite_groups_rolls_children_into_parent(monkeypatch):
     parent = SimpleNamespace(id=1, numb=69, name="Автовская ТЭЦ", main=None, comp=1)
     child_a = SimpleNamespace(id=2, numb=70, name="Автовская (90 ата)", main=69, comp=None)
     child_b = SimpleNamespace(id=3, numb=71, name="Автовская (130 ата)", main=69, comp=None)
-    # MAIN заполнен, но голова — не составная станция (котельная в составе ТЭС).
+    # MAIN заполнен, но голова – не составная станция (котельная в составе ТЭС).
     plain = SimpleNamespace(id=4, numb=708, name="ТЭЦ-1", main=None, comp=None)
     plain_boiler = SimpleNamespace(id=5, numb=720, name="ТЭЦ-1 (котельная)", main=708, comp=None)
 
@@ -1119,7 +1119,7 @@ def test_merge_composite_groups_rolls_children_into_parent(monkeypatch):
 
 
 def test_composite_filled_row_sums_subgroups_only():
-    """Сводная строка: числовые статьи — сумма подгрупп, станционные — один раз."""
+    """Сводная строка: числовые статьи – сумма подгрупп, станционные – один раз."""
     from app.ecology.services.gis_tes_pg_from_fuel_services import _composite_filled_row
 
     columns = [
@@ -1140,15 +1140,15 @@ def test_composite_filled_row_sums_subgroups_only():
     assert row[0] == "Автовская ТЭЦ"
     assert row[1] == 69
     assert row[3] == Decimal("328")
-    # «Генерация» — станционный показатель: не утраивается.
+    # «Генерация» – станционный показатель: не утраивается.
     assert row[4] == 328
     assert row[5] == "отрасль"
-    # У подгрупп параметров ПГ нет — остаётся значение головы.
+    # У подгрупп параметров ПГ нет – остаётся значение головы.
     assert row[6] == Decimal("767471.9")
 
 
 def test_collect_pg_groups_rolls_composite_subgroups(monkeypatch):
-    """Страница ПГ: составная станция — одна строка с кодом головы и суммой подгрупп."""
+    """Страница ПГ: составная станция – одна строка с кодом головы и суммой подгрупп."""
     from app.ecology.services import gis_tes_pg_from_fuel_services as mod
     import app.fuel.services.equipment_groups.equipment_group_fuel_params_services as egfps
     import app.ecology.services.analysis_pg_param_services as aps

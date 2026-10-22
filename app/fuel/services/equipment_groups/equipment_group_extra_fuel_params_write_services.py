@@ -7,7 +7,7 @@ equipment_group_extra_fuel_params_services.py, чтобы:
 - display/query-сервис не содержал логику записи;
 - форма equipment_group_edit и будущий импорт могли использовать единый write-layer.
 
-Списки колонок (`EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS`) — единый источник в
+Списки колонок (`EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS`) – единый источник в
 `equipment_group_extra_fuel_params_services`; константа импортируется сюда для
 write-слоя и re-export в orchestration (`equipment_group_details_params_update_services`).
 """
@@ -36,13 +36,13 @@ NUMERIC_EXTRA_ATTRS = frozenset(EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS)
 
 def _format_val(value):
     if value is None:
-        return "—"
+        return "–"
     if isinstance(value, bool):
         return str(value)
     if isinstance(value, (Decimal, int, float)):
         return format_number_trim_trailing(value)
     if isinstance(value, str):
-        return value.strip() or "—"
+        return value.strip() or "–"
     return str(value)
 
 
@@ -50,7 +50,7 @@ def _parse_decimal(value):
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     s = str(value).strip()
-    if not s or s.lower() in ("nan", "—", "-", "–"):
+    if not s or s.lower() in ("nan", "–", "-", "–"):
         return None
     try:
         return Decimal(s.replace(",", "."))

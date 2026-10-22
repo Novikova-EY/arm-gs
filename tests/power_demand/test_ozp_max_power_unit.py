@@ -53,7 +53,7 @@ def test_calc_growth_pct_matches_sample():
     assert growth is not None
     assert round(growth, 2) == Decimal("4.86")
     assert ozp.format_growth_display(growth) == "4,86"
-    assert ozp.format_growth_display(None) == "—"
+    assert ozp.format_growth_display(None) == "–"
 
 
 def test_compute_growth_series_uses_previous_outside_range():
@@ -107,7 +107,7 @@ def test_normalize_ozp_peak_datetime_canonical_and_excel():
     assert ozp.normalize_ozp_peak_datetime("26.11.2019 17:00") == "26.11.2019 17:00"
     assert ozp.normalize_ozp_peak_datetime("10.01.23 12-00") == "10.01.2023 12:00"
     assert ozp.normalize_ozp_peak_datetime("  ") is None
-    assert ozp.normalize_ozp_peak_datetime("—") is None
+    assert ozp.normalize_ozp_peak_datetime("–") is None
     assert ozp.normalize_ozp_peak_datetime("декабрь") == "декабрь"
 
 
@@ -150,7 +150,7 @@ def test_excel_includes_peak_datetime_row():
     ws = wb.active
     assert ws.cell(row=4, column=1).value == ozp.ROW_PEAK_DT_LABEL
     assert ws.cell(row=5, column=1).value == ozp.ROW_GROWTH_LABEL
-    # 2023–2024 гг. — вторая колонка данных (C)
+    # 2023–2024 гг. – вторая колонка данных (C)
     assert ws.cell(row=4, column=3).value == "19.12.2024 11:00"
 
 

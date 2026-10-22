@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Страницы «Расчет балансов электрической энергии» по макету БЭ_ЕЭС.
 
-Листы те же, что у баланса мощности (ЕЭС, СЗ, ОЭС). Строки — потребление ЭЭ,
+Листы те же, что у баланса мощности (ЕЭС, СЗ, ОЭС). Строки – потребление ЭЭ,
 заряд ГАЭС, зарубежные импорт и экспорт, выработка по типам станций и перетоки
-(млн.кВт·ч); внизу —
+(млн.кВт·ч); внизу –
 установленная мощность по типам станций (МВт) и ЧЧИУМ (ч).
 """
 
@@ -370,7 +370,7 @@ def _ee_import_export_rows_for_sheet(
 
         for country_id, country in countries:
             row_key = f"{stem}_country_{country_id}"
-            row = _ee_row(row_key, f"{label} — {country['name']}", indent=1)
+            row = _ee_row(row_key, f"{label} – {country['name']}", indent=1)
             row["value_save_kind"] = "import_export"
             row["row_key"] = row_key
             row["is_group_child"] = True
@@ -451,7 +451,7 @@ def _ee_receive_transfer_rows_for_sheet(
             parent_key = "flow_in" if direction == "receive" else "flow_out"
             row_key = f"{parent_key}_oes_{source_id}_{target_id}"
             target_name = str(transfer_row.get("country_name") or "").strip()
-            label = f"{source_name} — {target_name}" if show_source_name else target_name
+            label = f"{source_name} – {target_name}" if show_source_name else target_name
             row = _ee_row(row_key, label, indent=2, kind=KIND_TRANSFER)
             row["flow_section"] = parent_key
             row["is_group_child"] = True

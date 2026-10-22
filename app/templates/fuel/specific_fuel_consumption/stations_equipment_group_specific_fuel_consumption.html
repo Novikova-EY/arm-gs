@@ -8,7 +8,7 @@
 {% if current_user.is_authenticated %}
 
 <style>
-/* Фильтры / поиск / пагинация — всегда видимы при скролле таблицы */
+/* Фильтры / поиск / пагинация – всегда видимы при скролле таблицы */
 .sfc-sticky-controls {
     position: sticky;
     top: 0;
@@ -77,7 +77,7 @@
     <div class="alert alert-warning py-2" role="alert">
         Временный фильтр: показаны только строки, где хотя бы одно поле
         (y, btp, sntp, bk, snk) отличается от соответствующего *_calc
-        (NULL и 0 считаются одинаковыми — оба «—»; микроразница
+        (NULL и 0 считаются одинаковыми – оба «–»; микроразница
         в 6–7-м знаке после запятой не учитывается).
         Найдено: <strong>{{ calc_mismatch_count|default(0) }}</strong>.
         Расходящиеся ячейки подсвечены.
@@ -139,7 +139,7 @@
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
-                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
                                     {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
@@ -150,7 +150,7 @@
                                         {% for attr, label, is_numeric in specific_columns %}
                                         {% set cell_src = param %}
                                         {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
-                                        <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                                        <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}–{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}–{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '–' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '–' }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
@@ -163,7 +163,7 @@
             {% for row in equipment_group_specific_fuel_consumption_rows|default([]) %}
                 {% set group_entity = row[0] %}
                 {% set param = row[1] %}
-                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '–')) %}
                 {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                 <tr class="text-center align-middle">
                     <td class="{{ eg_name_cell_class() }}">
@@ -172,7 +172,7 @@
                     {% for attr, label, is_numeric in specific_columns %}
                     {% set cell_src = param %}
                     {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
-                    <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                    <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}–{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}–{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '–' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '–' }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             {% endfor %}

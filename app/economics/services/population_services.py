@@ -44,7 +44,7 @@ def _username() -> str:
 
 def _federal_district_name_key(name: str | None) -> str:
     cf = (name or "").strip().casefold()
-    for prefix in ("фо - ", "фо — "):
+    for prefix in ("фо - ", "фо – "):
         p = prefix.casefold()
         if cf.startswith(p):
             cf = cf[len(p) :].strip()
@@ -75,16 +75,16 @@ def _format_full_numeric_tooltip(value: Any) -> str:
 
 def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
-        return "—"
+        return "–"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return apply_thousand_grouping_to_display(shown) if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "–"
 
 
 def _parse_decimal(raw: str | None) -> Decimal | None:
     if raw is None:
         return None
     s = str(raw).strip().replace("\u00a0", "").replace(" ", "")
-    if not s or s in ("—", "-", "–"):
+    if not s or s in ("–", "-", "–"):
         return None
     s = s.replace(",", ".")
     try:

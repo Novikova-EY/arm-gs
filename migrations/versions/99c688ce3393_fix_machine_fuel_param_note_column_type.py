@@ -17,8 +17,8 @@ depends_on = None
 
 
 def upgrade():
-    # Столбец note в БД может быть INTEGER (из старой схемы) — приводим к VARCHAR(255)
-    # USING note::text — корректно для INTEGER и для уже VARCHAR
+    # Столбец note в БД может быть INTEGER (из старой схемы) – приводим к VARCHAR(255)
+    # USING note::text – корректно для INTEGER и для уже VARCHAR
     op.execute(
         "ALTER TABLE gs_fue.gs_fue_machine_fuel_param "
         "ALTER COLUMN note TYPE VARCHAR(255) USING note::text"
@@ -26,7 +26,7 @@ def upgrade():
 
 
 def downgrade():
-    # Откат: VARCHAR -> INTEGER (только если значения — целые числа)
+    # Откат: VARCHAR -> INTEGER (только если значения – целые числа)
     op.alter_column(
         "gs_fue_machine_fuel_param",
         "note",

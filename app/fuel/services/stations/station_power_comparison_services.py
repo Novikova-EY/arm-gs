@@ -219,9 +219,9 @@ def _equipment_group_key(row):
         return ("id", group_id)
     name = (row.get("group_name") or "").strip()
     group_type = (row.get("group_type") or "").strip()
-    if name and name != "—":
+    if name and name != "–":
         return ("name", name.casefold(), group_type.casefold())
-    if group_type and group_type != "—":
+    if group_type and group_type != "–":
         return ("type", group_type.casefold())
     return None
 
@@ -267,17 +267,17 @@ def _collapse_single_equipment_group(
     machine_numbers = list(dict.fromkeys(
         row["machine_number"]
         for row in generation_rows
-        if row.get("machine_number") and row["machine_number"] != "—"
+        if row.get("machine_number") and row["machine_number"] != "–"
     ))
     machine_types = list(dict.fromkeys(
         row["machine_type"]
         for row in generation_rows
-        if row.get("machine_type") and row["machine_type"] != "—"
+        if row.get("machine_type") and row["machine_type"] != "–"
     ))
     group_types = list(dict.fromkeys(
         row["group_type"]
         for row in generation_rows
-        if row.get("group_type") and row["group_type"] != "—"
+        if row.get("group_type") and row["group_type"] != "–"
     ))
     ved_values = list(dict.fromkeys(row["ved"] for row in fuel_rows))
     has_param = bool(fuel_rows) and all(row["has_param"] for row in fuel_rows)
@@ -307,9 +307,9 @@ def _collapse_single_equipment_group(
             for row in generation_rows
         ],
         "group_name": generation_rows[0]["group_name"],
-        "group_type": "; ".join(group_types) or "—",
-        "machine_number": ", ".join(machine_numbers) or "—",
-        "machine_type": "; ".join(machine_types) or "—",
+        "group_type": "; ".join(group_types) or "–",
+        "machine_number": ", ".join(machine_numbers) or "–",
+        "machine_type": "; ".join(machine_types) or "–",
         "numb": numb,
         **totals,
         "p_ust_mismatch": has_numb_comparison and not _totals_match(
@@ -684,7 +684,7 @@ def build_station_power_comparison(
 
     Столбец Ррасп и его сравнение с NR включаются только при
     show_p_rasp=True. Строки ved=0 отображаются только при show_ved0=True;
-    котельные группы — только при show_boilers=True. Итоги топлива включают
+    котельные группы – только при show_boilers=True. Итоги топлива включают
     все строки ved>0 по территории группы, как на /fuel/totals_summary.
     Котельные агрегаты генерации исключены из Руст/Ррасп.
     rounding_digits задаёт
@@ -892,13 +892,13 @@ def build_station_power_comparison(
             "kind": "generation",
             "machine_id": machine.id,
             "station_id": station_id,
-            "group_name": _name(equipment_group) or "—",
+            "group_name": _name(equipment_group) or "–",
             "equipment_group_id": equipment_group.id if equipment_group else None,
             "equipment_group_main": getattr(equipment_group, "main", None),
-            "group_type": getattr(machine.equipment_group, "name", None) or "—",
-            "machine_number": machine.machine_number or "—",
+            "group_type": getattr(machine.equipment_group, "name", None) or "–",
+            "machine_number": machine.machine_number or "–",
             "machine_sort_key": _machine_number_sort_key(machine),
-            "machine_type": machine.machine_name or "—",
+            "machine_type": machine.machine_name or "–",
             "numb": equipment_group.numb if equipment_group else None,
             "p_ust": power.p_ust if power else None,
             "p_rasp": power.p_rasp if power else None,
@@ -929,9 +929,9 @@ def build_station_power_comparison(
         row = {
             "kind": "generation_orphan",
             "machine_id": None,
-            "group_name": "—",
-            "group_type": "—",
-            "machine_number": "—",
+            "group_name": "–",
+            "group_type": "–",
+            "machine_number": "–",
             "numb": None,
             "machine_type": f"Запись мощности без агрегата (ID {power.id_machine or 'NULL'})",
             "p_ust": power.p_ust,
@@ -991,12 +991,12 @@ def build_station_power_comparison(
                 equipment_group_types_by_id[type_id]
                 for type_id in type_ids
                 if type_id in equipment_group_types_by_id
-            })) or "—"
+            })) or "–"
             row = {
                 "kind": "fuel",
                 "fuel_param_id": param.id if has_param else None,
                 "group_id": group_id,
-                "group_name": _name(group) or "—",
+                "group_name": _name(group) or "–",
                 "group_type": group_type,
                 "equipment_group_main": getattr(group, "main", None),
                 "numb": group.numb if group else None,
@@ -1011,7 +1011,7 @@ def build_station_power_comparison(
                     else (
                         "Несколько станций: " + ", ".join(ambiguous_names)
                         if all_station_ids
-                        else "Без связи со станцией — тип ТЭС не подтверждён"
+                        else "Без связи со станцией – тип ТЭС не подтверждён"
                     )
                 ),
                 "ambiguous_stations": ambiguous_names if len(all_station_ids) > 1 else [],

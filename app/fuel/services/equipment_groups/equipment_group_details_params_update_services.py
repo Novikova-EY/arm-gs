@@ -6,7 +6,7 @@ Orchestration layer: сохранение таблиц со страницы equ
 возвращает (success, message, change_details) для UI и журнала.
 
 Удельные: в форму попадают только CONSUMPTION_EDITABLE_ATTRS (k, y, btp, sntp, bk, snk),
-без *_calc. После изменения входных полей — recalculate_all_specific_fuel_consumption_calc.
+без *_calc. После изменения входных полей – recalculate_all_specific_fuel_consumption_calc.
 
 Цена: поля xxx_c не вводятся с формы; после сохранения прочих таблиц в общем потоке
 вызывается recalculate_specific_fuel_prices_for_equipment_group.
@@ -239,7 +239,7 @@ def update_equipment_group_all_details_params(
 ):
     """
     Единая точка orchestration для доп. параметров, удельных, стоимости и цены
-    (без EquipmentGroupFuelParam — тот блок через update_equipment_group_fuel_params_from_form).
+    (без EquipmentGroupFuelParam – тот блок через update_equipment_group_fuel_params_from_form).
     Возвращает список нетривиальных сообщений для объединения с flash.
     """
     messages: list[str] = []

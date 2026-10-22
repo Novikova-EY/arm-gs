@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if machine and machine.unit_type %}{{ machine.unit_type }}{% else %}Новый агрегат{% endif %} — {{ place.site_name or 'Перспективная площадка АЭС' }}{% endblock %}
+{% block title %}{% if machine and machine.unit_type %}{{ machine.unit_type }}{% else %}Новый агрегат{% endif %} – {{ place.site_name or 'Перспективная площадка АЭС' }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}

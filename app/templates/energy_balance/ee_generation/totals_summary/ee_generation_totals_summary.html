@@ -108,7 +108,7 @@
       padding-left: 2rem;
       font-weight: 400;
     }
-    /* table-striped затемняет чётные/нечётные цветные строки по-разному —
+    /* table-striped затемняет чётные/нечётные цветные строки по-разному –
        у итогов ОЭС/ЕЭС/СЗ цвет должен быть одинаковым. */
     #eeGenerationTotalsTable tbody tr.table-info > *,
     #eeGenerationTotalsTable tbody tr.table-primary > *,
@@ -331,7 +331,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .replace(/\u202f/g, "")
         .replace(/\s/g, "")
         .replace(",", ".");
-      if (!s || s === "—" || s === "-" || s === "–") return null;
+      if (!s || s === "–" || s === "-" || s === "–") return null;
       const n = Number(s);
       return Number.isFinite(n) ? n : NaN;
     }

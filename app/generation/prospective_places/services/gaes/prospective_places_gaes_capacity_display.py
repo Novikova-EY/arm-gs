@@ -40,7 +40,7 @@ def _format_one_queue(gen, pump, line_break: str) -> str | None:
 def format_gaes_tep_row_planned_capacity_display(tep, line_break: str) -> str | None:
     """
     Одна запись ProspectivePlaceGaesTepSource:
-    сначала столбцы «всего» (генераторный / насосный); если оба пусты — 1 и 2 очередь.
+    сначала столбцы «всего» (генераторный / насосный); если оба пусты – 1 и 2 очередь.
     """
     g = tep.installed_capacity_mw_generator_mode
     pump = tep.installed_capacity_mw_pump_mode

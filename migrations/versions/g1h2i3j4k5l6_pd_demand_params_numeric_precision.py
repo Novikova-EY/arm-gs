@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""gs_pd: точность Numeric для параметров нагрузки — МВт (3), coeff_k (6).
+"""gs_pd: точность Numeric для параметров нагрузки – МВт (3), coeff_k (6).
 
 Revision ID: g1h2i3j4k5l6
 Revises: f0e1d2c3b4a5

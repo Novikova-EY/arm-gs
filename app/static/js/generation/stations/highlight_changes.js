@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     let isHighlighted = false;
-    const isDashValue = (val) => val === "-" || val === "—" || val === "";
+    const isDashValue = (val) => val === "-" || val === "–" || val === "";
 
     function normalizeDecimalString(raw) {
         if (raw === null || raw === undefined) return "";
@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
             (function(){
                 let prevCell = null;
                 let prevVal = null;
-                const isDash = (v) => v === '-' || v === '—' || v === '' || v === null || v === undefined;
+                const isDash = (v) => v === '-' || v === '–' || v === '' || v === null || v === undefined;
                 fuelCells.forEach(cell => {
                     const fieldEl = cell.querySelector('select, input');
                     const currRaw = fieldEl ? (fieldEl.value || '').trim() : (cell.textContent || '').trim();

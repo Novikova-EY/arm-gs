@@ -15,7 +15,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_union_energy_system_list_full():
-    """Получает полный список ОЭС. Без кэша — версия из текущего запроса."""
+    """Получает полный список ОЭС. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = UnionEnergySystem.query
     if current_version:
@@ -76,7 +76,7 @@ def get_union_energy_systems_list() -> List[UnionEnergySystem]:
 
 
 def get_union_energy_systems_map() -> Dict[int, str]:
-    """Возвращает отображение {ОЭС.id: ОЭС.name}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {ОЭС.id: ОЭС.name}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = UnionEnergySystem.query.with_entities(UnionEnergySystem.id, UnionEnergySystem.name)
     if current_version:
@@ -86,7 +86,7 @@ def get_union_energy_systems_map() -> Dict[int, str]:
 
 
 def get_union_energy_system_display_order_map() -> Dict[int, int | None]:
-    """Возвращает отображение {ОЭС.id: ОЭС.display_order}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {ОЭС.id: ОЭС.display_order}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = UnionEnergySystem.query.with_entities(
         UnionEnergySystem.id,
@@ -105,7 +105,7 @@ def union_energy_system_hierarchy_sort_key(
 ) -> tuple:
     """
     Ключ сортировки ОЭС для иерархии ЕЭС → ОЭС → РЭС (порядок как в справочнике ОЭС):
-    display_order, затем имя; «Не указано» и записи без номера порядка — в конце.
+    display_order, затем имя; «Не указано» и записи без номера порядка – в конце.
     """
     display_order = ues_display_orders.get(ues_id)
     return (
@@ -118,7 +118,7 @@ def union_energy_system_hierarchy_sort_key(
 
 
 def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
     if current_version:
@@ -132,7 +132,7 @@ def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
 
 
 def get_res_to_ues_id_map() -> Dict[int, int]:
-    """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalEnergySystem.id, RegionalEnergySystem.id_union_energy_system)
     if current_version:

@@ -222,7 +222,7 @@ def compare():
             print(f"\n[!] Не найден ФО в Excel для: {page_fd_name}")
             continue
         excel_charts = excel_by_fd.get(excel_fd, [])
-        print(f"\n### {page_fd_name} ({excel_fd}) — графиков: страница {len(page_sections)}, Excel {len(excel_charts)}")
+        print(f"\n### {page_fd_name} ({excel_fd}) – графиков: страница {len(page_sections)}, Excel {len(excel_charts)}")
 
         for pi, ps in enumerate(page_sections):
             ec = excel_charts[pi] if pi < len(excel_charts) else None

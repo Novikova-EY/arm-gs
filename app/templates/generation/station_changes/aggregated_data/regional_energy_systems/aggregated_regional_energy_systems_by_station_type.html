@@ -19,14 +19,14 @@
                             {{ regional_energy_systems_by_station_types_yearly_p_ust
                                 .get(current_res_id, {})
                                 .get(station_type_id, {})
-                                .get(y, '—') | format_decimal or '—' }}
+                                .get(y, '–') | format_decimal or '–' }}
                         </td>
                     {% else %}
                         <td class="power-column" style="font-weight: bold;">
                             {{ regional_energy_systems_by_station_types_yearly_p_ust
                                 .get(current_res_id, {})
                                 .get(station_type_id, {})
-                                .get(y, '—') | format_decimal or '—' }}
+                                .get(y, '–') | format_decimal or '–' }}
                         </td>
                     {% endif %}
                 {% endfor %}
@@ -44,7 +44,7 @@
                         {% endfor %}
                         {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                     {% else %}
-                        —
+                        –
                     {% endif %}
                 </td>
                 {% set _extra_col = 1 if (current_year_split is not none and current_year_split >= start_year and current_year_split <= end_year) else 0 %}
@@ -69,11 +69,11 @@
                             {% if current_year_split is not none and y == current_year_split %}
                                 <td class="power-column"></td>
                                 <td class="power-column">
-                                    {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                                    {{ yearly.get(y) | default('–') | format_decimal if yearly.get(y) is not none }}
                                 </td>
                             {% else %}
                                 <td class="power-column">
-                                    {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                                    {{ yearly.get(y) | default('–') | format_decimal if yearly.get(y) is not none }}
                                 </td>
                             {% endif %}
                         {% endfor %}
@@ -88,7 +88,7 @@
                                 {% endfor %}
                                 {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                             {% else %}
-                                —
+                                –
                             {% endif %}
                         </td>
                         <td></td>

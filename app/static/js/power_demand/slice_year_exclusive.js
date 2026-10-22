@@ -57,7 +57,7 @@
                 if (isNew) {
                     var oe = document.createElement('option');
                     oe.value = '';
-                    oe.textContent = '—';
+                    oe.textContent = '–';
                     if (current === '') {
                         oe.selected = true;
                     }

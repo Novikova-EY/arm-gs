@@ -77,7 +77,7 @@ class ScheduledBackupService:
         try:
             logger.info("Начало автоматического бэкапа БД")
             
-            # Путь к директории бэкапов (на сервере — /var/backups/generation-app/auto)
+            # Путь к директории бэкапов (на сервере – /var/backups/generation-app/auto)
             backup_dir = self.app.config.get(
                 'AUTO_BACKUP_DIR',
                 os.path.join(self.app.config.get('BACKUP_BASE_DIR', 'backups'), 'auto'),

@@ -56,12 +56,12 @@
                             {% endif %}
                         </div>
 
-                        <!-- Поле "Продлить период (лет)" — показываем только для копии существующей версии -->
+                        <!-- Поле "Продлить период (лет)" – показываем только для копии существующей версии -->
                         <div class="mb-3 d-none" id="extendYearsWrapper">
                             {{ form.extend_years.label(class="form-label fw-bold") }}
                             {{ form.extend_years(class="form-control", min="0", step="1", placeholder="0") }}
                             <small class="form-text text-muted" id="extendYearsHelpText">
-                                0 — без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года модуля «Генерация».
+                                0 – без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года модуля «Генерация».
                             </small>
                             {% if form.extend_years.errors %}
                                 <div class="text-danger">
@@ -163,11 +163,11 @@ function showLoadingOverlay() {
             const endNew = endYear + n;
 
             if (n <= 0) {
-                extendYearsHelp.textContent = `Базовая версия содержит данные до ${endYear} года. 0 — без продления.`;
+                extendYearsHelp.textContent = `Базовая версия содержит данные до ${endYear} года. 0 – без продления.`;
             } else {
                 extendYearsHelp.textContent =
                     `Базовая версия содержит данные до ${endYear} года. ` +
-                    `0 — без продления. Если указать ${n}, будут добавлены годы ${startNew}..${endNew} ` +
+                    `0 – без продления. Если указать ${n}, будут добавлены годы ${startNew}..${endNew} ` +
                     `с копированием данных ${endYear} года модуля «Генерация».`;
             }
             return;
@@ -175,7 +175,7 @@ function showLoadingOverlay() {
 
         // дефолтная подсказка
         extendYearsHelp.textContent =
-            '0 — без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года модуля «Генерация».';
+            '0 – без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года модуля «Генерация».';
     }
 
     function toggleRefdataField() {
@@ -199,7 +199,7 @@ function showLoadingOverlay() {
             refdataSelect.required = true;
         }
 
-        // Поле продления — только для копии существующей версии (числовой id)
+        // Поле продления – только для копии существующей версии (числовой id)
         const shouldShowExtend = isNumericId(parentSelect.value);
         if (extendYearsWrapper && extendYearsInput) {
             extendYearsWrapper.classList.toggle('d-none', !shouldShowExtend);

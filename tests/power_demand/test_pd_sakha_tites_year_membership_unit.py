@@ -45,9 +45,9 @@ def test_mask_sakha_yakutia_splits_years_between_tites_and_oes_east(monkeypatch)
     }
     dss.mask_sakha_yakutia_tites_oes_east_year_membership([tites_row, oes_row], years)
 
-    assert tites_row["year_values"] == ["10", "—"]
+    assert tites_row["year_values"] == ["10", "–"]
     assert tites_row["year_row_ids"] == [1, None]
-    assert oes_row["year_values"] == ["—", "20"]
+    assert oes_row["year_values"] == ["–", "20"]
     assert oes_row["year_row_ids"] == [None, 2]
     assert oes_row.get("pd_pd_sakha_oes_east_from_year_row") is True
 
@@ -73,7 +73,7 @@ def test_sum_tites_branch_includes_sakha_extra_only_through_2018(monkeypatch) ->
             "parent_id": 101,
             "id_union_energy_system": None,
             "pd_pd_sakha_tites_through_year_row": True,
-            "year_values": ["100", "—"],
+            "year_values": ["100", "–"],
         },
         {
             "parameter_key": "max_power",
@@ -82,7 +82,7 @@ def test_sum_tites_branch_includes_sakha_extra_only_through_2018(monkeypatch) ->
             "parent_id": 101,
             "id_union_energy_system": 9,
             "pd_pd_sakha_oes_east_from_year_row": True,
-            "year_values": ["—", "200"],
+            "year_values": ["–", "200"],
         },
     ]
     sums = dss._sum_tites_branch_max_power_in_summary_rows(rows, years)

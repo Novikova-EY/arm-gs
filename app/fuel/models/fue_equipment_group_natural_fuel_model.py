@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupNaturalFuel — калорийные эквиваленты / натуральный расход (Натура99).
+EquipmentGroupNaturalFuel – калорийные эквиваленты / натуральный расход (Натура99).
 """
 from sqlalchemy import String, UniqueConstraint, cast, ForeignKeyConstraint
 from sqlalchemy.sql import func
@@ -63,7 +63,7 @@ class EquipmentGroupNaturalFuel(db.Model):
     name = db.Column(db.String(512), nullable=True)
 
     # Ссылка на год: Year.number + database_version_id (composite FK).
-    # Односторонняя связь без back_populates — иначе configure_mappers падает
+    # Односторонняя связь без back_populates – иначе configure_mappers падает
     # из‑за порядка импорта fuel.models / Year.
     year_number = db.Column(db.Integer, nullable=True, index=True)
     year = db.relationship(
@@ -207,7 +207,7 @@ class EquipmentGroupNaturalFuel(db.Model):
         uselist=False,
     )
 
-    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK — numb не уникален)
+    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK – numb не уникален)
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     equipment_group_by_numb = db.relationship(
         "EquipmentGroup",

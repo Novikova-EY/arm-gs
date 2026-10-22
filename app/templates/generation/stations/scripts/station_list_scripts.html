@@ -40,20 +40,20 @@ document.addEventListener("DOMContentLoaded", function () {
         toggle: false
     });
 
-    // 🔹 Блок фильтров открыт по умолчанию — подсвечиваем и подгружаем скрипт
+    // 🔹 Блок фильтров открыт по умолчанию – подсвечиваем и подгружаем скрипт
     if (collapseEl.classList.contains("show")) {
         collapse.show();
         highlightButton();
         loadFiltersScript();
     }
 
-    // 🔹 При ручном открытии — подсветка и подгрузка
+    // 🔹 При ручном открытии – подсветка и подгрузка
     collapseEl.addEventListener("show.bs.collapse", () => {
         highlightButton();
         loadFiltersScript();
     });
 
-    // 🔹 При закрытии — убираем подсветку
+    // 🔹 При закрытии – убираем подсветку
     collapseEl.addEventListener("hide.bs.collapse", () => {
         resetButton();
     });
@@ -243,7 +243,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Кнопка "Сбросить" внутри выпадающего списка — просто снимает галочки, без перезагрузки
+        // Кнопка "Сбросить" внутри выпадающего списка – просто снимает галочки, без перезагрузки
         document.querySelectorAll('.filter-reset-btn').forEach(button => {
             button.addEventListener('click', function (e) {
                 e.preventDefault();

@@ -66,7 +66,7 @@ class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     def regional_energy_system(self):
         """
         Удобное «одиночное» представление РЭС:
-        - Если ровно одна РЭС у субъекта — вернем ее.
+        - Если ровно одна РЭС у субъекта – вернем ее.
         - Иначе None (чтобы не навязывать произвольный выбор).
         """
         ress = self.regional_energy_systems
@@ -83,7 +83,7 @@ class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     def union_energy_system(self):
         """
         Удобное «одиночное» представление ОЭС:
-        - Если все РЭС субъекта относятся к одной и той же ОЭС — вернем ее.
+        - Если все РЭС субъекта относятся к одной и той же ОЭС – вернем ее.
         - Иначе None.
         """
         ues = {res.union_energy_system for res in self.regional_energy_systems if res.union_energy_system}

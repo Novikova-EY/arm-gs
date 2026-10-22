@@ -125,7 +125,7 @@ def main() -> None:
             "pdPdSummaryVerificationToggle",
         ):
             click_id(d, btn)
-        # не жмём medium/long — они тяжёлые; отчётный период уже включён
+        # не жмём medium/long – они тяжёлые; отчётный период уже включён
         d.execute_script("window.scrollTo(0, 0);")
         time.sleep(1.0)
         shot(d, "07b_pd_summary_oes_all_toggles")

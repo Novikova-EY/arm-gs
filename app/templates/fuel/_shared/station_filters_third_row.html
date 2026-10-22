@@ -1,4 +1,4 @@
-<!-- Третья строка фильтров: слева годы; при center_top_pagination — пагинация в той же строке по центру; справа «Показать: …»; копирование по годам — в панели «Импорт/Экспорт» (station_filters_second_row); опционально пересчёт удельных по центру -->
+<!-- Третья строка фильтров: слева годы; при center_top_pagination – пагинация в той же строке по центру; справа «Показать: …»; копирование по годам – в панели «Импорт/Экспорт» (station_filters_second_row); опционально пересчёт удельных по центру -->
 <div class="col-12 mb-2">
     <div class="d-flex align-items-center w-100 flex-wrap gap-3 mb-2">
 
@@ -68,7 +68,7 @@
         </div>
 
         {% if show_recalculate_specific_fuel_consumption|default(false) or show_recalculate_specific_fuel_price|default(false) or show_calc_mismatch_toggle|default(false) %}
-        <!-- По центру строки: (опционально) пересчёт удельных/цен; копирование по годам — в строке «Импорт/Экспорт» (station_filters_second_row) -->
+        <!-- По центру строки: (опционально) пересчёт удельных/цен; копирование по годам – в строке «Импорт/Экспорт» (station_filters_second_row) -->
         <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap station-filters-third-center flex-shrink-0">
                 {% if show_recalculate_specific_fuel_consumption|default(false) %}
                 <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_consumption') }}" class="d-inline" id="recalculateSpecificFuelConsumptionForm">
@@ -161,7 +161,7 @@
             or show_composite_only_toggle|default(false)
         ) %}
         {% if not hide_pagination_and_per_page|default(false) or _show_fuel_edit_filter_actions %}
-        <!-- Справа: кнопки редактирования; пагинация/«Показать» — если не скрыты. -->
+        <!-- Справа: кнопки редактирования; пагинация/«Показать» – если не скрыты. -->
         <div class="d-flex align-items-center flex-wrap justify-content-end gap-3 station-filters-third-right" style="{% if center_top_pagination|default(false) or hide_pagination_and_per_page|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
             {% if not hide_pagination_and_per_page|default(false) %}
             {% if not hide_pagination_in_filters_third_row|default(false) %}

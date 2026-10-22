@@ -239,7 +239,7 @@ content %} {% if current_user.is_authenticated %}
           data-target-rd-id="{{ transfer_row.to_rd_id or '' }}"
           data-target-energy-unit-id="{{ transfer_row.to_eu_id or '' }}"
         >
-          <td class="text-start">{{ transfer_row.to_ues_name or '—' }}</td>
+          <td class="text-start">{{ transfer_row.to_ues_name or '–' }}</td>
           <td class="text-start">{{ transfer_row.to_name }}</td>
 
           {% for period_num, period_label in period_columns %}
@@ -254,7 +254,7 @@ content %} {% if current_user.is_authenticated %}
               value="{{ '' if cell_value is none else cell_display }}"
               data-original="{{ '' if cell_value is none else cell_display }}"
               inputmode="decimal"
-              aria-label="{{ transfer_row.from_name }} — {{ transfer_row.to_name }}, {{ period_label }}"
+              aria-label="{{ transfer_row.from_name }} – {{ transfer_row.to_name }}, {{ period_label }}"
             >
           </td>
           {% else %}

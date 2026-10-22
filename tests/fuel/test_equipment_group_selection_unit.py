@@ -69,7 +69,7 @@ def test_restrict_version_skip_keeps_explicit_ids_query():
 
 
 def test_access_ved_filter_year_row_like_access_findfirst():
-    """Access filter1 (ved>0) — на строке года, не на группе за оба года."""
+    """Access filter1 (ved>0) – на строке года, не на группе за оба года."""
     assert access_ved_filter_year_row_participates(SimpleNamespace(ved=2))
     assert access_ved_filter_year_row_participates(SimpleNamespace(ved=1))
     assert not access_ved_filter_year_row_participates(SimpleNamespace(ved=0))

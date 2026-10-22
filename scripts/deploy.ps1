@@ -21,7 +21,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# Кодировка UTF-8 без BOM — иначе bash получает BOM в начале скрипта и «cd: команда не найдена»
+# Кодировка UTF-8 без BOM – иначе bash получает BOM в начале скрипта и «cd: команда не найдена»
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 $OutputEncoding = [Console]::OutputEncoding = $utf8NoBom
 chcp 65001 | Out-Null
@@ -102,10 +102,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not $NoInstall) {
     Write-Host "[4/4] Установка и миграции на сервере..." -ForegroundColor Cyan
     $RemoteDeb = "${RemotePath}/${DebName}"
-    # Миграции — от generation-app (читает /etc/generation-app/app.env).
+    # Миграции – от generation-app (читает /etc/generation-app/app.env).
     # Не вызываем `flask db merge heads` на сервере: он пишет файлы, которых нет в .deb,
     # и следующий upgrade падает с Multiple head revisions.
-    # Не делаем stamp на 5f943277b415: указатель alembic откатывается, схема БД — нет.
+    # Не делаем stamp на 5f943277b415: указатель alembic откатывается, схема БД – нет.
     # Лишние .py в versions/ (старые merge с сервера) удаляем, если их нет в установленном пакете.
     $Commands = @"
 set -e
@@ -128,7 +128,7 @@ echo Deploy complete. Checking service...
 sudo systemctl status generation-app --no-pager
 "@
 
-    # Запись в файл и передача через cmd — избегаем BOM при pipe из PowerShell
+    # Запись в файл и передача через cmd – избегаем BOM при pipe из PowerShell
     # CRLF -> LF: bash на Linux интерпретирует \r как часть команды (cd /tmp\r, upgrade\r и т.д.)
     $scriptText = $Commands.Replace("`r`n", "`n").Replace("`r", "`n").TrimStart([char]0xFEFF)
     $tempFile = Join-Path $env:TEMP "deploy_$([Guid]::NewGuid().ToString('N')).sh"

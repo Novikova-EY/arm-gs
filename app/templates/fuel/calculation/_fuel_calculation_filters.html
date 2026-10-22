@@ -1,4 +1,4 @@
-{# Фильтры и ввод Е — в том же стиле, что страница station_details
+{# Фильтры и ввод Е – в том же стиле, что страница station_details
 (station-info, h4.card-title) #} {% set dp_l =
 distribution_parameter_field_labels|default({}) %} {% set _ues_selected =
 union_energy_system_filter[0] if union_energy_system_filter and
@@ -218,8 +218,8 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
       <span class="small text-muted">
         активный сценарий: {{ selected_row.union_energy_system.name if
         selected_row.union_energy_system else 'ОЭС не указана' }} · {{
-        selected_row.base_year.number if selected_row.base_year else '—' }}/{{
-        selected_row.year.number if selected_row.year else '—' }}
+        selected_row.base_year.number if selected_row.base_year else '–' }}/{{
+        selected_row.year.number if selected_row.year else '–' }}
       </span>
       {% endif %}
     </div>
@@ -254,7 +254,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               style="{% if attr not in ('name', 'byear', 'year') %}min-width: 5.5rem;{% endif %}"
             >
               {% if attr == 'doptim' %} {% set doptim_tooltip = "0.05 + 0.03 *
-              (Nрасч − Nбаз). Nрасч и Nбаз — номер расчетного и базового годов"
+              (Nрасч − Nбаз). Nрасч и Nбаз – номер расчетного и базового годов"
               %}
               <span class="d-inline-block text-center">
                 {{ label|safe }}
@@ -352,7 +352,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               {% set _ues_name = row.union_energy_system.name if
               row.union_energy_system else (('ОЭС #' ~
               row.id_union_energy_system) if row.id_union_energy_system else
-              '—') %} {% if row.id_union_energy_system and row.year %}
+              '–') %} {% if row.id_union_energy_system and row.year %}
               <a
                 href="{{ url_for('fuel_bp.distribution_parameters_list', union_energy_system_filter=row.id_union_energy_system, start_year=row.year.number, base_year=(row.base_year.number if row.base_year else '')) }}"
                 target="_blank"
@@ -364,11 +364,11 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
             </td>
             <td class="dp-col-year">
               {% if row.base_year %}{{ row.base_year.number }}{% elif
-              row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}
+              row.id_base_year %}#{{ row.id_base_year }}{% else %}–{% endif %}
             </td>
             <td class="dp-col-year">
               {% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{
-              row.id_year }}{% else %}—{% endif %}
+              row.id_year }}{% else %}–{% endif %}
             </td>
             <td{% if not _is_active %} class="p-1"{% endif %}>
               {% if _is_active %}
@@ -383,44 +383,44 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
                 aria-label="Выработка ЭЭ, млн кВтч (e)"
               />
               {% else %}
-              {% if row.e is not none %}{{ row.e|format_decimal_trim(-1) }}{% else %}—{% endif %}
+              {% if row.e is not none %}{{ row.e|format_decimal_trim(-1) }}{% else %}–{% endif %}
               {% endif %}
             </td>
             <td>{{ render_numeric_or_dash(row.doptim) }}</td>
             <td data-dp-live="{% if _is_active %}k{% endif %}">
               {% if row.k is not none %}{{ row.k|format_decimal(2) }}{% else
-              %}—{% endif %}
+              %}–{% endif %}
             </td>
             <td data-dp-live="{% if _is_active %}kn{% endif %}">
               {% if row.kn is not none %}{{ row.kn|format_decimal(2) }}{% else
-              %}—{% endif %}
+              %}–{% endif %}
             </td>
             <td data-dp-live="{% if _is_active %}knps{% endif %}">
               {% if row.knps is not none %}{{ row.knps|format_decimal(2) }}{%
-              else %}—{% endif %}
+              else %}–{% endif %}
             </td>
             <td data-dp-live="{% if _is_active %}kngt{% endif %}">
               {% if row.kngt is not none %}{{ row.kngt|format_decimal(2) }}{%
-              else %}—{% endif %}
+              else %}–{% endif %}
             </td>
             <td data-dp-live="{% if _is_active %}knpg{% endif %}">
               {% if row.knpg is not none %}{{ row.knpg|format_decimal(2) }}{%
-              else %}—{% endif %}
+              else %}–{% endif %}
             </td>
             <td>{{ render_numeric_or_dash(row.hnps) }}</td>
             <td>{{ render_numeric_or_dash(row.hngt) }}</td>
             <td>{{ render_numeric_or_dash(row.hnpg) }}</td>
             <td data-dp-live="{% if _is_active %}lim{% endif %}">
-              {%- if row.lim is none -%}— {%- elif row.lim == 1 -%}да {%- elif
+              {%- if row.lim is none -%}– {%- elif row.lim == 1 -%}да {%- elif
               row.lim == 0 -%}нет {%- else -%}{{ row.lim }}{%- endif -%}
             </td>
           </tr>
           {% endfor %} {% else %}
           <tr>
             <td colspan="14" class="text-center text-muted py-4">
-              {% if _ues_selected is none %} Выберите одну ОЭС — расчёт
+              {% if _ues_selected is none %} Выберите одну ОЭС – расчёт
               выполняется только по одной объединённой энергосистеме. {% elif
-              start_year is none %} Задайте расчётный год — здесь появится
+              start_year is none %} Задайте расчётный год – здесь появится
               строка параметра распределения. {% else %} Нет параметра
               распределения для выбранных ОЭС / базового / расчётного года. {%
               endif %}
@@ -507,7 +507,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               class="{% if attr in ('oes', 'obl', 'restriction_name') %}text-start px-2{% endif %}"
               {% if attr in ('emin', 'emax', 'ecur', 'h', 'ecurdis', 'hdis', 'etp', 'kobl') %}data-live-field="{{ attr }}"{% endif %}
             >
-              {% if v is none %}— {% elif attr == 'year' %} {{ v|int }} {% elif
+              {% if v is none %}– {% elif attr == 'year' %} {{ v|int }} {% elif
               attr == 'oes' %} {% set ok = (v|int)|string %} {% set oname =
               _oes_name_map.get(ok) %}
               <span title="oes={{ ok }}"
@@ -516,13 +516,13 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               {% elif attr == 'obl' %} {% set ok = (v|int)|string %} {% set
               oes_ok = (row.oes|int)|string if row.oes is not none else '' %} {%
               if ok and oes_ok and (ok|int) == ((oes_ok|int) + 100) %}
-              <span title="obl={{ ok }} (прочие)">—</span>
+              <span title="obl={{ ok }} (прочие)">–</span>
               {% else %} {% set oname = _obl_name_map.get(ok) %}
               <span title="obl={{ ok }}"
                 >{% if oname %}{{ oname }}{% else %}{{ ok }}{% endif %}</span
               >
               {% endif %} {% elif attr in ('restriction_name', 'kcur') %} {% if
-              v == '' %}—{% else %}{{ v }}{% endif %} {% else %} {{
+              v == '' %}–{% else %}{{ v }}{% endif %} {% else %} {{
               v|format_decimal_trim(_rd) }} {% endif %}
             </td>
             {% endfor %}
@@ -533,9 +533,9 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               colspan="{{ _fr_headings|length if _fr_headings else 1 }}"
               class="text-center text-muted py-4"
             >
-              {% if _ues_selected is none %} Выберите ОЭС — здесь появятся
+              {% if _ues_selected is none %} Выберите ОЭС – здесь появятся
               ограничения для расчёта. {% elif start_year is none %} Задайте
-              расчётный год — здесь появятся ограничения. {% else %} Нет
+              расчётный год – здесь появятся ограничения. {% else %} Нет
               ограничений для выбранных ОЭС / расчётного года. {% endif %}
             </td>
           </tr>
@@ -563,11 +563,11 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               {%- if attr == 'restriction_name' -%}
               Итого по ОЭС
               {%- elif attr == 'ecur' -%}
-              {%- if _tot_ecur.v is none -%}—{%- else -%}{{ _tot_ecur.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- if _tot_ecur.v is none -%}–{%- else -%}{{ _tot_ecur.v|format_decimal_trim(_rd) }}{%- endif -%}
               {%- elif attr == 'ecurdis' -%}
-              {%- if _tot_ecurdis.v is none -%}—{%- else -%}{{ _tot_ecurdis.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- if _tot_ecurdis.v is none -%}–{%- else -%}{{ _tot_ecurdis.v|format_decimal_trim(_rd) }}{%- endif -%}
               {%- elif attr == 'etp' -%}
-              {%- if _tot_etp.v is none -%}—{%- else -%}{{ _tot_etp.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- if _tot_etp.v is none -%}–{%- else -%}{{ _tot_etp.v|format_decimal_trim(_rd) }}{%- endif -%}
               {%- endif -%}
             </td>
             {% endfor %}
@@ -817,7 +817,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               </td>
               <td class="text-center font-monospace">
                 {% if c.h_display is defined %}{{ c.h_display }}{% elif c.h is
-                not none %}{{ c.h }}{% else %}—{% endif %}
+                not none %}{{ c.h }}{% else %}–{% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -924,7 +924,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           Составные станции: энергия не на том уровне
         </h3>
         <span class="small text-muted">
-          расчётный год {{ selected_row.year.number if selected_row.year else '—' }}
+          расчётный год {{ selected_row.year.number if selected_row.year else '–' }}
           · станций {{ _composite_issues|length }}
         </span>
       </div>
@@ -970,7 +970,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
                 {% endif %}
               </td>
               <td class="text-center font-monospace">
-                {% if issue.parent_ved is not none %}{{ issue.parent_ved }}{% else %}—{% endif %}
+                {% if issue.parent_ved is not none %}{{ issue.parent_ved }}{% else %}–{% endif %}
               </td>
               <td class="text-center font-monospace">
                 {% if issue.parent_e is not none %}{{ issue.parent_e|format_decimal_trim(rounding_digits|default(1)) }}{% else %}пусто{% endif %}
@@ -990,14 +990,14 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
                   {% endif %}
                   <span class="text-muted small">
                     numb={{ child.numb }}{% if child.main is not none %} · main={{ child.main }}{% endif %}
-                    · ved={{ child.ved if child.ved is not none else '—' }}
+                    · ved={{ child.ved if child.ved is not none else '–' }}
                     · E={% if child.e is not none %}{{ child.e|format_decimal_trim(rounding_digits|default(1)) }}{% else %}пусто{% endif %}
                   </span>
                 </div>
                 {% endfor %}
               </td>
               <td class="text-center font-monospace">
-                {% if issue.child_e_sum is not none %}{{ issue.child_e_sum|format_decimal_trim(rounding_digits|default(1)) }}{% else %}—{% endif %}
+                {% if issue.child_e_sum is not none %}{{ issue.child_e_sum|format_decimal_trim(rounding_digits|default(1)) }}{% else %}–{% endif %}
               </td>
             </tr>
             {% endfor %}

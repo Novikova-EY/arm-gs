@@ -15,7 +15,7 @@
                             .get(year, {})
                             .get("p_ust") %}
         {% if p_ust_value is none or p_ust_value == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ p_ust_value | format_decimal }}
         {% endif %}
@@ -34,7 +34,7 @@
                             .get(year, {})
                             .get("p_ogr") %}
         {% if p_ogr_value is none or p_ogr_value == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ p_ogr_value | format_decimal }}
         {% endif %}
@@ -51,7 +51,7 @@
     <td class="power-column" style="font-weight: bold;">
         {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp") %}
         {% if p_rasp_value is none or p_rasp_value == 0 %}
-            &mdash;
+            &ndash;
         {% else %}
             {{ p_rasp_value | format_decimal }}
         {% endif %}

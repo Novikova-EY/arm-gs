@@ -51,11 +51,11 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "snk_calc",
         page=PAGE_SPECIFIC,
         aggregation_level="Колонка таблицы",
-        cell_name="snk_calc — СН на выработку ЭЭ, %",
+        cell_name="snk_calc – СН на выработку ЭЭ, %",
         default_text=(
             "snk_calc равен SNK на странице топливных параметров: "
             "sn_ee / e · 100, если есть входы; иначе сохранённый FuelParam.snk. "
-            "Правило заполнения: если есть данные — то же значение, что в столбце SNK; если нет — «—»."
+            "Правило заполнения: если есть данные – то же значение, что в столбце SNK; если нет – «–»."
         ),
         map_name="consumption",
     ),
@@ -63,10 +63,10 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "y_calc",
         page=PAGE_SPECIFIC,
         aggregation_level="Колонка таблицы",
-        cell_name="y_calc — Удельная выработка ЭЭ на тепловом потреблении",
+        cell_name="y_calc – Удельная выработка ЭЭ на тепловом потреблении",
         default_text=(
             "y_calc = EWTP / QOTR * 1000. "
-            "Правило заполнения: если есть данные для расчёта (QOTR > 0) — значение по формуле; если нет — «—»/ручной ввод."
+            "Правило заполнения: если есть данные для расчёта (QOTR > 0) – значение по формуле; если нет – «–»/ручной ввод."
         ),
         map_name="consumption",
     ),
@@ -74,10 +74,10 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "btp_calc",
         page=PAGE_SPECIFIC,
         aggregation_level="Колонка таблицы",
-        cell_name="btp_calc — УРУТ на отпуск ЭЭ в теплофикационном режиме",
+        cell_name="btp_calc – УРУТ на отпуск ЭЭ в теплофикационном режиме",
         default_text=(
             "btp_calc = EURT - K * (1 - EWTP / E) * 100. "
-            "Правило заполнения: если есть данные для расчёта (VED > 1 и EWTP > 0) — значение по формуле; если нет — «—»/ручной ввод."
+            "Правило заполнения: если есть данные для расчёта (VED > 1 и EWTP > 0) – значение по формуле; если нет – «–»/ручной ввод."
         ),
         map_name="consumption",
     ),
@@ -85,10 +85,10 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "sntp_calc",
         page=PAGE_SPECIFIC,
         aggregation_level="Колонка таблицы",
-        cell_name="sntp_calc — Коэффициент отпуска ЭЭ в теплофикационном режиме",
+        cell_name="sntp_calc – Коэффициент отпуска ЭЭ в теплофикационном режиме",
         default_text=(
             "sntp_calc = [EOTP - (E - EWTP) * (1 - SNK / 100)] / EWTP. "
-            "Правило заполнения: если есть данные для расчёта (VED > 1 и EWTP > 0) — значение по формуле; если нет — «—»/ручной ввод."
+            "Правило заполнения: если есть данные для расчёта (VED > 1 и EWTP > 0) – значение по формуле; если нет – «–»/ручной ввод."
         ),
         map_name="consumption",
     ),
@@ -96,11 +96,11 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "bk_calc",
         page=PAGE_SPECIFIC,
         aggregation_level="Колонка таблицы",
-        cell_name="bk_calc — УРУТ на отпуск ЭЭ в конденсационном режиме",
+        cell_name="bk_calc – УРУТ на отпуск ЭЭ в конденсационном режиме",
         default_text=(
             "bk_calc = [EUST - EWTP * sntp_calc * btp_calc / 1000] / "
             "[(E - EWTP) * (1 - SNK / 100)] * 1000. "
-            "Правило заполнения: если есть данные для расчёта — значение по формуле; если нет — «—»/ручной ввод."
+            "Правило заполнения: если есть данные для расчёта – значение по формуле; если нет – «–»/ручной ввод."
         ),
         map_name="consumption",
     ),
@@ -109,7 +109,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         "restriction_etp",
         page=PAGE_RESTRICTION,
         aggregation_level="Колонка шапки",
-        cell_name="etp — Теплофикационная выработка ЭЭ",
+        cell_name="etp – Теплофикационная выработка ЭЭ",
         default_text=(
             "Расчётная величина на этапе «Распред» (Ограничения_Click): "
             "etp = Σ ewtp по станциям региона (obl) внутри фильтра параметра распределения "
@@ -140,7 +140,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         cell_name="Nуст (c_nust)",
         default_text=(
             "Сумма nust за расчётный год по группам фильтра, у которых есть строка топлива за расчётный год "
-            "и найден удельник с year ≤ расчётного (последний такой год; если ни одного — Skip)."
+            "и найден удельник с year ≤ расчётного (последний такой год; если ни одного – Skip)."
         ),
         map_key="c_nust",
         map_name="coeff",
@@ -151,7 +151,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         aggregation_level="Базовый год",
         cell_name="E (b_e)",
         default_text=(
-            "Сумма выработки ЭЭ, млн кВтч (поле e топливных параметров групп) за базовый год — столбец «E»."
+            "Сумма выработки ЭЭ, млн кВтч (поле e топливных параметров групп) за базовый год – столбец «E»."
         ),
         map_key="b_e",
         map_name="coeff",
@@ -174,7 +174,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         aggregation_level="Базовый год",
         cell_name="Eтп (b_etp)",
         default_text=(
-            "Сумма теплофикационной выработки ЭЭ, тыс.кВтч (поле ewtp) за базовый год — столбец «Eтп»."
+            "Сумма теплофикационной выработки ЭЭ, тыс.кВтч (поле ewtp) за базовый год – столбец «Eтп»."
         ),
         map_key="b_etp",
         map_name="coeff",
@@ -209,7 +209,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         cell_name="Q (c_q)",
         default_text=(
             "Сумма отпуска ТЭ, тыс.Гкал за расчётный год по группам со строкой топлива и удельником year ≤ расчётного "
-            "(если ни одного удельника — Skip)."
+            "(если ни одного удельника – Skip)."
         ),
         map_key="c_q",
         map_name="coeff",
@@ -234,7 +234,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         default_text=(
             "Сумма теплового потребления (отборов турбин), тыс.Гкал за расчётный год "
             "по группам со строкой топлива и удельником year ≤ расчётного "
-            "(если ни одного удельника — Skip)."
+            "(если ни одного удельника – Skip)."
         ),
         map_key="c_qotr",
         map_name="coeff",
@@ -257,8 +257,8 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         aggregation_level="Расчётный год",
         cell_name="%тп (c_ptp)",
         default_text=(
-            "Как в Access (Кнопка5_Click): cptp = csumetp / E · 100, где E — Ераспред (поле e параметра), "
-            "csumetp — сумма пересчитанной теплофикационной выработки ЭЭ, тыс.кВтч (ewtp) за расчётный год. "
+            "Как в Access (Кнопка5_Click): cptp = csumetp / E · 100, где E – Ераспред (поле e параметра), "
+            "csumetp – сумма пересчитанной теплофикационной выработки ЭЭ, тыс.кВтч (ewtp) за расчётный год. "
             "Если E в параметре не задан, при расчёте "
             "в знаменателе используется ΣE по строкам топлива расчётного года."
         ),
@@ -282,8 +282,8 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         aggregation_level="Расчётный год",
         cell_name="ЧЧИУМ (c_h)",
         default_text=(
-            "ЧЧИУМ, ч за расчётный год: Ераспред / ΣN_уст·1000 (ch), где ΣN_уст — по станциям "
-            "с топливом и удельником year ≤ расчётного (если ни одного — Skip)."
+            "ЧЧИУМ, ч за расчётный год: Ераспред / ΣN_уст·1000 (ch), где ΣN_уст – по станциям "
+            "с топливом и удельником year ≤ расчётного (если ни одного – Skip)."
         ),
         map_key="c_h",
         map_name="coeff",
@@ -296,7 +296,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         default_text=(
             "Сумма N_уст расчётного года по «новым» группам данного типа: в базовом году N_уст было 0; "
             "станция учтена только если есть удельник year ≤ расчётного (иначе Skip). "
-            "Отнесение к ПСУ/ГТУ/ПГУ — по коду obor: ГТУ 20|90, ПГУ 21|91, ПСУ = остальное новое."
+            "Отнесение к ПСУ/ГТУ/ПГУ – по коду obor: ГТУ 20|90, ПГУ 21|91, ПСУ = остальное новое."
         ),
         map_key="tech_n",
         map_name="coeff",
@@ -345,7 +345,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         page=PAGE_COEFF,
         aggregation_level="Новые ПСУ",
         cell_name="Kнов ПСУ (tech_k_psu)",
-        default_text="K_нов для ПСУ: knps с параметра распределения (как Кнопка5). hnps/ch — при правке ЧЧИУМ.",
+        default_text="K_нов для ПСУ: knps с параметра распределения (как Кнопка5). hnps/ch – при правке ЧЧИУМ.",
         map_key="tech_k_psu",
         map_name="coeff",
     ),
@@ -374,7 +374,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         cell_name="ΣNнов (tech_agg_n)",
         default_text=(
             "Сумма мощностей новых агрегатов (cnustn): Σ N_уст по группам, где в базовом году N_уст было 0 "
-            "(и есть удельник year ≤ расчётного — иначе Skip)."
+            "(и есть удельник year ≤ расчётного – иначе Skip)."
         ),
         map_key="tech_agg_n",
         map_name="coeff",
@@ -479,7 +479,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         default_text=(
             "PETP = Σ теплофикационной выработки ЭЭ расчётного года / Σ базового года "
             "(суммы поля ewtp по фильтру). "
-            "Не путать с PQ — это отношение по столбцу Q (см. следующий столбец)."
+            "Не путать с PQ – это отношение по столбцу Q (см. следующий столбец)."
         ),
         map_key="r_etp",
         map_name="coeff",

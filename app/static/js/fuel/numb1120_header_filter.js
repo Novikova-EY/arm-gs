@@ -1,5 +1,5 @@
 /**
- * Фильтр строк таблицы ТЭП по numb1120 в шапке столбца.
+ * Фильтры числовых кодов и признаков в шапке столбцов топливных таблиц.
  * Выпадающий список без Select2 (как фильтры ОЭС): кнопка, поле поиска, прокрутка, несколько кодов.
  */
 (function () {
@@ -43,6 +43,11 @@
             "  min-width: 0;",
             "  max-width: 100%;",
             "  white-space: nowrap;",
+            "  overflow: hidden;",
+            "  text-overflow: ellipsis;",
+            "}",
+            ".numb1120-filter-btn > span {",
+            "  min-width: 0;",
             "  overflow: hidden;",
             "  text-overflow: ellipsis;",
             "}",
@@ -91,7 +96,7 @@
             .split(/\s+/)
             .forEach(function (part) {
                 var s = String(part || "").trim();
-                if (!s || !/^\d+$/.test(s) || seen[s]) {
+                if (!s || !/^-?\d+$/.test(s) || seen[s]) {
                     return;
                 }
                 seen[s] = true;
@@ -121,11 +126,11 @@
         return true;
     }
 
-    function currentUrlValues() {
+    function currentUrlValues(param) {
         var params = new URLSearchParams(window.location.search);
         var out = [];
         var seen = {};
-        params.getAll(PARAM).forEach(function (v) {
+        params.getAll(param).forEach(function (v) {
             parseCodes(v).forEach(function (s) {
                 if (seen[s]) {
                     return;
@@ -140,16 +145,16 @@
 
     var applying = false;
 
-    function applyFilter(values) {
-        if (applying || sameValues(values, currentUrlValues())) {
+    function applyFilter(values, param) {
+        if (applying || sameValues(values, currentUrlValues(param))) {
             return;
         }
         applying = true;
         var url = new URL(window.location.href);
-        url.searchParams.delete(PARAM);
+        url.searchParams.delete(param);
         url.searchParams.delete("page");
         values.forEach(function (v) {
-            url.searchParams.append(PARAM, v);
+            url.searchParams.append(param, v);
         });
         var overlay = document.getElementById("loading-overlay");
         if (overlay) {
@@ -179,7 +184,13 @@
         selectEl.dataset.numb1120Init = "1";
         selectEl.classList.add("d-none");
 
+        var param = selectEl.getAttribute("data-filter-param") || PARAM;
         var placeholder = selectEl.getAttribute("data-placeholder") || "Фильтр";
+        var labelled = selectEl.hasAttribute("data-filter-param");
+
+        function optionLabel(value) {
+            return ensureOption(selectEl, value).textContent;
+        }
         var parent = selectEl.parentNode;
         if (!parent) {
             return;
@@ -196,6 +207,7 @@
         btn.className = "form-select form-select-sm numb1120-filter-btn w-100 text-start";
         btn.setAttribute("aria-expanded", "false");
         btn.setAttribute("aria-haspopup", "listbox");
+        btn.setAttribute("aria-label", selectEl.getAttribute("aria-label") || "Фильтр по коду группы оборудования");
 
         var headerClear = document.createElement("button");
         headerClear.type = "button";
@@ -210,9 +222,9 @@
         var searchInput = document.createElement("input");
         searchInput.type = "text";
         searchInput.className = "form-control form-control-sm mb-2";
-        searchInput.placeholder = "Введите код…";
+        searchInput.placeholder = labelled ? "Поиск…" : "Введите код…";
         searchInput.setAttribute("autocomplete", "off");
-        searchInput.setAttribute("aria-label", "Поиск по коду группы оборудования");
+        searchInput.setAttribute("aria-label", labelled ? selectEl.getAttribute("aria-label") : "Поиск по коду группы оборудования");
 
         var list = document.createElement("div");
         list.className = "numb1120-filter-list d-flex flex-column gap-1";
@@ -245,16 +257,17 @@
         document.body.appendChild(menu);
 
         function setButtonText() {
-            var applied = currentUrlValues();
+            var applied = currentUrlValues(param);
             btn.textContent = "";
             var label = document.createElement("span");
             if (!applied.length) {
                 label.textContent = placeholder;
             } else {
                 var suffix = applied.length > 1 ? " (+" + (applied.length - 1) + ")" : "";
-                label.textContent = applied[0] + suffix;
+                label.textContent = optionLabel(applied[0]) + suffix;
             }
             btn.appendChild(label);
+            btn.title = applied.length ? applied.map(optionLabel).join(", ") : placeholder;
             if (applied.length) {
                 var icon = document.createElement("i");
                 icon.className = "bi bi-funnel-fill text-warning ms-1";
@@ -265,7 +278,7 @@
 
         function restoreFromUrl() {
             var applied = {};
-            currentUrlValues().forEach(function (v) {
+            currentUrlValues(param).forEach(function (v) {
                 applied[v] = true;
                 ensureOption(selectEl, v);
             });
@@ -299,7 +312,7 @@
                 }
                 var item = document.createElement("label");
                 item.className = "dropdown-item numb1120-filter-item d-flex align-items-center gap-2 py-1 px-1";
-                item.setAttribute("data-search-text", value);
+                item.setAttribute("data-search-text", (labelled ? opt.textContent : value).toLowerCase());
 
                 var cb = document.createElement("input");
                 cb.type = "checkbox";
@@ -314,7 +327,7 @@
                 });
 
                 var text = document.createElement("span");
-                text.textContent = value;
+                text.textContent = opt.textContent;
                 item.appendChild(cb);
                 item.appendChild(text);
                 list.appendChild(item);
@@ -377,11 +390,11 @@
 
         function confirmSelection() {
             var values = selectedValues(selectEl);
-            if (sameValues(values, currentUrlValues())) {
+            if (sameValues(values, currentUrlValues(param))) {
                 closeMenu();
                 return;
             }
-            applyFilter(values);
+            applyFilter(values, param);
         }
 
         function selectCodesFromInput() {
@@ -426,7 +439,7 @@
         headerClear.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            applyFilter([]);
+            applyFilter([], param);
         });
 
         searchInput.addEventListener("input", applySearchFilter);
@@ -439,7 +452,9 @@
             }
             if (e.key === "Enter") {
                 e.preventDefault();
-                selectCodesFromInput();
+                if (!labelled) {
+                    selectCodesFromInput();
+                }
                 confirmSelection();
             }
         });
@@ -486,11 +501,7 @@
 
     function init() {
         injectStyles();
-        var el = document.getElementById("numb1120HeaderFilter");
-        if (!el) {
-            return;
-        }
-        initDropdown(el);
+        document.querySelectorAll("#numb1120HeaderFilter, select.equipment-group-flag-filter").forEach(initDropdown);
     }
 
     if (document.readyState === "loading") {

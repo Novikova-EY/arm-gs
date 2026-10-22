@@ -30,14 +30,14 @@ from app.generation.models.station.station_model import Station
 
 
 def format_equipment_group_choice_label(group) -> str:
-    """Подпись для селекта: «1502 — Название (составная)»."""
+    """Подпись для селекта: «1502 – Название (составная)»."""
     if group is None:
-        return "—"
+        return "–"
     name = (getattr(group, "name", None) or getattr(group, "name_ext", None) or "").strip()
     if not name:
-        name = f"Группа #{getattr(group, 'id', '—')}"
+        name = f"Группа #{getattr(group, 'id', '–')}"
     numb = _as_int(getattr(group, "numb", None))
-    prefix = f"{numb} — " if numb is not None else ""
+    prefix = f"{numb} – " if numb is not None else ""
     suffix = " (составная)" if is_composite_parent_group(group) else ""
     return f"{prefix}{name}{suffix}"
 
@@ -47,8 +47,8 @@ def composite_cluster_lookup_keys(seed_groups: Iterable) -> tuple[set[int], set[
     Ключи поиска кластера составной станции.
 
     Returns:
-        parent_numbs — numb родителей, по ним ищем детей (main=numb);
-        child_mains — main детей, по ним ищем родителя и сиблингов.
+        parent_numbs – numb родителей, по ним ищем детей (main=numb);
+        child_mains – main детей, по ним ищем родителя и сиблингов.
     """
     parent_numbs: set[int] = set()
     child_mains: set[int] = set()
@@ -360,7 +360,7 @@ def ensure_equipment_group_linked_to_station(
     Гарантирует EquipmentGroupSet группы на станции указанной версии БД.
 
     Станция и тип группы приводятся к version_id (external_code / ref_uuid).
-    Если связки нет — создаёт EquipmentGroupSetStation в этой версии.
+    Если связки нет – создаёт EquipmentGroupSetStation в этой версии.
     Смешанные связи (клон станции другой версии при database_version_id=version_id)
     переносятся на каноническую строку.
     """
@@ -461,7 +461,7 @@ def infer_equipment_group_type_id_for_station_group(
 ) -> int | None:
     """Тип группы по связке станция (+ топливная группа) в версии БД.
 
-    Если подходящих типов несколько — None (неоднозначно).
+    Если подходящих типов несколько – None (неоднозначно).
     """
     if not station_id:
         return None

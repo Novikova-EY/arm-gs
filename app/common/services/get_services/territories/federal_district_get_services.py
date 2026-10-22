@@ -18,7 +18,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_federal_district_list_full():
-    """Получает полный список федеральных округов. Без кэша — версия из текущего запроса."""
+    """Получает полный список федеральных округов. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = FederalDistrict.query
     if current_version:
@@ -88,7 +88,7 @@ def get_federal_districts_dto_list() -> List[dict]:
         for fd in rows
     ]
 
-# 3) Карта {fd_id: fd_name} — легкий lookup (кэшируется)
+# 3) Карта {fd_id: fd_name} – легкий lookup (кэшируется)
 @lru_cache(maxsize=1)
 def get_federal_districts_map() -> Dict[int, str]:
     """Возвращает отображение {ФО.id: ФО.name} (кэшируется)."""
@@ -101,9 +101,9 @@ def get_federal_districts_map() -> Dict[int, str]:
     rows = query.order_by(FederalDistrict.id).all()
     return {id_: name for id_, name in rows}
 
-# 4) Карта связей {fd_id: [regional_district_id, ...]} — без загрузки ORM-объектов
+# 4) Карта связей {fd_id: [regional_district_id, ...]} – без загрузки ORM-объектов
 def get_fd_to_rd_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ФО.id: [СубъектРФ.id, ...]}. Без кэша — версия из текущего запроса."""
+    """Возвращает отображение {ФО.id: [СубъектРФ.id, ...]}. Без кэша – версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalDistrict.id_federal_district, RegionalDistrict.id)
     if current_version:
@@ -127,7 +127,7 @@ def get_regional_district_to_fd_id_map() -> Dict[int, int]:
     )
     return {rd_id: fd_id for rd_id, fd_id in rows}
 
-# 6) Инвалидатор кэшей — вызывай после CRUD по ФО/Субъектам РФ
+# 6) Инвалидатор кэшей – вызывай после CRUD по ФО/Субъектам РФ
 def invalidate_fd_lookups_cache() -> None:
     get_federal_district_list.cache_clear()
     get_federal_districts_map.cache_clear()

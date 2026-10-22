@@ -144,7 +144,7 @@ def update_document_service(data, user):
                 changes["Наименование"] = f"{_dash(obj.name)} → {name}"
                 obj.name = name
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 

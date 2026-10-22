@@ -3,7 +3,7 @@
 """
 Read/query/display для страницы «Топливные параметры групп оборудования (доп.)» (v2).
 
-Запись в EquipmentGroupExtraFuelParam — в
+Запись в EquipmentGroupExtraFuelParam – в
 equipment_group_extra_fuel_params_write_services.
 """
 
@@ -66,7 +66,7 @@ def resolve_extra_fuel_param_value(param, attr: str, children_by_parent: dict | 
     Значение ячейки доп. параметров.
 
     У ExtraFuelParam есть только «листовые» поля (gaz_prir, kuzngd, …).
-    Родительские столбцы иерархии (gaz, ugol, kuzn, …) в модели отсутствуют —
+    Родительские столбцы иерархии (gaz, ugol, kuzn, …) в модели отсутствуют –
     для них считаем сумму потомков по children_by_parent из build_fuel_param_columns_hierarchy.
     """
     if param is None or not attr:
@@ -252,7 +252,7 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows, children_by_parent=N
     energy_system_type → UES → РЭС → станция → группа оборудования.
     Группировка по regional_energy_system_id и по одной электростанции.
 
-    children_by_parent — карта из build_fuel_param_columns_hierarchy: для родительских
+    children_by_parent – карта из build_fuel_param_columns_hierarchy: для родительских
     столбцов (gaz/ugol/…) итоги считаются как сумма листовых полей ExtraFuelParam.
     """
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
@@ -331,10 +331,10 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows, children_by_parent=N
         if not stations:
             return None
         st_id, st_name = stations[0]
-        return (st_id, st_name or "—")
+        return (st_id, st_name or "–")
 
     def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
+        st_id, st_name = station_tuple or (None, "–")
         return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
 
     hierarchy_flat = []
@@ -373,7 +373,7 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows, children_by_parent=N
                 res_list.append(
                     {
                         "res_id": res_id,
-                        "res_name": res_names.get(res_id, "—"),
+                        "res_name": res_names.get(res_id, "–"),
                         "group_blocks": [
                             gb for sb in station_blocks for gb in sb["group_blocks"]
                         ],
@@ -384,14 +384,14 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows, children_by_parent=N
             ues_list.append(
                 {
                     "ues_id": ues_id,
-                    "ues_name": ues_names.get(ues_id, "—"),
+                    "ues_name": ues_names.get(ues_id, "–"),
                     "res_list": res_list,
                 }
             )
         hierarchy_flat.append(
             {
                 "est_id": est_id,
-                "est_name": est_names.get(est_id, "—"),
+                "est_name": est_names.get(est_id, "–"),
                 "ues_list": ues_list,
             }
         )

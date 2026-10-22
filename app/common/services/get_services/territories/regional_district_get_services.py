@@ -19,7 +19,7 @@ from app.common.services.database_version_services import get_current_version
 
 
 def get_regional_district_list_full():
-    """Получает полный список субъектов РФ. Без кэша — версия из текущего запроса (filter_by_db_version)."""
+    """Получает полный список субъектов РФ. Без кэша – версия из текущего запроса (filter_by_db_version)."""
     query = RegionalDistrict.query
     query = filter_by_db_version(query, RegionalDistrict)
     rows = (
@@ -79,7 +79,7 @@ def get_regional_districts_dto_list() -> List[dict]:
         for rd in rows
     ]
 
-# 3) Lookup {rd_id: name} — легкий и кэшируемый
+# 3) Lookup {rd_id: name} – легкий и кэшируемый
 def get_regional_districts_map() -> Dict[int, str]:
     """Возвращает отображение {Субъект.id: Субъект.name} (кэшируется по версии БД)."""
     return _get_regional_districts_map(get_current_version())
@@ -96,7 +96,7 @@ def _get_regional_districts_map(current_version) -> Dict[int, str]:
     return {id_: name for id_, name in rows}
 
 
-# 4) Маппинг {rd_id: fd_id} — часто нужен для валидации/фильтров
+# 4) Маппинг {rd_id: fd_id} – часто нужен для валидации/фильтров
 def get_rd_to_fd_id_map() -> Dict[int, int]:
     """Возвращает отображение {Субъект.id: ФО.id} (кэшируется по версии БД)."""
     return _get_rd_to_fd_id_map(get_current_version())
@@ -115,7 +115,7 @@ def _get_rd_to_fd_id_map(current_version) -> Dict[int, int]:
     return {rd_id: fd_id for rd_id, fd_id in rows}
 
 
-# 5) Инвалидатор кэшей — вызывать после CRUD по субъектам/их привязке к ФО
+# 5) Инвалидатор кэшей – вызывать после CRUD по субъектам/их привязке к ФО
 def invalidate_regional_district_lookups_cache() -> None:
     _get_regional_districts_map.cache_clear()
     _get_rd_to_fd_id_map.cache_clear()

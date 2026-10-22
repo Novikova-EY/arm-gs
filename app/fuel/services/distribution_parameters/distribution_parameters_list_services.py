@@ -47,8 +47,8 @@ def get_distribution_parameters_list(
     """
     Параметры распределения.
 
-    - year_numbers: фильтр по расчитываемым годам (номера календарных лет, id_year); None или [] — все.
-    - base_year_number: фильтр по базовому году (id_base_year / «Базовый год»); None — все.
+    - year_numbers: фильтр по расчитываемым годам (номера календарных лет, id_year); None или [] – все.
+    - base_year_number: фильтр по базовому году (id_base_year / «Базовый год»); None – все.
     - union_energy_system_ids: необязательный фильтр по ОЭС.
     """
     YearCalc = aliased(Year)
@@ -68,7 +68,7 @@ def get_distribution_parameters_list(
             DistributionParameter.id_union_energy_system == UnionEnergySystem.id,
         )
     )
-    # Пока без фильтра по database_version_id — все версии (для отладки).
+    # Пока без фильтра по database_version_id – все версии (для отладки).
     if year_numbers:
         nums = sorted({int(n) for n in year_numbers})
         year_id_list = [

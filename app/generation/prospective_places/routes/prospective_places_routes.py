@@ -48,7 +48,7 @@ def _prospective_place_can_edit() -> bool:
 
 
 def _station_choice_label(station) -> str:
-    return ((getattr(station, "name", None) or "").strip() or "—")
+    return ((getattr(station, "name", None) or "").strip() or "–")
 
 
 def _version_id_for_station_link(place) -> int | None:
@@ -67,7 +67,7 @@ def _version_id_for_station_link(place) -> int | None:
 
 
 def _annotate_places_with_linked_station_flag(places) -> None:
-    """Для списка площадок: place.has_linked_station — как «Электростанция» в параметрах площадки."""
+    """Для списка площадок: place.has_linked_station – как «Электростанция» в параметрах площадки."""
     from app.common.services.database_version_filter import filter_by_explicit_db_version
     from app.generation.models.station.station_model import Station
 
@@ -316,7 +316,7 @@ def prospective_places_aes():
 @prospective_places_bp.route("/aes/tep_main/")
 @login_required
 def prospective_places_aes_tep_main():
-    """ТЭП основных площадок — отдельная страница (как список, другая таблица)."""
+    """ТЭП основных площадок – отдельная страница (как список, другая таблица)."""
     from app.common.services.get_services.years.years_get_services import (
         get_ges_tep_current_price_year_number,
     )
@@ -384,7 +384,7 @@ def prospective_places_aes_tep_main():
 @prospective_places_bp.route("/aes/tep_reserve/")
 @login_required
 def prospective_places_aes_tep_reserve():
-    """ТЭП резервных площадок — отдельная страница (как список, другая таблица)."""
+    """ТЭП резервных площадок – отдельная страница (как список, другая таблица)."""
     from app.common.services.get_services.years.years_get_services import (
         get_ges_tep_current_price_year_number,
     )
@@ -585,11 +585,11 @@ def prospective_place_aes_details(id):
 
     form = ProspectivePlaceAESEditForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Не указано —")] + [
+    form.id_regional_district.choices = [("", "– Не указано –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
     res_list = get_regional_energy_system_choices()
-    form.id_regional_energy_system.choices = [("", "— Не указано —")] + [
+    form.id_regional_energy_system.choices = [("", "– Не указано –")] + [
         (str(res_id), name) for res_id, name in res_list
     ]
 
@@ -644,7 +644,7 @@ def prospective_place_aes_details(id):
 
     # Столбцы, объединяемые при одинаковых значениях во всех строках
     def _norm(v):
-        return ("—" if v is None else (v or "").strip()) or "—"
+        return ("–" if v is None else (v or "").strip()) or "–"
 
     def _all_same(getter):
         mp_list = place.machine_prospective_places
@@ -772,7 +772,7 @@ def prospective_place_aes_go_station(id):
 @prospective_places_bp.route("/aes/<int:place_id>/machine/<int:machine_id>/", methods=["GET", "POST"])
 @login_required
 def machine_prospective_place_aes_details(place_id, machine_id):
-    """Добавление/редактирование энергоблока перспективной площадки АЭС (machine_id=0 — добавить)."""
+    """Добавление/редактирование энергоблока перспективной площадки АЭС (machine_id=0 – добавить)."""
     from app.generation.prospective_places.models import (
         StationProspectivePlaceAES,
         MachineProspectivePlaceAES,
@@ -783,7 +783,7 @@ def machine_prospective_place_aes_details(place_id, machine_id):
 
     def _aes_machine_year_choices():
         years = get_year_list_full()
-        return [("", "— не указано —")] + [(str(y.id), str(y.number)) for y in years]
+        return [("", "– не указано –")] + [(str(y.id), str(y.number)) for y in years]
 
     def _set_aes_machine_year_fields(form):
         ch = _aes_machine_year_choices()
@@ -821,7 +821,7 @@ def machine_prospective_place_aes_details(place_id, machine_id):
 
     form = MachineProspectivePlaceAESEditForm()
     ppt_list = ProspectivePlaceTypeAES.query.order_by(ProspectivePlaceTypeAES.name).all()
-    form.id_prospective_place_type.choices = [("", "— Не указано —")] + [
+    form.id_prospective_place_type.choices = [("", "– Не указано –")] + [
         (str(p.id), p.name) for p in ppt_list
     ]
     _set_aes_machine_year_fields(form)
@@ -970,7 +970,7 @@ def add_prospective_place_aes():
 
     form = ProspectivePlaceAESAddForm()
     rd_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [("", "— Выберите субъект РФ —")] + [
+    form.id_regional_district.choices = [("", "– Выберите субъект РФ –")] + [
         (str(rd_id), name) for rd_id, name in rd_list
     ]
 
@@ -1123,27 +1123,27 @@ def _write_machines_sheet(ws, machines, include_place_name=False, include_note=T
             str(idx).replace(".", ","),
         ]
         if include_place_name:
-            row_data.append(mp.station_prospective_place_aes.site_name or "—")
+            row_data.append(mp.station_prospective_place_aes.site_name or "–")
         row_data.extend([
-            ((mp.prospective_place_type.name if mp.prospective_place_type else None) or "—").replace(".", ","),
-            (mp.station_block_number or "—").replace(".", ","),
-            (mp.unit_type or "—").replace(".", ","),
-            (mp.unit_capacity_mw or "—").replace(".", ","),
-            (mp.possible_implementation_period or "—"),
-            (str(mp.service_life_years) if mp.service_life_years is not None else "—"),
-            (str(mp.construction_period_years) if mp.construction_period_years is not None else "—"),
-            (mp.max_annual_operating_hours or "—").replace(".", ","),
-            (mp.specific_fuel_cost_rub_per_kwh or "—").replace(".", ","),
-            (mp.specific_fixed_operating_costs_thous_rub_per_kw or "—").replace(".", ","),
-            (mp.relative_auxiliary_power_consumption_pct or "—").replace(".", ","),
-            (mp.specific_capital_investment_thous_rub_per_kw or "—").replace(".", ","),
-            (mp.specific_decommissioning_cost_thous_rub_per_kw or "—").replace(".", ","),
-            (mp.emergency_state_probability or "—").replace(".", ","),
-            (mp.ozp or "—").replace(".", ","),
-            (mp.vlp or "—").replace(".", ","),
+            ((mp.prospective_place_type.name if mp.prospective_place_type else None) or "–").replace(".", ","),
+            (mp.station_block_number or "–").replace(".", ","),
+            (mp.unit_type or "–").replace(".", ","),
+            (mp.unit_capacity_mw or "–").replace(".", ","),
+            (mp.possible_implementation_period or "–"),
+            (str(mp.service_life_years) if mp.service_life_years is not None else "–"),
+            (str(mp.construction_period_years) if mp.construction_period_years is not None else "–"),
+            (mp.max_annual_operating_hours or "–").replace(".", ","),
+            (mp.specific_fuel_cost_rub_per_kwh or "–").replace(".", ","),
+            (mp.specific_fixed_operating_costs_thous_rub_per_kw or "–").replace(".", ","),
+            (mp.relative_auxiliary_power_consumption_pct or "–").replace(".", ","),
+            (mp.specific_capital_investment_thous_rub_per_kw or "–").replace(".", ","),
+            (mp.specific_decommissioning_cost_thous_rub_per_kw or "–").replace(".", ","),
+            (mp.emergency_state_probability or "–").replace(".", ","),
+            (mp.ozp or "–").replace(".", ","),
+            (mp.vlp or "–").replace(".", ","),
         ])
         if include_note:
-            row_data.append((mp.note or "—").replace(".", ","))
+            row_data.append((mp.note or "–").replace(".", ","))
         left_align_cols = list((2, 5) if include_place_name else (2, 4))
         if include_note:
             left_align_cols.append(total_cols)
@@ -1332,22 +1332,22 @@ def export_prospective_places_aes():
     station_cols = [1, 2, 3, 4, 5, 6, 7, 12]  # столбцы с данными электростанции (rowspan при нескольких машинах)
 
     for idx, s in enumerate(stations, 1):
-        ues_name = (s.regional_energy_system.union_energy_system.name if s.regional_energy_system and s.regional_energy_system.union_energy_system else None) or "—"
-        rd_name = (s.regional_district.name_full if s.regional_district else None) or "—"
-        site_name = s.site_name or "—"
-        geo = s.geo_location or "—"
-        planned_cap = s.planned_capacity_mw or "—"
-        planned_unit = s.planned_unit_capacity_mw or "—"
-        sel_factor_raw = s.selection_factor or "—"
+        ues_name = (s.regional_energy_system.union_energy_system.name if s.regional_energy_system and s.regional_energy_system.union_energy_system else None) or "–"
+        rd_name = (s.regional_district.name_full if s.regional_district else None) or "–"
+        site_name = s.site_name or "–"
+        geo = s.geo_location or "–"
+        planned_cap = s.planned_capacity_mw or "–"
+        planned_unit = s.planned_unit_capacity_mw or "–"
+        sel_factor_raw = s.selection_factor or "–"
         sel_factor = _br_to_newline(sel_factor_raw)
 
         if s.machine_prospective_places:
             first_row = row_num
             for mp in s.machine_prospective_places:
-                unit_type = mp.unit_type or "—"
-                block_num = mp.station_block_number or "—"
-                period = mp.possible_implementation_period or "—"
-                ppt_name = (mp.prospective_place_type.name if mp.prospective_place_type else None) or "—"
+                unit_type = mp.unit_type or "–"
+                block_num = mp.station_block_number or "–"
+                period = mp.possible_implementation_period or "–"
+                ppt_name = (mp.prospective_place_type.name if mp.prospective_place_type else None) or "–"
                 row_data = [idx, site_name, ues_name, rd_name, geo, planned_cap, planned_unit, unit_type, block_num, period, ppt_name, sel_factor]
                 for col, val in enumerate(row_data, 1):
                     cell = ws.cell(row=row_num, column=col, value=val)
@@ -1360,7 +1360,7 @@ def export_prospective_places_aes():
                 for sc in station_cols:
                     ws.merge_cells(start_row=first_row, start_column=sc, end_row=row_num - 1, end_column=sc)
         else:
-            row_data = [idx, site_name, ues_name, rd_name, geo, planned_cap, planned_unit, "—", "—", "—", "—", sel_factor]
+            row_data = [idx, site_name, ues_name, rd_name, geo, planned_cap, planned_unit, "–", "–", "–", "–", sel_factor]
             for col, val in enumerate(row_data, 1):
                 cell = ws.cell(row=row_num, column=col, value=val)
                 cell.border = thin_border

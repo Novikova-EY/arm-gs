@@ -327,7 +327,7 @@ def build_summary_data_json_response(
                 page_size=page_size,
             )
     if summary_rows:
-        # При пагинации summary_rows — срез ссылок на кэшированное полное дерево.
+        # При пагинации summary_rows – срез ссылок на кэшированное полное дерево.
         # Копируем только текущую страницу, чтобы overrides не меняли данные в кэше.
         summary_rows = copy.deepcopy(summary_rows)
         apply_row_formula_text_overrides(summary_rows)

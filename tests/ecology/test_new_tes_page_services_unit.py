@@ -31,20 +31,12 @@ def test_ecology_hub_has_enabled_new_tes_calc_tile():
     assert "hub_tile_disabled" not in text
 
 
-def test_new_tes_sheets_follow_excel_outputs():
+def test_new_tes_sheets_exclude_separate_emission_tabs():
     slugs = [item["slug"] for item in NEW_TES_CALC_SHEETS]
     assert slugs == [
         "toplivo",
         "spravochnik",
-        "zola",
-        "sera",
-        "azot",
-        "co",
-        "pg",
         "obemy",
-        "udel-e",
-        "udel-fuel",
-        "udel-ee",
     ]
     assert get_calc_sheet("spravochnik")["sheet_name"] == "Нормативы"
     assert get_calc_sheet("obemy")["layout"] == "volumes"
@@ -98,9 +90,9 @@ def test_compute_new_tes_bundle_applies_le100_norms():
     )
     gas = bundle["by_key"]["gas_natural"]
     assert gas["b"] == Decimal("100")
-    assert gas["nox"] == Decimal("0.126")
+    assert gas["nox"] == Decimal("126")
     assert gas["pg"] == Decimal("159")
-    assert bundle["volumes"]["nox"] == Decimal("0.126")
+    assert bundle["volumes"]["nox"] == Decimal("126")
     assert bundle["volumes"]["co2"] == Decimal("159")
 
 

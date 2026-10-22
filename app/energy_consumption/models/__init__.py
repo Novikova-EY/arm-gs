@@ -20,7 +20,7 @@ from app.energy_consumption.models.territories import (  # noqa: F401
 from app.energy_consumption.models.formula_text import (  # noqa: F401
     energy_consumption_summary_formula_text_model,
 )
-from app.economics.models import (  # noqa: F401 — таблицы «Экономика»
+from app.economics.models import (  # noqa: F401 – таблицы «Экономика»
     federal_district_eat_consumption_parameter_model,
     russia_federation_consumption_parameter_model,
     consumption_formula_text_model,

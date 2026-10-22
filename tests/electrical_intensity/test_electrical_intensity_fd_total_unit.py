@@ -147,7 +147,7 @@ def test_build_fd_territory_summary_rows(app):
 
 
 def test_build_fd_territory_summary_forecast_consumption_years(app):
-    """Прогноз потребления в сводке ФО — для всех лет, не только до текущего."""
+    """Прогноз потребления в сводке ФО – для всех лет, не только до текущего."""
     ved_types = _ved_types()
     product_by_ved = {
         (3, 2020): Decimal("100"),

@@ -1,0 +1,17 @@
+{% if row.editable_values and can_edit %}
+<input type="text" class="form-control form-control-sm ot-edit-value"
+       data-year="{{ col.year }}"
+       data-territory="{{ col.coefficient_territory_slug }}"
+       data-affiliation="all"
+       data-field="{{ row.editable_field }}"
+       data-update-url="{{ url_for(value_endpoint, territory_slug=col.coefficient_territory_slug, sheet_slug='koeff') }}"
+       data-capture-total="{{ row.capture_totals[col.slug] }}"
+       data-default-coefficient="{{ row.default_coefficients[col.slug] }}"
+       data-emitted-key="{{ row.emitted_key }}"
+       data-column="{{ col.slug }}"
+       data-raw-value="{{ row.col_values_raw[col.slug]|replace('.', ',') }}"
+       value="{{ row.col_values[col.slug] }}"
+       inputmode="decimal" aria-label="{{ row.label }} – {{ col.sheet_name }}" />
+{% else %}
+{{ row.col_values[col.slug] if row.col_values is defined and col.slug in row.col_values else '' }}
+{% endif %}

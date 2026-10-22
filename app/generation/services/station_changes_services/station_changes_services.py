@@ -500,7 +500,7 @@ def get_station_changes_list_data(
             show_all = False
 
     # 1. Все электростанции без пагинации
-    # Важно: передаём start_year/end_year — иначе отбор станций идёт по дефолтному диапазону
+    # Важно: передаём start_year/end_year – иначе отбор станций идёт по дефолтному диапазону
     # и расходится с фильтрами/агрегацией страницы.
     station_data = get_station_changes_list(
         page=1,
@@ -648,7 +648,7 @@ def get_station_changes_list_data(
                 setattr(m, "plan_period_sum", None)
                 setattr(m, "plan_period_sum_by_event", {})
     except Exception:
-        # Итоги — вспомогательный расчет для UI. Не должен ломать страницу.
+        # Итоги – вспомогательный расчет для UI. Не должен ломать страницу.
         for m in all_machines:
             setattr(m, "plan_period_sum", None)
             setattr(m, "plan_period_sum_by_event", {})
@@ -694,7 +694,7 @@ def get_station_changes_list_data(
 
     # 6. Иерархия в порядке рендера + soft-пагинация по субъекту/энергоузлу
     hierarchy_data = build_est_then_sync_area_hierarchy_structure_for_changes(all_stations, include_names=True)
-    # Станции внутри субъекта/энергоузла — по генкомпании (непрерывные блоки одной ГК)
+    # Станции внутри субъекта/энергоузла – по генкомпании (непрерывные блоки одной ГК)
     grouped_all = hierarchy_data.get("grouped_stations", {}) or {}
     _sort_stations_in_hierarchy_by_gen_company(grouped_all)
 
@@ -763,7 +763,7 @@ def get_station_changes_list_data(
     result = {
         "stations": station_data,
         "stations_grouped": grouped_page,
-        # Полная иерархия — для экспорта из кэша страницы
+        # Полная иерархия – для экспорта из кэша страницы
         "stations_grouped_all": grouped_all,
         "synchronous_area_names": hierarchy_data.get("synchronous_area_name", {}),
         "energy_unit_names_override": hierarchy_data.get("energy_unit_name", {}),
@@ -1278,7 +1278,7 @@ def _filter_grouped_stations_to_page(grouped_stations, page_flat_items: list[dic
         getattr(item["station"], "id", None) for item in page_flat_items
     }
     allowed_station_ids.discard(None)
-    # Какие листья (est, sa, leaf) попали на страницу — для отсечения чужих веток
+    # Какие листья (est, sa, leaf) попали на страницу – для отсечения чужих веток
     allowed_leaves = {
         (item["est_id"], item["sa_id"], item["leaf_id"]) for item in page_flat_items
     }
@@ -1422,7 +1422,7 @@ def _determine_changes_parent_totals_flags(
 ) -> dict:
     """
     Какие итоги выше субъекта показывать на странице.
-    Субъект/энергоузел не рвётся пагинацией — его итог всегда допустим при show_totals.
+    Субъект/энергоузел не рвётся пагинацией – его итог всегда допустим при show_totals.
     """
     if show_all or not page_flat_items:
         return {
@@ -1476,7 +1476,7 @@ def _determine_changes_parent_totals_flags(
 def energy_unit_dative_for_totals(eu_name: str | None, eu_name_dat: str | None = None) -> str:
     """
     Подпись для «Итого по …» по энергоузлу.
-    Берётся из name_dat (дательный падеж), иначе — из наименования.
+    Берётся из name_dat (дательный падеж), иначе – из наименования.
     """
     name_dat = (eu_name_dat or "").strip()
     if name_dat:
@@ -1521,9 +1521,9 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
         # Для шаблонов/JSON оставляем Decimal; сравнение уже точное.
         return value
 
-    # 1) Изменение мощности (before/after/delta) — событие относится к году Y,
+    # 1) Изменение мощности (before/after/delta) – событие относится к году Y,
     # где значение изменилось относительно предыдущего года (Y-1).
-    # Для ПГУ: если есть части — показываем только изменившиеся части, не весь ПГУ.
+    # Для ПГУ: если есть части – показываем только изменившиеся части, не весь ПГУ.
     pgu_parts = list(getattr(machine, "pgu_submachines", None) or [])
 
     def _part_year_powers(part) -> dict[int, Decimal]:
@@ -1594,7 +1594,7 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
                 ])
                 machine.total_rows += 3
 
-    # 2) Вывод из эксплуатации — фиксируем год (Y), где мощность стала 0,
+    # 2) Вывод из эксплуатации – фиксируем год (Y), где мощность стала 0,
     # а в предыдущем году (Y-1) была > 0.
     for year in range(start_year, end_year + 1):
         if year not in year_to_power or (year - 1) not in year_to_power:
@@ -1610,7 +1610,7 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
             })
             machine.total_rows += 1
 
-    # 3) Ввод мощности — фиксируем ТОЛЬКО фактический год первого положительного значения,
+    # 3) Ввод мощности – фиксируем ТОЛЬКО фактический год первого положительного значения,
     # но добавляем его лишь если он попадает в [start_year; end_year] (без "перетекания").
     positive_years = sorted([y for y, v in year_to_power.items() if v > 0])
     if positive_years:
@@ -1746,7 +1746,7 @@ def resolve_effective_sync_area_id_from_parts(
 ) -> int:
     """
     Эффективная синхронная зона с учётом QA (по полям строки агрегации):
-    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 — отдельная СЗ;
+    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 – отдельная СЗ;
     - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
     - FK на СЗ из другой версии БД → ремап в текущий каталог.
 
@@ -1783,7 +1783,7 @@ def resolve_effective_sync_area_id(
 ) -> int:
     """
     Эффективная синхронная зона с учётом QA:
-    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 — отдельная СЗ;
+    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 – отдельная СЗ;
     - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
     - FK на СЗ из другой версии БД → ремап в текущий каталог.
     """
@@ -1858,14 +1858,14 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
                 res_names[res_id] = res.name
                 eu_names[eu_id] = eu_name
 
-    # Упорядочиваем уровень ОЭС по display_order (None и неизвестные — в конец)
+    # Упорядочиваем уровень ОЭС по display_order (None и неизвестные – в конец)
     # Используем кэшируемый список ОЭС, уже отсортированный по display_order
     from collections import OrderedDict
     try:
         ues_sorted_list = get_union_energy_system_list_full()
         ues_order_index = {ues.id: idx for idx, ues in enumerate(ues_sorted_list)}
     except Exception:
-        # На случай непредвиденной ошибки — не ломаем отображение
+        # На случай непредвиденной ошибки – не ломаем отображение
         ues_order_index = {}
 
     # Сортируем типы энергосистем по минимальному display_order ОЭС внутри них
@@ -1951,7 +1951,7 @@ def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], inc
     ues_names = {}
     rd_names = {}
 
-    # Справочник синхронных зон — для сортировки
+    # Справочник синхронных зон – для сортировки
     try:
         from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
             get_synchronous_area_list_full,
@@ -1964,14 +1964,14 @@ def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], inc
     def _sync_area_sort_key(sa_id: int):
         sa = sa_by_id.get(sa_id)
         if not sa:
-            # "Не указано" (0/None) и неизвестные — в конец
+            # "Не указано" (0/None) и неизвестные – в конец
             return (9, 999, "")
 
         name = (getattr(sa, "name", "") or "").strip()
         number = (getattr(sa, "number", "") or "").strip()
         name_l = name.lower()
 
-        # 1) Калининград — всегда первым
+        # 1) Калининград – всегда первым
         if "калининград" in name_l:
             return (0, 0, name_l)
 
@@ -2015,7 +2015,7 @@ def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], inc
         if n is not None:
             return (1, n, name_l)
 
-        # 3) Остальные — по имени
+        # 3) Остальные – по имени
         return (2, 999, name_l)
 
     # Упорядочивание ОЭС по display_order (уже реализовано в get_union_energy_system_list_full)
@@ -2140,7 +2140,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
     ues_names = {}
     rd_names = {}
 
-    # Справочник синхронных зон — для сортировки
+    # Справочник синхронных зон – для сортировки
     try:
         from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
             get_synchronous_area_list_full,
@@ -2150,7 +2150,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
     except Exception:
         sa_by_id = {}
 
-    # Справочник энергоузлов — для отображения/сортировки в спец-кейсе
+    # Справочник энергоузлов – для отображения/сортировки в спец-кейсе
     try:
         from app.common.services.get_services.energy_systems.energy_unit_get_services import (
             get_energy_unit_list_full,
@@ -2340,7 +2340,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
         est_name = (est_names.get(est_id, "") or "").lower().replace(" ", "")
         is_tites_est = "титэс" in est_name
         if is_tites_est:
-            # Одна группа (0) — фактически пропускаем второй уровень для ТИТЭС
+            # Одна группа (0) – фактически пропускаем второй уровень для ТИТЭС
             sorted_second_items = sorted(sa_group.items(), key=lambda kv: (kv[0] != 0, kv[0]))
         else:
             sorted_second_items = sorted(sa_group.items(), key=lambda kv: (_sync_area_sort_key(kv[0]), kv[0]))
@@ -2367,7 +2367,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
             sorted_ues_dict = OrderedDict()
 
             for ues_id, res_group in sorted_ues_items:
-                # РЭС внутри ОЭС (просто по id; если понадобится — можно по name)
+                # РЭС внутри ОЭС (просто по id; если понадобится – можно по name)
                 sorted_res_items = sorted(res_group.items(), key=lambda kv: kv[0])
                 sorted_res_dict = OrderedDict()
 
@@ -2543,7 +2543,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
     energy_unit_names_dp = {eu.id: getattr(eu, "name_dp", None) for eu in energy_units}
     energy_unit_names_dat = {eu.id: getattr(eu, "name_dat", None) for eu in energy_units}
-    # Подписи для «Итого по …» — из name_dat (дательный падеж)
+    # Подписи для «Итого по …» – из name_dat (дательный падеж)
     energy_unit_names_for_totals = {
         eu_id: energy_unit_dative_for_totals(name, energy_unit_names_dat.get(eu_id))
         for eu_id, name in energy_unit_names.items()
@@ -3358,7 +3358,7 @@ def compute_regional_district_rowspans(
     rd_by_tm_map = data.get("aggregate_changes_regional_districts_by_tes_machine_types", {}).get("aggregated", {}).get("p_ust", {})
     tm_names = tes_machine_type_list or {}
 
-    # id типов станций с именем «ТЭС» — под ними в шаблоне идут типы агрегатов
+    # id типов станций с именем «ТЭС» – под ними в шаблоне идут типы агрегатов
     tes_station_type_ids = {
         int(st_id)
         for st_id, st_name in (station_type_list or {}).items()
@@ -3392,7 +3392,7 @@ def compute_regional_district_rowspans(
                 if str(st_name or "").strip().lower() == "тэс":
                     has_tes_station_row = True
 
-            # Типы агрегатов ТЭС — только если есть строка «ТЭС» для этого события
+            # Типы агрегатов ТЭС – только если есть строка «ТЭС» для этого события
             if has_tes_station_row or tes_station_type_ids:
                 if not has_tes_station_row:
                     continue

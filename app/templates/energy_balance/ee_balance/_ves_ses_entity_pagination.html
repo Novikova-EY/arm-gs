@@ -1,4 +1,4 @@
-{# Пагинация по ОЭС — как на /power_demand/summary/oes/. #}
+{# Пагинация по ОЭС – как на /power_demand/summary/oes/. #}
 {% set pag = ves_ses_entity_pagination if ves_ses_entity_pagination is defined else pagination %}
 {% if pag is defined and (pag.total_pages | default(1)) > 1 and not pag.show_all %}
 {% set _pag_endpoint = pagination_endpoint | default(request.endpoint) %}
@@ -7,7 +7,7 @@
   <div class="small text-muted mb-2 text-center">
     Страница {{ pag.page }} из {{ pag.total_pages }}
     {% if pag.section_titles %}
-    — {{ pag.section_titles | join(', ') }}
+    – {{ pag.section_titles | join(', ') }}
     {% endif %}
   </div>
   <ul class="pagination justify-content-center mb-0 flex-wrap" id="vesSesEntityPaginationLinks">

@@ -173,7 +173,7 @@ def get_fuel_list(
 def get_fuel_hierarchy_tree():
     """
     Дерево видов топлива текущей версии БД:
-    верхний уровень — тип топлива, далее иерархия по parent_id.
+    верхний уровень – тип топлива, далее иерархия по parent_id.
     """
     fuels = (
         apply_version_filter(Fuel.query, Fuel)
@@ -205,7 +205,7 @@ def get_fuel_hierarchy_tree():
             roots.append(node)
 
     def _sort_nodes(items):
-        # Агрегации и дочерние узлы — по названию (без учёта регистра)
+        # Агрегации и дочерние узлы – по названию (без учёта регистра)
         items.sort(key=lambda n: (n.get("name") or "").casefold())
         for child in items:
             _sort_nodes(child.get("children") or [])
@@ -360,7 +360,7 @@ def update_fuel_service(data, user):
                     changes.append(format_field_change("id_fuel_type", old_name, new_name, "fuel"))
                     obj.id_fuel_type = new_val
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -584,7 +584,7 @@ def _normalize_fuel_match_text(value) -> str:
 
 
 def _normalize_fuel_nazvl(value) -> str | None:
-    """Наименование в БД Топливо — только строчными буквами."""
+    """Наименование в БД Топливо – только строчными буквами."""
     text = str(value or "").strip()
     if not text:
         return None
@@ -695,7 +695,7 @@ def _default_fuel_type_id_for_version(version_id: int) -> int:
         ft = q.order_by(FuelType.id.asc()).first()
     if not ft:
         raise ValueError(
-            f"В версии БД id={version_id} нет типов топлива — нельзя создать новые виды."
+            f"В версии БД id={version_id} нет типов топлива – нельзя создать новые виды."
         )
     return int(ft.id)
 
@@ -704,7 +704,7 @@ def import_fuel_service(file, user):
     """
     Импорт из Excel «Состав видов топлива» во все версии БД.
 
-    Сопоставление по похожему NazvR ↔ поле «Вид топлива» (name) — name не меняется.
+    Сопоставление по похожему NazvR ↔ поле «Вид топлива» (name) – name не меняется.
     Kod → kod, NazvL → nazvl, Pred → parent_id (через Kod родителя; Pred=-1 → корень).
     Несопоставленные строки добавляются как новые записи (name = NazvR).
     """
@@ -719,7 +719,7 @@ def import_fuel_service(file, user):
         version_ids = all_database_version_ids_for_refdata()
         if not version_ids:
             raise ValueError(
-                "В системе нет зарегистрированных версий БД — импорт во все версии невозможен."
+                "В системе нет зарегистрированных версий БД – импорт во все версии невозможен."
             )
 
         total_updated = 0
@@ -789,7 +789,7 @@ def import_fuel_service(file, user):
                             continue
                         name_key = _normalize_fuel_match_text(name)
                         if name_key in existing_names:
-                            # имя уже есть в версии, но не сопоставилось эвристикой — пропускаем создание
+                            # имя уже есть в версии, но не сопоставилось эвристикой – пропускаем создание
                             continue
                         if name not in ref_uuid_by_nazvr:
                             other = (
@@ -839,7 +839,7 @@ def import_fuel_service(file, user):
                             for er, _ in created_in_version
                         ]
 
-                # Сброс родителей у обновляемых/созданных — безопасная перестройка иерархии
+                # Сброс родителей у обновляемых/созданных – безопасная перестройка иерархии
                 for _, fuel in matched + created_in_version:
                     fuel.parent_id = None
                 db.session.flush()
@@ -1053,7 +1053,7 @@ def export_fuel_service(
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Код": o.kod if o.kod is not None else "—",
+            "Код": o.kod if o.kod is not None else "–",
             "Вид топлива": _dash(o.name),
             "Тип топлива": getattr(o.fuel_type, "name", "Не указан") or "Не указан",
             "Родительский вид": getattr(o.parent, "name", "Не указан") or "Не указан",

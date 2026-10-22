@@ -7,7 +7,7 @@ def roles_required(allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Если нет активного запроса — считаем, что доступа нет
+            # Если нет активного запроса – считаем, что доступа нет
             if not has_request_context():
                 abort(403)
 

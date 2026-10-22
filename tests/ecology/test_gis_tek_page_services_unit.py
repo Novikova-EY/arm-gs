@@ -6,8 +6,11 @@ from __future__ import annotations
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+
 from app.ecology.services.gis_tek_constants import (
     PG_VALUE_COLUMN_GROUPS,
+    REPORT_PG,
     REPORT_ZV,
     ZV_NORM_ATTR,
     ZV_NORM_DEFAULT_PARTS,
@@ -18,6 +21,7 @@ from app.ecology.services.gis_tek_constants import (
 from app.ecology.services.gis_tek_page_services import (
     IDENTITY_COLUMNS,
     apply_gis_tek_header_filters,
+    apply_pg_derived_metrics,
     apply_zv_derived_metrics,
     attach_gis_tek_region_summaries,
     build_rows_from_equipment_groups,
@@ -45,6 +49,59 @@ def test_pg_value_column_groups_second_row_is_fuel_agnostic():
             "Расход топлива, т у.т.",
             "Выбросы СО2 от сжигания топлива, т",
         ]
+
+
+@pytest.mark.parametrize(
+    "values, fuel_total, co2_total",
+    [
+        ({}, None, None),
+        ({"gas_consumption_tce": None, "co2_from_gas_t": None}, None, None),
+        ({"oil_fuel_consumption_tce": Decimal("0"), "co2_from_solid_fuel_t": 0}, Decimal("0"), Decimal("0")),
+        ({"solid_fuel_consumption_tce": "12.5", "co2_from_gas_t": Decimal("3.25")}, Decimal("12.5"), Decimal("3.25")),
+        (
+            {
+                "gas_consumption_tce": Decimal("1.1"),
+                "oil_fuel_consumption_tce": Decimal("2.2"),
+                "solid_fuel_consumption_tce": Decimal("3.3"),
+                "co2_from_gas_t": Decimal("10.1"),
+                "co2_from_oil_fuel_t": Decimal("20.2"),
+                "co2_from_solid_fuel_t": Decimal("30.3"),
+                "total_fuel_consumption_tce": Decimal("999"),
+            },
+            Decimal("6.6"),
+            Decimal("60.6"),
+        ),
+    ],
+)
+def test_pg_totals_sum_each_metric_and_preserve_missing_values(values, fuel_total, co2_total):
+    result = apply_pg_derived_metrics(values)
+    assert result["total_fuel_consumption_tce"] == fuel_total
+    assert result["total_co2_from_fuel_t"] == co2_total
+
+
+def test_pg_rows_and_regional_summaries_include_totals():
+    reports = [
+        SimpleNamespace(
+            station_numb=1,
+            gis_tek_station_name="Станция",
+            year_number=2024,
+            gas_consumption_tce=Decimal("1.1"),
+            oil_fuel_consumption_tce=Decimal("2.2"),
+            solid_fuel_consumption_tce=Decimal("3.3"),
+            co2_from_gas_t=Decimal("10.1"),
+            co2_from_oil_fuel_t=Decimal("20.2"),
+            co2_from_solid_fuel_t=Decimal("30.3"),
+        )
+    ]
+    rows = build_rows_from_equipment_groups([], reports, REPORT_PG, 2024)
+    assert rows[0]["metrics"]["total_fuel_consumption_tce"] == Decimal("6.6")
+    assert rows[0]["metrics"]["total_co2_from_fuel_t"] == Decimal("60.6")
+    # Итоги пересчитываются из исходных полей, а не из уже вычисленных итогов строк.
+    rows[0]["metrics"]["total_fuel_consumption_tce"] = Decimal("999")
+    summed = sum_row_metrics(rows + rows, REPORT_PG)
+    assert summed["total_fuel_consumption_tce"] == Decimal("13.2")
+    assert summed["total_co2_from_fuel_t"] == Decimal("121.2")
+    assert sum_row_metrics([], REPORT_PG)["total_fuel_consumption_tce"] is None
 
 
 def test_zv_gaseous_group_spans_seven_columns_with_total():
@@ -294,12 +351,12 @@ def test_build_rows_from_equipment_groups_lists_all_groups():
     assert by_numb[1706]["gis_tek_station_name"] == "Станция ГИС"
     assert by_numb[1706]["metrics"]["gaseous_and_liquid"] == Decimal("27")
     assert by_numb[612]["equipment_group_name"] == "Группа Б"
-    assert by_numb[612]["gis_tek_station_name"] == "—"
+    assert by_numb[612]["gis_tek_station_name"] == "–"
     assert by_numb[612]["metrics"]["gaseous_and_liquid"] is None
     assert by_numb[999]["gis_tek_station_name"] == "Только отчёт"
     # «Принадлежность» не берётся из отчёта (там station_type = «ТЭЦ»), только из VED.
-    assert by_numb[1706]["station_affiliation"] == "—"
-    assert by_numb[999]["station_affiliation"] == "—"
+    assert by_numb[1706]["station_affiliation"] == "–"
+    assert by_numb[999]["station_affiliation"] == "–"
 
 
 def test_parse_show_totals_and_empty_rows_args():
@@ -439,9 +496,9 @@ def test_norm_zv_parts_are_zv_columns_without_totals():
 def test_parse_norm_zv_parts_default_empty_and_ordered():
     assert parse_norm_zv_parts({}) == list(ZV_NORM_DEFAULT_PARTS)
     assert parse_norm_zv_parts({"year": "2024"}) == list(ZV_NORM_DEFAULT_PARTS)
-    # Пустое значение — сознательно очищенный выбор.
+    # Пустое значение – сознательно очищенный выбор.
     assert parse_norm_zv_parts({"norm_zv": ""}) == []
-    # Порядок — как у столбцов ЗВ, повторы и неизвестные имена отбрасываются.
+    # Порядок – как у столбцов ЗВ, повторы и неизвестные имена отбрасываются.
     assert parse_norm_zv_parts({"norm_zv": ["voc", "solid_substances", "voc"]}) == [
         "solid_substances",
         "voc",
@@ -571,8 +628,8 @@ def test_header_filter_selected_choices_and_matching():
             "generation_stations": [{"id": 11, "name": "Абаканская ТЭЦ"}],
         },
         {
-            "gis_tek_station_name": "—",
-            "station_affiliation": "—",
+            "gis_tek_station_name": "–",
+            "station_affiliation": "–",
             "generation_stations": [],
         },
     ]
@@ -628,7 +685,7 @@ def test_station_type_from_ved_labels_by_code():
     assert station_type_from_ved(3) == "ТЭЦ, промпредприятия"
     assert station_type_from_ved(4) == "КЭС, промпредприятия"
     for empty in (None, 0, 99, "", "x"):
-        assert station_type_from_ved(empty) == "—"
+        assert station_type_from_ved(empty) == "–"
 
 
 def test_station_affiliation_follows_station_type():
@@ -638,8 +695,8 @@ def test_station_affiliation_follows_station_type():
     assert station_affiliation("ТЭЦ, отрасль") == "отрасль"
     assert station_affiliation("ТЭЦ, промпредприятия") == "промпредприятие"
     assert station_affiliation("КЭС, промпредприятия") == "промпредприятие"
-    assert station_affiliation("—") == "—"
-    assert station_affiliation("ТЭЦ") == "—"
+    assert station_affiliation("–") == "–"
+    assert station_affiliation("ТЭЦ") == "–"
 
 
 def test_build_rows_takes_station_type_from_ved_not_report():
@@ -673,8 +730,8 @@ def test_build_rows_takes_station_type_from_ved_not_report():
     assert by_numb[1706]["station_affiliation"] == "промпредприятие"
 
     without_ved = build_rows_from_equipment_groups([group], [report], REPORT_ZV, 2022)
-    assert without_ved[0]["station_type"] == "—"
-    assert without_ved[0]["station_affiliation"] == "—"
+    assert without_ved[0]["station_type"] == "–"
+    assert without_ved[0]["station_affiliation"] == "–"
 
 
 def test_station_types_by_equipment_group_skips_unmapped_ved(monkeypatch):
@@ -717,7 +774,7 @@ def test_station_types_by_equipment_group_skips_unmapped_ved(monkeypatch):
         6: "ТЭЦ, отрасль",
         7: "ТЭЦ, отрасль",
     }
-    # оболочка 20: у детей разные типы (КЭС и ТЭЦ) — тип не определить
+    # оболочка 20: у детей разные типы (КЭС и ТЭЦ) – тип не определить
     assert 2 not in result
     assert captured == {
         "ids": [1, 2, 3, 4, 5, 6, 7],
@@ -740,11 +797,11 @@ def test_drop_float_noise_keeps_significant_digits():
     from app.common.services.help_services import format_decimal_for_display
     from app.ecology.services.ecology_decimal_helpers import drop_float_noise
 
-    # Хвост из double исходного Excel/Access — артефакт, а не данные.
+    # Хвост из double исходного Excel/Access – артефакт, а не данные.
     assert drop_float_noise(Decimal("105.1000000000000100")) == Decimal("105.1")
     assert drop_float_noise(Decimal("1844.7233930000002")) == Decimal("1844.723393")
     assert drop_float_noise(Decimal("446.5270000000000400")) == Decimal("446.527")
-    # Значение короче предела не меняется — в т.ч. все 15 знаков.
+    # Значение короче предела не меняется – в т.ч. все 15 знаков.
     assert drop_float_noise(Decimal("1.02963561999219")) == Decimal("1.02963561999219")
     assert drop_float_noise(Decimal("863585")) == Decimal("863585")
     assert drop_float_noise(None) is None

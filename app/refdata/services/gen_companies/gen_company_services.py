@@ -162,7 +162,7 @@ def update_gen_company_service(data, user):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "gen_company"))
                 obj.name = name
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 

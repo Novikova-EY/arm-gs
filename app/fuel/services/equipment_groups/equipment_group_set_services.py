@@ -194,7 +194,7 @@ def compose_equipment_group_name(
     *,
     is_new_group: bool = False,
 ) -> str | None:
-    """«Станция (тип группы)» — для групп с ровно одной привязанной станцией."""
+    """«Станция (тип группы)» – для групп с ровно одной привязанной станцией."""
     if not station or not station.name or not group_type or not group_type.name:
         return None
     base_name = f"{station.name} ({group_type.name})"
@@ -221,7 +221,7 @@ def get_single_station_and_type_for_equipment_group(
 ) -> tuple[Station | None, EquipmentGroupType | None]:
     """
     Если у группы ровно одна уникальная станция в связях EquipmentGroupSet
-    и единый тип группы — возвращает (station, type), иначе (None, None) для типа
+    и единый тип группы – возвращает (station, type), иначе (None, None) для типа
     при неоднозначности (станцию всё же вернёт только при одной станции и одном типе).
     """
     if not equipment_group_id:
@@ -261,7 +261,7 @@ def get_single_station_and_type_for_equipment_group(
     if len(stations_by_id) != 1:
         return None, None
     station = next(iter(stations_by_id.values()))
-    # Нужен ровно один тип во всех связях (не «—» и не смесь типов)
+    # Нужен ровно один тип во всех связях (не «–» и не смесь типов)
     if len(type_ids) != 1:
         return None, None
     only_type_id = next(iter(type_ids))
@@ -305,7 +305,7 @@ def resolve_auto_equipment_group_name(
     """
     Решает, нужно ли выставить suggested как name.
 
-    force — всегда (массовое обновление).
+    force – всегда (массовое обновление).
     Иначе: пустое имя; или пользователь не менял поле, а старое было
     автосгенерированным / пустым / уже совпадает с новым suggested.
     Ручное имя сохраняется.
@@ -415,7 +415,7 @@ def resolve_station_and_type_for_version(
     """
     Приводит station_id и тип группы к version_id.
 
-    Если станция задана, но копии в этой версии нет — (None, None), чтобы не писать
+    Если станция задана, но копии в этой версии нет – (None, None), чтобы не писать
     смешанную связь (станция одной версии, database_version_id другой).
     """
     from app.common.services.version_entity_resolve_services import (
@@ -482,7 +482,7 @@ def find_or_create_versioned_equipment_group_set_station(
     """
     Находит или создаёт EquipmentGroupSetStation с FK уже в version_id.
     Не проставляет «текущую» версию поверх явного None (legacy).
-    equipment_group_type_id=None — связь без типа (прочерк / составная станция).
+    equipment_group_type_id=None – связь без типа (прочерк / составная станция).
     """
     link_query = EquipmentGroupSetStation.query
     if equipment_group_type_id is None:
@@ -631,13 +631,13 @@ def ensure_equipment_group_set_for_station(
 ) -> EquipmentGroupSet | None:
     """
     Проверяет наличие EquipmentGroupSetStation для (station_id, equipment_group_type_id).
-    Если нет — создает EquipmentGroupSetStation, затем EquipmentGroup и EquipmentGroupSet.
+    Если нет – создает EquipmentGroupSetStation, затем EquipmentGroup и EquipmentGroupSet.
     Логика аналогична import_fuel_db_equipment_groups (шаг 4.1).
 
     Args:
         station_id: ID электростанции
         equipment_group_type_id: ID типа группы оборудования (EquipmentGroupType)
-        version_id: ID версии БД (если None — использует текущую)
+        version_id: ID версии БД (если None – использует текущую)
 
     Returns:
         EquipmentGroupSet или None при ошибке
@@ -661,7 +661,7 @@ def select_equipment_group_on_type_link(
     """
     Группа на связи станция+тип для автопривязки агрегата.
 
-    Если на одной связи и оболочка составной станции, и дочерняя группа —
+    Если на одной связи и оболочка составной станции, и дочерняя группа –
     берём ребёнка (у головы тип должен быть прочерком, но исторически мог совпасть).
     Уже выбранная fuel-группа агрегата сохраняется, если она всё ещё на этой связи.
     """

@@ -26,9 +26,9 @@ ACTION_TITLE = "электроёмкость (долгосрочный прог�
 
 def _fmt_log_value(value: Any) -> str:
     if value is None:
-        return "—"
+        return "–"
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else "—"
+    return s if s else "–"
 
 
 def load_electrical_intensity_logs_raw(

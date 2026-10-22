@@ -6,9 +6,9 @@ Station через SetStation остаётся для машин/типов и �
 но не является источником истины составности.
 
 allow_station_composite_fallback:
-  True  — несколько EG на одном Station без comp/main ведут себя как раньше
+  True  – несколько EG на одном Station без comp/main ведут себя как раньше
           (legacy до полной дозагрузки Access-флагов);
-  False — такие EG только сосуществуют в бакете Station, без «составной» семантики.
+  False – такие EG только сосуществуют в бакете Station, без «составной» семантики.
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ ClusterKind = Literal["composite", "station", "standalone"]
 
 def _eg_label(eg: Any) -> str:
     if eg is None:
-        return "—"
+        return "–"
     for attr in ("name_ext", "name"):
         val = getattr(eg, attr, None)
         if val and str(val).strip():
@@ -35,7 +35,7 @@ def _eg_label(eg: Any) -> str:
     numb = getattr(eg, "numb", None)
     if numb is not None:
         return f"numb={numb}"
-    return "—"
+    return "–"
 
 
 def _primary_station(
@@ -48,7 +48,7 @@ def _primary_station(
     if not stations:
         return None
     st_id, st_name = stations[0][0], stations[0][1]
-    return (st_id, (st_name or "—"))
+    return (st_id, (st_name or "–"))
 
 
 def _sort_group_blocks(group_blocks: list[dict]) -> list[dict]:
@@ -79,7 +79,7 @@ def assign_display_cluster_key(
     Возвращает (cluster_key, kind).
     cluster_key стабилен внутри одной РЭС-выборки.
 
-    Родитель comp=1 без детей в текущей выборке — обычный station/standalone бакет
+    Родитель comp=1 без детей в текущей выборке – обычный station/standalone бакет
     (не composite:{numb}), иначе соседние EG той же Station оказываются в другом
     кластере с тем же station_id/name и дублируются при пагинации.
     """
@@ -105,9 +105,9 @@ def assign_display_cluster_key(
             )
             if has_kids:
                 return (f"composite:{numb}", "composite")
-        # Одиночный comp=1 — fall through к station/standalone.
+        # Одиночный comp=1 – fall through к station/standalone.
 
-    # Ребёнок с main, но родитель ещё не в выборке — всё равно кластер по main.
+    # Ребёнок с main, но родитель ещё не в выборке – всё равно кластер по main.
     if not is_main_empty(getattr(eg, "main", None)):
         main = _as_int(getattr(eg, "main", None))
         return (f"composite:{main}", "composite")
@@ -115,7 +115,7 @@ def assign_display_cluster_key(
     st = _primary_station(eg_id, eg_to_stations)
     if st is not None:
         st_id, _ = st
-        # Station-бакет для отображения; «составной» fallback — только флагом.
+        # Station-бакет для отображения; «составной» fallback – только флагом.
         kind: ClusterKind = "station"
         if allow_station_composite_fallback:
             kind = "station"
@@ -134,8 +134,8 @@ def build_display_clusters(
     """
     Группирует group_blocks в кластеры для station_blocks.
 
-    parent_by_numb — EG-родители из БД (comp=1), которых может не быть в rows
-    (нет FuelParam) — нужны для имени жёлтой «всего» и composite_parent_eg_id.
+    parent_by_numb – EG-родители из БД (comp=1), которых может не быть в rows
+    (нет FuelParam) – нужны для имени жёлтой «всего» и composite_parent_eg_id.
     """
     eg_to_stations = eg_to_stations or {}
     parent_by_numb = parent_by_numb or {}
@@ -195,7 +195,7 @@ def build_display_clusters(
 
         kind = kinds.get(key, "standalone")
         # Составная витрина только при наличии детей (main>0).
-        # Одиночный comp=1 без детей — обычная станция.
+        # Одиночный comp=1 без детей – обычная станция.
         has_children = any(is_composite_child_group(eg) for eg in egs)
         treat_as_composite = has_children or (
             allow_station_composite_fallback
@@ -204,7 +204,7 @@ def build_display_clusters(
         )
 
         station_id = None
-        station_name = "—"
+        station_name = "–"
         if parent_eg is not None:
             station_name = _eg_label(parent_eg)
             st = _primary_station(getattr(parent_eg, "id", None), eg_to_stations)
@@ -218,7 +218,7 @@ def build_display_clusters(
                     if parent_eg is None:
                         station_name = st_name
                     break
-        if parent_eg is None and (not station_name or station_name == "—") and egs:
+        if parent_eg is None and (not station_name or station_name == "–") and egs:
             station_name = _eg_label(egs[0])
 
         clusters.append(
@@ -269,7 +269,7 @@ def build_station_blocks_from_group_items(
         return [
             {
                 "station_id": None,
-                "station_name": "—",
+                "station_name": "–",
                 "group_blocks": group_blocks,
                 "station_summary": {},
                 "is_virtual": True,
@@ -328,7 +328,7 @@ def apply_simple_station_summaries(
     allow_station_composite_fallback: bool = False,
 ) -> list[dict]:
     """
-    Итог составной станции — на строке родителя («…, всего»), как на fuel_params.
+    Итог составной станции – на строке родителя («…, всего»), как на fuel_params.
     Отдельную жёлтую «станция, всего» для composites подавляет.
     """
     from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (

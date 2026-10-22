@@ -21,7 +21,7 @@
 {% set can_edit_generation_fields = can_edit_generation or can_edit_dz_machine %}
 {% set can_edit_any = can_edit_fuel or can_edit_generation_fields %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
-{# id / external_code — не для reader/guest; только admin и editor #}
+{# id / external_code – не для reader/guest; только admin и editor #}
 {% set can_view_internal_ids = current_user.is_authenticated and (
     current_user.has_admin
     or (current_user.role_names | select('in', [
@@ -101,7 +101,7 @@
                                     </div>
                                     {% if can_view_internal_ids %}
                                     <div class="col-7 text-start text-muted">
-                                        id = {% if machine and machine.id %}{{ machine.id }}{% else %}—{% endif %}{% if current_db_version %} · версия {{ current_db_version.version_number }}{% endif %}
+                                        id = {% if machine and machine.id %}{{ machine.id }}{% else %}–{% endif %}{% if current_db_version %} · версия {{ current_db_version.version_number }}{% endif %}
                                     </div>
                                     {% endif %}
                                 </div>
@@ -116,7 +116,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.machine_group(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
+                                            {{ main_form.machine_group.data.label if main_form.machine_group.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -126,7 +126,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.machine_number(class="form-control fw-bold") }}
                                         {% else %}
-                                            {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
+                                            {{ main_form.machine_number.data if main_form.machine_number.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -134,7 +134,7 @@
                                     <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
                                         {% if station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
-                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
+                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '–' }}</div>
                                             <input type="hidden"
                                                    name="{{ main_form.machine_name.name }}"
                                                    value="{{ main_form.machine_name.data or '' }}"
@@ -142,7 +142,7 @@
                                         {% elif can_edit_generation_fields %}
                                             {{ main_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
-                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
+                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '–' }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -152,7 +152,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.id_condition_type(class="form-select") }}
                                         {% else %}
-                                            {{ machine.condition_type.name if machine.condition_type else '—' }}
+                                            {{ machine.condition_type.name if machine.condition_type else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -162,7 +162,7 @@
                                         {% if can_edit_generation %}
                                             {{ main_form.id_energy_area(class="form-select") }}
                                         {% else %}
-                                            {% if station.energy_unit and (station.energy_unit.name or '')|lower not in ('не указано', 'не указан') %}{{ station.energy_unit.name }}{% else %}—{% endif %}
+                                            {% if station.energy_unit and (station.energy_unit.name or '')|lower not in ('не указано', 'не указан') %}{{ station.energy_unit.name }}{% else %}–{% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -188,7 +188,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.note(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.note.data if main_form.note.data else '—' }}
+                                            {{ main_form.note.data if main_form.note.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -199,7 +199,7 @@
                                         {% if can_edit_external_code %}
                                             {{ main_form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off") }}
                                         {% else %}
-                                            {{ machine.external_code if machine and machine.external_code else '—' }}
+                                            {{ machine.external_code if machine and machine.external_code else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -220,7 +220,7 @@
                                             {% if fuel_eg_sel and fuel_eg_sel in fuel_eg_choices and fuel_eg_sel != 0 %}
                                                 {{ fuel_eg_choices[fuel_eg_sel] }}
                                             {% else %}
-                                                —
+                                                –
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -232,7 +232,7 @@
                                         {% if can_edit_fuel %}
                                             {{ main_form.id_equipment_group(class="form-select") }}
                                         {% else %}
-                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
+                                            {{ machine.equipment_group.name if machine.equipment_group else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -243,7 +243,7 @@
                                             {% if can_edit_fuel %}
                                                 {{ main_form.id_tes_machine_type(class="form-select") }}
                                             {% else %}
-                                                {{ machine.tes_machine_type.name if machine and machine.tes_machine_type else '—' }}
+                                                {{ machine.tes_machine_type.name if machine and machine.tes_machine_type else '–' }}
                                             {% endif %}
                                         </div>
                                     </div>
@@ -261,7 +261,7 @@
                                                     {% else %}
                                                     value=""
                                                     {% endif %}
-                                                    placeholder="—"
+                                                    placeholder="–"
                                                     inputmode="decimal"
                                                     autocomplete="off"
                                                     lang="ru">
@@ -271,7 +271,7 @@
                                             {% elif machine and machine.machine_fuel_param and machine.machine_fuel_param.nt is not none %}
                                                 {{ machine.machine_fuel_param.nt | trim_decimal }}
                                             {% else %}
-                                                —
+                                                –
                                             {% endif %}
                                         </div>
                                     </div>
@@ -304,7 +304,7 @@
                                                     {{ main_form.change_document.data | render_document_links }}
                                                 </div>
                                             {% else %}
-                                                —
+                                                –
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -322,7 +322,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_commission_year(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_commission_year.data if main_form.date_commission_year.data else '—' }}
+                                            {{ main_form.date_commission_year.data if main_form.date_commission_year.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -333,7 +333,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_exploitation(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
+                                            {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -349,7 +349,7 @@
                                                     {{ main_form.is_commissioning_q4.label(class="form-check-label", for="main_is_commissioning_q4") }}
                                                 </div>
                                             {% else %}
-                                                <span>{{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}</span>
+                                                <span>{{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '–' }}</span>
                                                 <div class="form-check mb-0 flex-shrink-0">
                                                     {{ main_form.is_commissioning_q4(class="form-check-input", id="main_is_commissioning_q4", disabled=True) }}
                                                     {{ main_form.is_commissioning_q4.label(class="form-check-label", for="main_is_commissioning_q4") }}
@@ -364,7 +364,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_exploitation_date_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_exploitation_date_expected.data if main_form.date_exploitation_date_expected.data else '—' }}
+                                            {{ main_form.date_exploitation_date_expected.data if main_form.date_exploitation_date_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -374,7 +374,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_decompressing_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
+                                            {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -385,7 +385,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_modernization_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_modernization_power_change_expected.data if main_form.date_modernization_power_change_expected.data else '—' }}
+                                            {{ main_form.date_modernization_power_change_expected.data if main_form.date_modernization_power_change_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -395,7 +395,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_modernization_no_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_modernization_no_power_change_expected.data if main_form.date_modernization_no_power_change_expected.data else '—' }}
+                                            {{ main_form.date_modernization_no_power_change_expected.data if main_form.date_modernization_no_power_change_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -405,7 +405,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_joining_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
+                                            {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -430,7 +430,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_commission_fact(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
+                                            {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -440,7 +440,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_decompressing_fact(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
+                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -451,7 +451,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_joining_fact(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
+                                            {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -461,7 +461,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.date_detatchment_fact(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
+                                            {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -473,7 +473,7 @@
                                                 class="form-control",
                                             ) }}
                                         {% else %}
-                                            {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
+                                            {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -485,7 +485,7 @@
                                                 class="form-control",
                                             ) }}
                                         {% else %}
-                                            {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
+                                            {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -495,7 +495,7 @@
                                         {% if can_edit_generation_fields %}
                                             {{ main_form.relabing_outcome(class="form-select") }}
                                         {% else %}
-                                            {{ ((main_form.relabing_outcome.data or '')|trim) or '—' }}
+                                            {{ ((main_form.relabing_outcome.data or '')|trim) or '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -530,15 +530,14 @@
 
                                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                                 <select name="start_year" id="start_year" class="form-select">
-                                    {% for year in range(2021, 2043) %}
+                                    {% for year in filter_year_list %}
                                         <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
 
                                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                                 <select name="end_year" id="end_year" class="form-select">
-                                    {% set max_end_year = version_year_end if version_year_end else 2042 %}
-                                    {% for year in range(2022, max_end_year + 1) %}
+                                    {% for year in filter_year_list %}
                                         <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
@@ -616,7 +615,7 @@
                                         {% if year_feature_label %}
                                             {{ year_feature_label }}
                                         {% else %}
-                                            &mdash;
+                                            &ndash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -628,7 +627,7 @@
                         <tbody>
                             {% for pgu_machine in pgu_machines %}
                                 <tr class="text-center align-middle">
-                                    <td>{{ pgu_machine.machine_number or '—' }}</td>
+                                    <td>{{ pgu_machine.machine_number or '–' }}</td>
                                     <td>
                                         <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=pgu_machine.id, **request.args) }}" class="text-decoration-none">
                                             {{ pgu_machine.machine_name }}
@@ -644,7 +643,7 @@
                                             {% if p_ust_value %}
                                                 {{ p_ust_value | format_decimal }}
                                             {% else %}
-                                                &mdash;
+                                                &ndash;
                                             {% endif %}
                                         </td>
                                     {% endfor %}
@@ -652,7 +651,7 @@
                                         {% if can_edit_generation %}
                                         <input type="checkbox" name="pgu_machines_delete[]" value="{{ pgu_machine.id }}" class="form-check-input">
                                         {% else %}
-                                        &mdash;
+                                        &ndash;
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -695,7 +694,7 @@
                                     {% if year_feature_label %}
                                         {{ year_feature_label }}
                                     {% else %}
-                                        &mdash;
+                                        &ndash;
                                     {% endif %}
                                 </div>
                             </th>
@@ -712,16 +711,20 @@
                                 {{ nm.year(type="hidden") }}
                                 <td class="align-middle text-center">
                                     {% if can_edit_generation_fields %}
+                                        {# Значение, показанное в ячейке: по нему сервер отличает очистку от незаполненного года #}
+                                        <input type="hidden"
+                                            name="{{ nm.year_name.name }}_orig"
+                                            value="{% if year_all_zero %}{% else %}{{ nm.year_name.data or '' }}{% endif %}">
                                         <input type="text"
                                             name="{{ nm.year_name.name }}"
                                             value="{% if year_all_zero %}{% else %}{{ nm.year_name.data or '' }}{% endif %}"
-                                            placeholder="{% if year_all_zero %}—{% endif %}"
+                                            placeholder="{% if year_all_zero %}–{% endif %}"
                                             data-year="{{ nm.year.data }}"
                                             data-feature="{{ year_features.get(nm.year.data) or '' }}"
                                             class="text-center form-control"
                                             maxlength="1024">
                                     {% else %}
-                                        <span>{% if year_all_zero or not nm.year_name.data %}—{% else %}{{ nm.year_name.data }}{% endif %}</span>
+                                        <span>{% if year_all_zero or not nm.year_name.data %}–{% else %}{{ nm.year_name.data }}{% endif %}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -748,7 +751,7 @@
                                     {% if year_feature_label %}
                                         {{ year_feature_label }}
                                     {% else %}
-                                        &mdash;
+                                        &ndash;
                                     {% endif %}
                                 </div>
                             </th>
@@ -760,7 +763,7 @@
                             <td class="first-column fw-bold" style="width: 50px;">Руст</td>
                             {% for p in advanced_form.powers %}
                                 {% set year_all_zero = p.year.data in zero_power_years.years %}
-                                {% set p_disp = '—' if year_all_zero else (p.p_ust.data | format_decimal) %}
+                                {% set p_disp = '–' if year_all_zero else (p.p_ust.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
                                 <input type="hidden"
                                        class="year-feature"
@@ -788,7 +791,7 @@
                             <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
                             {% for p in advanced_form.powers %}
                                 {% set year_all_zero = p.year.data in zero_power_years.years %}
-                                {% set p_disp = '—' if year_all_zero else (p.p_ogr.data | format_decimal) %}
+                                {% set p_disp = '–' if year_all_zero else (p.p_ogr.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
                                 {% set p_ogr_full = p.p_ogr.data | format_decimal(0) if p.p_ogr.data is not none and not year_all_zero else '' %}
                                 <td class="power-column align-middle text-center" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
@@ -813,7 +816,7 @@
                             <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
                             {% for p in advanced_form.powers %}
                                 {% set year_all_zero = p.year.data in zero_power_years.years %}
-                                {% set p_disp = '—' if year_all_zero else (p.p_rasp.data | format_decimal) %}
+                                {% set p_disp = '–' if year_all_zero else (p.p_rasp.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
                                 {% set p_rasp_full = p.p_rasp.data | format_decimal(0) if p.p_rasp.data is not none and not year_all_zero else '' %}
                                 <td class="power-column align-middle text-center" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
@@ -854,7 +857,7 @@
                                         {% if year_feature_label %}
                                             {{ year_feature_label }}
                                         {% else %}
-                                            &mdash;
+                                            &ndash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -880,7 +883,7 @@
                                         {% else %}
                                             {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
                                             {% if year_all_zero or not t.tes_type.data or t.tes_type.data == 0 or not selected_tes_type or selected_tes_type|lower == 'не указано' %}
-                                                <span>—</span>
+                                                <span>–</span>
                                             {% else %}
                                                 <span>{{ selected_tes_type }}</span>
                                             {% endif %}
@@ -909,7 +912,7 @@
                                         {% if year_feature_label %}
                                             {{ year_feature_label }}
                                         {% else %}
-                                            &mdash;
+                                            &ndash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -935,7 +938,7 @@
                                         {% else %}
                                             {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
                                             {% if year_all_zero or not f.fuel_type.data or f.fuel_type.data == 0 or not selected_fuel_type or selected_fuel_type|lower == 'не указано' %}
-                                                <span>—</span>
+                                                <span>–</span>
                                             {% else %}
                                                 <span>{{ selected_fuel_type }}</span>
                                             {% endif %}
@@ -965,7 +968,7 @@
     </div>  
 </div>
 
-<!-- Максимальный год версии БД — для ограничений по годам в JS -->
+<!-- Максимальный год версии БД – для ограничений по годам в JS -->
 <input type="hidden" id="db_version_max_year" value="{{ version_year_end or '' }}">
 
 
@@ -1098,7 +1101,7 @@
         line-height: 1.4;
     }
     
-    /* Select2: организация-собственник, группа оборудования — единый вид */
+    /* Select2: организация-собственник, группа оборудования – единый вид */
     .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container,
     .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"],
     .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] {
@@ -1328,7 +1331,7 @@
     }
 
     /* Единые горизонтальные отступы у всех таблиц на странице агрегата */
-    /* Отменяем прежнее выравнивание — как на странице электростанции */
+    /* Отменяем прежнее выравнивание – как на странице электростанции */
 
 
 </style>
@@ -1337,7 +1340,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const $ = window.jQuery; // может отсутствовать, поэтому ниже все jQuery-зависимое — под guard
+    const $ = window.jQuery; // может отсутствовать, поэтому ниже все jQuery-зависимое – под guard
 
     // --- Select2 и ширина колонок ---
     if (typeof $ === "function" && $.fn && $.fn.select2) {
@@ -1486,40 +1489,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function attachPowerAutoFill() {
-        // Максимальный допустимый год по версии БД
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" &&
-            !isNaN(maxVersionYear) &&
-            maxVersionYear > 0;
-
-        // Годы по столбцам (общие для всех строк мощности)
-        let columnYears = [];
-        const yearInputs = Array.from(
-            document.querySelectorAll(
-                '.total-power-row input[type="hidden"][name*="year"]'
-            )
-        );
-        if (yearInputs.length) {
-            yearInputs.forEach((inp) => {
-                const y = parseInt(inp.value || "0", 10);
-                columnYears.push(isNaN(y) ? null : y);
-            });
-        } else {
-            const startYearEl = document.getElementById("start_year");
-            const endYearEl = document.getElementById("end_year");
-            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
-            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
-            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
-                for (let y = startYear; y <= endYear; y++) {
-                    columnYears.push(y);
-                }
-            }
-        }
-
         const powerRows = document.querySelectorAll(
             ".machines-table .total-power-row, " +
             ".machines-table .p-ogr-row, " +
@@ -1542,9 +1511,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            const yearsMatchInputs =
-                columnYears.length && columnYears.length === inputs.length;
-
             function extendPowerValue(inputEl, idx) {
                 if (window.__armGsTableRowPasteActive) {
                     return;
@@ -1553,12 +1519,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (inputEl.dataset) {
                     inputEl.dataset.userSet = "1";
                 }
-                // Продление значения по текущей строке, но не дальше maxVersionYear
+                // Очистку не протягиваем: удаляется только значение этой ячейки
+                const trimmed = (value || "").trim();
+                if (trimmed === "" || trimmed === "–") {
+                    return;
+                }
+                // Продление значения по всей строке до конца отображаемого периода
                 for (let i = idx + 1; i < inputs.length; i++) {
-                    if (hasMaxVersionYear && yearsMatchInputs) {
-                        const y = columnYears[i];
-                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
-                    }
                     inputs[i].value = value;
                     if (inputs[i].dataset) {
                         inputs[i].dataset.userSet = "1";
@@ -1566,13 +1533,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 // При заполнении Руст заполняем Ррасп = Руст и продлеваем
                 if (isRustRow && raspRowInputs.length) {
-                    const raspYearsMatch =
-                        columnYears.length && columnYears.length === raspRowInputs.length;
                     for (let i = idx; i < raspRowInputs.length; i++) {
-                        if (hasMaxVersionYear && raspYearsMatch) {
-                            const y = columnYears[i];
-                            if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
-                        }
                         raspRowInputs[i].value = value;
                         if (raspRowInputs[i].dataset) {
                             raspRowInputs[i].dataset.userSet = "1";
@@ -1637,7 +1598,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 machineNameHidden.value = "";
             }
             if (machineNameDisplay) {
-                machineNameDisplay.textContent = "—";
+                machineNameDisplay.textContent = "–";
             }
             return;
         }
@@ -1663,21 +1624,12 @@ document.addEventListener("DOMContentLoaded", function () {
             machineNameHidden.value = displayName;
         }
         if (machineNameDisplay) {
-            machineNameDisplay.textContent = displayName || "—";
+            machineNameDisplay.textContent = displayName || "–";
         }
     }
 
     // --- Автозаполнение названий агрегатов по строке (как у мощностей) ---
     function attachNamesAutoFill() {
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" &&
-            !isNaN(maxVersionYear) &&
-            maxVersionYear > 0;
-
         // Все инпуты с названиями по годам в таблице "Название агрегата"
         const inputs = Array.from(
             document.querySelectorAll('#machine-names-table tbody tr td input[type="text"]')
@@ -1694,11 +1646,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             const value = inputEl.value;
+            // Очистку не протягиваем: меняется только эта ячейка
+            const trimmed = (value || "").trim();
+            if (trimmed === "" || trimmed === "–") {
+                return;
+            }
             for (let i = idx + 1; i < inputs.length; i++) {
-                if (hasMaxVersionYear) {
-                    const colYear = parseInt(inputs[i].dataset.year || "0", 10);
-                    if (!isNaN(colYear) && colYear > maxVersionYear) break;
-                }
                 inputs[i].value = value;
             }
         }
@@ -1727,7 +1680,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const cleaned = raw.toString().replace(/\s+/g, "").replace(",", ".");
         if (
             cleaned === "" ||
-            cleaned === "—" ||
+            cleaned === "–" ||
             cleaned === "-" ||
             cleaned === "–" ||
             cleaned === "\u2014"
@@ -1762,8 +1715,8 @@ document.addEventListener("DOMContentLoaded", function () {
             [rustInput, ogrInput, raspInput].forEach(function (input) {
                 if (!input) return;
                 if (allZero) {
-                    if (input.value !== "—") input.value = "—";
-                } else if (input.value === "—") {
+                    if (input.value !== "–") input.value = "–";
+                } else if (input.value === "–") {
                     // После появления ненулевой мощности прочерк в соседней ячейке = 0
                     input.value = "0";
                 }
@@ -1776,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const cleaned = raw.toString().trim().replace(/\s+/g, "").replace(",", ".");
         if (
             cleaned === "" ||
-            cleaned === "—" ||
+            cleaned === "–" ||
             cleaned === "-" ||
             cleaned === "–" ||
             cleaned === "\u2014"
@@ -2213,7 +2166,7 @@ document.addEventListener("DOMContentLoaded", function () {
             for (let i = 0; i < sortedNames.length; i++) {
                 const { year, name } = sortedNames[i];
                 if (year < modernizationWindowStart) {
-                    // До окна — только обновляем предыдущее имя
+                    // До окна – только обновляем предыдущее имя
                     if (name) {
                         prevName = name.toLowerCase();
                     }
@@ -2301,6 +2254,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return val === null || val === undefined || String(val).trim() === "" || String(val) === "0";
     }
 
+    // Пользователь "очистил" select: выбрано "не указано" или пустое значение
+    function isClearedSelectValue(selectEl) {
+        if (!selectEl) return true;
+        if (isEmptySelectValue(selectEl.value)) return true;
+        const option = selectEl.options ? selectEl.options[selectEl.selectedIndex] : null;
+        const label = option && option.text ? option.text.trim().toLowerCase() : "";
+        return label === "" || label === "–" || label === "не указано";
+    }
+
     function setSelectValue(selectEl, value) {
         if (!selectEl) return;
         // Помечаем как программное изменение, чтобы обработчики "продления" не зацикливались
@@ -2339,14 +2301,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (tesTypeSelects[index]) {
                 if (tesTypeSelects[index].dataset && tesTypeSelects[index].dataset.userSet === "1") {
-                    // Пользователь явно задал тип ТЭС — не сбрасываем при нулевой мощности
+                    // Пользователь явно задал тип ТЭС – не сбрасываем при нулевой мощности
                 } else {
                     setSelectValue(tesTypeSelects[index], 0);
                 }
             }
             if (fuelTypeSelects[index]) {
                 if (fuelTypeSelects[index].dataset && fuelTypeSelects[index].dataset.userSet === "1") {
-                    // Пользователь явно задал топливо — не сбрасываем при нулевой мощности
+                    // Пользователь явно задал топливо – не сбрасываем при нулевой мощности
                 } else {
                     setSelectValue(fuelTypeSelects[index], 0);
                 }
@@ -2354,7 +2316,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Дополнительно: очищаем "Название по году" при нулевой мощности
             if (nameInputs[index] && !(nameInputs[index].dataset && nameInputs[index].dataset.userSet === "1")) {
                 nameInputs[index].value = "";
-                nameInputs[index].placeholder = "—";
+                nameInputs[index].placeholder = "–";
             }
         });
     }
@@ -2376,7 +2338,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 autoSetTesAndFuelToEmpty();
             });
             input.addEventListener("focus", function () {
-                if (this.value === "—") {
+                if (this.value === "–") {
                     this.value = "";
                 }
             });
@@ -2393,28 +2355,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
 
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" &&
-            !isNaN(maxVersionYear) &&
-            maxVersionYear > 0;
-
-        function getYearForSelect(selectEl) {
-            if (!selectEl) return null;
-            // Приоритетно берем год из data-year на самом select
-            if (selectEl.dataset && selectEl.dataset.year) {
-                const yData = parseInt(selectEl.dataset.year || "0", 10);
-                if (!isNaN(yData)) return yData;
+        function extendSelectValue(selects, index, value) {
+            for (let i = index + 1; i < selects.length; i++) {
+                if (selects[i].dataset && selects[i].dataset.userSet === "1") continue;
+                setSelectValue(selects[i], value);
             }
-            const td = selectEl.closest("td");
-            if (!td) return null;
-            const hidden = td.querySelector('input[type="hidden"][name*="year"]');
-            if (!hidden) return null;
-            const y = parseInt(hidden.value || "0", 10);
-            return isNaN(y) ? null : y;
         }
 
         tesTypeSelects.forEach(function (select, index) {
@@ -2422,14 +2367,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (this.dataset && this.dataset.autofilling === "1") return;
                 if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
-                for (let i = index + 1; i < tesTypeSelects.length; i++) {
-                    if (hasMaxVersionYear) {
-                        const y = getYearForSelect(tesTypeSelects[i]);
-                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
-                    }
-                    if (tesTypeSelects[i].dataset && tesTypeSelects[i].dataset.userSet === "1") continue;
-                    setSelectValue(tesTypeSelects[i], value);
-                }
+                // Очистку ("не указано") не протягиваем: меняется только эта ячейка
+                if (isClearedSelectValue(this)) return;
+                extendSelectValue(tesTypeSelects, index, value);
             });
         });
 
@@ -2438,14 +2378,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (this.dataset && this.dataset.autofilling === "1") return;
                 if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
-                for (let i = index + 1; i < fuelTypeSelects.length; i++) {
-                    if (hasMaxVersionYear) {
-                        const y = getYearForSelect(fuelTypeSelects[i]);
-                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
-                    }
-                    if (fuelTypeSelects[i].dataset && fuelTypeSelects[i].dataset.userSet === "1") continue;
-                    setSelectValue(fuelTypeSelects[i], value);
-                }
+                // Очистку ("не указано") не протягиваем: меняется только эта ячейка
+                if (isClearedSelectValue(this)) return;
+                extendSelectValue(fuelTypeSelects, index, value);
             });
         });
     }
@@ -2459,52 +2394,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
         if (!tesTypeSelects.length && !fuelTypeSelects.length) return;
 
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" &&
-            !isNaN(maxVersionYear) &&
-            maxVersionYear > 0;
-
-        let columnYears = [];
-        const yearInputs = Array.from(
-            document.querySelectorAll(
-                '.total-power-row input[type="hidden"][name*="year"]'
-            )
-        );
-        if (yearInputs.length) {
-            yearInputs.forEach((inp) => {
-                const y = parseInt(inp.value || "0", 10);
-                columnYears.push(isNaN(y) ? null : y);
-            });
-        } else {
-            const startYearEl = document.getElementById("start_year");
-            const endYearEl = document.getElementById("end_year");
-            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
-            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
-            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
-                for (let y = startYear; y <= endYear; y++) {
-                    columnYears.push(y);
-                }
-            }
-        }
-
-        const yearsMatch =
-            columnYears.length && columnYears.length === rustInputs.length;
-
         let prevTes = null;
         let prevFuel = null;
 
         for (let i = 0; i < rustInputs.length; i++) {
-            if (hasMaxVersionYear && yearsMatch) {
-                const y = columnYears[i];
-                if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) {
-                    break;
-                }
-            }
-
             const powerValue = parsePowerValue(rustInputs[i].value);
             const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
 
@@ -2585,7 +2478,7 @@ document.addEventListener("DOMContentLoaded", function () {
         roundingDigitsSelect.value = localStorage.getItem("rounding_digits");
     }
 
-    // При изменении — сохраняем в localStorage
+    // При изменении – сохраняем в localStorage
     [startYearSelect, endYearSelect, roundingDigitsSelect].forEach((el) => {
         el.addEventListener("change", () => {
             localStorage.setItem(el.id, el.value);
@@ -2680,7 +2573,7 @@ document.addEventListener("DOMContentLoaded", function () {
  </div>
 
 <style>
-/* Ширины столбцов журнала — change_log_table.css */
+/* Ширины столбцов журнала – change_log_table.css */
 
 /* Стили для поля документов-оснований */
 .change-document-input {
@@ -3095,7 +2988,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
                                 <td data-user="${log.username_lower}">${log.username}</td>
                                 <td><div data-action="${log.action_lower}">${log.action}</div></td>
-                                <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                                <td data-database-version="${(log.database_version || '–').toString().toLowerCase()}">${log.database_version || '–'}</td>
                                 <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
                             `;
                             return r;

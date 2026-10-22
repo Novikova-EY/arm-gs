@@ -38,6 +38,7 @@ from app.common.services.help_services import (
 from app.energy_balance.models.station_energy_generation_model import (
     STATION_ENERGY_GENERATION_PERIOD_YEAR,
     StationEnergyGeneration,
+    calculate_aes_own_needs_percent,
 )
 from app.energy_balance.services.ee_balance_hydro_own_needs_services import (
     load_hydro_own_needs_coefficients,
@@ -170,7 +171,7 @@ def _station_type_key(name: Any) -> str:
     return ves_ses_type_key(name)
 
 
-# Внутри района: сначала ВЭС, затем СЭС; внутри типа — по алфавиту.
+# Внутри района: сначала ВЭС, затем СЭС; внутри типа – по алфавиту.
 _VES_SES_TYPE_SORT_RANK = {"ves": 0, "ses": 1}
 
 
@@ -258,7 +259,7 @@ def _format_cell(value: Any, digits: int) -> str:
     if cleaned is None:
         return ""
     text = format_decimal_for_display(cleaned, digits=digits)
-    if text in {"", "—"}:
+    if text in {"", "–"}:
         return ""
     compact = (
         str(text)
@@ -299,7 +300,7 @@ def _as_metric_decimal(value: Any) -> Decimal | None:
         return Decimal(format(value, ".12f")).normalize()
     try:
         text = str(value).strip().replace(",", ".")
-        if not text or text in {"—", "-", "–"}:
+        if not text or text in {"–", "-", "–"}:
             return None
         return Decimal(text)
     except Exception:
@@ -323,7 +324,7 @@ def _raw_title(value: Any) -> str:
     if metric is None:
         return ""
     text = format_decimal_trim_for_display(metric, digits=0)
-    return "" if text in {"", "—"} else text
+    return "" if text in {"", "–"} else text
 
 
 def _raw_title_map(value_map: dict[int, Any] | None, years: list[int]) -> dict[int, str]:
@@ -424,20 +425,23 @@ def _agg_key(kind: str, extra: dict[str, Any]) -> str:
     )
 
 
-def _aes_own_needs_percent(capacity: Any, energy: Any) -> Decimal | None:
-    capacity_value = _as_metric_decimal(capacity)
-    energy_value = _as_metric_decimal(energy)
-    if capacity_value is None or energy_value in (None, Decimal(0)):
-        return None
-    return capacity_value / energy_value * Decimal(100)
+def _aes_own_needs_percent(own_needs: Any, energy: Any) -> Decimal | None:
+    return calculate_aes_own_needs_percent(
+        _as_metric_decimal(own_needs), _as_metric_decimal(energy)
+    )
 
 
-def _aes_delivery_energy(capacity: Any, energy: Any) -> Decimal | None:
-    own_needs = _aes_own_needs_percent(capacity, energy)
+def _aes_delivery_energy(
+    own_needs_energy: Any, energy: Any, percent: Any = None
+) -> Decimal | None:
+    own_needs = (
+        _aes_own_needs_percent(own_needs_energy, energy)
+        if own_needs_energy is not None else _as_metric_decimal(percent)
+    )
     energy_value = _as_metric_decimal(energy)
-    if own_needs is None or energy_value in (None, Decimal(0)):
+    if own_needs is None or energy_value is None:
         return None
-    return energy_value - (own_needs / energy_value * Decimal(100))
+    return energy_value - (own_needs / Decimal(100) * energy_value)
 
 
 def _hydro_metric_maps(
@@ -478,18 +482,30 @@ def _hydro_metric_maps(
 
 
 def _aes_metric_maps(
-    capacity_map: dict[int, Any], energy_map: dict[int, Any], years: list[int], digits: int
-) -> dict[str, dict[int, str]]:
+    own_needs_map: dict[int, Any], energy_map: dict[int, Any], years: list[int], digits: int,
+    percent_map: dict[int, Any] | None = None,
+) -> dict[str, Any]:
     own_needs = {
-        year: _aes_own_needs_percent(capacity_map.get(year), energy_map.get(year))
+        year: _aes_own_needs_percent(own_needs_map.get(year), energy_map.get(year))
+        if own_needs_map.get(year) is not None else _as_metric_decimal((percent_map or {}).get(year))
         for year in years
     }
     delivery = {
-        year: _aes_delivery_energy(capacity_map.get(year), energy_map.get(year))
+        year: _aes_delivery_energy(own_needs_map.get(year), energy_map.get(year), own_needs[year])
         for year in years
     }
     return {
-        "own_needs_display": {year: _format_cell(own_needs[year], digits) for year in years},
+        "own_needs": {year: _as_metric_decimal(own_needs_map.get(year)) for year in years},
+        "own_needs_energy_display": {
+            year: format_decimal_for_display(own_needs_map[year], digits=digits)
+            if own_needs_map.get(year) is not None else "" for year in years
+        },
+        "own_needs_percent_calculated": {year: own_needs_map.get(year) is not None for year in years},
+        "own_needs_energy_raw": _raw_title_map(own_needs_map, years),
+        "own_needs_display": {
+            year: format_decimal_for_display(own_needs[year], digits=digits)
+            if own_needs[year] is not None else "" for year in years
+        },
         "own_needs_raw": _raw_title_map(own_needs, years),
         "delivery_display": {year: _format_cell(delivery[year], digits) for year in years},
         "delivery_raw": _raw_title_map(delivery, years),
@@ -535,7 +551,7 @@ def _station_payload(
     return {
         "id": station.id,
         "name": station.name,
-        "type_name": type_name or "—",
+        "type_name": type_name or "–",
         "type_key": type_key,
         "capacity": capacity_map,
         "capacity_display": {year: _format_cell(capacity_map.get(year), digits) for year in years},
@@ -551,7 +567,7 @@ def _station_payload(
         "energy_raw": _raw_title_map(energy_display, years),
         "chiim_display": _chiim_display_map(energy_display, capacity_map, years),
         "chiim_raw": _chiim_raw_title_map(energy_display, capacity_map, years),
-        **_aes_metric_maps(capacity_map, energy_display, years, digits),
+        **_aes_metric_maps({}, energy_display, years, digits),
         "owner": owner_display,
         "owner_display": {year: _format_cell(owner_display.get(year), digits) for year in years},
         "owner_raw": _raw_title_map(owner_display, years),
@@ -601,9 +617,9 @@ def _accumulate_station(total: dict[str, Any], payload: dict[str, Any]) -> None:
     if payload.get("gaes_charge_enabled"):
         total["gaes_charge_enabled"] = True
         _add_year_maps(total["gaes_charge"], payload.get("gaes_charge"))
+    _add_year_maps(total["own_needs"], payload.get("own_needs"))
     if payload.get("coefficient_metrics_enabled"):
         total["coefficient_metrics_enabled"] = True
-        _add_year_maps(total["own_needs"], payload.get("own_needs"))
         _add_year_maps(total["delivery"], payload.get("delivery"))
     total["min_value"] = _add_min_value(total["min_value"], payload.get("min_value"))
 
@@ -641,7 +657,7 @@ def _finalize_total(
             "coefficient_metrics_enabled": True,
         }
     else:
-        metric_maps = _aes_metric_maps(total["capacity"], total["energy"], years, digits)
+        metric_maps = _aes_metric_maps(total.get("own_needs") or {}, total["energy"], years, digits)
     row = {
         "kind": kind,
         "label": label,
@@ -687,7 +703,7 @@ def _is_ees_russia_name(name: Any) -> bool:
 def _total_has_data(total: dict[str, Any]) -> bool:
     if total.get("min_value") is not None:
         return True
-    for key in ("capacity", "energy", "owner"):
+    for key in ("capacity", "energy", "owner", "own_needs"):
         if any(value is not None for value in (total.get(key) or {}).values()):
             return True
     return False
@@ -714,7 +730,7 @@ def resolve_ves_ses_pagination(
 ) -> dict[str, Any]:
     """Пагинация по секциям ОЭС (как на /power_demand/summary/oes/).
 
-    per_page / page_size: число ОЭС на странице; 0 или all — все секции.
+    per_page / page_size: число ОЭС на странице; 0 или all – все секции.
     """
     total = max(0, int(total_sections or 0))
     titles = list(section_titles or [])
@@ -917,7 +933,7 @@ def build_ves_ses_page_rows(
                 get_filtered_station_ids,
             )
 
-            # Не дублируем фильтр типа станции — он уже в type_ids.
+            # Не дублируем фильтр типа станции – он уже в type_ids.
             filter_payload = {
                 **filters,
                 "station_type_filter": [],
@@ -955,6 +971,13 @@ def build_ves_ses_page_rows(
     energy_by_station = _load_energy_maps(
         station_ids, load_start, load_end, version_id, StationEnergyGeneration, "electricity_generation"
     )
+    aes_ids = [station.id for station in stations if is_aes_station(station)]
+    own_needs_by_station = _load_energy_maps(
+        aes_ids, load_start, load_end, version_id, StationEnergyGeneration, "own_needs"
+    )
+    own_needs_percent_by_station = _load_energy_maps(
+        aes_ids, load_start, load_end, version_id, StationEnergyGeneration, "own_needs_percent"
+    )
     owner_by_station = _load_energy_maps(
         station_ids, load_start, load_end, version_id, StationOwnerEnergyGeneration, "electricity_generation"
     )
@@ -990,7 +1013,7 @@ def build_ves_ses_page_rows(
     is_last_page = pagination["end"] >= len(ues_sections)
     russia_live_locked = not show_all
 
-    # Станции только выбранных ОЭС — чтобы не раздувать HTML.
+    # Станции только выбранных ОЭС – чтобы не раздувать HTML.
     page_station_ids: set[int] = set()
     for sec in page_sections:
         ues_group = (grouped.get(sec["est_id"]) or {}).get(sec["ues_id"]) or {}
@@ -1049,6 +1072,13 @@ def build_ves_ses_page_rows(
                     digits,
                 )
             )
+        if is_aes_station(station):
+            light.update(
+                _aes_metric_maps(
+                    own_needs_by_station.get(station.id, {}), light["energy"], years, digits,
+                    own_needs_percent_by_station.get(station.id, {}),
+                )
+            )
         lights[station.id] = light
         if int(station.id) not in page_station_ids:
             continue
@@ -1085,6 +1115,13 @@ def build_ves_ses_page_rows(
                     payload["energy"],
                     years,
                     digits,
+                )
+            )
+        if is_aes_station(station):
+            payload.update(
+                _aes_metric_maps(
+                    own_needs_by_station.get(station.id, {}), payload["energy"], years, digits,
+                    own_needs_percent_by_station.get(station.id, {}),
                 )
             )
         payloads[station.id] = payload
@@ -1210,7 +1247,7 @@ def build_ves_ses_page_rows(
                                     rd_total,
                                     years,
                                     digits,
-                                    f"{rd_name} — всего",
+                                    f"{rd_name} – всего",
                                     "rd_total",
                                     est_id=est_id,
                                     ues_id=ues_id,
@@ -1234,7 +1271,7 @@ def build_ves_ses_page_rows(
                         res_total,
                         years,
                         digits,
-                        f"{res_names.get(res_id) or 'РЭС'} — всего",
+                        f"{res_names.get(res_id) or 'РЭС'} – всего",
                         "res_total",
                         est_id=est_id,
                         ues_id=ues_id,
@@ -1251,7 +1288,7 @@ def build_ves_ses_page_rows(
                     ues_total,
                     years,
                     digits,
-                    f"{ues_names.get(ues_id) or 'ОЭС'} — всего",
+                    f"{ues_names.get(ues_id) or 'ОЭС'} – всего",
                     "ues_total",
                     est_id=est_id,
                     ues_id=ues_id,
@@ -1274,7 +1311,7 @@ def build_ves_ses_page_rows(
                     est_total,
                     years,
                     digits,
-                    f"{est_label} — всего",
+                    f"{est_label} – всего",
                     "est_total",
                     est_id=est_id,
                     live_locked=not est_fully_on_page,
@@ -1301,7 +1338,7 @@ def build_ves_ses_page_rows(
                 russia_total,
                 years,
                 digits,
-                f"{russia_total_name} — всего",
+                f"{russia_total_name} – всего",
                 "russia_total",
                 live_locked=russia_live_locked,
             )
@@ -1533,8 +1570,7 @@ def _build_station_focus_page_context(
             f"СН, млн.кВт·ч = СН, % * {DATA_LABEL_ENERGY}"
             if coefficient_type_key is not None
             else (
-                "СН,% = Установленная мощность агрегатов, МВт / "
-                f"{DATA_LABEL_ENERGY} * 100"
+                f"СН, % = СН, млн.кВт·ч / {DATA_LABEL_ENERGY} * 100"
             )
         ),
         "focus_delivery_formula": (
@@ -1542,7 +1578,7 @@ def _build_station_focus_page_context(
             if coefficient_type_key is not None
             else (
                 f"Отпуск электроэнергии, млн.кВт·ч = {DATA_LABEL_ENERGY} - "
-                f"(СН,% / {DATA_LABEL_ENERGY} * 100)"
+                f"(СН, % / 100 * {DATA_LABEL_ENERGY})"
             )
         ),
         "min_label": "Минимальное значение выработки",
@@ -1570,6 +1606,7 @@ def _build_station_focus_page_context(
         "ves_ses_entity_pagination": pagination,
         "pagination_endpoint": endpoint,
         "is_station_focus": True,
+        "is_aes_focus": endpoint == "energy_balance_bp.ee_balance_aes",
         "show_gaes_charge": coefficient_type_key == "gaes",
         "is_snee_focus": snee_focus,
         "is_coefficient_focus": coefficient_type_key is not None,

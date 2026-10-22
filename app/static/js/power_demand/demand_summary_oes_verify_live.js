@@ -23,7 +23,7 @@
         var title = td.getAttribute("title");
         if (title) {
             var tt = String(title).trim().replace(/\s/g, "");
-            if (tt && tt !== "—" && /^-?\d+([.,]\d+)?$/.test(tt)) {
+            if (tt && tt !== "–" && /^-?\d+([.,]\d+)?$/.test(tt)) {
                 var tn = parseFloat(tt.replace(",", "."));
                 if (Number.isFinite(tn)) {
                     return tn;
@@ -32,7 +32,7 @@
         }
         var inp = td.querySelector("input, textarea");
         var t = inp ? String(inp.value || "").trim() : String(td.textContent || "").trim();
-        if (t === "" || t === "—") {
+        if (t === "" || t === "–") {
             return null;
         }
         var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -42,7 +42,7 @@
     /** Расчётные максимумы (зелёные строки): до 3 знаков после запятой, группировка разрядов пробелом. */
     function formatVerifyMw(num) {
         if (!Number.isFinite(num)) {
-            return "—";
+            return "–";
         }
         var mult = Math.pow(10, VERIFY_DECIMALS);
         var rounded = Math.round(num * mult) / mult;
@@ -59,7 +59,7 @@
         return frac.length ? intPart + "," + frac : intPart;
     }
 
-    /** Строки «Проверка …» (синие): целое в ячейке; в title — до VERIFY_DECIMALS знаков после запятой. */
+    /** Строки «Проверка …» (синие): целое в ячейке; в title – до VERIFY_DECIMALS знаков после запятой. */
     function applyThousandGrouping(s) {
         if (!s) {
             return s;
@@ -74,7 +74,7 @@
 
     function formatVerifyRowInteger(num) {
         if (!Number.isFinite(num)) {
-            return "—";
+            return "–";
         }
         return applyThousandGrouping(String(Math.round(num)));
     }
@@ -86,7 +86,7 @@
         var tooltip = "";
         if (fullNum !== null && Number.isFinite(fullNum)) {
             tooltip = formatVerifyMw(fullNum);
-            if (tooltip === "—") {
+            if (tooltip === "–") {
                 tooltip = "";
             }
         }
@@ -136,7 +136,7 @@
         if (!Number.isFinite(yr)) {
             return true;
         }
-        // ОЭС Юга с НТ: без ограничения «Год с» (раньше 2023) — пустота по сумме НТ.
+        // ОЭС Юга с НТ: без ограничения «Год с» (раньше 2023) – пустота по сумме НТ.
         if (
             String(code).indexOf("with_nt") === 0 &&
             String(tr.getAttribute("data-demand-model-name") || "") ===
@@ -268,7 +268,7 @@
         return out;
     }
 
-    /** Значение РЭС для агрегата; при пустой строке РЭС — сумма по субъектам этой РЭС. */
+    /** Значение РЭС для агрегата; при пустой строке РЭС – сумма по субъектам этой РЭС. */
     function resLevelAggregationCellValue(resTr, td, subjectFallback) {
         var y = parseInt(String(td.getAttribute("data-ec-summary-col-year") || ""), 10);
         var v = parseCellNumber(td);
@@ -383,7 +383,7 @@
                     }
                 }
                 if (!has) {
-                    setYearCellDisplay(calcCell, "—", null);
+                    setYearCellDisplay(calcCell, "–", null);
                 } else {
                     setYearCellDisplay(calcCell, formatVerifyMw(sum), sum);
                 }
@@ -542,7 +542,7 @@
                     return;
                 }
                 if (base === undefined) {
-                    setYearCellDisplay(calcCell, "—", null);
+                    setYearCellDisplay(calcCell, "–", null);
                     return;
                 }
                 var total = base;
@@ -631,13 +631,13 @@
                     return;
                 }
                 if (!formulaYearAppliesToRow(tr, y)) {
-                    setYearCellDisplay(vCell, "—", null);
+                    setYearCellDisplay(vCell, "–", null);
                     return;
                 }
                 var av = aCell ? parseCellNumber(aCell) : null;
                 var bv = bCell ? parseCellNumber(bCell) : null;
                 if (av === null || bv === null) {
-                    setYearCellDisplay(vCell, "—", null);
+                    setYearCellDisplay(vCell, "–", null);
                 } else {
                     var d = av - bv;
                     setYearCellDisplay(vCell, formatVerifyRowInteger(d), d);
@@ -833,14 +833,14 @@
                         if (isSouthWithNt) {
                             var ntAdd = ntAddonByYear ? ntAddonByYear[y] : undefined;
                             if (!ntAddonIsNonzero(ntAdd)) {
-                                setYearCellDisplay(cell, "—", null);
+                                setYearCellDisplay(cell, "–", null);
                                 return;
                             }
                             total =
                                 total === undefined ? Number(ntAdd) : total + Number(ntAdd);
                         }
                         if (total === undefined) {
-                            setYearCellDisplay(cell, "—", null);
+                            setYearCellDisplay(cell, "–", null);
                         } else {
                             setYearCellDisplay(cell, formatVerifyMw(total), total);
                         }
@@ -885,13 +885,13 @@
                 return;
             }
             if (!sourceCell) {
-                setYearCellDisplay(targetCell, "—", null);
+                setYearCellDisplay(targetCell, "–", null);
                 return;
             }
             if (formatNumeric) {
                 var v = parseCellNumber(sourceCell);
                 if (v === null) {
-                    setYearCellDisplay(targetCell, "—", null);
+                    setYearCellDisplay(targetCell, "–", null);
                 } else {
                     setYearCellDisplay(targetCell, formatVerifyMw(v), v);
                 }
@@ -900,7 +900,7 @@
                 var text = inp
                     ? String(inp.value || "").trim()
                     : String(sourceCell.textContent || "").trim();
-                setYearCellDisplay(targetCell, text || "—", null);
+                setYearCellDisplay(targetCell, text || "–", null);
             }
         });
         var sourceHist = sourceTr.querySelector("td.summary-hist-cell");
@@ -950,7 +950,7 @@
         });
     }
 
-    /** Расчётный максимум синхронной зоны: для 2-й СЗ — ОЭС Востока; для Калининграда — ЭС Калининградской области; иначе — сумма «Максимум …». */
+    /** Расчётный максимум синхронной зоны: для 2-й СЗ – ОЭС Востока; для Калининграда – ЭС Калининградской области; иначе – сумма «Максимум …». */
     function refreshSaCalculatedMaxPowerFromRes() {
         var meta = readLiveCalcMeta();
         var firstSaId =
@@ -1075,7 +1075,7 @@
                     var byYear = store[said];
                     var total = byYear ? byYear[y] : undefined;
                     if (total === undefined) {
-                        setYearCellDisplay(cell, "—", null);
+                        setYearCellDisplay(cell, "–", null);
                     } else {
                         setYearCellDisplay(cell, formatVerifyMw(total), total);
                     }
@@ -1083,7 +1083,7 @@
             });
     }
 
-    /** Расчётный совмещённый максимум СЗ на ЕЭС: для 2-й СЗ — ОЭС Востока; для Калининграда — ЭС Калининградской области; иначе — сумма по РЭС зоны. */
+    /** Расчётный совмещённый максимум СЗ на ЕЭС: для 2-й СЗ – ОЭС Востока; для Калининграда – ЭС Калининградской области; иначе – сумма по РЭС зоны. */
     function refreshSaCalculatedFromRes() {
         var meta = readLiveCalcMeta();
         var secondSaId =
@@ -1168,7 +1168,7 @@
                     var byYear = byYearStore[said];
                     var total = byYear ? byYear[y] : undefined;
                     if (total === undefined) {
-                        setYearCellDisplay(cell, "—", null);
+                        setYearCellDisplay(cell, "–", null);
                     } else {
                         setYearCellDisplay(cell, formatVerifyMw(total), total);
                     }

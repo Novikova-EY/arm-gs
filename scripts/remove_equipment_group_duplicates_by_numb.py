@@ -112,7 +112,7 @@ def main() -> None:
                 continue
 
             for dup_id in drop_ids:
-                # 1) EquipmentGroupSet — переназначаем на keep_id
+                # 1) EquipmentGroupSet – переназначаем на keep_id
                 res = db.session.execute(
                     update(set_table)
                     .where(set_table.c.equipment_group_id == dup_id)
@@ -120,7 +120,7 @@ def main() -> None:
                 )
                 total_sets_updated += res.rowcount or 0
 
-                # 2) EquipmentGroupFuelParam — конфликт по (equipment_group_id, year_number)
+                # 2) EquipmentGroupFuelParam – конфликт по (equipment_group_id, year_number)
                 #    Сначала удаляем записи дубликата, для которых у keep уже есть запись на тот же год
                 fp_dup = db.session.execute(
                     select(fuel_param_table.c.id, fuel_param_table.c.year_number)
@@ -147,7 +147,7 @@ def main() -> None:
                         total_fuel_params_updated += 1
                         keep_years.add(year)
 
-                # 3) EquipmentGroupExtraFuelParam — аналогично
+                # 3) EquipmentGroupExtraFuelParam – аналогично
                 ep_dup = db.session.execute(
                     select(extra_param_table.c.id, extra_param_table.c.year_number)
                     .where(extra_param_table.c.equipment_group_id == dup_id)

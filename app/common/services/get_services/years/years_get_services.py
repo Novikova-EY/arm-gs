@@ -20,7 +20,7 @@ from config import Config
 
 def normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
     """
-    Если «год начала» больше «года конца», range(start_year, end_year + 1) пуст —
+    Если «год начала» больше «года конца», range(start_year, end_year + 1) пуст –
     приводим к допустимому интервалу [min, max].
     """
     if start_year > end_year:
@@ -32,7 +32,7 @@ def get_year_list_full():
     """
     Полный список годов текущей версии БД.
 
-    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache —
+    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache –
     после завершения запроса сессия закрывается, и повторное обращение к атрибутам
     даёт DetachedInstanceError.
     """
@@ -50,7 +50,7 @@ def get_year_numbers_sorted_for_current_db_version() -> list[int]:
     Все календарные годы (Year.number) из справочника Year для текущей версии БД,
     по возрастанию, без дубликатов.
 
-    При отсутствии привязки к версии (get_current_version() is None) — все годы в таблице.
+    При отсутствии привязки к версии (get_current_version() is None) – все годы в таблице.
     """
     current_version = get_current_version()
     q = db.session.query(Year.number)
@@ -85,7 +85,7 @@ def get_current_year():
 def _planning_scheme_from_version_number(version_number: str | None) -> str | None:
     """
     Определяет период планирования по номеру версии БД (как на /refdata/).
-    «СиПР» — период СиПР; «ГС» — генеральная схема.
+    «СиПР» – период СиПР; «ГС» – генеральная схема.
     """
     name = (version_number or "").strip().upper()
     if not name:
@@ -305,7 +305,7 @@ def get_year_feature_dict_for_version(version_id: int | None):
 def get_year_number_for_year_feature_name_current_version(feature_name: str) -> int | None:
     """
     Календарный год (Year.number) для признака года с заданным именем в текущей версии БД.
-    Если записей несколько — берётся год с минимальным number.
+    Если записей несколько – берётся год с минимальным number.
     """
     current_version = get_current_version()
     if not current_version:

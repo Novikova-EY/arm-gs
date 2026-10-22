@@ -6,7 +6,7 @@ Revises: b1c2d3e4f5a6
 Create Date: 2026-04-24
 
 Префикс gs_gen_ в именах таблиц моделей app/generation/prospective_places/models
-(схема gs_gen — перспективные площадки, ТЭП, коэффициенты; схема gs_sys — справочники типов площадок).
+(схема gs_gen – перспективные площадки, ТЭП, коэффициенты; схема gs_sys – справочники типов площадок).
 """
 import os
 import sys

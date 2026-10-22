@@ -14,12 +14,9 @@ KCAL_PER_KJ = Decimal("4.1868")
 
 
 def conversion_k(chars: Mapping[str, Any] | None) -> Decimal | None:
-    """K перевода т у.т. → натур. Если нет K, берём т у.т./тн."""
+    """Коэффициент перевода т у.т. → натур.: т у.т./тн."""
     if not chars:
         return None
-    k = _d(chars.get("k_natural"))
-    if k is not None and k != 0:
-        return k
     tut = _d(chars.get("tut_per_t"))
     if tut is not None and tut != 0:
         return tut
@@ -27,12 +24,21 @@ def conversion_k(chars: Mapping[str, Any] | None) -> Decimal | None:
 
 
 def to_natural(b_tce: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
-    """Вн = В / K."""
+    """Вн = В / (т у.т./тн)."""
     b = _d(b_tce)
     k = conversion_k(chars)
     if b is None or k is None or k == 0:
         return None
     return b / k
+
+
+def to_natural_by_heat(b_tce: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
+    """Перевод для золы, серы и CO: BH = В · 7000 / Qн (ккал/кг)."""
+    b = _d(b_tce)
+    qh = _d(chars.get("qh_kcal")) if chars else None
+    if b is None or qh is None or qh == 0:
+        return None
+    return b * Decimal("7000") / qh
 
 
 def ash_motkh(bn: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
@@ -69,7 +75,7 @@ def nox_motkh(b_tce: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
 
 
 def co_motkh(bn: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
-    """Мотх CO, т: 0,001·Вн·(q3·R·QH/1013)·(1 − qч/100)."""
+    """Мотх CO, т: 0,001·BH·(q3·R·Qн/1013)·(1 − q4/100)."""
     bn_d = _d(bn)
     if bn_d is None or not chars:
         return None
@@ -97,24 +103,22 @@ def pg_motkh(b_tce: Any, chars: Mapping[str, Any] | None) -> Decimal | None:
 
 
 def pg_tj_energy_and_mass(
-    bn: Any, chars: Mapping[str, Any] | None
+    b_tce: Any, chars: Mapping[str, Any] | None
 ) -> tuple[Decimal | None, Decimal | None]:
-    """Энергия, ТДж, и масса CO2, млн т, по тепловому коэффициенту."""
-    bn_d = _d(bn)
-    if bn_d is None or not chars:
+    """Энергия в ТДж (столбец «МДж») и масса CO2 в тыс. т по коэффициентам НД."""
+    b = _d(b_tce)
+    if b is None or not chars:
         return None, None
+    tut_per_t = _d(chars.get("tut_per_t"))
     tj_per_kt = _d(chars.get("tj_per_kt"))
-    if tj_per_kt is None:
-        qh = _d(chars.get("qh_kj"))
-        tj_per_kt = (qh / Decimal("1000")) if qh is not None else None
-    t_per_tj = _d(chars.get("t_co2_per_tj"))
-    if tj_per_kt is None:
+    if tut_per_t is None or tut_per_t <= 0 or tj_per_kt is None:
         return None, None
-    energy_tj = bn_d * tj_per_kt / Decimal("1000")
+    energy_tj = b / tut_per_t * tj_per_kt
+    t_per_tj = _d(chars.get("t_co2_per_tj"))
     if t_per_tj is None:
         return energy_tj, None
-    mass_mln_t = energy_tj * t_per_tj / Decimal("1000")
-    return energy_tj, mass_mln_t
+    mass_thousand_t = energy_tj * t_per_tj / Decimal("1000")
+    return energy_tj, mass_thousand_t
 
 
 def apply_capture(motkh: Any, eta: Any) -> Decimal | None:

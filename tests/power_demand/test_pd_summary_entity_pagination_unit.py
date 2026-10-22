@@ -146,7 +146,7 @@ def test_paginate_oes_last_page_includes_suffix():
 
 
 def test_filter_segment_rows_page1_includes_prefix_calc_not_other_sections():
-    """Ленивый calc_max префикса (1-я СЗ) — на 1-й странице, как core prefix."""
+    """Ленивый calc_max префикса (1-я СЗ) – на 1-й странице, как core prefix."""
     rows = _sample_oes_rows()
     # Добавим id секций, как в реальных строках ОЭС.
     for r in rows:
@@ -226,7 +226,7 @@ def test_filter_segment_rows_page1_includes_prefix_calc_not_other_sections():
 
 
 def test_filter_segment_rows_last_page_includes_suffix_calc():
-    """Суффикс ленивого сегмента (ТИТЭС) — на последней странице, как у core."""
+    """Суффикс ленивого сегмента (ТИТЭС) – на последней странице, как у core."""
     rows = _sample_oes_rows()
     for r in rows:
         if r.get("entity_label") == "ОЭС Центра":
@@ -294,7 +294,7 @@ def test_filter_segment_rows_last_page_includes_suffix_calc():
 
 
 def test_split_oes_does_not_treat_nt_aggregation_inside_ues_as_suffix():
-    """«Новые территории» внутри ОЭС Юга — часть секции, не суффикс (ТИТЭС)."""
+    """«Новые территории» внутри ОЭС Юга – часть секции, не суффикс (ТИТЭС)."""
     prefix = _block(
         {
             "entity_label": "ЕЭС России",
@@ -651,7 +651,7 @@ def test_split_ez_summary_rows_by_energy_zone():
     )
     ez1 = _block(
         {
-            "entity_label": "1 — Северо-Запад",
+            "entity_label": "1 – Северо-Запад",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": "EnergyZoneDemandParameter",
@@ -661,7 +661,7 @@ def test_split_ez_summary_rows_by_energy_zone():
     )
     ez2 = _block(
         {
-            "entity_label": "2 — Центр",
+            "entity_label": "2 – Центр",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": "EnergyZoneDemandParameter",
@@ -686,7 +686,7 @@ def test_split_ez_summary_rows_by_energy_zone():
     page_rows, meta = paginate_summary_rows_for_scope(rows, "ez", page=2, page_size=1)
     labels = [r["entity_label"] for r in page_rows if r.get("show_entity_cell")]
     assert "ЕЭС России" not in labels
-    assert "2 — Центр" in labels
+    assert "2 – Центр" in labels
     assert "Новые территории" in labels
     assert meta["all_label"] == "Все энергозоны"
 
@@ -714,7 +714,7 @@ def test_filter_nt_extra_rows_to_ez_pagination_page():
     )
     ez1 = _block(
         {
-            "entity_label": "1 — Северо-Запад",
+            "entity_label": "1 – Северо-Запад",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": "EnergyZoneDemandParameter",
@@ -724,7 +724,7 @@ def test_filter_nt_extra_rows_to_ez_pagination_page():
     )
     ez2 = _block(
         {
-            "entity_label": "2 — Центр",
+            "entity_label": "2 – Центр",
             "entity_kind": "group",
             "entity_depth": 0,
             "demand_model_name": "EnergyZoneDemandParameter",

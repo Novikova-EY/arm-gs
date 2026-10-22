@@ -16,12 +16,12 @@
   python scripts/sync_gs_gen_from_gs01.py --yes
 
 Переменные окружения (или .env в корне проекта):
-  GS01_DB_HOST   — хост gs01 (по умолчанию 10.31.205.27)
-  GS01_DB_PORT   — порт (по умолчанию 5432)
-  DB_USER, DB_PASSWORD / DB_PASS, DB_NAME — учётные данные
-  DB_HOST        — локальный хост (по умолчанию localhost)
-  DB_PORT        — локальный порт
-  PG_DUMP, PG_RESTORE, PSQL — пути к утилитам (опционально)
+  GS01_DB_HOST   – хост gs01 (по умолчанию 10.31.205.27)
+  GS01_DB_PORT   – порт (по умолчанию 5432)
+  DB_USER, DB_PASSWORD / DB_PASS, DB_NAME – учётные данные
+  DB_HOST        – локальный хост (по умолчанию localhost)
+  DB_PORT        – локальный порт
+  PG_DUMP, PG_RESTORE, PSQL – пути к утилитам (опционально)
 """
 from __future__ import annotations
 
@@ -181,12 +181,12 @@ def _restore_local_alembic_versions(
 ) -> None:
     """Возвращает сохранённые ревизии после restore (серверные значения вытесняются)."""
     if not backup:
-        print("    backup alembic_version пуст — stamp после sync не выполнен")
+        print("    backup alembic_version пуст – stamp после sync не выполнен")
         return
 
     for full_name, versions in backup.items():
         schema, table = full_name.split(".", 1)
-        # Таблица могла не попасть в дамп (exclude) — создаём при необходимости.
+        # Таблица могла не попасть в дамп (exclude) – создаём при необходимости.
         create_sql = (
             f"CREATE TABLE IF NOT EXISTS {schema}.{table} ("
             f"version_num VARCHAR(32) NOT NULL PRIMARY KEY);"
@@ -480,7 +480,7 @@ def main() -> int:
         if restore_result.returncode != 0:
             print(
                 f"\n    pg_restore завершился с кодом {restore_result.returncode}. "
-                "Часто это postgres_fdw/sipr_srv с сервера — для локальной разработки не критично."
+                "Часто это postgres_fdw/sipr_srv с сервера – для локальной разработки не критично."
             )
 
         if args.exclude_migrations:

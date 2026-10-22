@@ -255,7 +255,7 @@
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_ust.get(eu_id, {}).get(year) %}
                                                 {% if val is none or val == 0 %}
-                                                    &mdash;
+                                                    &ndash;
                                                 {% else %}
                                                     {{ val | format_decimal }}
                                                 {% endif %}
@@ -268,7 +268,7 @@
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_ogr.get(eu_id, {}).get(year) %}
                                                 {% if val is none or val == 0 %}
-                                                    &mdash;
+                                                    &ndash;
                                                 {% else %}
                                                     {{ val | format_decimal }}
                                                 {% endif %}
@@ -281,7 +281,7 @@
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_rasp.get(eu_id, {}).get(year) %}
                                                 {% if val is none or val == 0 %}
-                                                    &mdash;
+                                                    &ndash;
                                                 {% else %}
                                                     {{ val | format_decimal }}
                                                 {% endif %}
@@ -301,7 +301,7 @@
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_ust.get(rd_id, {}).get(year) %}
                                             {% if val is none or val == 0 %}
-                                                &mdash;
+                                                &ndash;
                                             {% else %}
                                                 {{ val | format_decimal }}
                                             {% endif %}
@@ -314,7 +314,7 @@
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_ogr.get(rd_id, {}).get(year) %}
                                             {% if val is none or val == 0 %}
-                                                &mdash;
+                                                &ndash;
                                             {% else %}
                                                 {{ val | format_decimal }}
                                             {% endif %}
@@ -327,7 +327,7 @@
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_rasp.get(rd_id, {}).get(year) %}
                                             {% if val is none or val == 0 %}
-                                                &mdash;
+                                                &ndash;
                                             {% else %}
                                                 {{ val | format_decimal }}
                                             {% endif %}
@@ -346,7 +346,7 @@
                                     <td class="power-column" style="font-weight: bold;">
                                         {% set p_ust_value = regional_energy_systems_yearly_p_ust.get(res_id, {}).get(year) %}
                                         {% if p_ust_value is none or p_ust_value == 0 %}
-                                            &mdash;
+                                            &ndash;
                                         {% else %}
                                             {{ p_ust_value | format_decimal }}
                                         {% endif %}
@@ -359,7 +359,7 @@
                                     <td class="power-column" style="font-weight: bold;">
                                         {% set p_ogr_value = regional_energy_systems_yearly_p_ogr.get(res_id, {}).get(year) %}
                                         {% if p_ogr_value is none or p_ogr_value == 0 %}
-                                            &mdash;
+                                            &ndash;
                                         {% else %}
                                             {{ p_ogr_value | format_decimal }}
                                         {% endif %}
@@ -372,7 +372,7 @@
                                     <td class="power-column" style="font-weight: bold;">
                                         {% set p_rasp_value = regional_energy_systems_yearly_p_rasp.get(res_id, {}).get(year) %}
                                         {% if p_rasp_value is none or p_rasp_value == 0 %}
-                                            &mdash;
+                                            &ndash;
                                         {% else %}
                                             {{ p_rasp_value | format_decimal }}
                                         {% endif %}
@@ -391,7 +391,7 @@
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_ust.get(ues_id|int, {}).get(year) %}
                                     {% if val is none or val == 0 %}
-                                        &mdash;
+                                        &ndash;
                                     {% else %}
                                         {{ val | format_decimal }}
                                     {% endif %}
@@ -404,7 +404,7 @@
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_ogr.get(ues_id|int, {}).get(year) %}
                                     {% if val is none or val == 0 %}
-                                        &mdash;
+                                        &ndash;
                                     {% else %}
                                         {{ val | format_decimal }}
                                     {% endif %}
@@ -417,7 +417,7 @@
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_rasp.get(ues_id|int, {}).get(year) %}
                                     {% if val is none or val == 0 %}
-                                        &mdash;
+                                        &ndash;
                                     {% else %}
                                         {{ val | format_decimal }}
                                     {% endif %}
@@ -437,7 +437,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_ust.get(es_type_id|int, {}).get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}
@@ -450,7 +450,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_ogr.get(es_type_id|int, {}).get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}
@@ -463,7 +463,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_rasp.get(es_type_id|int, {}).get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}
@@ -484,7 +484,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_ust.get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}
@@ -497,7 +497,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_ogr.get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}
@@ -510,7 +510,7 @@
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_rasp.get(year) %}
                                 {% if val is none or val == 0 %}
-                                    &mdash;
+                                    &ndash;
                                 {% else %}
                                     {{ val | format_decimal }}
                                 {% endif %}

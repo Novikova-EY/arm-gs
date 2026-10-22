@@ -113,7 +113,7 @@
             height: 2rem;
             font-size: 0.85rem;
           }
-          /* «Нормируемые ЗВ»: подпись вровень с группой столбцов, фильтр — у нижнего края. */
+          /* «Нормируемые ЗВ»: подпись вровень с группой столбцов, фильтр – у нижнего края. */
           #gisTekReportTable > thead th.norm-zv-col {
             vertical-align: top;
             padding-top: 0.35rem;
@@ -210,12 +210,13 @@
                     {% for attr, label in group_cols %}
                     {% if label %}
                     <th style="width: 110px;">{{ label }}{% if value_column_formulas.get(attr) %}
-                      <i class="bi bi-info-circle text-primary ms-1"
+                      <button type="button"
+                         class="btn btn-link p-0 border-0 bi bi-info-circle text-primary ms-1"
                          data-bs-toggle="tooltip"
                          data-bs-placement="top"
                          title="{{ value_column_formulas.get(attr)|e }}"
                          style="cursor: help; font-size: 0.9em;"
-                         aria-label="Формула"></i>
+                         aria-label="Формула: {{ group_label }} – {{ label }}"></button>
                       {% endif %}</th>
                     {% elif attr == norm_zv_attr|default('') %}
                     <th class="norm-zv-col gis-tek-filter-th norm-zv-leaf" style="width: 110px;">{% include 'ecology/_gis_tek_norm_zv_header.html' %}</th>
@@ -238,7 +239,7 @@
                             {% for row in res_block.rows %}
                             <tr class="text-center align-middle{% if row.is_empty %} ot-row-empty-hidden{% endif %}">
                                 {% if show_numb_column %}
-                                <td>{{ row.station_numb if row.station_numb is not none else '—' }}</td>
+                                <td>{{ row.station_numb if row.station_numb is not none else '–' }}</td>
                                 {% endif %}
                                 <td class="text-start">{{ row.gis_tek_station_name }}</td>
                                 <td class="text-start">
@@ -251,14 +252,14 @@
                                                rel="noopener noreferrer">{{ st.name }}</a>
                                         {% endfor %}
                                     {% else %}
-                                        —
+                                        –
                                     {% endif %}
                                 </td>
                                 <td>{{ row.station_affiliation }}</td>
                                 {% for attr, label in value_columns %}
                                 <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                     {% set v = row['metrics'].get(attr) %}
-                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
+                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}–{% endif %}
                                 </td>
                                 {% endfor %}
                             </tr>
@@ -269,7 +270,7 @@
                                 {% for attr, label in value_columns %}
                                 <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                     {% set v = res_block.summary.metrics.get(attr) %}
-                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
+                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}–{% endif %}
                                 </td>
                                 {% endfor %}
                             </tr>
@@ -281,7 +282,7 @@
                             {% for attr, label in value_columns %}
                             <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                 {% set v = ues_block.summary.metrics.get(attr) %}
-                                {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
+                                {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}–{% endif %}
                             </td>
                             {% endfor %}
                         </tr>

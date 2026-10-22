@@ -2,7 +2,7 @@
 """
 Параметры нагрузки для ЭЭС (отдельный сценарий, без привязки к справочнику типов энергосистем).
 
-Таблица уровня страны/агрегата — как gs_russia_federation_demand_params.
+Таблица уровня страны/агрегата – как gs_russia_federation_demand_params.
 """
 from sqlalchemy import CheckConstraint, Numeric, text
 from sqlalchemy.sql import func

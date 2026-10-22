@@ -243,7 +243,9 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_start_year,
     get_filter_end_year,
     get_year_feature_dict,
-    get_year_list_full,
+)
+from app.generation.services.station_services.generation_year_filter_services import (
+    get_filter_year_list,
 )
 from app.generation.services.station_services.station_power_aggregation import (
     load_station_powers_by_year,
@@ -539,7 +541,7 @@ def _format_logs_for_display(logs):
             'action_lower': (log.action or '').lower(),
             'details': details_clean,
             'details_lower': details_clean.lower(),
-            'database_version': versions_map.get(log.database_version_id, '—') if log.database_version_id else '—',
+            'database_version': versions_map.get(log.database_version_id, '–') if log.database_version_id else '–',
         }
         formatted_logs.append(formatted_log)
     return formatted_logs
@@ -597,13 +599,13 @@ def _station_prospective_place_tep_links(station: Station, station_version_id: O
         StationProspectivePlaceAES.external_code == ec,
     ).all():
         if _prospective_place_version_for_station_link(place_row) == station_version_id:
-            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "–")
             tuples.append(
                 (
                     sort_key["aes"],
                     place_row,
                     "prospective_places_bp.prospective_place_aes_details",
-                    f"АЭС — {sn}",
+                    f"АЭС – {sn}",
                 )
             )
 
@@ -611,13 +613,13 @@ def _station_prospective_place_tep_links(station: Station, station_version_id: O
         StationProspectivePlaceGES.external_code == ec,
     ).all():
         if _prospective_place_version_for_station_link(place_row) == station_version_id:
-            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "–")
             tuples.append(
                 (
                     sort_key["ges"],
                     place_row,
                     "prospective_places_bp.prospective_place_ges_details",
-                    f"ГЭС — {sn}",
+                    f"ГЭС – {sn}",
                 )
             )
 
@@ -625,13 +627,13 @@ def _station_prospective_place_tep_links(station: Station, station_version_id: O
         StationProspectivePlaceGAES.external_code == ec,
     ).all():
         if _prospective_place_version_for_station_link(place_row) == station_version_id:
-            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "–")
             tuples.append(
                 (
                     sort_key["gaes"],
                     place_row,
                     "prospective_places_bp.prospective_place_gaes_details",
-                    f"ГАЭС — {sn}",
+                    f"ГАЭС – {sn}",
                 )
             )
 
@@ -696,7 +698,7 @@ def station_details(station_id):
         )
 
     # Сначала резолвим id в текущую версию БД (по external_code), затем уже
-    # канонизируем URL — иначе redirect по годам при смене версии оставляет
+    # канонизируем URL – иначе redirect по годам при смене версии оставляет
     # в адресной строке чужой id из другой версии.
     station, station_version_id = _load_station_with_version(
         _station_query, current_version_id, station_id=station_id
@@ -734,7 +736,7 @@ def station_details(station_id):
     for machine in (station.machines or []):
         powers_count += len(machine.machine_powers) if hasattr(machine, 'machine_powers') else 0
     
-    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные — в конце
+    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные – в конце
     if station and station.machines:
         try:
             station.machines.sort(key=lambda m: (
@@ -904,7 +906,7 @@ def station_details(station_id):
     union_energy_system_names = get_union_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
 
-    # Список (id, name) — без ORM, чтобы избежать DetachedInstanceError при кэше
+    # Список (id, name) – без ORM, чтобы избежать DetachedInstanceError при кэше
     regional_energy_system_choices = get_regional_energy_system_choices()
     regional_energy_system_names = get_regional_energy_systems_map()
 
@@ -934,7 +936,7 @@ def station_details(station_id):
     # Заполняем список субъектов РФ с фильтрацией по версии БД
     # regional_district_list теперь содержит кортежи (id, name) вместо ORM-объектов
     form.id_regional_district.choices = regional_district_list
-    # Список региональных энергосистем для выпадающего списка (id, name) — только из БД по текущей версии.
+    # Список региональных энергосистем для выпадающего списка (id, name) – только из БД по текущей версии.
     # Приводим к кортежам (int, str), т.к. get_regional_energy_system_choices() возвращает Row-объекты.
     form.id_regional_energy_system.choices = [(int(r[0]), r[1]) for r in regional_energy_system_choices]
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
@@ -1472,7 +1474,7 @@ def station_details(station_id):
     t0 = time.perf_counter()
     station_logs_formatted = []
     if request.method == "GET":
-        # entity_id — id станции в версии, из которой сохраняли; ищем по всем копиям (external_code).
+        # entity_id – id станции в версии, из которой сохраняли; ищем по всем копиям (external_code).
         station_logs_raw = _load_station_logs_merged(station, limit=20)
         station_logs_formatted = _format_logs_for_display(station_logs_raw)
     print(f"[DIAG] Логи: {(time.perf_counter() - t0)*1000:.0f} мс")
@@ -1480,7 +1482,7 @@ def station_details(station_id):
     logs_count = len(station_logs_formatted)
     
     # can_edit задан выше (нужен для POST до разметки)
-    # Создание группы оборудования — как в fuel_bp.add_equipment_group (только администраторы)
+    # Создание группы оборудования – как в fuel_bp.add_equipment_group (только администраторы)
     can_add_equipment_group = current_user.is_authenticated and getattr(
         current_user, "has_admin", False
     )
@@ -1491,7 +1493,7 @@ def station_details(station_id):
         current_user, "has_admin", False
     )
 
-    # Группы оборудования электростанции (по версии) — только для ТЭС
+    # Группы оборудования электростанции (по версии) – только для ТЭС
     is_tes_station = (
         station.station_type
         and station.station_type.name
@@ -1567,12 +1569,7 @@ def station_details(station_id):
         if owner is not None:
             hydro_forecast = build_hydro_forecast_view(owner[0], owner[1])
 
-    _years_from_db = [y.number for y in get_year_list_full()]
-    filter_year_list = (
-        _years_from_db
-        if _years_from_db
-        else list(range(get_filter_start_year(), get_filter_end_year() + 1))
-    )
+    filter_year_list = get_filter_year_list()
 
     html = render_template(
         "generation/stations/station_details.html",
@@ -1695,7 +1692,7 @@ def station_logs(station_id):
 @handle_stale_data
 def rename_station_equipment_group_v2(station_id, equipment_group_id):
     """Переименование группы оборудования на странице электростанции."""
-    # Переименование группы — доступно admin, generation-admin, generation-editor
+    # Переименование группы – доступно admin, generation-admin, generation-editor
     edit_roles = ["admin", "generation-admin", "generation-editor", "generation_admin", "generation_editor"]
     can_edit = current_user.is_authenticated and any(
         role in current_user.role_names for role in edit_roles
@@ -2293,7 +2290,7 @@ def station_details_energy_value(station_id):
 
     raw_value = payload.get("value")
     raw_value = "" if raw_value is None else str(raw_value)
-    if raw_value.strip() not in {"", "—", "-", "–"}:
+    if raw_value.strip() not in {"", "–", "-", "–"}:
         from app.generation.services.machine_services.machine_services import to_decimal
 
         if to_decimal(raw_value) is None:
@@ -2790,7 +2787,7 @@ def _render_machines_tbody(
             p.powers_by_year = pgu_powers_by_year.get(p.id, {})
             pgu_by_parent[p.id_parent_machine].append(p)
 
-    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные — в конце
+    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные – в конце
     if station and station.machines:
         try:
             station.machines.sort(key=lambda m: (
@@ -2803,7 +2800,7 @@ def _render_machines_tbody(
     # Временно «подкладываем» атрибут для совместимости с шаблоном
     station.powers_by_year = powers_by_year
 
-    # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
+    # Отображаемое название: как на machine_details – MachineName за год версии, иначе machine_name; при отличии в плане – "<текущ.> (<план>)"
     _apply_machine_display_names(station.machines)
     _apply_machine_gen_companies_for_version(station.machines, station_version_id)
     # Прикрепляем срезы к машинам

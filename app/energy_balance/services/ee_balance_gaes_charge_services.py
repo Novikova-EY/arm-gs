@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Заряд ГАЭС для балансов электрической энергии.
 
-Сумма потребления ГАЭС на заряд (млн.кВт·ч) по территории листа — те же станции
+Сумма потребления ГАЭС на заряд (млн.кВт·ч) по территории листа – те же станции
 типа «ГАЭС», что на сводке /energy_consumption/summary/oes/gaes_charge/.
 """
 
@@ -70,7 +70,7 @@ def load_ee_balance_gaes_charge_inputs(
     years: list[int],
     sheets: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, dict[int, Decimal]]]:
-    """gaes_charge по листам БЭ — сумма заряда ГАЭС по территории (как на сводке)."""
+    """gaes_charge по листам БЭ – сумма заряда ГАЭС по территории (как на сводке)."""
     if not years or not sheets:
         return {}
     from app.energy_consumption.services.energy_consumption_summary_services import (

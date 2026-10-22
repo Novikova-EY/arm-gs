@@ -53,26 +53,26 @@ def ti_table():
         }
 
         data.append({
-            "subject": station.regional_district.name if station and station.regional_district else "—",
-            "ti_number": m.id_ti or "—",
-            "group_type": m.equipment_group.name if m.equipment_group else "—",
-            "station": station.name if station else "—",
-            "group_number": m.machine_group or "—",
-            "machine_number": m.machine_number or "—",
-            "machine_name": m.machine_name or "—",
-            "exploitation_year": m.date_exploitation or "—",
-            "power_2024": float(power_2024) if power_2024 else "—",
+            "subject": station.regional_district.name if station and station.regional_district else "–",
+            "ti_number": m.id_ti or "–",
+            "group_type": m.equipment_group.name if m.equipment_group else "–",
+            "station": station.name if station else "–",
+            "group_number": m.machine_group or "–",
+            "machine_number": m.machine_number or "–",
+            "machine_name": m.machine_name or "–",
+            "exploitation_year": m.date_exploitation or "–",
+            "power_2024": float(power_2024) if power_2024 else "–",
             "station_type": (
                 station.station_type.name
                 if station and station.station_type
-                else "—"
+                else "–"
             ),
-            "tes_type": ", ".join(sorted(tes_types)) if tes_types else "—",
-            "tes_machine_type": m.tes_machine_type.name if m.tes_machine_type else "—",
-            "year_modern": m.year_modern if m.year_modern else "—",
-            "year_demontaz": m.year_demontaz if m.year_demontaz else "—",
-            "resurs_coal": m.resurs_coal if m.resurs_coal else "—",
-            "resurs_gas": m.resurs_gas if m.resurs_gas else "—",
+            "tes_type": ", ".join(sorted(tes_types)) if tes_types else "–",
+            "tes_machine_type": m.tes_machine_type.name if m.tes_machine_type else "–",
+            "year_modern": m.year_modern if m.year_modern else "–",
+            "year_demontaz": m.year_demontaz if m.year_demontaz else "–",
+            "resurs_coal": m.resurs_coal if m.resurs_coal else "–",
+            "resurs_gas": m.resurs_gas if m.resurs_gas else "–",
         })
 
     return render_template("generation/stations/ti_table.html", rows=data)
@@ -193,7 +193,7 @@ def upload_and_update_machines():
                     skipped += 1
                     continue
 
-                # Обработка id_ti — если не задан, ставим 0
+                # Обработка id_ti – если не задан, ставим 0
                 if not id_ti or int(id_ti) == 0:
                     id_ti = 0
                     
@@ -210,8 +210,8 @@ def upload_and_update_machines():
             except Exception as inner:
                 msg = f"‼️ Ошибка: {inner}"
                 log_rows.append([
-                    station_name or "—", gen_company_name or "—",
-                    machine_number or "—", machine_name or "—", msg
+                    station_name or "–", gen_company_name or "–",
+                    machine_number or "–", machine_name or "–", msg
                 ])
                 skipped += 1
 
@@ -261,11 +261,11 @@ def export_machine_ti_subjects():
     rows = []
     for id_ti, station_name, machine_number, machine_name, region_name in results:
         rows.append([
-            id_ti or "—",
-            region_name or "—",
-            station_name or "—",
-            machine_number or "—",
-            machine_name or "—"
+            id_ti or "–",
+            region_name or "–",
+            station_name or "–",
+            machine_number or "–",
+            machine_name or "–"
         ])
 
     df = pd.DataFrame(rows, columns=[

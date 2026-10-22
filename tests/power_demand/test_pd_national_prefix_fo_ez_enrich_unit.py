@@ -13,7 +13,7 @@ def test_apply_national_prefix_oes_formulas_uses_hidden_ues_sources_when_absent(
     prefix_row = {
         "demand_model_name": "SynchronousAreaDemandParameter",
         "parameter_key": "max_power",
-        "year_values": ["—"],
+        "year_values": ["–"],
         "show_entity_cell": True,
     }
     source_row = {

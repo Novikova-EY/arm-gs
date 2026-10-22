@@ -9,7 +9,7 @@
      (например with_nt / without_nt у «ЭЭС России», где допустимы только GAES-варианты).
 
 Дополнительно:
-  --force-codes with_nt,without_nt  — сбросить эти коды во всех таблицах gs_pd,
+  --force-codes with_nt,without_nt  – сбросить эти коды во всех таблицах gs_pd,
                                       даже если они ещё допустимы для другой сущности
                                       (ОЭС Юга, Россия и т.д.). Используйте осознанно.
 
@@ -290,7 +290,7 @@ def main() -> None:
                 extra = ""
                 if reason.entity_kind and reason.entity_name:
                     extra = f" [{reason.entity_kind}: {reason.entity_name}]"
-                print(f"  {table} id={row_id} {code!r} — {reason.reason}{extra}")
+                print(f"  {table} id={row_id} {code!r} – {reason.reason}{extra}")
             if total > len(samples):
                 print(f"  ... и ещё {total - len(samples)} строк(и)")
 

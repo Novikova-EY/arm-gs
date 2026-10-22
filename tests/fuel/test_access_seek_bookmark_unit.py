@@ -11,7 +11,7 @@ from app.fuel.services.calculation.specific_consumption_lookup import (
 
 
 def test_numb2_seek_ge_next_station_is_match():
-    """Seek '>=', 671, 0, 2024 находит 672/2021 — NoMatch=False."""
+    """Seek '>=', 671, 0, 2024 находит 672/2021 – NoMatch=False."""
     assert access_numb2_key_ge(672, 0, 2021, seek_numb=671, seek_year=2024) is True
     assert access_numb2_key_ge(671, 0, 2021, seek_numb=671, seek_year=2024) is False
     assert access_numb2_key_ge(670, 0, 2024, seek_numb=671, seek_year=2024) is False

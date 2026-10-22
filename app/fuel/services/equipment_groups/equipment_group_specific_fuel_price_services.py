@@ -3,8 +3,8 @@
 """
 Read/query/display для страницы «Цена для групп оборудования».
 
-Пересчёт полей xxx_c в БД — в equipment_group_specific_fuel_price_recalc_services;
-формулы — в equipment_group_specific_fuel_price_calc_services.
+Пересчёт полей xxx_c в БД – в equipment_group_specific_fuel_price_recalc_services;
+формулы – в equipment_group_specific_fuel_price_calc_services.
 
 Ниже _apply_calculated_specific_fuel_prices только подставляет расчётные значения
 в объект для отображения (read-only), без записи в сессию.
@@ -34,7 +34,7 @@ CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
 
 
 def _normalize_price_value(value):
-    """NULL и 0 на экране оба показываются как «—» — считаем эквивалентными."""
+    """NULL и 0 на экране оба показываются как «–» – считаем эквивалентными."""
     if value is None:
         return None
     try:
@@ -60,7 +60,7 @@ def _numeric_values_differ(left, right) -> bool:
         return left_n != right_n
 
 
-# Базовые колонки (без _calc) — из них строим пары: (xxx_c, xxx_c_calc)
+# Базовые колонки (без _calc) – из них строим пары: (xxx_c, xxx_c_calc)
 _SPECIFIC_FUEL_PRICE_BASE = [
     ("name", "NAME", False),
     ("year_number", "Year", False),
@@ -169,7 +169,7 @@ for attr, label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE:
 SPECIFIC_FUEL_PRICE_COLUMNS.extend(_SPECIFIC_FUEL_PRICE_CALC_COLUMNS)
 
 # Пары загруженное / расчётное для временного фильтра расхождений
-# (ugol_c — синтетический столбец без поля в БД / _price_calc)
+# (ugol_c – синтетический столбец без поля в БД / _price_calc)
 CALC_MISMATCH_BASE_ATTRS = tuple(
     attr
     for attr, _label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE
@@ -202,7 +202,7 @@ def get_price_calc_mismatch_attrs(param) -> set:
 
 
 # Формулы для _calc столбцов (tooltip).
-# get_price_formulas(fuel_nazvl_to_name) — подставляет имена из Fuel.name
+# get_price_formulas(fuel_nazvl_to_name) – подставляет имена из Fuel.name
 def get_price_formulas(fuel_nazvl_to_name=None):
     """Возвращает формулы с подстановкой имен топлива из Fuel.name (nazvl -> name)."""
     nazvl_to_name = fuel_nazvl_to_name or {}
@@ -219,7 +219,7 @@ def get_price_formulas(fuel_nazvl_to_name=None):
     return result
 
 
-# Дефолтные формулы (без Fuel) — для обратной совместимости
+# Дефолтные формулы (без Fuel) – для обратной совместимости
 PRICE_FORMULAS = get_price_formulas()
 
 
@@ -624,10 +624,10 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
         if not stations:
             return None
         st_id, st_name = stations[0]
-        return (st_id, st_name or "—")
+        return (st_id, st_name or "–")
 
     def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
+        st_id, st_name = station_tuple or (None, "–")
         return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
 
     hierarchy_flat = []
@@ -665,7 +665,7 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
                 res_list.append(
                     {
                         "res_id": res_id,
-                        "res_name": res_names.get(res_id, "—"),
+                        "res_name": res_names.get(res_id, "–"),
                         "group_blocks": [
                             gb for sb in station_blocks for gb in sb["group_blocks"]
                         ],
@@ -676,14 +676,14 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
             ues_list.append(
                 {
                     "ues_id": ues_id,
-                    "ues_name": ues_names.get(ues_id, "—"),
+                    "ues_name": ues_names.get(ues_id, "–"),
                     "res_list": res_list,
                 }
             )
         hierarchy_flat.append(
             {
                 "est_id": est_id,
-                "est_name": est_names.get(est_id, "—"),
+                "est_name": est_names.get(est_id, "–"),
                 "ues_list": ues_list,
             }
         )

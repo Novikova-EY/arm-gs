@@ -101,7 +101,7 @@ def _safe_decimal_numb1(value) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
     try:
         if isinstance(value, Decimal):
@@ -197,7 +197,7 @@ def _get_or_create_equipment_group_fuel_formula_row(
 
     Ищем по той же database_version_id, которая уйдёт в INSERT (текущая версия,
     если у группы NULL). Иначе строка с version=20 не находится, а INSERT
-    падает с UniqueViolation. Savepoint — на случай дублей в Excel / гонки.
+    падает с UniqueViolation. Savepoint – на случай дублей в Excel / гонки.
     """
     existing = _lookup_equipment_group_fuel_formula(
         equipment_group_id,

@@ -37,17 +37,17 @@ _DATA_COLUMNS_OFFSET = 2  # EquipmentGroup.id + «Группа оборудов�
 def _format_cell_value(param, attr, is_numeric, rounding_digits):
     """Форматирует значение ячейки."""
     if param is None:
-        return "—"
+        return "–"
     val = getattr(param, attr, None)
     if val is None:
-        return "—"
+        return "–"
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
-    return str(val) if val is not None else "—"
+    return str(val) if val is not None else "–"
 
 
 def _highlight_calc_mismatch_cells(ws, param, *, bold=False) -> None:
-    """Красный фон и текст у пар поле / *_calc — как table-danger на странице."""
+    """Красный фон и текст у пар поле / *_calc – как table-danger на странице."""
     mismatched = get_calc_mismatch_attrs(param)
     if not mismatched:
         return
@@ -75,7 +75,7 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
     Экспортирует удельные показатели групп оборудования в Excel.
     Учитывает фильтры: субъекты, ОЭС, региональные энергосистемы и т.п.
     Всегда полный набор строк (per_page=all); иерархия и агрегации по полным данным.
-    При show_calc_mismatch — только строки, которые видны по кнопке «Расхождения calc».
+    При show_calc_mismatch – только строки, которые видны по кнопке «Расхождения calc».
     """
     data = get_equipment_groups_with_specific_fuel_consumption_data(
         filters=filters,
@@ -127,21 +127,21 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
                 max_lengths[i] = len(str(v))
 
     for est_block in hierarchy:
-        title = est_block.get("est_name") or "—"
+        title = est_block.get("est_name") or "–"
         _bump_lengths([title] + [""] * (num_cols - 1))
         write_merged_section_row(
             ws, next_data_row_index(ws), num_cols, title, FILL_EST
         )
 
         for ues_block in est_block.get("ues_list") or []:
-            ues_title = ues_block.get("ues_name") or "—"
+            ues_title = ues_block.get("ues_name") or "–"
             _bump_lengths([ues_title] + [""] * (num_cols - 1))
             write_merged_section_row(
                 ws, next_data_row_index(ws), num_cols, ues_title, FILL_UES
             )
 
             for res_block in ues_block.get("res_list") or []:
-                res_title = res_block.get("res_name") or "—"
+                res_title = res_block.get("res_name") or "–"
                 _bump_lengths([res_title] + [""] * (num_cols - 1))
                 write_merged_section_row(
                     ws,
@@ -161,7 +161,7 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
                                 if group_entity and group_entity.name_ext
                                 else None
                             )
-                            or "—"
+                            or "–"
                         )
                         is_composite_parent = bool(
                             group_block.get("is_composite_parent")

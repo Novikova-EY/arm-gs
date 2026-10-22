@@ -50,8 +50,8 @@ def _company_sets_compatible(
     """
     Совместимы ли наборы генкомпаний для объединения «семейства».
 
-    Пустой набор не даёт основания развести станции (нет данных) — считаем совместимым.
-    Непустые непересекающиеся наборы — разные станции (как две ТЭС-2 в Карелии).
+    Пустой набор не даёт основания развести станции (нет данных) – считаем совместимым.
+    Непустые непересекающиеся наборы – разные станции (как две ТЭС-2 в Карелии).
     """
     left_set = set(left or ())
     right_set = set(right or ())
@@ -281,7 +281,7 @@ def dedupe_station_ids_from_rows(
                     bucket[index] = (prev_id, prev_companies | companies, prev_rank_value)
                 break
 
-        # Иначе — только если разведение по компаниям неприменимо (разные версии).
+        # Иначе – только если разведение по компаниям неприменимо (разные версии).
         if matched_index is None:
             for index, (prev_id, prev_companies, prev_rank_value) in enumerate(bucket):
                 prev_version = version_by_station_id.get(prev_id)
@@ -373,7 +373,7 @@ def dedupe_station_ids_from_rows(
                 token_owner[token] = station_id
                 continue
             if companies_block_merge(station_id, owner):
-                # Токен занят другой генкомпанией в текущей версии — не объединяем.
+                # Токен занят другой генкомпанией в текущей версии – не объединяем.
                 continue
             union(station_id, owner)
 
@@ -629,8 +629,8 @@ def build_external_code_check_hierarchy(stations: list[Station], include_names: 
             )
             if include_names:
                 est_names.setdefault(UNASSIGNED_EST_ID, "Без типа энергосистемы")
-                ues_names.setdefault(UNASSIGNED_UES_ID, "—")
-                res_names.setdefault(UNASSIGNED_RES_ID, "—")
+                ues_names.setdefault(UNASSIGNED_UES_ID, "–")
+                res_names.setdefault(UNASSIGNED_RES_ID, "–")
                 if station.regional_district:
                     rd_names[station.id_regional_district or 0] = station.regional_district.name
                 elif not station.id_regional_district:

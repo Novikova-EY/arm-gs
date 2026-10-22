@@ -135,7 +135,7 @@ def export_ee_transfers_to_excel(
             ws,
             row_idx,
             num_cols,
-            ues_block.get("ues_name") or "—",
+            ues_block.get("ues_name") or "–",
             FILL_UES,
         )
         for res_block in ues_block.get("res_list") or []:
@@ -143,22 +143,22 @@ def export_ee_transfers_to_excel(
                 ws,
                 row_idx,
                 num_cols,
-                res_block.get("res_name") or "—",
+                res_block.get("res_name") or "–",
                 FILL_RES_HEADER,
             )
             for transfer_row in res_block.get("transfer_rows") or []:
                 row_idx = _write_transfer_row(
                     ws,
                     row_idx,
-                    transfer_row.get("to_ues_name") or "—",
-                    transfer_row.get("to_name") or "—",
+                    transfer_row.get("to_ues_name") or "–",
+                    transfer_row.get("to_name") or "–",
                     period_columns,
                     transfer_row.get("periods") or {},
                     rounding_digits,
                 )
             group_key = res_block.get("group_key")
             if should_show_totals.get("from_groups", {}).get(group_key):
-                res_name = res_block.get("res_name") or "—"
+                res_name = res_block.get("res_name") or "–"
                 row_idx = _write_total_row(
                     ws,
                     row_idx,
@@ -170,7 +170,7 @@ def export_ee_transfers_to_excel(
                 )
         ues_id = ues_block.get("ues_id")
         if should_show_totals.get("union_energy_systems", {}).get(ues_id):
-            ues_name = ues_block.get("ues_name") or "—"
+            ues_name = ues_block.get("ues_name") or "–"
             row_idx = _write_total_row(
                 ws,
                 row_idx,

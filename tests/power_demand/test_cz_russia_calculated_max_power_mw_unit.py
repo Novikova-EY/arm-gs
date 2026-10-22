@@ -42,7 +42,7 @@ def _eu_max_row(*, eu_id: int, year_values: list[str], label: str = "EU") -> dic
 
 
 def _cz_block(*, pvc: str, year_values: list[str] | None = None) -> list[dict]:
-    yv = list(year_values) if year_values is not None else ["—", "—"]
+    yv = list(year_values) if year_values is not None else ["–", "–"]
     n = len(yv)
     return [
         {
@@ -65,7 +65,7 @@ def _cz_block(*, pvc: str, year_values: list[str] | None = None) -> list[dict]:
             "demand_model_name": "CentralizedZoneDemandParameter",
             "parameter_key": "calculated_max_power_mw",
             "perimeter_variant_code": pvc,
-            "year_values": ["—"] * n,
+            "year_values": ["–"] * n,
             "year_numeric_tooltips": [""] * n,
             "hist_value": "",
         },
@@ -141,9 +141,9 @@ def test_enrich_cz_with_nt_adds_nt_subjects_max_power(
     _mock_nt_ids, _mock_south, _mock_eu_ids
 ) -> None:
     years = [2025]
-    without = _cz_block(pvc="without_nt", year_values=["—"])
+    without = _cz_block(pvc="without_nt", year_values=["–"])
     without[0]["entity_rowspan"] = 2
-    with_nt = _cz_block(pvc="with_nt", year_values=["—"])
+    with_nt = _cz_block(pvc="with_nt", year_values=["–"])
     with_nt[0]["entity_rowspan"] = 2
     rows = (
         without
@@ -201,9 +201,9 @@ def test_enrich_cz_o1_with_nt_variant_gets_nt_addon(
 ) -> None:
     """Коды o1_with_nt / o1_without_nt тоже должны различать с/без НТ."""
     years = [2025]
-    without = _cz_block(pvc="o1_without_nt", year_values=["—"])
+    without = _cz_block(pvc="o1_without_nt", year_values=["–"])
     without[0]["entity_rowspan"] = 2
-    with_nt = _cz_block(pvc="o1_with_nt", year_values=["—"])
+    with_nt = _cz_block(pvc="o1_with_nt", year_values=["–"])
     with_nt[0]["entity_rowspan"] = 2
     rows = (
         without

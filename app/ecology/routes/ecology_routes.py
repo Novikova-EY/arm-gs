@@ -7,7 +7,14 @@ from flask import current_app, flash, jsonify, redirect, render_template, reques
 from flask_login import current_user, login_required
 
 from app.ecology.routes.ecology_bp import ecology_bp
-from app.ecology.services.gis_tek_constants import REPORT_PG, REPORT_ZV
+from app.ecology.services.ecology_logging_services import (
+    context_lines,
+    log_cell_change,
+    log_file_download,
+    log_file_upload,
+    log_page_visit,
+)
+from app.ecology.services.gis_tek_constants import PAGE_TITLES, REPORT_PG, REPORT_ZV
 from app.ecology.services.gis_tek_export_services import build_gis_tek_excel_stream
 from app.ecology.services.gis_tek_import_services import import_gis_tek_from_xlsx_bytes
 from app.ecology.services.gis_tek_page_services import (
@@ -17,6 +24,7 @@ from app.ecology.services.gis_tek_page_services import (
 from app.ecology.services.gis_tes_fuel_comparison_constants import COMPARISON_GROUPS
 from app.ecology.services.formula_text.operating_tes_formula_text_services import (
     list_formulas_for_admin,
+    ot_formula_text,
     reset_formula_text_override,
     save_formula_text_override,
 )
@@ -79,6 +87,7 @@ def _render_report(kind: str):
         if kind == REPORT_PG
         else "ecology_bp.gis_tek_pollutants_export"
     )
+    log_page_visit(context["page_title"])
     return render_template("ecology/gis_tek_report.html", **context)
 
 
@@ -98,6 +107,7 @@ def _import_report(kind: str):
     if not raw:
         flash("Пустой файл.", "danger")
         return _redirect_kind(kind)
+    log_file_upload(PAGE_TITLES[kind], str(upload.filename), size_bytes=len(raw))
     user = session.get("username") or getattr(current_user, "username", None) or "Неизвестный пользователь"
     try:
         stats = import_gis_tek_from_xlsx_bytes(raw, kind, user)
@@ -108,7 +118,7 @@ def _import_report(kind: str):
     except Exception:
         db.session.rollback()
         current_app.logger.exception("Импорт ГИС ТЭК (%s)", kind)
-        flash("Не удалось выполнить импорт. Подробности — в журнале сервера.", "danger")
+        flash("Не удалось выполнить импорт. Подробности – в журнале сервера.", "danger")
         return _redirect_kind(kind)
     flash(stats.get("message") or "Импорт завершён.", "success")
     return _redirect_kind(kind)
@@ -119,6 +129,7 @@ def _export_report(kind: str):
     filename = (
         "gis_tek_parnikovye_gazy.xlsx" if kind == REPORT_PG else "gis_tek_zagryaznyayushchie_veshchestva.xlsx"
     )
+    log_file_download(PAGE_TITLES[kind], filename)
     return send_file(
         stream,
         as_attachment=True,
@@ -130,6 +141,7 @@ def _export_report(kind: str):
 @ecology_bp.route("/")
 @login_required
 def hub():
+    log_page_visit("Главная страница модуля")
     return render_template(
         "ecology/ecology_start.html",
         can_edit_ecology=can_edit_ecology(current_user),
@@ -143,6 +155,7 @@ def operating_tes_formulas():
     if not can_edit_ecology(current_user):
         flash("Недостаточно прав для редактирования текстов формул.", "danger")
         return redirect(url_for("ecology_bp.hub"))
+    log_page_visit("Тексты формул")
     return render_template(
         "ecology/operating_tes/operating_tes_formulas.html",
         page_title="Тексты формул для модуля «Экология»",
@@ -156,15 +169,27 @@ def operating_tes_formulas_save():
     if not can_edit_ecology(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
+    key = str(data.get("formula_key") or "")
+    new_text = str(data.get("formula_text") or "")
+    log_context = context_lines(("формула", key))
     try:
+        previous_text = ot_formula_text(key)
         save_formula_text_override(
-            formula_key=str(data.get("formula_key") or ""),
-            formula_text=str(data.get("formula_text") or ""),
+            formula_key=key,
+            formula_text=new_text,
         )
         db.session.commit()
     except ValueError as exc:
         db.session.rollback()
         return jsonify(ok=False, error=str(exc)), 400
+    log_cell_change(
+        "Тексты формул",
+        f"Текст формулы {key}",
+        previous_text,
+        ot_formula_text(key),
+        context=log_context,
+        number=False,
+    )
     return jsonify(ok=True)
 
 
@@ -177,8 +202,17 @@ def operating_tes_formulas_reset():
     key = str(data.get("formula_key") or "").strip()
     if not key:
         return jsonify(ok=False, error="Не указан ключ формулы."), 400
+    previous_text = ot_formula_text(key)
     reset_formula_text_override(key)
     db.session.commit()
+    log_cell_change(
+        "Тексты формул",
+        f"Текст формулы {key}",
+        previous_text,
+        ot_formula_text(key),
+        context=context_lines(("формула", key), ("действие", "сброс к исходному тексту")),
+        number=False,
+    )
     return jsonify(ok=True)
 
 

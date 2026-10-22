@@ -9,6 +9,11 @@ from flask_login import login_required
 from werkzeug.exceptions import HTTPException
 
 from app.ecology.routes.ecology_bp import ecology_bp
+from app.ecology.services.ecology_logging_services import (
+    context_lines,
+    log_file_download,
+    log_page_visit,
+)
 from app.ecology.services.ecology_totals_summary_services import (
     DEFAULT_ECOLOGY_TOTALS_SHEET,
     build_ecology_totals_summary_context,
@@ -63,6 +68,15 @@ def totals_summary(sheet_slug: str):
     context = _ecology_totals_page_context(sheet_slug)
     if context is None:
         abort(404)
+    log_page_visit(
+        "Итоговые суммы",
+        tab=(context.get("sheet") or {}).get("page_title"),
+        details=context_lines(
+            ("лист", sheet_slug),
+            ("период", f"{context.get('start_year')}–{context.get('end_year')}"),
+            ("округление", context.get("rounding_digits")),
+        ),
+    )
     return render_template("ecology/totals_summary/ecology_totals_summary.html", **context)
 
 
@@ -95,6 +109,11 @@ def totals_summary_export(sheet_slug: str):
         excel_file = export_ecology_totals_summary_to_excel(context)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"ecology_totals_summary_{timestamp}.xlsx"
+        log_file_download(
+            context["page_title"],
+            filename,
+            details=[f"лист={sheet_slug}"],
+        )
         return send_file(
             excel_file,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

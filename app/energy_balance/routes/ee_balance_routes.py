@@ -49,6 +49,7 @@ from app.energy_balance.services.ee_balance_hydro_own_needs_services import (
 )
 from app.energy_balance.services.ee_balance_ves_ses_page_services import (
     _format_cell,
+    _raw_title,
     _can_edit_ves_ses_energy,
     build_aes_page_context,
     build_gaes_page_context,
@@ -59,11 +60,12 @@ from app.energy_balance.services.ee_balance_ves_ses_page_services import (
 from app.energy_balance.services.ee_balance_ves_ses_excel_services import (
     export_ves_ses_to_excel,
 )
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import format_decimal_for_display, format_decimal_trim_for_display
 from app.generation.models.station.station_model import Station
 from app.generation.services.station_services.station_services import (
     save_station_energy_generation_service,
     save_station_owner_energy_generation_service,
+    station_annual_energy_generation_query,
 )
 from app.generation.services.station_services.station_type_flags import (
     is_aes_station,
@@ -255,7 +257,7 @@ def ee_balance_ves_ses_value():
     except (TypeError, ValueError):
         return jsonify(ok=False, error="Неверный запрос"), 400
     kind = str(data.get("kind") or "").strip()
-    if kind not in {"energy", "owner", "exploitation_date", "coefficient"}:
+    if kind not in {"energy", "owner", "exploitation_date", "coefficient", "own_needs", "own_needs_percent"}:
         return jsonify(ok=False, error="Неверный тип значения"), 400
 
     station = Station.query.options(joinedload(Station.station_type)).get(station_id)
@@ -298,7 +300,9 @@ def ee_balance_ves_ses_value():
             raw=coefficient_display,
             changed=True,
         )
-    if is_station_focus and kind != "energy":
+    if kind in {"own_needs", "own_needs_percent"} and not is_aes:
+        return jsonify(ok=False, error="Ввод СН доступен только для АЭС"), 400
+    if is_station_focus and kind != "energy" and not (is_aes and kind in {"own_needs", "own_needs_percent"}):
         return jsonify(ok=False, error="Для АЭС, ГЭС, ГАЭС и СНЭЭ доступно только редактирование выработки"), 400
     if not _can_edit_ves_ses_energy():
         return jsonify(ok=False, error="Недостаточно прав"), 403
@@ -370,6 +374,30 @@ def ee_balance_ves_ses_value():
     digits = resolve_ee_balance_rounding_digits(
         data.get("rounding_digits", request.args.get("rounding_digits"))
     )
+    if kind in {"own_needs", "own_needs_percent"}:
+        from app.energy_balance.services.ee_balance_aes_own_needs_services import save_aes_own_needs
+
+        try:
+            value = save_aes_own_needs(
+                station, year, data.get("value"), version_id, user=current_user, kind=kind
+            )
+        except ValueError as exc:
+            return jsonify(ok=False, error=str(exc)), 400
+        except Exception:
+            current_app.logger.exception("Не удалось сохранить СН АЭС")
+            return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+        row = station_annual_energy_generation_query(station.id, year, year, version_id).one_or_none()
+        percent = row.own_needs_percent if row is not None else None
+        return jsonify(
+            ok=True, year=year, kind=kind, changed=True,
+            display=format_decimal_for_display(value, digits=digits) if value is not None else "",
+            raw=_raw_title(value),
+            own_needs_percent={
+                "display": format_decimal_for_display(percent, digits=digits) if percent is not None else "",
+                "raw": _raw_title(percent),
+                "calculated": row is not None and row.own_needs is not None,
+            },
+        )
     prefix = "st_gen" if kind == "energy" else "st_owner_gen"
     orig = data.get("orig")
     if orig is None:

@@ -6,6 +6,7 @@ import functools
 import logging
 import math
 from collections import defaultdict
+from copy import deepcopy
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     KEY_LABELS,
     NETWORK_XLSX_PATH,
     ANALYSIS_SHEET_SLUGS,
+    BEZ_KOT_SHEET_SLUGS,
     PG_ANALYSIS_SHEET_SLUGS,
     PG_DERIVED_COLUMN_KEYS,
     PG_DIFF_HEADER_KEYS,
@@ -77,6 +79,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     ZV_GASEOUS_TOTAL_KEY,
     ZV_GAS_FUEL_KEYS,
     ZV_MAZUT_FUEL_KEYS,
+    ZV_NORM_DEFAULT_PARTS,
     ZV_SOLID_FUEL_KEYS,
     ZV_SOLID_KEY,
     ZV_SPECIFIC_ROUNDING_COLUMN_KEYS,
@@ -96,6 +99,10 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     zv_energy_specific_banner_keys,
     zv_gaseous_header_group,
     zv_leaf_header_groups,
+)
+from app.ecology.services.gis_tek_page_services import (
+    norm_zv_options,
+    parse_norm_zv_parts,
 )
 from app.ecology.services.operating_tes_page_services import (
     format_cell,
@@ -527,7 +534,7 @@ def _top_cell_covers_keys(
     if col_i is None:
         return set()
     covered: set[str] = set()
-    # col_index после prepare_visible: sticky — sticky_index, иначе исходный Excel-индекс.
+    # col_index после prepare_visible: sticky – sticky_index, иначе исходный Excel-индекс.
     for column in columns:
         source = column.get("source_index")
         sticky = column.get("sticky_index")
@@ -982,7 +989,7 @@ def _attach_column_formula_tooltips(
     header_rows: list[list[dict[str, Any]]],
     formula_by_column_key: dict[str, str],
 ) -> None:
-    """Вешает текст формулы на первую подпись столбца; иначе — на строку ключей."""
+    """Вешает текст формулы на первую подпись столбца; иначе – на строку ключей."""
     if not formula_by_column_key:
         return
     attached: set[str] = set()
@@ -1259,6 +1266,7 @@ ZV_RELATED_CALC_KEYS: tuple[str, ...] = (
 def _zv_ecology_values_by_key(
     zv_values: dict[str, Any] | None,
     fuel: dict[str, Any] | None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, Any]:
     """Свод значений по ключам столбцов для пересчёта итогов и удельных после правки."""
     by_key: dict[str, Any] = {
@@ -1277,6 +1285,7 @@ def _zv_ecology_values_by_key(
     filled = _compute_derived_columns(
         [by_key.get(key) for key in ZV_RELATED_CALC_KEYS],
         columns,
+        norm_zv_parts,
     )
     return dict(zip(ZV_RELATED_CALC_KEYS, filled))
 
@@ -1433,6 +1442,7 @@ def format_related_zv_ecology_cells(
     column_key: str,
     rounding_digits: int | str | None = None,
     specific_rounding_digits: int | str | None = None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, dict[str, Any]]:
     """Форматирует отредактированную ячейку ЗВ и все расчётные итоги/удельные."""
     key = str(column_key or "").strip()
@@ -1452,7 +1462,7 @@ def format_related_zv_ecology_cells(
         (numb, year)
     )
     fuel = load_fuel_indicators_by_numb_year({numb}, [year]).get((numb, year))
-    by_key = _zv_ecology_values_by_key(zv, fuel)
+    by_key = _zv_ecology_values_by_key(zv, fuel, norm_zv_parts)
     result: dict[str, dict[str, Any]] = {}
     for rel_key in ordered:
         text = _format_value(
@@ -1476,6 +1486,7 @@ def save_analysis_zv_ecology_cell(
     value: Any,
     rounding_digits: int | str | None = None,
     specific_rounding_digits: int | str | None = None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, dict[str, Any]]:
     """Сохраняет параметр ЗВ и возвращает обновлённые отображаемые ячейки."""
     key = str(column_key or "").strip()
@@ -1499,6 +1510,7 @@ def save_analysis_zv_ecology_cell(
         key,
         rounding_digits,
         specific_rounding_digits,
+        norm_zv_parts,
     )
 
 
@@ -1511,6 +1523,7 @@ def save_analysis_ecology_cell(
     rounding_digits: int | str | None = None,
     emission_rounding_digits: int | str | None = None,
     specific_rounding_digits: int | str | None = None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, dict[str, Any]]:
     """Сохраняет правку страницы анализа ЗВ или ПГ."""
     slug = str(sheet_slug or "").strip()
@@ -1533,6 +1546,7 @@ def save_analysis_ecology_cell(
             value,
             rounding_digits,
             specific_rounding_digits,
+            norm_zv_parts,
         )
     raise ValueError(f"Лист недоступен для редактирования: {sheet_slug!r}")
 
@@ -1817,7 +1831,7 @@ def column_rounding_digits(
 
 
 def resolve_optional_rounding_digits(value: Any) -> int | None:
-    """Знаки отдельного селектора; пусто — столбец округляется как основной «Округл»."""
+    """Знаки отдельного селектора; пусто – столбец округляется как основной «Округл»."""
     if value in (None, ""):
         return None
     return resolve_rounding_digits(value)
@@ -1832,7 +1846,7 @@ def _format_value(value: Any, numeric: bool, digits: int) -> str:
         return str(value)
     if digits == 0:
         # «Не округлять» показывает значение целиком, поэтому оставляем только
-        # значащие цифры: хвост вроде 802393,6000000001 — шум исходного double,
+        # значащие цифры: хвост вроде 802393,6000000001 – шум исходного double,
         # а не данные (как на страницах ГИС ТЭК).
         cleaned = drop_float_noise(value)
         if cleaned is not None:
@@ -1916,7 +1930,7 @@ _ID_FILTER_TO_FIELD = {
 
 
 def _clean_number(value: Any) -> Decimal | None:
-    """Число без хвоста float-шума источника; None — пусто или не число.
+    """Число без хвоста float-шума источника; None – пусто или не число.
 
     Расчётные столбцы страницы (d_*, K_*, CO2, UD_*, ЗВ) считаем от очищенных
     значений: иначе разность 3121 и 3120,2000000000003 даёт 0,7999999999997272.
@@ -1927,7 +1941,7 @@ def _clean_number(value: Any) -> Decimal | None:
 
 
 def _significant_float(value: Decimal) -> float:
-    """Расчётный столбец страницы — float, как и значения макета, но без шума."""
+    """Расчётный столбец страницы – float, как и значения макета, но без шума."""
     return float(drop_float_noise(value))
 
 
@@ -2180,13 +2194,18 @@ def _kg_per_tce(mass_t: Any, fuel_tce: Any) -> Any:
 def _compute_zv_specific_metrics(
     filled: list[Any],
     source_columns: list[dict[str, Any]],
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> list[Any]:
     """Приведённая энергия и удельные ЗВ: на энергию, на выработку и на топливо."""
     out = list(filled)
     solid = _filled_at(out, source_columns, {ZV_SOLID_KEY})
     so2 = _filled_at(out, source_columns, {"SO2_gaz"})
     nox = _filled_at(out, source_columns, {"NOx_gaz"})
-    zv_normir = _safe_sum(solid, so2, nox)
+    zv_normir = _safe_sum(*(
+        _filled_at(out, source_columns, {key})
+        for key, attr in ZV_ECOLOGY_OVERLAY_BY_KEY.items()
+        if attr in norm_zv_parts
+    ))
     _assign_filled(out, source_columns, "ZV_normir", zv_normir)
 
     w_en = _filled_at(out, source_columns, {"W_en"})
@@ -2471,7 +2490,7 @@ def load_generation_station_links_by_numb(
 ) -> dict[int, list[dict[str, Any]]]:
     """Станции «Генерации», привязанные к группам оборудования (по их NUMB).
 
-    Пустой список у NUMB — группа не привязана к станции: на страницах анализа
+    Пустой список у NUMB – группа не привязана к станции: на страницах анализа
     «С котельными» такие группы не показываем.
     """
     numb_list = sorted({int(numb) for numb in numbs or [] if numb is not None})
@@ -2496,7 +2515,7 @@ def load_station_generation_overlay(
     """Станции «Генерации» по группам оборудования текущей версии БД.
 
     Названия те же, что в столбце «Электростанция (Генерация)» на /ecology/gis_tek/,
-    значения — как в карточке станции: «Руст, МВт» из строки «Всего по электростанции»
+    значения – как в карточке станции: «Руст, МВт» из строки «Всего по электростанции»
     и годовая выработка из таблицы «Выработка электроэнергии электростанцией, млн кВтч».
     Несколько станций у одной группы оборудования суммируются.
     """
@@ -2562,7 +2581,7 @@ def load_station_affiliations_by_numb_year(
     numbs: set[int],
     years: list[int],
 ) -> dict[tuple[int, int], str]:
-    """«Принадлежность» групп оборудования по годам — как на страницах ГИС ТЭК.
+    """«Принадлежность» групп оборудования по годам – как на страницах ГИС ТЭК.
 
     Тип станции берётся из кода VED строки «Топливо» за год; у оболочки составной
     станции своего ved нет, поэтому тип берётся у её дочерних групп, если он у них
@@ -2619,7 +2638,7 @@ def apply_station_affiliation_cells(
     columns: list[dict[str, Any]],
     affiliations: dict[tuple[int, int], str],
 ) -> list[Any]:
-    """Подставляет «Принадлежность» строки года; без данных ГИС ТЭК — «—»."""
+    """Подставляет «Принадлежность» строки года; без данных ГИС ТЭК – «–»."""
     index = _column_index(columns, {STATION_AFFILIATION_COLUMN_KEY})
     if index is None or index >= len(filled):
         return filled
@@ -2634,6 +2653,7 @@ def apply_station_affiliation_cells(
 def _compute_derived_columns(
     filled: list[Any],
     source_columns: list[dict[str, Any]],
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> list[Any]:
     """Разности 6тп−экология, коэффициенты эмиссии, итоги ПГ/ЗВ и удельные."""
     out = _compute_differences(filled, source_columns)
@@ -2642,7 +2662,7 @@ def _compute_derived_columns(
     out = _compute_specific_co2(out, source_columns)
     out = _compute_gaseous_and_liquid(out, source_columns)
     out = _compute_zv_total(out, source_columns)
-    return _compute_zv_specific_metrics(out, source_columns)
+    return _compute_zv_specific_metrics(out, source_columns, norm_zv_parts)
 
 
 def _empty_territorial_filter_payload() -> dict[str, Any]:
@@ -2773,6 +2793,8 @@ def _keep_query_args(
     numb_filter = filters.get("numb1120_filter") or []
     if numb_filter:
         query["numb1120_filter"] = numb_filter
+    if "norm_zv" in filters:
+        query["norm_zv"] = filters["norm_zv"] or [""]
     query["show_totals"] = "1" if filters.get("show_totals") else "0"
     query["show_empty_rows"] = "1" if filters.get("show_empty_rows") else "0"
     query["show_reported"] = "1" if filters.get("show_reported") else "0"
@@ -2864,13 +2886,20 @@ def apply_zv_display_column_order(
     columns: list[dict[str, Any]],
     header_rows: list[list[dict[str, Any]]],
 ) -> None:
-    """Ставит второй ключ пары левее первого, если оба столбца есть на витрине."""
+    """Упорядочивает столбцы ЗВ, оставляя всего ЗВ на приведённую энергию справа."""
     for key_a, key_b in ZV_DISPLAY_COLUMN_SWAPS:
         idx_a = next((i for i, col in enumerate(columns) if col.get("key") == key_a), None)
         idx_b = next((i for i, col in enumerate(columns) if col.get("key") == key_b), None)
         if idx_a is None or idx_b is None or idx_a >= idx_b:
             continue
         swap_visible_columns(columns, header_rows, key_a, key_b)
+    index = next((i for i, col in enumerate(columns) if col.get("key") == "udel_na_energ"), None)
+    if index is not None:
+        columns.append(columns.pop(index))
+        for row in header_rows:
+            cell = _pop_header_cell(row, "udel_na_energ")
+            if cell is not None:
+                row.append(cell)
 
 
 def _text_contains(needle: str, haystack: Any) -> bool:
@@ -2932,7 +2961,7 @@ def row_matches_territory_filters(
 
 
 ROWSPAN_COLUMN_KEYS = frozenset({"NAME", "Stancia", "numb1120"})
-# При суммировании по регионам эти столбцы не складываем — пересчитываем формулами.
+# При суммировании по регионам эти столбцы не складываем – пересчитываем формулами.
 SUMMARY_RECOMPUTE_KEYS = frozenset(PG_DERIVED_COLUMN_KEYS) | frozenset(ZV_COLUMN_FORMULA_KEYS)
 SUMMARY_IDENTITY_KEYS = frozenset(
     {
@@ -2979,6 +3008,7 @@ def _region_keys(meta: dict[str, Any]) -> dict[str, tuple]:
 def _sum_filled_rows(
     filled_list: list[list[Any]],
     source_columns: list[dict[str, Any]],
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> list[Any] | None:
     if not filled_list:
         return None
@@ -2996,7 +3026,7 @@ def _sum_filled_rows(
         ]
         out[index] = _safe_sum(*parts)
     # Пересчёт d_*/K_*/CO2/UD_* поверх сумм слагаемых (если столбцы есть).
-    return _compute_derived_columns(out, source_columns)
+    return _compute_derived_columns(out, source_columns, norm_zv_parts)
 
 
 def _format_summary_row(
@@ -3083,6 +3113,7 @@ def build_region_summary_block(
     key_prefix: str,
     emission_digits: int | None = None,
     specific_digits: int | None = None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, Any] | None:
     """Итоговые строки уровня (РЭС/ОЭС/ЕЭС) по годам."""
     by_year: dict[int, list[list[Any]]] = defaultdict(list)
@@ -3096,7 +3127,7 @@ def build_region_summary_block(
     summary_label = f"{label}, всего"
     rows: list[dict[str, Any]] = []
     for loop_i, year in enumerate(sorted(by_year)):
-        summed = _sum_filled_rows(by_year[year], source_columns)
+        summed = _sum_filled_rows(by_year[year], source_columns, norm_zv_parts)
         if summed is None:
             continue
         rows.append(
@@ -3145,6 +3176,7 @@ def attach_region_summaries(
     digits: int,
     emission_digits: int | None = None,
     specific_digits: int | None = None,
+    norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> list[dict[str, Any]]:
     """Добавляет итоги РЭС/ОЭС/ЕЭС, когда на странице последний блок региона."""
     by_res, by_ues, by_est = _index_groups_by_region(all_groups)
@@ -3166,6 +3198,7 @@ def attach_region_summaries(
                         key_prefix=f"sum-res-{res_key}",
                         emission_digits=emission_digits,
                         specific_digits=specific_digits,
+                        norm_zv_parts=norm_zv_parts,
                     )
             ues_res_list = ues_block.get("res_list") or []
             if not ues_res_list:
@@ -3185,6 +3218,7 @@ def attach_region_summaries(
                     key_prefix=f"sum-ues-{ues_key}",
                     emission_digits=emission_digits,
                     specific_digits=specific_digits,
+                    norm_zv_parts=norm_zv_parts,
                 )
         est_ues_list = est_block.get("ues_list") or []
         if not est_ues_list:
@@ -3207,6 +3241,7 @@ def attach_region_summaries(
                 key_prefix=f"sum-est-{est_key}",
                 emission_digits=emission_digits,
                 specific_digits=specific_digits,
+                norm_zv_parts=norm_zv_parts,
             )
     return hierarchy
 
@@ -3297,7 +3332,7 @@ def _group_sort_key(group: dict[str, Any]) -> tuple:
 
 
 def _group_station_name(group: dict[str, Any]) -> str:
-    """Название станции группы — как в столбце «Электростанция»."""
+    """Название станции группы – как в столбце «Электростанция»."""
     return _cell_text((group.get("meta") or {}).get("station_name"))
 
 
@@ -3305,7 +3340,7 @@ def _group_affiliation_sets(
     groups: list[dict[str, Any]],
     years: list[int],
 ) -> list[set[str]]:
-    """«Принадлежность» каждой группы (по годам) — как в столбце таблицы."""
+    """«Принадлежность» каждой группы (по годам) – как в столбце таблицы."""
     numbs: set[int] = set()
     for group in groups:
         for numb in group.get("member_numbs") or [group.get("numb")]:
@@ -3345,7 +3380,7 @@ def apply_header_filters(
     affiliation_sets = (
         _group_affiliation_sets(groups, years) if has_affiliation_column else []
     )
-    # «—» — не принадлежность, а отсутствие данных ГИС ТЭК, поэтому в списке фильтра
+    # «–» – не принадлежность, а отсутствие данных ГИС ТЭК, поэтому в списке фильтра
     # его нет (как на /ecology/gis_tek/pg/ и /ecology/gis_tek/pollutants/).
     affiliation_choices = sorted(
         {
@@ -3466,6 +3501,17 @@ def build_comparison_table_context(
         parsed = parsed_all.get(sheet["slug"])
     if parsed is None:
         return None
+    if sheet["slug"] in BEZ_KOT_SHEET_SLUGS:
+        # Обе вкладки используют шапку «С котельными», но свой состав групп и параметры.
+        layout = load_comparison_sheet_layout(f"{sheet['group']}-vse", source_path)
+        if layout is None:
+            return None
+        parsed = {
+            **parsed,
+            "columns": deepcopy(layout["columns"]),
+            "header_rows": deepcopy(layout["header_rows"]),
+            "rows": [],
+        }
     years_all = list(parsed["years"])
     planning_start = None
     planning_end = None
@@ -3573,7 +3619,14 @@ def build_comparison_table_context(
         for column in visible_columns:
             if column.get("key") in ZV_ECOLOGY_EDITABLE_KEYS:
                 column["editable"] = True
+    norm_zv_selected = parse_norm_zv_parts(request_args, ZV_NORM_DEFAULT_PARTS)
     _attach_column_formula_tooltips(header_rows, _column_formula_texts())
+    if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
+        formula = " + ".join(label for attr, label in norm_zv_options() if attr in norm_zv_selected)
+        for row in header_rows:
+            for cell in row:
+                if cell.get("column_key") == "ZV_normir":
+                    cell["formula_tooltip"] = formula or "Слагаемые не выбраны"
     if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS or sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
         drop_key_header_row(header_rows)
     apply_full_height_headers(
@@ -3589,6 +3642,8 @@ def build_comparison_table_context(
     )
     station_check_pairs = station_generation_check_pairs(visible_columns)
     territory_filters = parse_territory_filters(request_args)
+    if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
+        territory_filters["norm_zv"] = norm_zv_selected
     numb1120_filter = _as_int_ids(_arg_values(request_args, "numb1120_filter"))
     territory_filters["numb1120_filter"] = numb1120_filter
     page = parse_page_arg(request_args)
@@ -3619,7 +3674,7 @@ def build_comparison_table_context(
         )
         if numb1120_filter:
             wanted_numbs = set(numb1120_filter)
-            # У сводной строки составной станции в numb — код головы, а фильтр может
+            # У сводной строки составной станции в numb – код головы, а фильтр может
             # содержать код любой её подгруппы.
             groups = [
                 group
@@ -3691,7 +3746,7 @@ def build_comparison_table_context(
             fuel = overlay.get((numb, year)) if numb is not None and year is not None else None
             if not row_matches_territory_filters(filled, source_columns, fuel, territory_filters):
                 continue
-            filled = _compute_derived_columns(filled, source_columns)
+            filled = _compute_derived_columns(filled, source_columns, norm_zv_selected)
             cells = [
                 _format_value(
                     filled[column["source_index"]] if column["source_index"] < len(filled) else None,
@@ -3813,6 +3868,7 @@ def build_comparison_table_context(
             digits=digits,
             emission_digits=emission_digits,
             specific_digits=specific_digits,
+            norm_zv_parts=norm_zv_selected,
         )
     keep_query = _keep_query_args(
         start,
@@ -3873,6 +3929,10 @@ def build_comparison_table_context(
         "show_reported": show_reported,
         "has_reported_columns": has_reported_columns,
         "station_check_pairs": station_check_pairs,
+        "norm_zv_options": norm_zv_options() if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS else [],
+        "norm_zv_selected": norm_zv_selected,
+        "norm_zv_default": list(ZV_NORM_DEFAULT_PARTS),
+        "norm_zv_label": KEY_LABELS["ZV_normir"],
         "has_active_filters": bool(
             numb1120_filter
             or station_header_filter

@@ -20,7 +20,7 @@ from app.generation.prospective_places.models.gaes.prospective_place_type_gaes_m
     PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES,
 )
 
-# Тип «Перечень ГАЭС в соответствии с Генеральной схемой…» — порядок только по display_order площадки.
+# Тип «Перечень ГАЭС в соответствии с Генеральной схемой…» – порядок только по display_order площадки.
 _GENERAL_SCHEME_GAES_PLACE_TYPE_NAME = PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES[0]
 
 
@@ -130,7 +130,7 @@ def _get_regional_districts_in_table():
 def _get_regional_district_ids_from_filters(filters):
     """
     По каскадным фильтрам (ОЭС, РЭС, ФО, субъект) возвращает множество ID субъектов РФ.
-    Приоритет: если выбран субъект — только он; иначе объединяем по ОЭС, РЭС, ФО.
+    Приоритет: если выбран субъект – только он; иначе объединяем по ОЭС, РЭС, ФО.
     """
     rd_ids = set()
 
@@ -172,7 +172,7 @@ def apply_prospective_places_gaes_station_order(query):
     """
     Сортировка площадок ГАЭС для списка и экспорта:
     сначала UnionEnergySystem.display_order (ОЭС), затем display_order площадки,
-    затем site_name. NULL у порядка ОЭС и площадки — в конце соответствующих ключей.
+    затем site_name. NULL у порядка ОЭС и площадки – в конце соответствующих ключей.
     """
     from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
     from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
@@ -320,7 +320,7 @@ def get_prospective_places_gaes_filter_context(filters):
     fd_objects = get_federal_district_list_full()
     federal_district_list = [{"id": fd.id, "name": fd.name} for fd in fd_objects]
 
-    # ОЭС и Субъект РФ — только те значения, которые есть в таблице
+    # ОЭС и Субъект РФ – только те значения, которые есть в таблице
     union_energy_system_list = _get_union_energy_systems_in_table()
     regional_district_list = _get_regional_districts_in_table()
 
@@ -411,7 +411,7 @@ def _gaes_sort_stations_within_place_type_group(tid, sts) -> None:
 def build_gaes_stations_grouped_by_place_type(stations):
     """Группирует площадки по типу площадки (карточка station).
 
-    Порядок групп: группа «тип не указан» — в начале; с указанным типом — по
+    Порядок групп: группа «тип не указан» – в начале; с указанным типом – по
     минимальному display_order ОЭС в группе, затем по названию типа.
     Внутри группы «Перечень ГАЭС в соответствии с Генеральной схемой…»: только
     display_order площадки (как на карточке /gaes/<id>/), затем site_name.

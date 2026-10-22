@@ -120,7 +120,7 @@ def main() -> int:
         client = app.test_client()
         _login_client(client, "fuel-test")
 
-        # 1) GET — страница создания агрегата доступна и редактируема
+        # 1) GET – страница создания агрегата доступна и редактируема
         resp = client.get(URL)
         html = resp.get_data(as_text=True)
         print(f"\n[GET] status={resp.status_code}")
@@ -140,7 +140,7 @@ def main() -> int:
             print("GET: machine name field OK")
         print("GET: edit mode OK" if _has_edit_mode(html) else "GET: edit mode FAIL")
 
-        # 2) POST — пустая форма → flash с конкретными ошибками, поля остаются редактируемыми
+        # 2) POST – пустая форма → flash с конкретными ошибками, поля остаются редактируемыми
         post_empty = _build_post_from_get(html, 2024, 2031, {
             "main_machine_name": "",
             "main_id_gen_company": "0",
@@ -160,7 +160,7 @@ def main() -> int:
             failures.append("POST validation: Save button missing after error")
         print("POST validation: fields editable OK" if _has_edit_mode(html_val) else "POST validation: edit FAIL")
 
-        # 3) POST — для ДЭС: прямое название без gen_company
+        # 3) POST – для ДЭС: прямое название без gen_company
         station_type = (station.station_type.name or "").strip().lower() if station.station_type else ""
         if station_type in ("тэс", "гэс", "гаэс"):
             name_overrides = {
@@ -190,7 +190,7 @@ def main() -> int:
             else:
                 print("POST name only: machine_name filled directly for DES")
 
-        # 4) POST — успешное создание → redirect на machine_id > 0
+        # 4) POST – успешное создание → redirect на machine_id > 0
         def _first_valid_option(html_text: str, select_name: str) -> str:
             block = re.search(
                 rf'<select[^>]+name="{re.escape(select_name)}"[^>]*>(.*?)</select>',
@@ -261,11 +261,11 @@ def main() -> int:
                     else:
                         failures.append("POST create: missing success flash after redirect")
                     if _has_readonly_mode(html_after) and not _has_edit_mode(html_after):
-                        print("POST create: after save — режим просмотра (ожидаемо для fuel-user на существующем агрегате)")
+                        print("POST create: after save – режим просмотра (ожидаемо для fuel-user на существующем агрегате)")
                     elif _has_edit_mode(html_after):
-                        print("POST create: after save — режим редактирования")
+                        print("POST create: after save – режим редактирования")
 
-                    # station_details — кнопка «Добавить агрегат» и переход обратно
+                    # station_details – кнопка «Добавить агрегат» и переход обратно
                     resp_sd = client.get(STATION_DETAILS_URL)
                     sd_html = resp_sd.get_data(as_text=True)
                     if "Добавить агрегат" not in sd_html:

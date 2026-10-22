@@ -185,7 +185,7 @@ def update_energy_zone_service(data, user):
                 changes.append(f"Номер: {old_val} → {new_val}")
                 obj.number = number
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
@@ -524,9 +524,9 @@ def export_energy_zone_mappings_service(
                 "Название в БД Топливо": mapping.external_name or "",
                 "Наименование энергорайона (Топливо)": mapping.external_nameoes or "",
                 "Сокр. энергорайона (Топливо)": mapping.external_abbr or "",
-                "UUID энергорайона": "—",
-                "ID энергорайона (текущая версия)": "—",
-                "Наименование энергорайона в АРМ": "—",
+                "UUID энергорайона": "–",
+                "ID энергорайона (текущая версия)": "–",
+                "Наименование энергорайона в АРМ": "–",
             }
         )
 

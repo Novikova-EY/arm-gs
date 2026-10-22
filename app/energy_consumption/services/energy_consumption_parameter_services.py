@@ -112,7 +112,7 @@ def _resolve_perimeter_variant_for_save(raw: object) -> str | None:
 
 
 def _parse_reassign_variant_code_payload(raw: object) -> str | None | _UnsetType:
-    """Разбор кода варианта для переноса: None — сброс (NULL в БД), _UNSET — ключ не передан."""
+    """Разбор кода варианта для переноса: None – сброс (NULL в БД), _UNSET – ключ не передан."""
     if raw is _UNSET:
         return _UNSET
     if raw in (None, ""):
@@ -173,7 +173,7 @@ def _resolve_summary_block_perimeter_variant_code(
     *,
     validate_entity_binding: bool = True,
 ) -> str | None | _UnsetType:
-    """Разбор кода варианта для блока сводки; пустое значение — сброс (NULL в БД)."""
+    """Разбор кода варианта для блока сводки; пустое значение – сброс (NULL в БД)."""
     if raw is _UNSET:
         return _UNSET
     if raw in (None, ""):
@@ -381,7 +381,7 @@ def _peak_datetime_as_msk(dt):
 
 
 def _peak_datetime_is_year_only_msk(dt) -> bool:
-    """Ввод «только год» сохраняется как 1 января 00:00 МСК — в столбце «исторический максимум» показываем год."""
+    """Ввод «только год» сохраняется как 1 января 00:00 МСК – в столбце «исторический максимум» показываем год."""
     d = _peak_datetime_as_msk(dt)
     if d is None:
         return False
@@ -408,7 +408,7 @@ def format_peak_datetime(dt) -> str:
 
 
 def format_peak_datetime_for_slice(dt, hist_slice: bool) -> str:
-    """Сводка: в столбце «исторический максимум» для ввода только года — строка «ГГГГ», иначе как format_peak_datetime."""
+    """Сводка: в столбце «исторический максимум» для ввода только года – строка «ГГГГ», иначе как format_peak_datetime."""
     if dt is None:
         return ""
     if hist_slice and _peak_datetime_is_year_only_msk(dt):
@@ -471,7 +471,7 @@ def get_demand_rows(
     perimeter_variant_code: str | None = None,
 ):
     """
-    Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
+    Список строк параметров для родителя. fk_column_name=None – модель без FK (РФ целиком).
     """
     from app.energy_consumption.services.ec_demand_rows_bulk_cache import (
         get_demand_rows_from_bulk,
@@ -795,7 +795,7 @@ def sync_energy_zone_consumption_aggregates(
 def _federal_district_excluded_from_sync(fd: FederalDistrict) -> bool:
     name = (getattr(fd, "name", None) or "").strip()
     cf = name.casefold()
-    for prefix in ("фо - ", "фо — "):
+    for prefix in ("фо - ", "фо – "):
         p = prefix.casefold()
         if cf.startswith(p):
             cf = cf[len(prefix) :].strip()
@@ -1002,7 +1002,7 @@ def resolve_max_power_mw_for_save(
 ) -> Optional[Decimal]:
     """
     Видимое поле может быть округлено относительно БД. Если текст совпадает с отображением
-    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе — то, что ввёл пользователь.
+    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввёл пользователь.
     """
     vis = parse_decimal(visible_raw if visible_raw is not None else "")
     if not str(db_snapshot_raw or "").strip():
@@ -1095,7 +1095,7 @@ def validate_demand_post_complete(
     require_combined_on_ez: bool = False,
 ) -> None:
     """
-    Для маршрутов потребления — только модели gs_ec.
+    Для маршрутов потребления – только модели gs_ec.
     Аргументы combined_* оставлены для совместимости вызовов из маршрутов.
     """
     del require_combined_oe_ees, require_combined_on_ez
@@ -1244,7 +1244,7 @@ def save_demand_rows_from_post(
 ) -> tuple[int, int]:
     """
     POST: row_id[], slice_year[], ec_mln[], ec_sipr[], ec_mln_db[], ec_sipr_db[], note[], del[].
-    Год — только календарный номер (целое).
+    Год – только календарный номер (целое).
     """
     del require_combined_oe_ees, require_combined_on_ez
     if not _is_energy_consumption_parameter_model(demand_model):
@@ -1320,7 +1320,7 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
 
 def _dash_summary_display(value: Any) -> str:
     if value in (None, ""):
-        return "—"
+        return "–"
     return str(value)
 
 
@@ -1477,7 +1477,7 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
         return _summary_numeric_display(v, digits=display_digits)
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
-    return "—"
+    return "–"
 
 
 _SUMMARY_STANDALONE_DEMAND_MODELS = frozenset(
@@ -1652,11 +1652,11 @@ def _summary_row_tri_snapshot(row: Any) -> dict[str, Any]:
 
 def _fmt_tri_snap_val(val: Any, key: str, rounding_digits: int) -> str:
     if val is None:
-        return "—"
+        return "–"
     if key in ("mln", "sipr"):
-        return format_decimal_trim_for_display(val, digits=rounding_digits) or "—"
+        return format_decimal_trim_for_display(val, digits=rounding_digits) or "–"
     s = str(val).strip()
-    return s if s else "—"
+    return s if s else "–"
 
 
 def _tri_snap_numeric_equal(a: Any, b: Any) -> bool:
@@ -1709,8 +1709,8 @@ def _diff_tri_snap_for_log(
         fb = _fmt_tri_snap_val(vb, k, rounding_digits)
         fa = _fmt_tri_snap_val(va, k, rounding_digits)
         if k in ("mln", "sipr") and fb == fa:
-            fb = format_decimal_trim_for_display(vb, digits=0) or "—"
-            fa = format_decimal_trim_for_display(va, digits=0) or "—"
+            fb = format_decimal_trim_for_display(vb, digits=0) or "–"
+            fa = format_decimal_trim_for_display(va, digits=0) or "–"
         parts.append(f"{label}: {fb} → {fa}")
     return parts
 
@@ -1743,7 +1743,7 @@ def _parent_binding_label_for_ec_summary_log(
     ent = q.first()
     pid = int(parent_id)
     if ent is None:
-        return f"{parent_fk_column}={pid}; {ru_short}=— (нет в справочнике для версии БД)"
+        return f"{parent_fk_column}={pid}; {ru_short}=– (нет в справочнике для версии БД)"
     nm = getattr(ent, "name", None)
     name_s = str(nm).strip() if nm is not None else ""
     if name_s:
@@ -1876,7 +1876,7 @@ def _save_gaes_charge_summary_cell(
 
     if row is None:
         if new_val is None:
-            return "—"
+            return "–"
         row = StationGaesChargeConsumption(
             id_station=int(gaes_station_id),
             year_number=year_n,
@@ -1943,7 +1943,7 @@ def persist_computed_energy_consumption_summary_rows_after_change(
 ) -> int:
     """Пересчитать формулы сводки потребления и записать расчётные строки во все версии БД.
 
-    Временно — как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    Временно – как импорт Excel; позже вернёмся к пересчёту только текущей версии.
     """
     from flask_login import current_user
 
@@ -2175,7 +2175,7 @@ def save_demand_summary_cell(
         )
         if row is None:
             if not str(raw_value or "").strip():
-                return "—"
+                return "–"
             row = create_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
@@ -2479,7 +2479,7 @@ def _reassign_summary_entity_perimeter_variant_all_versions(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — сохранение варианта периметра невозможно."
+            "В системе нет зарегистрированных версий БД – сохранение варианта периметра невозможно."
         )
     user = _username()
     updated = 0
@@ -2616,7 +2616,7 @@ def _assert_summary_perimeter_variant_reassign_allowed(
     )
     if conflict is not None and getattr(conflict, "id", None) != getattr(row, "id", None):
         raise ValueError(
-            f"Для года {year_n} уже есть данные с вариантом «{to_variant_code or '—'}». "
+            f"Для года {year_n} уже есть данные с вариантом «{to_variant_code or '–'}». "
             "Сначала удалите или перенесите их вручную."
         )
 
@@ -2731,7 +2731,7 @@ def reassign_summary_entity_perimeter_variant(
         )
         if from_group and to_group and from_group != to_group:
             raise ValueError(
-                "Нельзя перенести данные между блоками «с НТ» и «без НТ» — "
+                "Нельзя перенести данные между блоками «с НТ» и «без НТ» – "
                 "выберите вариант в той же НТ-группе."
             )
 

@@ -116,9 +116,9 @@
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column">
                                         {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table1(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—">
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table1(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–">
                                         {% else %}
-                                        {{ format_decimal_table1(v) if v is not none else '—' }}
+                                        {{ format_decimal_table1(v) if v is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -186,7 +186,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column {% if is_calc %}bg-light-subtle{% endif %}">
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -231,9 +231,9 @@
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column">
                                         {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table2(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—">
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table2(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–">
                                         {% else %}
-                                        {{ format_decimal_table2(v) if v is not none else '—' }}
+                                        {{ format_decimal_table2(v) if v is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -278,7 +278,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column">
-                                        {{ format_decimal_table3(v) if v is not none else '—' }}
+                                        {{ format_decimal_table3(v) if v is not none else '–' }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -322,7 +322,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column">
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -377,7 +377,7 @@
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     <td class="power-column bg-light-subtle">
-                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {{ format_decimal_table4(v) if v is not none else '–' }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -413,9 +413,9 @@
                                     {% set v_raw = raw_values_by_year.get(y) %}
                                     <td class="power-column">
                                         {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v_raw if v_raw is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—">
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v_raw if v_raw is not none else '' }}" class="form-control form-control-sm text-center" placeholder="–">
                                         {% else %}
-                                        {{ v_display if v_display is not none else '—' }}
+                                        {{ v_display if v_display is not none else '–' }}
                                         {% endif %}
                                     </td>
                                 {% endfor %}

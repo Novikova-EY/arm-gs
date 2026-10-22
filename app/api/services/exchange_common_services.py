@@ -45,9 +45,9 @@ def dataset_envelope(
 ) -> dict[str, Any]:
     """Оболочка набора: срез всегда привязан к версии БД АРМ.
 
-    ``database_version`` — PK ``gs_sys.gs_database_versions.id`` (числовой id версии).
-    ``version_number`` — человекочитаемый номер (например «ГС 2023-2042 (утвержденная)»).
-    ``version`` — то же значение, что ``database_version``; это не ISO-дата.
+    ``database_version`` – PK ``gs_sys.gs_database_versions.id`` (числовой id версии).
+    ``version_number`` – человекочитаемый номер (например «ГС 2023-2042 (утвержденная)»).
+    ``version`` – то же значение, что ``database_version``; это не ISO-дата.
     """
     label = version_number
     if label is None and database_version is not None:

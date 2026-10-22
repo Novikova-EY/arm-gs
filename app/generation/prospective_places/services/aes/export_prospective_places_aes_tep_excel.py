@@ -167,7 +167,7 @@ def write_aes_tep_screen_sheet(
                 t["vlp"],
             ]
         try:
-            u = (m.get("unit_capacity_mw") or "").replace("—", "").strip()
+            u = (m.get("unit_capacity_mw") or "").replace("–", "").strip()
             if u:
                 total_mw += float(u.replace(",", "."))
         except (ValueError, TypeError):

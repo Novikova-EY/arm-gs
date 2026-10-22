@@ -34,7 +34,7 @@ def load_by_id_with_version(
 ) -> Optional[T]:
     """
     Загружает запись по id в запрошенной версии БД.
-    Если не найдена — по external_code якорной строки с этим id.
+    Если не найдена – по external_code якорной строки с этим id.
     """
     def _base_query():
         if query_factory is not None:
@@ -45,7 +45,7 @@ def load_by_id_with_version(
     if entity:
         return entity
 
-    # Якорь — запись с id из URL (без фильтра версии); при query_factory id уже в запросе
+    # Якорь – запись с id из URL (без фильтра версии); при query_factory id уже в запросе
     if query_factory is not None:
         anchor = query_factory().first()
     else:
@@ -71,7 +71,7 @@ def load_by_id_with_version_or_anchor(
     query_factory: Optional[Callable[[], Any]] = None,
 ) -> Optional[T]:
     """
-    Как load_by_id_with_version, но если сущности нет в запрошенной версии —
+    Как load_by_id_with_version, но если сущности нет в запрошенной версии –
     возвращает якорную запись с этим id (строку другой версии / без версии).
 
     Нужно там, где по ссылке из списка со смешанными версиями должна открываться
@@ -120,7 +120,7 @@ def resolve_machine_details_ids(
 ) -> Optional[tuple[int, int]]:
     """
     Возвращает (station_id, machine_id) в текущей версии БД или None.
-    machine_id=0 (новый агрегат) — только станция.
+    machine_id=0 (новый агрегат) – только станция.
     """
     from app.generation.models.station.station_model import Station
     from app.generation.models.machine.machine_model import Machine
@@ -156,7 +156,7 @@ def resolve_refdata_fk_id_for_version(
 ) -> int | None:
     """
     Находит id строки справочника с тем же ref_uuid в указанной версии БД.
-    source_pk_id — id записи из формы (обычно текущей версии).
+    source_pk_id – id записи из формы (обычно текущей версии).
     """
     if source_pk_id is None:
         return None
@@ -304,7 +304,7 @@ def resolve_equipment_group_type_id_for_version(
 def entity_log_ids_by_external_code(model_class: type, entity_id: int) -> list[int]:
     """
     Все id записей с тем же external_code (копии по версиям БД).
-    Для журнала изменений: log.entity_id — id версии, из которой сохраняли.
+    Для журнала изменений: log.entity_id – id версии, из которой сохраняли.
     """
     anchor = db.session.get(model_class, entity_id)
     if anchor is None:

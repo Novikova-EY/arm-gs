@@ -3,7 +3,7 @@
 Контроль Access «Проверка-суммы-частей»: parent.FuelParam.X − Σ children.X.
 
 Порог как у коллег: |Δ| > 0.5 → подсветка ячейки родителя и текст с цифрами.
-Если у станции (родителя) ved>0, учёт на уровне станции — сумму по детям не сверяем.
+Если у станции (родителя) ved>0, учёт на уровне станции – сумму по детям не сверяем.
 """
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ def _to_decimal(value: Any) -> Decimal:
 
 
 def _is_real_fuel_param(param: Any) -> bool:
-    """Синтетическая строка «…, всего» без сохранённого FuelParam — не сверяем."""
+    """Синтетическая строка «…, всего» без сохранённого FuelParam – не сверяем."""
     if param is None:
         return False
     if isinstance(param, EquipmentGroupFuelParam):
@@ -166,7 +166,7 @@ def compare_parent_to_children_sum(
     Сверяет один год: parent − Σ children по attrs.
     Возвращает {attr: {parent, children_sum, delta, message}} только для |Δ| > threshold.
 
-    Если у родителя ved>0, станция учитывается целиком (station_only) —
+    Если у родителя ved>0, станция учитывается целиком (station_only) –
     сумму по детям не сверяем.
     """
     children = [p for p in child_params if p is not None]

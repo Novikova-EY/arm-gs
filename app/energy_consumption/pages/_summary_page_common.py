@@ -25,7 +25,7 @@ def finalize_ec_summary_page_context(context: dict[str, Any]) -> dict[str, Any]:
         ensure_first_sa_variant_formula_tooltips,
     )
 
-    # Иконки «i» у Первой СЗ — до подстановки переопределений текстов формул.
+    # Иконки «i» у Первой СЗ – до подстановки переопределений текстов формул.
     ensure_first_sa_variant_formula_tooltips(context.get("summary_rows"))
     formula_texts = build_ec_formula_texts_map()
     context["ec_formula_texts"] = formula_texts

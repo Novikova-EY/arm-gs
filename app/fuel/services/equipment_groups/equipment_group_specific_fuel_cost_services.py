@@ -3,7 +3,7 @@
 """
 Read/query/display для страницы «Стоимость для групп оборудования».
 
-Запись — в equipment_group_specific_fuel_cost_write_services.py.
+Запись – в equipment_group_specific_fuel_cost_write_services.py.
 """
 
 from collections import defaultdict
@@ -339,10 +339,10 @@ def build_equipment_group_specific_fuel_cost_hierarchy(rows):
         if not stations:
             return None
         st_id, st_name = stations[0]
-        return (st_id, st_name or "—")
+        return (st_id, st_name or "–")
 
     def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
+        st_id, st_name = station_tuple or (None, "–")
         return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
 
     hierarchy_flat = []
@@ -381,7 +381,7 @@ def build_equipment_group_specific_fuel_cost_hierarchy(rows):
                 res_list.append(
                     {
                         "res_id": res_id,
-                        "res_name": res_names.get(res_id, "—"),
+                        "res_name": res_names.get(res_id, "–"),
                         "group_blocks": [
                             gb for sb in station_blocks for gb in sb["group_blocks"]
                         ],
@@ -392,14 +392,14 @@ def build_equipment_group_specific_fuel_cost_hierarchy(rows):
             ues_list.append(
                 {
                     "ues_id": ues_id,
-                    "ues_name": ues_names.get(ues_id, "—"),
+                    "ues_name": ues_names.get(ues_id, "–"),
                     "res_list": res_list,
                 }
             )
         hierarchy_flat.append(
             {
                 "est_id": est_id,
-                "est_name": est_names.get(est_id, "—"),
+                "est_name": est_names.get(est_id, "–"),
                 "ues_list": ues_list,
             }
         )

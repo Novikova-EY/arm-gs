@@ -16,6 +16,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     UNSPECIFIED_LEVEL_NAME,
     VSE_SHEET_SLUGS,
     ZV_ANALYSIS_SHEET_SLUGS,
+    ZV_NORM_DEFAULT_PARTS,
 )
 from app.fuel.services.equipment_groups.composite_station_semantics import (
     is_composite_child_group,
@@ -60,7 +61,7 @@ def _as_int_or_none(value: Any) -> int | None:
 
 
 def _composite_parent_numb(group: dict[str, Any]) -> int | None:
-    """NUMB головы составной станции, если группа — её подгруппа (MAIN > 0)."""
+    """NUMB головы составной станции, если группа – её подгруппа (MAIN > 0)."""
     numb = _as_int_or_none(group.get("numb"))
     eg = group.get("equipment_group")
     if numb is None or eg is None or not is_composite_child_group(eg):
@@ -75,7 +76,7 @@ def _equipment_groups_by_numb(
     numbs: set[int],
     version_id: int | None,
 ) -> dict[int, Any]:
-    """EquipmentGroup по NUMB: текущая версия, для отсутствующих — любая."""
+    """EquipmentGroup по NUMB: текущая версия, для отсутствующих – любая."""
     if not numbs:
         return {}
     from app.extensions import db
@@ -109,7 +110,7 @@ def _boiler_equipment_groups(version_id: int | None = None) -> list[Any]:
     """
     Группы оборудования с типом «котельная».
 
-    «Котельная» — это поле «Тип группы оборудования» (EquipmentGroupType.name
+    «Котельная» – это поле «Тип группы оборудования» (EquipmentGroupType.name
     за связью EquipmentGroupSetStation), а не название группы.
     """
     from sqlalchemy import func
@@ -181,9 +182,9 @@ def hidden_boiler_numbs_for_sheet(
     """
     NUMB1120 котельных, которые на вкладке не показываем.
 
-    «С котельными» — все группы оборудования плюс котельные в составе станции
+    «С котельными» – все группы оборудования плюс котельные в составе станции
     (MAIN заполнен, т.е. котельная входит в другую группу оборудования);
-    «Без котельных» — все группы оборудования, кроме котельных любого уровня.
+    «Без котельных» – все группы оборудования, кроме котельных любого уровня.
     """
     slug = str(sheet_slug or "").strip()
     if slug in BEZ_KOT_SHEET_SLUGS:
@@ -219,7 +220,7 @@ def _groups_without_boilers(
 
 
 def _group_numbs(group: dict[str, Any]) -> list[int]:
-    """NUMB группы и её подгрупп (у сводной строки составной станции — все участники)."""
+    """NUMB группы и её подгрупп (у сводной строки составной станции – все участники)."""
     return [
         numb
         for numb in (group.get("member_numbs") or [group.get("numb")])
@@ -233,10 +234,10 @@ def _drop_groups_without_station(
     """
     Убирает группы оборудования, не привязанные к станции «Генерации».
 
-    Привязка на странице — это ссылка на карточку станции в столбце
+    Привязка на странице – это ссылка на карточку станции в столбце
     «Электростанция», поэтому группа без такой ссылки не нужна. У сводной строки
     составной станции достаточно привязки любой подгруппы.
-    Второй элемент — NUMB убранных групп, чтобы убрать их и из фильтра numb1120.
+    Второй элемент – NUMB убранных групп, чтобы убрать их и из фильтра numb1120.
     """
     from app.ecology.services.gis_tes_fuel_comparison_services import (
         load_generation_station_links_by_numb,
@@ -262,7 +263,7 @@ def _merged_composite_group(
     parent_group: dict[str, Any] | None,
     child_groups: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Сводная строка составной станции: код головы, участники — она сама и подгруппы."""
+    """Сводная строка составной станции: код головы, участники – она сама и подгруппы."""
     first = parent_group or child_groups[0]
     meta = dict(first.get("meta") or {})
     meta["station_name"] = _eg_display_name(parent_eg)
@@ -327,7 +328,7 @@ def merge_composite_groups(
             parent_group.get("equipment_group") if parent_group else None
         )
         # MAIN заполняется и у котельных в составе станции: сворачиваем только
-        # подгруппы, у которых голова — действительно составная станция (COMP=1).
+        # подгруппы, у которых голова – действительно составная станция (COMP=1).
         if parent_eg is None or not is_composite_parent_group(parent_eg):
             continue
         merged_by_parent[parent_numb] = _merged_composite_group(
@@ -597,8 +598,8 @@ def _composite_filled_row(
     """
     Сводная строка составной станции: подпоказатели подгрупп складываются.
 
-    Код/год/станционные столбцы («Генерация») остаются у головы (иначе — у первой
-    подгруппы); числовые столбцы — сумма подгрупп, а если у подгрупп значения нет —
+    Код/год/станционные столбцы («Генерация») остаются у головы (иначе – у первой
+    подгруппы); числовые столбцы – сумма подгрупп, а если у подгрупп значения нет –
     значение головы (у оболочки составной станции своих параметров обычно нет).
     Расчётные столбцы (d_*/K_*/CO2/UD_*) пересчитываются позже по итогам.
     """
@@ -626,7 +627,7 @@ def _station_links_for_group(
     members: list[dict[str, Any]],
     station_links_by_numb: dict[Any, Any],
 ) -> list[Any]:
-    """Ссылки на карточку станции «Генерации»; для сводной строки — у любой подгруппы."""
+    """Ссылки на карточку станции «Генерации»; для сводной строки – у любой подгруппы."""
     links = station_links_by_numb.get(numb)
     if links:
         return links
@@ -731,7 +732,7 @@ def _list_pg_groups_from_fuel(
     groups = _groups_without_boilers(groups, hidden_boiler_numbs)
     groups = merge_composite_groups(groups, version_id=version_id)
     if slug in VSE_SHEET_SLUGS:
-        # «С котельными»: «Электростанция» у строки — станция «Генерации»,
+        # «С котельными»: «Электростанция» у строки – станция «Генерации»,
         # поэтому группы без привязки к станции не показываем.
         groups, hidden_station_numbs = _drop_groups_without_station(groups)
         numb1120_filter_choices = [
@@ -917,7 +918,10 @@ def fill_pg_group_year_rows(
             ):
                 continue
             fuel = member_rows[0][1]
-            filled = _compute_derived_columns(filled, source_columns)
+            filled = _compute_derived_columns(
+                filled, source_columns,
+                norm_zv_parts=territory_filters.get("norm_zv", ZV_NORM_DEFAULT_PARTS),
+            )
             cells = [
                 _format_value(
                     filled[column["source_index"]]
@@ -1017,10 +1021,10 @@ def collect_pg_groups_from_fuel(
     specific_digits: int | None = None,
 ) -> tuple[list[dict[str, Any]], list[int]]:
     """
-    Состав отображаемых групп — из модуля Топливо (как edit_data).
+    Состав отображаемых групп – из модуля Топливо (как edit_data).
     К строкам подтягиваются ТЭП и параметры/отчёт ПГ либо отчётные ЗВ.
 
-    hydrate=False — только состав/иерархия без расчёта ячеек (для пагинации).
+    hydrate=False – только состав/иерархия без расчёта ячеек (для пагинации).
     """
     groups, numb1120_filter_choices = _list_pg_groups_from_fuel(
         sheet_slug,

@@ -131,7 +131,7 @@ def _request_flag(name: str) -> bool:
 
 
 def parse_ec_client_row_flags() -> dict[str, bool]:
-    """Флаги видимости строк из GET — по умолчанию всё выключено (как на странице)."""
+    """Флаги видимости строк из GET – по умолчанию всё выключено (как на странице)."""
     return {
         "sipr": _request_flag("pd_ec_sipr"),
         "gaes": _request_flag("pd_ec_gaes"),

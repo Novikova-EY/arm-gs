@@ -44,7 +44,7 @@ def test_cursor_own_base_year_hours_before_cyear():
 
 
 def test_cursor_reuses_previous_station_hb_when_base_year_not_in_filter():
-    """VBA: 2024 с ved=0 не в filter1 — hb остаётся с предыдущей станции."""
+    """VBA: 2024 с ved=0 не в filter1 – hb остаётся с предыдущей станции."""
     rows = sort_access_filter_rows(
         [
             SimpleNamespace(year_number=2024, h=Decimal("2948.8"), nust=2520, numb1=383),

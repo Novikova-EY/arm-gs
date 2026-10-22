@@ -178,7 +178,7 @@ def _get_current_year_number(database_version_id: int, source_version_id: int | 
     """
     lookup_version_id = source_version_id or database_version_id
 
-    # Единый поиск по подстроке — поддерживаем разные варианты названий в БД
+    # Единый поиск по подстроке – поддерживаем разные варианты названий в БД
     year_feature = (
         YearFeature.query.filter_by(database_version_id=lookup_version_id)
         .filter(YearFeature.name.ilike("%текущ%"))

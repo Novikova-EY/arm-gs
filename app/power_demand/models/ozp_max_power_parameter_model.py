@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Максимумы потребления мощности ОЗП (осенне-зимний период) — значения по периодам ОЗП."""
+"""Максимумы потребления мощности ОЗП (осенне-зимний период) – значения по периодам ОЗП."""
 from sqlalchemy import Numeric
 from sqlalchemy.sql import func
 
@@ -9,7 +9,7 @@ from config import SCHEMA_POWER_DEMAND, SCHEMA_REFDATA
 
 
 class OzpMaxPowerParameter(db.Model, AuditMixin):
-    """Одна строка — один период ОЗП (например 2019–2020, ozp_end_year=2020)."""
+    """Одна строка – один период ОЗП (например 2019–2020, ozp_end_year=2020)."""
 
     __tablename__ = "gs_pd_ozp_max_power_params"
     __table_args__ = ({"schema": SCHEMA_POWER_DEMAND},)

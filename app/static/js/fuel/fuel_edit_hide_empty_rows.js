@@ -67,7 +67,7 @@
 
     function valueIsMeaningful(raw) {
         var t = String(raw == null ? "" : raw).replace(/\s+/g, " ").trim();
-        if (!t || t === "—" || t === "-" || t === "–" || t.toLowerCase() === "none") {
+        if (!t || t === "–" || t === "-" || t === "–" || t.toLowerCase() === "none") {
             return false;
         }
         var n = parseFloat(t.replace(/\s/g, "").replace(",", "."));
@@ -165,7 +165,7 @@
             host.insertBefore(td, host.firstChild);
             return;
         }
-        /* numb1120 и прочие rowspan-ячейки группы — после «Пересчет», иначе год. */
+        /* numb1120 и прочие rowspan-ячейки группы – после «Пересчет», иначе год. */
         var anchor =
             host.querySelector("td.fuel-composite-recalc-cell") ||
             host.querySelector("td[data-fuel-group-label]");
@@ -347,7 +347,7 @@
             if (defOn) {
                 forceShowEmpty = forceShowEmpty || params.has("equipment_group_ids");
             }
-            /* «Проверка» на ТЭП: все отобранные годы пустые — не прячем их. */
+            /* «Проверка» на ТЭП: все отобранные годы пустые – не прячем их. */
             if (params.get("check_empty_specific") === "1") {
                 forceShowEmpty = true;
             }

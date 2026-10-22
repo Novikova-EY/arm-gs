@@ -318,11 +318,11 @@ def test_inject_peak_usage_hours_rows_for_centralized_zone_without_nt():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
         {
             "parameter_key": "avg_temp",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
     ]
     ec_index = {
@@ -766,11 +766,11 @@ def test_inject_combined_peak_usage_hours_after_combined_on_row():
         },
         {
             "parameter_key": "peak_datetime",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
         {
             "parameter_key": "avg_temp",
-            "year_values": ["—"],
+            "year_values": ["–"],
         },
         {
             "parameter_key": "combined_on_ees",
@@ -850,8 +850,8 @@ def test_inject_combined_peak_usage_hours_updates_rowspan_for_multiple_rows():
             "parameter_key": "max_power",
             "year_values": ["100"],
         },
-        {"parameter_key": "peak_datetime", "year_values": ["—"]},
-        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {"parameter_key": "peak_datetime", "year_values": ["–"]},
+        {"parameter_key": "avg_temp", "year_values": ["–"]},
         {
             "parameter_key": "combined_on_oes",
             "parameter_label": "Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт",
@@ -926,8 +926,8 @@ def test_combined_chi_row_copies_id_federal_district_for_res_block():
             "parameter_key": "max_power",
             "year_values": ["100"],
         },
-        {"parameter_key": "peak_datetime", "year_values": ["—"]},
-        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {"parameter_key": "peak_datetime", "year_values": ["–"]},
+        {"parameter_key": "avg_temp", "year_values": ["–"]},
         {
             "parameter_key": "combined_on_fo",
             "parameter_label": (
@@ -969,7 +969,7 @@ def test_inject_combined_peak_usage_hours_for_energy_zone_block():
         {
             "show_entity_cell": True,
             "entity_rowspan": 4,
-            "entity_label": "1 — ОЭС Северо-Запада",
+            "entity_label": "1 – ОЭС Северо-Запада",
             "demand_model_name": "EnergyZoneDemandParameter",
             "parent_fk_column": "id_energy_zone",
             "parent_id": ez_id,
@@ -978,8 +978,8 @@ def test_inject_combined_peak_usage_hours_for_energy_zone_block():
             "parameter_key": "max_power",
             "year_values": ["100"],
         },
-        {"parameter_key": "peak_datetime", "year_values": ["—"]},
-        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {"parameter_key": "peak_datetime", "year_values": ["–"]},
+        {"parameter_key": "avg_temp", "year_values": ["–"]},
         {
             "parameter_key": "combined_on_ees",
             "parameter_label": (
@@ -1036,8 +1036,8 @@ def test_inject_combined_peak_usage_hours_for_res_energy_zone_block():
             "parameter_key": "max_power",
             "year_values": ["100"],
         },
-        {"parameter_key": "peak_datetime", "year_values": ["—"]},
-        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {"parameter_key": "peak_datetime", "year_values": ["–"]},
+        {"parameter_key": "avg_temp", "year_values": ["–"]},
         {
             "parameter_key": "combined_on_ees",
             "parameter_label": (

@@ -14,8 +14,8 @@ _SCHEMA_RENAMES = {
 def _normalize_schema_name(value: str | None, default: str) -> str:
     """
     Нормализует имя схемы БД.
-    - Если пришло legacy-имя (generation/auth/logs) — автоматически маппим на новое.
-    - Если значение пустое/None — используем default.
+    - Если пришло legacy-имя (generation/auth/logs) – автоматически маппим на новое.
+    - Если значение пустое/None – используем default.
     """
     if value is None:
         return default
@@ -89,7 +89,7 @@ STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS = _parse_str_set(
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
 # DEBUG определяется по FLASK_ENV или явной переменной DEBUG.
-# Важно: пустое/не заданное DEBUG НЕ должно принудительно выключать debug —
+# Важно: пустое/не заданное DEBUG НЕ должно принудительно выключать debug –
 # тогда dev-режим (FLASK_ENV=development) сможет включать автообновление шаблонов.
 def _resolve_debug() -> bool:
     flask_env = (os.getenv("FLASK_ENV") or "").lower()
@@ -101,7 +101,7 @@ def _resolve_debug() -> bool:
             return True
         if explicit in ("false", "0", "no"):
             return False
-        # если переменная есть, но пустая/невалидная — считаем как "не задано"
+        # если переменная есть, но пустая/невалидная – считаем как "не задано"
 
     if flask_env == "development":
         return True
@@ -182,7 +182,7 @@ class Config:
     # Настройки бэкапов БД.
     # На сервере: BACKUP_BASE_DIR=/var/backups/generation-app + systemd timer
     # generation-app-backup.timer (см. docs/deployment/ASTRA_INSTALL.md).
-    # Локально по умолчанию — каталог backups/ в корне проекта.
+    # Локально по умолчанию – каталог backups/ в корне проекта.
     BACKUP_BASE_DIR = os.getenv('BACKUP_BASE_DIR', 'backups')
     ENABLE_SCHEDULED_BACKUPS = os.getenv('ENABLE_SCHEDULED_BACKUPS', 'False').lower() == 'true'
     AUTO_BACKUP_DIR = os.getenv(
@@ -202,7 +202,7 @@ class Config:
     DEFAULT_DATABASE_VERSION_ID = os.getenv('DEFAULT_DATABASE_VERSION_ID', None)  # ID версии или None для автоопределения
     DEFAULT_DATABASE_VERSION_NUMBER = os.getenv('DEFAULT_DATABASE_VERSION_NUMBER', None)  # Номер версии или None
 
-    # Flask 3.1 / Werkzeug: по умолчанию MAX_FORM_MEMORY_SIZE = 500 KiB — для крупных
+    # Flask 3.1 / Werkzeug: по умолчанию MAX_FORM_MEMORY_SIZE = 500 KiB – для крупных
     # POST (массовое сохранение топливных параметров, импорты и т.д.) этого мало → 413.
     # Размер тела application/x-www-form-urlencoded проверяется против этого значения.
     MAX_FORM_MEMORY_SIZE = int(

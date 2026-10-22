@@ -50,7 +50,7 @@ HEAT_AND_TARIFFS_METRIC_COLUMNS = [
 
 def _fake_equipment_group(param: EquipmentGroupHeatAndTariffs) -> SimpleNamespace:
     """Синтетическая «группа» для записей без привязки к EquipmentGroup."""
-    label = (param.name_eto or "").strip() or (param.name_goroda or "").strip() or "—"
+    label = (param.name_eto or "").strip() or (param.name_goroda or "").strip() or "–"
     # Отрицательный стабильный id для пагинации/группировки
     key_parts = (
         param.kod_goroda or 0,
@@ -279,7 +279,7 @@ def _pivot_heat_and_tariffs_group_block(eg_rows, years):
 def compute_heat_and_tariffs_year_summary(rows_to_sum, years):
     """
     Суммы по годам для сводных строк.
-    Q суммируется; TARIF не агрегируется (в шаблоне «—»).
+    Q суммируется; TARIF не агрегируется (в шаблоне «–»).
     """
     from decimal import Decimal
 
@@ -418,14 +418,14 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
             stations = eg_to_stations.get(eg_id, [])
             if stations:
                 st_id, st_name = stations[0]
-                return (st_id, st_name or "—")
+                return (st_id, st_name or "–")
         city = (
             getattr(sample_param, "name_goroda", None) if sample_param else None
-        ) or "—"
+        ) or "–"
         return (None, city)
 
     def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
+        st_id, st_name = station_tuple or (None, "–")
         return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
 
     hierarchy_flat = []
@@ -487,7 +487,7 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
                 res_list.append(
                     {
                         "res_id": res_id,
-                        "res_name": res_names.get(res_id, "—"),
+                        "res_name": res_names.get(res_id, "–"),
                         "group_blocks": [
                             gb for sb in station_blocks for gb in sb["group_blocks"]
                         ],
@@ -498,14 +498,14 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
             ues_list.append(
                 {
                     "ues_id": ues_id,
-                    "ues_name": ues_names.get(ues_id, "—"),
+                    "ues_name": ues_names.get(ues_id, "–"),
                     "res_list": res_list,
                 }
             )
         hierarchy_flat.append(
             {
                 "est_id": est_id,
-                "est_name": est_names.get(est_id, "—"),
+                "est_name": est_names.get(est_id, "–"),
                 "ues_list": ues_list,
             }
         )

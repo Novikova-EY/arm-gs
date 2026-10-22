@@ -67,7 +67,7 @@ def _bump_cache_generation() -> int:
 
 
 def strip_pd_pagination_from_query_string(query_string: str) -> str:
-    """Убирает pd_page / pd_page_size — ключ полного build общий для всех страниц."""
+    """Убирает pd_page / pd_page_size – ключ полного build общий для всех страниц."""
     if not query_string:
         return ""
     pairs = [
@@ -239,7 +239,7 @@ def get_cached_oes_national_prefix_sources(
     cached = get_cached_value(key)
     if cached is None:
         return None
-    # Формулы мутируют строки на месте — отдаём копию.
+    # Формулы мутируют строки на месте – отдаём копию.
     return copy.deepcopy(cached)
 
 

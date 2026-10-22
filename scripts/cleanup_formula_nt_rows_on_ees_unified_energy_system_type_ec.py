@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Удаление строк with_nt / without_nt для типа энергосистемы «ЕЭС России» в
-gs_ec_energy_system_type_consumption_params — они появлялись после импорта Excel
+gs_ec_energy_system_type_consumption_params – они появлялись после импорта Excel
 из постобработки формул (ошибочная подстановка привязок агрегата «ЭЭС России»).
 
 Запуск:

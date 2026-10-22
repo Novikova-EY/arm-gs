@@ -51,7 +51,7 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
     font-size: 1.05rem;
     text-align: left;
   }
-  /* config.json и одиночные плитки — на всю ширину */
+  /* config.json и одиночные плитки – на всю ширину */
   .output-docs-page .output-docs-wrap > .mb-3 > .home-outline__tile {
     flex: 0 0 auto;
     width: 100%;
@@ -142,8 +142,8 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
           value="{{ row.database_version }}"
           {% if selected_version_id and row.database_version == selected_version_id %}selected{% endif %}
         >
-          {{ row.database_version }}{% if row.version_number %} — {{
-          row.version_number }}{% endif %}{% if row.description %} — {{
+          {{ row.database_version }}{% if row.version_number %} – {{
+          row.version_number }}{% endif %}{% if row.description %} – {{
           row.description }}{% endif %}
         </option>
         {% endfor %}

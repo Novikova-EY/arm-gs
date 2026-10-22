@@ -65,7 +65,7 @@ def test_export_ee_generation_with_station_row():
                                         "eu_list": [
                                             {
                                                 "eu_id": 0,
-                                                "eu_name": "—",
+                                                "eu_name": "–",
                                                 "sign_groups": [
                                                     {
                                                         "stations": [
@@ -74,9 +74,9 @@ def test_export_ee_generation_with_station_row():
                                                                 "station_name": "ТЭЦ-1",
                                                                 "station_type_name": "ТЭЦ",
                                                                 "tes_types": "ТЭС",
-                                                                "tes_machine_type": "—",
+                                                                "tes_machine_type": "–",
                                                                 "primary_fuel": "Газ",
-                                                                "fuel_so": "—",
+                                                                "fuel_so": "–",
                                                                 "periods": {2024: 12.3456},
                                                             }
                                                         ],
@@ -143,7 +143,7 @@ def test_export_ee_generation_number_format_follows_rounding_digits():
                                         "eu_list": [
                                             {
                                                 "eu_id": 0,
-                                                "eu_name": "—",
+                                                "eu_name": "–",
                                                 "sign_groups": [
                                                     {
                                                         "stations": [
@@ -152,9 +152,9 @@ def test_export_ee_generation_number_format_follows_rounding_digits():
                                                                 "station_name": "ТЭЦ-3",
                                                                 "station_type_name": "ТЭЦ",
                                                                 "tes_types": "ТЭС",
-                                                                "tes_machine_type": "—",
+                                                                "tes_machine_type": "–",
                                                                 "primary_fuel": "Газ",
-                                                                "fuel_so": "—",
+                                                                "fuel_so": "–",
                                                                 "periods": {2024: 12.345678},
                                                             }
                                                         ],
@@ -226,7 +226,7 @@ def test_export_ee_generation_parses_display_formatted_period_value():
                                         "eu_list": [
                                             {
                                                 "eu_id": 0,
-                                                "eu_name": "—",
+                                                "eu_name": "–",
                                                 "sign_groups": [
                                                     {
                                                         "stations": [
@@ -235,9 +235,9 @@ def test_export_ee_generation_parses_display_formatted_period_value():
                                                                 "station_name": "ТЭЦ-2",
                                                                 "station_type_name": "ТЭЦ",
                                                                 "tes_types": "ТЭС",
-                                                                "tes_machine_type": "—",
+                                                                "tes_machine_type": "–",
                                                                 "primary_fuel": "Газ",
-                                                                "fuel_so": "—",
+                                                                "fuel_so": "–",
                                                                 "periods": {2024: "1 796,6"},
                                                             }
                                                         ],

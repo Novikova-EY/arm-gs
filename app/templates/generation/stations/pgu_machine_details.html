@@ -76,7 +76,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.machine_number(class="form-control fw-bold") }}
                                         {% else %}
-                                            {{ pgu_form.machine_number.data if pgu_form.machine_number.data else '—' }}
+                                            {{ pgu_form.machine_number.data if pgu_form.machine_number.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -84,7 +84,7 @@
                                     <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
                                         {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
-                                            <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '—' }}</div>
+                                            <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '–' }}</div>
                                             <input type="hidden"
                                                    name="{{ pgu_form.machine_name.name }}"
                                                    value="{{ pgu_form.machine_name.data or '' }}"
@@ -92,7 +92,7 @@
                                         {% elif can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
-                                            <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '—' }}</div>
+                                            <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '–' }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -102,14 +102,14 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.id_condition_type(class="form-select") }}
                                         {% else %}
-                                            {{ parent_machine.condition_type.name if parent_machine.condition_type else '—' }}
+                                            {{ parent_machine.condition_type.name if parent_machine.condition_type else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Организация-собственник:</div>
                                     <div class="col-7 text-start">
-                                        {{ parent_machine.gen_company.name if parent_machine.gen_company else '—' }}
+                                        {{ parent_machine.gen_company.name if parent_machine.gen_company else '–' }}
                                     </div>
                                 </div>
                             </div>
@@ -118,21 +118,21 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Энергорайон агрегата электростанции:</div>
                                     <div class="col-7 text-start">
-                                        {{ parent_machine.energy_area.name if parent_machine.energy_area else '—' }}
+                                        {{ parent_machine.energy_area.name if parent_machine.energy_area else '–' }}
                                     </div>
                                 </div>
                                 {% if station.station_type.name|lower == 'тэс' %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
                                     <div class="col-7 text-start">
-                                        {{ parent_machine.tes_machine_type.name if parent_machine.tes_machine_type else '—' }}
+                                        {{ parent_machine.tes_machine_type.name if parent_machine.tes_machine_type else '–' }}
                                     </div>
                                 </div>
                                 {% endif %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
                                     <div class="col-7 text-start">
-                                        {{ parent_machine.equipment_group.name if parent_machine.equipment_group else '—' }}
+                                        {{ parent_machine.equipment_group.name if parent_machine.equipment_group else '–' }}
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
@@ -142,7 +142,7 @@
                                             {{ pgu_form.id_pgu_tes_machine_type(class="form-select") }}
                                         {% else %}
                                             {% set selected_pgu_type = pgu_form.id_pgu_tes_machine_type.choices | selectattr('0', 'equalto', pgu_form.id_pgu_tes_machine_type.data) | map(attribute='1') | first %}
-                                            {{ selected_pgu_type or (parent_machine.pgu_tes_machine_type.name if parent_machine.pgu_tes_machine_type else '—') }}
+                                            {{ selected_pgu_type or (parent_machine.pgu_tes_machine_type.name if parent_machine.pgu_tes_machine_type else '–') }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -152,7 +152,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.note(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.note.data if pgu_form.note.data else '—' }}
+                                            {{ pgu_form.note.data if pgu_form.note.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -180,7 +180,7 @@
                                                     {{ pgu_form.change_document.data | render_document_links }}
                                                 </div>
                                             {% else %}
-                                                —
+                                                –
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -194,7 +194,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_commission_year(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_commission_year.data if pgu_form.date_commission_year.data else '—' }}
+                                            {{ pgu_form.date_commission_year.data if pgu_form.date_commission_year.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -204,7 +204,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_exploitation(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_exploitation.data if pgu_form.date_exploitation.data else '—' }}
+                                            {{ pgu_form.date_exploitation.data if pgu_form.date_exploitation.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -214,7 +214,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_exploitation_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_exploitation_expected.data if pgu_form.date_exploitation_expected.data else '—' }}
+                                            {{ pgu_form.date_exploitation_expected.data if pgu_form.date_exploitation_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -224,7 +224,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_exploitation_date_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_exploitation_date_expected.data if pgu_form.date_exploitation_date_expected.data else '—' }}
+                                            {{ pgu_form.date_exploitation_date_expected.data if pgu_form.date_exploitation_date_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -234,7 +234,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_decompressing_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_decompressing_expected.data if pgu_form.date_decompressing_expected.data else '—' }}
+                                            {{ pgu_form.date_decompressing_expected.data if pgu_form.date_decompressing_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -244,7 +244,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_modernization_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_modernization_power_change_expected.data if pgu_form.date_modernization_power_change_expected.data else '—' }}
+                                            {{ pgu_form.date_modernization_power_change_expected.data if pgu_form.date_modernization_power_change_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -254,7 +254,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_modernization_no_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_modernization_no_power_change_expected.data if pgu_form.date_modernization_no_power_change_expected.data else '—' }}
+                                            {{ pgu_form.date_modernization_no_power_change_expected.data if pgu_form.date_modernization_no_power_change_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -264,7 +264,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_joining_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_joining_expected.data if pgu_form.date_joining_expected.data else '—' }}
+                                            {{ pgu_form.date_joining_expected.data if pgu_form.date_joining_expected.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -277,7 +277,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_commission_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_commission_fact.data if pgu_form.date_commission_fact.data else '—' }}
+                                            {{ pgu_form.date_commission_fact.data if pgu_form.date_commission_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -287,7 +287,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_decompressing_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_decompressing_fact.data if pgu_form.date_decompressing_fact.data else '—' }}
+                                            {{ pgu_form.date_decompressing_fact.data if pgu_form.date_decompressing_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -297,7 +297,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_joining_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_joining_fact.data if pgu_form.date_joining_fact.data else '—' }}
+                                            {{ pgu_form.date_joining_fact.data if pgu_form.date_joining_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -307,7 +307,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_detatchment_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_detatchment_fact.data if pgu_form.date_detatchment_fact.data else '—' }}
+                                            {{ pgu_form.date_detatchment_fact.data if pgu_form.date_detatchment_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -317,7 +317,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_update_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '—' }}
+                                            {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -327,7 +327,7 @@
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_relabing_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_relabing_fact.data if pgu_form.date_relabing_fact.data else '—' }}
+                                            {{ pgu_form.date_relabing_fact.data if pgu_form.date_relabing_fact.data else '–' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -345,15 +345,14 @@
                             <div class="d-flex align-items-center gap-2">
                                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                                 <select name="start_year" id="start_year" class="form-select">
-                                    {% for year in range(2021, 2043) %}
+                                    {% for year in filter_year_list %}
                                         <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
 
                                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                                 <select name="end_year" id="end_year" class="form-select">
-                                    {% set max_end_year = [version_year_end if version_year_end else 2042, 2022] | max %}
-                                    {% for year in range(2022, max_end_year + 1) %}
+                                    {% for year in filter_year_list %}
                                         <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
@@ -425,6 +424,10 @@
                                 {{ nm.year(type="hidden") }}
                                 <td class="align-middle text-center">
                                     {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                        {# Значение, показанное в ячейке: по нему сервер отличает очистку от незаполненного года #}
+                                        <input type="hidden"
+                                            name="{{ nm.year_name.name }}_orig"
+                                            value="{{ nm.year_name.data or '' }}">
                                         <input type="text"
                                             name="{{ nm.year_name.name }}"
                                             value="{{ nm.year_name.data or '' }}"
@@ -433,7 +436,7 @@
                                             class="text-center form-control"
                                             maxlength="1024">
                                     {% else %}
-                                        <span>{{ nm.year_name.data if nm.year_name.data else '—' }}</span>
+                                        <span>{{ nm.year_name.data if nm.year_name.data else '–' }}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -479,7 +482,7 @@
                                         data-original-value="{{ power.p_ust.data | format_decimal }}"
                                         class="form-control text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                 {% else %}
-                                    <span>{{ power.p_ust.data | format_decimal if power.p_ust.data else '—' }}</span>
+                                    <span>{{ power.p_ust.data | format_decimal if power.p_ust.data else '–' }}</span>
                                 {% endif %}
                                 </td>
                             {% endfor %}
@@ -501,7 +504,7 @@
     </div>
 </div>
 
-<!-- Максимальный год версии БД — для ограничений по годам в JS (заполнение до конца Сипр) -->
+<!-- Максимальный год версии БД – для ограничений по годам в JS (заполнение до конца Сипр) -->
 <input type="hidden" id="db_version_max_year" value="{{ version_year_end or '' }}">
 
 <!-- jQuery и Select2 уже подключены в base.html -->
@@ -693,55 +696,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function attachPguPowerAutoFill() {
-        // Максимальный допустимый год по версии БД (конец Сипр)
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" &&
-            !isNaN(maxVersionYear) &&
-            maxVersionYear > 0;
-
-        // Годы по столбцам (из скрытых полей year)
-        let columnYears = [];
-        const yearInputs = Array.from(
-            document.querySelectorAll('.total-power-row input[type="hidden"][name*="year"]')
-        );
-        if (yearInputs.length) {
-            yearInputs.forEach((inp) => {
-                const y = parseInt(inp.value || "0", 10);
-                columnYears.push(isNaN(y) ? null : y);
-            });
-        } else {
-            const startYearEl = document.getElementById("start_year");
-            const endYearEl = document.getElementById("end_year");
-            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
-            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
-            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
-                for (let y = startYear; y <= endYear; y++) {
-                    columnYears.push(y);
-                }
-            }
-        }
-
         const powerRows = document.querySelectorAll(".machines-table .total-power-row");
         powerRows.forEach(function (row) {
             const inputs = Array.from(row.querySelectorAll('input[type="text"], input.form-control'));
             if (!inputs.length) return;
-
-            const yearsMatchInputs = columnYears.length > 0 && columnYears.length === inputs.length;
 
             function extendPowerValue(inputEl, idx) {
                 if (window.__armGsTableRowPasteActive) {
                     return;
                 }
                 const value = inputEl.value;
+                // Очистку не протягиваем: меняется только эта ячейка
+                const trimmed = (value || "").trim();
+                if (trimmed === "" || trimmed === "–") {
+                    return;
+                }
+                // Продление значения по всей строке до конца отображаемого периода
                 for (let i = idx + 1; i < inputs.length; i++) {
-                    if (hasMaxVersionYear && yearsMatchInputs) {
-                        const y = columnYears[i];
-                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
-                    }
                     inputs[i].value = value;
                 }
             }
@@ -794,7 +765,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!baseName) {
             if (machineNameTextarea) machineNameTextarea.value = "";
             if (machineNameHidden) machineNameHidden.value = "";
-            if (machineNameDisplay) machineNameDisplay.textContent = "—";
+            if (machineNameDisplay) machineNameDisplay.textContent = "–";
             return;
         }
 
@@ -811,17 +782,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const displayName = planName ? (baseName + " (" + planName + ")") : baseName;
         if (machineNameTextarea) machineNameTextarea.value = displayName;
         if (machineNameHidden) machineNameHidden.value = displayName;
-        if (machineNameDisplay) machineNameDisplay.textContent = displayName || "—";
+        if (machineNameDisplay) machineNameDisplay.textContent = displayName || "–";
     }
 
     function attachPguNamesAutoFill() {
-        const maxVersionYearInput = document.getElementById("db_version_max_year");
-        const maxVersionYear = maxVersionYearInput
-            ? parseInt(maxVersionYearInput.value || "0", 10)
-            : null;
-        const hasMaxVersionYear =
-            typeof maxVersionYear === "number" && !isNaN(maxVersionYear) && maxVersionYear > 0;
-
         const inputs = Array.from(
             document.querySelectorAll('#pgu-machine-names-table tbody tr td input[type="text"]')
         );
@@ -834,11 +798,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             const value = inputEl.value;
+            // Очистку не протягиваем: меняется только эта ячейка
+            const trimmed = (value || "").trim();
+            if (trimmed === "" || trimmed === "–") {
+                return;
+            }
             for (let i = idx + 1; i < inputs.length; i++) {
-                if (hasMaxVersionYear) {
-                    const colYear = parseInt(inputs[i].dataset.year || "0", 10);
-                    if (!isNaN(colYear) && colYear > maxVersionYear) break;
-                }
                 inputs[i].value = value;
             }
         }

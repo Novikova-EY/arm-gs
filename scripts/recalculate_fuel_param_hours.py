@@ -57,7 +57,7 @@ def main() -> int:
         print(f"eligible (nust>0 and e not null): {eligible}")
         print(f"need update: {to_change}")
         if args.dry_run:
-            print("DRY RUN — no write")
+            print("DRY RUN – no write")
             return 0
         result = db.session.execute(text(UPDATE_SQL))
         db.session.commit()

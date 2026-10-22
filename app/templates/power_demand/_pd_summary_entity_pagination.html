@@ -1,4 +1,4 @@
-{# Пагинация секций сводки (coeff — серверный рендер). #}
+{# Пагинация секций сводки (coeff – серверный рендер). #}
 {% if pd_entity_pagination is defined and pd_entity_pagination.enabled and (pd_entity_pagination.total_pages | default(1)) > 1 %}
 {% set pag = pd_entity_pagination %}
 {% set pag_args = request.args.to_dict() %}
@@ -6,7 +6,7 @@
     <div class="small text-muted mb-2 text-center">
         Страница {{ pag.page }} из {{ pag.total_pages }}
         {% if pag.section_titles %}
-        — {{ pag.section_titles | join(', ') }}
+        – {{ pag.section_titles | join(', ') }}
         {% endif %}
     </div>
     <ul class="pagination justify-content-center mb-0 flex-wrap" id="pdSummaryServerEntityPaginationLinks">

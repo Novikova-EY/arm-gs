@@ -57,10 +57,10 @@ def round_value(val, digits):
 def format_value(val, rounding_digits):
     """Форматирование значения для отображения."""
     if val is None or val == 0:
-        return "—"
+        return "–"
     rounded = round_value(val, rounding_digits)
     if rounded is None:
-        return "—"
+        return "–"
     if rounding_digits == -1:
         return str(int(rounded)).replace('.', ',')
     elif rounding_digits == 0:
@@ -151,7 +151,7 @@ def export_totals_summary_to_excel(
                 if _sid and _sid > 0 and ("калининград" in _name_l):
                     _kaliningrad_ids.append(_sid)
         _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
-        # Остальные зоны — в порядке display_order, как вернул сервис
+        # Остальные зоны – в порядке display_order, как вернул сервис
         _rest_ids = [i for i in _sa_ids if i not in set(_kaliningrad_ids)]
         sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
 
@@ -808,7 +808,7 @@ def export_totals_summary_to_excel(
                         sync_format, sync_num_format, rowspan, indent_level=0
                     )
 
-                    # Если это ТЭС — детализация по типам ТЭС -> типам машин -> топливу
+                    # Если это ТЭС – детализация по типам ТЭС -> типам машин -> топливу
                     if station_type_id == tes_id:
                         for tes_type_id, tes_name in tes_type_list.items():
                             if (tes_name or "").lower() == "не указано":
@@ -963,7 +963,7 @@ def export_totals_summary_to_excel(
                     sync_format, sync_num_format, rowspan, indent_level=0
                 )
 
-                # Если это ТЭС — детализация по типам ТЭС -> типам машин -> топливу (как на экране)
+                # Если это ТЭС – детализация по типам ТЭС -> типам машин -> топливу (как на экране)
                 if station_type_id == tes_id:
                     for tes_type_id, tes_name in tes_type_list.items():
                         if (tes_name or "").lower() == "не указано":

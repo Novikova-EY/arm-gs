@@ -27,7 +27,7 @@ _ROW_FILLS = {
 def export_ee_generation_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
     period_columns = list(context.get("period_columns") or [])
     rows = list(context.get("rows") or [])
-    # 0 = «Не округлять» — нельзя подменять через `or 1`
+    # 0 = «Не округлять» – нельзя подменять через `or 1`
     try:
         rounding_digits = int(context.get("rounding_digits"))
     except (TypeError, ValueError):

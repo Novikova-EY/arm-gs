@@ -90,7 +90,7 @@ def update_users_and_roles(user: Any,
                            assign_present: Optional[Dict[str, str]] = None) -> int:
     """
     Обновляем только реально измененные поля/роли.
-    Логируем ПО ФАКТУ (после commit): для каждого измененного пользователя — детальный список изменений.
+    Логируем ПО ФАКТУ (после commit): для каждого измененного пользователя – детальный список изменений.
     """
     if not (user_ids and usernames and emails) or \
        not (len(user_ids) == len(usernames) == len(emails)):
@@ -145,7 +145,7 @@ def update_users_and_roles(user: Any,
                         f"{_fmt_roles(old_roles, names_map)} → {_fmt_roles(new_role_ids, names_map)}; "
                         f"добавлено={_fmt_roles(added, names_map)}, удалено={_fmt_roles(removed, names_map)}"
                     )
-            # если снимок не запрошен — роли не трогаем и не логируем
+            # если снимок не запрошен – роли не трогаем и не логируем
 
             if per_user_changes:
                 updated += 1

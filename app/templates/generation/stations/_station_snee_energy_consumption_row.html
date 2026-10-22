@@ -13,7 +13,7 @@
     <input type="text" class="form-control text-center forecast-paste-input" name="st_snee_consumption_{{ year }}" data-save-kind="snee_consumption" data-orig="{{ display_value }}" data-year="{{ year }}" inputmode="decimal" autocomplete="off" value="{{ display_value }}" style="min-width: 6rem" />
     {% elif value is not none %}
     {{ format_station_energy_snee_display(value) }}
-    {% else %}—{% endif %}
+    {% else %}–{% endif %}
   </td>
   {% endfor %}
 </tr>

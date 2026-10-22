@@ -3,7 +3,7 @@
 
 topl.Index = numb2; Seek \">=\", numb1120, v, byear; последняя year ≤ cyear.
 Годы раньше byear не входят. Нет строк в окне → None (Skip / ошибка без записи на базовый год).
-Пустая formtxt в окне — Match (как в таблице Access); разбор тогда не из чего делать.
+Пустая formtxt в окне – Match (как в таблице Access); разбор тогда не из чего делать.
 """
 from __future__ import annotations
 

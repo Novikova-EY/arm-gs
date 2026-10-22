@@ -63,7 +63,7 @@ class CompositeVsStationReport:
         for row in self.stations_with_multi_eg_no_main[:8]:
             lines.append(
                 f"  Station id={row['station_id']}: eg_ids={row['eg_ids']} "
-                f"(нет comp/main — бывший суррогат группировки)"
+                f"(нет comp/main – бывший суррогат группировки)"
             )
         for row in self.missing_parent_shells[:8]:
             lines.append(
@@ -159,7 +159,7 @@ def report_composite_vs_station_clusters(
                 }
             )
 
-    # Station с несколькими EG без MAIN — наследие grouping_station.
+    # Station с несколькими EG без MAIN – наследие grouping_station.
     station_to_egs: dict[int, list[EquipmentGroup]] = defaultdict(list)
     for eg in groups:
         if is_composite_child_group(eg) or is_composite_parent_group(eg):
@@ -269,7 +269,7 @@ def _resolve_station_for_parent(
         resolved = _resolve_grouping_station_id_for_db_version(sid, target_ver)
         if resolved:
             return resolved, donor, status
-        # станция детей уже в нужной версии или resolve не нашёл копию —
+        # станция детей уже в нужной версии или resolve не нашёл копию –
         # оставляем якорь (лучше, чем ничего)
         return sid, donor, status
 
@@ -280,7 +280,7 @@ def _resolve_station_for_parent(
     resolved = _resolve_grouping_station_id_for_db_version(sid2, target_ver)
     if resolved:
         return resolved, donor2, "sibling_fallback"
-    # копии станции в target_ver нет — всё же даём якорь с пометкой
+    # копии станции в target_ver нет – всё же даём якорь с пометкой
     return sid2, donor2, "sibling_fallback_other_ver"
 
 
@@ -428,7 +428,7 @@ def create_missing_parent_shells_from_children(
     а numb родителя для этой database_version_id отсутствует.
 
     Station: дети этой версии → сиблинги других версий (resolve по external_code).
-    Если станции нет — создаём «висящего» родителя (require_station=False по умолчанию).
+    Если станции нет – создаём «висящего» родителя (require_station=False по умолчанию).
     """
     sess = session or db.session
     excel_parents = excel_parents or {}
@@ -489,7 +489,7 @@ def create_missing_parent_shells_from_children(
         if require_station and station_id is None:
             result.skipped_no_station.append(sample)
             result.warnings.append(
-                f"Родитель numb={main} ver={ver}: нет Station — пропуск."
+                f"Родитель numb={main} ver={ver}: нет Station – пропуск."
             )
             continue
 
@@ -510,17 +510,17 @@ def create_missing_parent_shells_from_children(
             )
         elif st_status == "no_station":
             result.warnings.append(
-                f"Родитель numb={main} ver={ver}: Station нет — создаём без привязки."
+                f"Родитель numb={main} ver={ver}: Station нет – создаём без привязки."
             )
             result.created_without_station += 1
 
         if not meta:
             result.warnings.append(
-                f"Родитель numb={main}: нет строки в Excel — имя/поля с донора-ребёнка."
+                f"Родитель numb={main}: нет строки в Excel – имя/поля с донора-ребёнка."
             )
         elif _as_int(meta.get("comp")) != 1:
             result.warnings.append(
-                f"Родитель numb={main}: в Excel COMP≠1, но дети ссылаются по MAIN — "
+                f"Родитель numb={main}: в Excel COMP≠1, но дети ссылаются по MAIN – "
                 "создаём с comp=1."
             )
 
@@ -573,7 +573,7 @@ def create_phase_b_comp1_parents_from_excel(
     """
     Phase B: COMP=1 из Excel, которых ещё нет в АРМ ни в одной версии.
     Создаёт родителя на каждую используемую database_version_id словаря EG.
-    Station — по имени из Excel; если нет — «висит» без привязки.
+    Station – по имени из Excel; если нет – «висит» без привязки.
     """
     sess = session or db.session
     excel_parents = excel_parents or {}
@@ -678,9 +678,9 @@ def create_missing_numbs_from_excel(
 ) -> ParentShellsResult:
     """
     Создаёт EquipmentGroup для NUMB из «Имена_станций», которых нет в текущей
-    версии БД. Без привязки к Station — связь можно проставить вручную позже.
+    версии БД. Без привязки к Station – связь можно проставить вручную позже.
 
-    Не создаёт NUMB=0 и строки-заголовки. exclude_numbs — уже запланированные
+    Не создаёт NUMB=0 и строки-заголовки. exclude_numbs – уже запланированные
     Phase A/B, чтобы не дублировать.
     database_version_id=None: существование проверяется по всем версиям
     (чтобы не предлагать дубликаты с ver=NULL); запись в этом режиме

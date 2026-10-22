@@ -174,7 +174,7 @@ def update_tes_type_service(data, user):
                 changes.append(f"Порядок отображения: {old_val} → {new_val}")
                 obj.display_order = display_order
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 

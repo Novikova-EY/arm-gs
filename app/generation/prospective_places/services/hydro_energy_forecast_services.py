@@ -176,7 +176,7 @@ def save_hydro_forecast_from_form(
     Сохраняет помесячные значения из form_data.
     Возвращает список строк изменений (пустой, если менять нечего).
 
-    commit=False — только staging в сессии (для общего сохранения карточки).
+    commit=False – только staging в сессии (для общего сохранения карточки).
     """
     version_id = get_current_db_version_id()
     existing_q = ProspectivePlaceHydroEnergyForecast.query.filter(
@@ -199,8 +199,8 @@ def save_hydro_forecast_from_form(
             return str(v).replace(".", ",")
 
     def _field_changed(raw_value, orig_value) -> bool:
-        if orig_value in (None, "", "—", "-"):
-            return raw_value not in (None, "", "—", "-")
+        if orig_value in (None, "", "–", "-"):
+            return raw_value not in (None, "", "–", "-")
         return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
 
     for scenario, title in HYDRO_SCENARIOS:

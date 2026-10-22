@@ -53,7 +53,7 @@ def upgrade():
         if _index_exists(conn, SCHEMA_EC, idx):
             op.execute(text(f'DROP INDEX IF EXISTS "{SCHEMA_EC}"."{idx}"'))
 
-    # Старые строки без ВЭД не переносятся — структура стала показателем на уровне ВЭД.
+    # Старые строки без ВЭД не переносятся – структура стала показателем на уровне ВЭД.
     op.execute(text(f'DELETE FROM "{SCHEMA_EC}"."{TABLE_FD_YEAR}"'))
     op.execute(text(f'DELETE FROM "{SCHEMA_EC}"."{TABLE_FD_COEF}"'))
 

@@ -33,13 +33,13 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
 
 def _format_numeric(val, rounding_digits):
     if val is None:
-        return "—"
+        return "–"
     return format_decimal_for_display(val, digits=rounding_digits)
 
 
 def _format_identity(val):
     if val is None or val == "":
-        return "—"
+        return "–"
     return str(val)
 
 
@@ -116,13 +116,13 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
             eg_id_cell = (
                 str(getattr(group_entity, "numb", None))
                 if getattr(group_entity, "numb", None) is not None
-                else "—"
+                else "–"
             )
         else:
             eg_id_cell = (
                 equipment_group_id_cell(group_entity)
                 if getattr(group_entity, "id", None) and group_entity.id > 0
-                else "—"
+                else "–"
             )
         identity_vals = [
             _format_identity(identity.get(attr))
@@ -143,7 +143,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                         _format_numeric(q_by_year.get(y), rounding_digits) for y in years
                     ]
                 else:
-                    year_vals = ["—"] * len(years)
+                    year_vals = ["–"] * len(years)
             else:
                 values_by_year = metric.get("values_by_year") or {}
                 year_vals = [
@@ -153,7 +153,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
             row_data = (
                 [eg_id_cell, group_name]
                 + identity_vals
-                + [metric.get("label") or metric.get("attr") or "—"]
+                + [metric.get("label") or metric.get("attr") or "–"]
                 + year_vals
             )
             _bump_lengths(row_data)
@@ -170,10 +170,10 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                     _format_numeric(q_by_year.get(y), rounding_digits) for y in years
                 ]
             else:
-                year_vals = ["—"] * len(years)
+                year_vals = ["–"] * len(years)
             row_data = (
-                ["—", label]
-                + ["—"] * len(HEAT_AND_TARIFFS_IDENTITY_COLUMNS)
+                ["–", label]
+                + ["–"] * len(HEAT_AND_TARIFFS_IDENTITY_COLUMNS)
                 + [metric_label]
                 + year_vals
             )
@@ -182,19 +182,19 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
             style_data_row(ws, ws.max_row, bold=True, fill=fill)
 
     for est_block in hierarchy:
-        title = est_block.get("est_name") or "—"
+        title = est_block.get("est_name") or "–"
         _bump_lengths([title] + [""] * (num_cols - 1))
         write_merged_section_row(ws, next_data_row_index(ws), num_cols, title, FILL_EST)
 
         for ues_block in est_block.get("ues_list") or []:
-            ues_title = ues_block.get("ues_name") or "—"
+            ues_title = ues_block.get("ues_name") or "–"
             _bump_lengths([ues_title] + [""] * (num_cols - 1))
             write_merged_section_row(
                 ws, next_data_row_index(ws), num_cols, ues_title, FILL_UES
             )
 
             for res_block in ues_block.get("res_list") or []:
-                res_title = res_block.get("res_name") or "—"
+                res_title = res_block.get("res_name") or "–"
                 _bump_lengths([res_title] + [""] * (num_cols - 1))
                 write_merged_section_row(
                     ws,
@@ -218,7 +218,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                                 if group_entity and group_entity.name_ext
                                 else None
                             )
-                            or "—"
+                            or "–"
                         )
                         is_total = bool(group_block.get("is_composite_total_row"))
                         if is_total and not str(group_name).endswith(", всего"):
@@ -241,7 +241,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                         and not station_block.get("is_virtual")
                         and not station_block.get("suppress_station_summary")
                     ):
-                        st_name = station_block.get("station_name") or "—"
+                        st_name = station_block.get("station_name") or "–"
                         _append_summary_rows(
                             f"{st_name}, всего",
                             station_block.get("station_summary"),
@@ -249,7 +249,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                         )
 
                 if res_block.get("group_blocks"):
-                    res_nm = res_block.get("res_name") or "—"
+                    res_nm = res_block.get("res_name") or "–"
                     _append_summary_rows(
                         f"{res_nm}, всего",
                         res_block.get("res_summary"),

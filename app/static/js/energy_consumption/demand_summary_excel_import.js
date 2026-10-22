@@ -71,7 +71,7 @@
                         if (total > 0) {
                             label = "Импорт… " + done + "/" + total;
                             if (detail) {
-                                label += " — " + detail;
+                                label += " – " + detail;
                             }
                         } else if (detail) {
                             label = "Импорт… " + detail;

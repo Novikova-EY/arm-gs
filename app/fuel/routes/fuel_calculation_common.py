@@ -4,13 +4,13 @@ from urllib.parse import urlencode, urlparse
 
 from flask import redirect, request, url_for
 
-# После успешного POST этапа «Распред» — сырой JSON-сериализуемый словарь для таблицы на GET /fuel/calculation.
+# После успешного POST этапа «Распред» – сырой JSON-сериализуемый словарь для таблицы на GET /fuel/calculation.
 FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY = "fuel_distribution_last_run"
 # Пауза Распред: станции NUST>0, NR=0, HFIX≠1 (аналог Access MsgBox).
 FUEL_NR_HFIX_PENDING_SESSION_KEY = "fuel_nr_hfix_pending"
-# После успешного POST этапа «Топливо» — сводка для таблицы на GET /fuel/calculation.
+# После успешного POST этапа «Топливо» – сводка для таблицы на GET /fuel/calculation.
 FUEL_STAGE_LAST_RUN_SESSION_KEY = "fuel_stage_last_run"
-# После успешного POST этапа «Коэфф» — метаданные запуска (таблицы Коэфф — из сводки БД).
+# После успешного POST этапа «Коэфф» – метаданные запуска (таблицы Коэфф – из сводки БД).
 FUEL_COEFF_LAST_RUN_SESSION_KEY = "fuel_coeff_last_run"
 
 # Query-параметры формы /fuel/calculation (без диагностик edit_data вроде equipment_group_ids).

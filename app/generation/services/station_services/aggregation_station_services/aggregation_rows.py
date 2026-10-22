@@ -68,7 +68,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     # ---------------- Обычные агрегаты (машины) ----------------
     # Разделяем выборку на 2 части:
     # 1) электростанции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
-    # 2) Остальные электростанции — через субъект РФ, как в старой логике
+    # 2) Остальные электростанции – через субъект РФ, как в старой логике
 
     # 1) Прямая связь электростанции с РЭС
     query_direct = (
@@ -133,7 +133,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     )
 
     # Фильтрация по текущей версии БД.
-    # Региональные справочники (РЭС, ОЭС, типы) не фильтруем — они общие,
+    # Региональные справочники (РЭС, ОЭС, типы) не фильтруем – они общие,
     # Station.id_regional_energy_system ссылается на них независимо от версии.
     query_direct = filter_by_db_version(query_direct, Station)
 
@@ -198,7 +198,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         )
     )
 
-    # Фильтрация по текущей версии БД (территориальные справочники не фильтруем — см. query_direct)
+    # Фильтрация по текущей версии БД (территориальные справочники не фильтруем – см. query_direct)
     query_via_district = filter_by_db_version(query_via_district, Station)
 
     # Общие фильтры по машинам (для обеих частей)

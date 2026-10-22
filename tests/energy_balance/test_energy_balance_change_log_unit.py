@@ -143,7 +143,7 @@ def test_energy_balance_pages_are_journaled_as_page_views(monkeypatch):
     @bp.route("/ee_balance/<slug>/")
     def ee_balance_table(slug):
         return (
-            "<html><head><title>Баланс ЭЭ — ОЭС Урала</title></head>"
+            "<html><head><title>Баланс ЭЭ – ОЭС Урала</title></head>"
             "<body>данные</body></html>"
         )
 
@@ -154,7 +154,7 @@ def test_energy_balance_pages_are_journaled_as_page_views(monkeypatch):
     assert response.status_code == 200
     assert len(records) == 1
     action, details, entity_type = records[0]
-    assert action == "Открыта страница: Баланс ЭЭ — ОЭС Урала"
+    assert action == "Открыта страница: Баланс ЭЭ – ОЭС Урала"
     assert f"module={ENERGY_BALANCE_MODULE_LABEL}" in details
     assert "endpoint=energy_balance_bp.ee_balance_table" in details
     assert entity_type == "page"

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Отбор удельных как Access U.Seek (Коэфф / Распред / Топливо — одна логика).
+"""Отбор удельных как Access U.Seek (Коэфф / Распред / Топливо – одна логика).
 
 U.Index = numb2; Seek \">=\", numb1120, v, byear; последняя year ≤ cyear.
-Годы раньше byear не входят. Пустая строка в окне — Match (как в таблице Access).
+Годы раньше byear не входят. Пустая строка в окне – Match (как в таблице Access).
 Нет строк в окне → None (Skip). Чужой Bookmark соседней станции не берём.
 """
 from __future__ import annotations
@@ -44,7 +44,7 @@ def _numeric_has_payload(value) -> bool:
 def specific_consumption_has_payload(row) -> bool:
     """Строка «с данными»: хотя бы одно из y/snk/sntp/bk/btp/… не пустое и не 0.
 
-    y=0 при bk≠0 (КЭС) — это данные. Все нули / NULL — пустой год, шаг назад.
+    y=0 при bk≠0 (КЭС) – это данные. Все нули / NULL – пустой год, шаг назад.
     """
     if row is None:
         return False
@@ -88,7 +88,7 @@ def pick_specific_consumption_year_stepback(rows):
 def pick_specific_consumption_for_fuel(rows):
     """Топливо: год с данными; иначе последняя строка даже пустая.
 
-    Access U.NoMatch — только когда записей нет совсем. Пустая строка 2026
+    Access U.NoMatch – только когда записей нет совсем. Пустая строка 2026
     (котельная 3607) всё равно Match: y/bk=0, но TUST = Q·TURT/1000 считается.
     Коэфф/Распред тоже Match на пустой строке, если в окне нет года с данными.
     """
@@ -295,8 +295,8 @@ class AccessSeekBookmark:
 def apply_access_seek_bookmark(this_row, bookmark: AccessSeekBookmark, *, no_match: bool):
     """Access: ``If U.NoMatch Then GoTo skip`` иначе ``Bookmark = bm``.
 
-    ``this_row`` — последняя year этой станции в ``[byear, cyear]`` (или None).
-    ``no_match`` — DAO Seek ``">=", numb, v, byear`` по *всей* таблице: нет ключа ≥.
+    ``this_row`` – последняя year этой станции в ``[byear, cyear]`` (или None).
+    ``no_match`` – DAO Seek ``">=", numb, v, byear`` по *всей* таблице: нет ключа ≥.
     Нет строк у себя, но Seek нашёл более позднюю станцию → оставляем bm
     предыдущей станции цикла (как живая Кнопка5/27/49).
     """

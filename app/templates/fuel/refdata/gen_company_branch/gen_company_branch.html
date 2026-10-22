@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Генерирующие компании (филиалы) — связь с БД Топливо{% endblock %}
+{% block title %}Генерирующие компании (филиалы) – связь с БД Топливо{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -8,7 +8,7 @@
 
     {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
 
-    <h1 class="text-center mb-4">Генерирующие компании (филиалы) — связь с БД Топливо</h1>
+    <h1 class="text-center mb-4">Генерирующие компании (филиалы) – связь с БД Топливо</h1>
 
     <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
         <form id="genCompanyBranchImportForm"
@@ -145,9 +145,9 @@
                         {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
                         <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
                         <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
-                        <td>{{ gen_company.ref_uuid if gen_company else '—' }}</td>
-                        <td>{{ gen_company.id if gen_company else '—' }}</td>
-                        <td>{{ gen_company.name if gen_company else '—' }}</td>
+                        <td>{{ gen_company.ref_uuid if gen_company else '–' }}</td>
+                        <td>{{ gen_company.id if gen_company else '–' }}</td>
+                        <td>{{ gen_company.name if gen_company else '–' }}</td>
                     </tr>
                 {% else %}
                     <tr>

@@ -13,7 +13,7 @@ from app.api.services.exchange_api_services import list_exchange_datasets
 
 DATASET_DATABASE_VERSIONS = "database_versions"
 
-# Имена файлов — как в репозитории интеграций; dataset = имя без .json.
+# Имена файлов – как в репозитории интеграций; dataset = имя без .json.
 OUTPUT_DOCUMENT_GROUPS: tuple[dict[str, Any], ...] = (
     {
         "title": "common",

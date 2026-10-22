@@ -7,7 +7,7 @@
 - базовое: MachineName.name за год версии БД, иначе Machine.machine_name;
 - при отличии в плановом периоде: "<текущ.> (<план>)".
 
-Если вычисленное имя не совпадает с Machine.machine_name — заменяет Machine.machine_name.
+Если вычисленное имя не совпадает с Machine.machine_name – заменяет Machine.machine_name.
 
 Запуск:
   python scripts/sync_machine_name_with_display_name.py           # выполнить замены
@@ -52,15 +52,15 @@ def sync_machine_names(dry_run: bool = False) -> Tuple[int, List[dict]]:
             continue
 
         if display_name != current_name:
-            station_name = "—"
+            station_name = "–"
             if m.machine_station:
-                station_name = m.machine_station.name or "—"
+                station_name = m.machine_station.name or "–"
 
             changes.append({
                 "machine_id": m.id,
                 "station": station_name,
-                "machine_number": m.machine_number or "—",
-                "old": current_name or "—",
+                "machine_number": m.machine_number or "–",
+                "old": current_name or "–",
                 "new": display_name,
             })
 

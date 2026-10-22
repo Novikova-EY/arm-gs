@@ -487,7 +487,7 @@ block content %} {% if current_user.is_authenticated %}
         tr.querySelectorAll('td.pb-year-cell').forEach(function (td) {
           const input = td.querySelector('input.tes-edit-value');
           const text = (input ? input.value : td.textContent || '').trim();
-          if (text && text !== '—' && text !== '-' && text !== '0') empty = false;
+          if (text && text !== '–' && text !== '-' && text !== '0') empty = false;
         });
         tr.classList.toggle('pb-row-empty-hidden', !showEmpty && empty);
       });

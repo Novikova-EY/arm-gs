@@ -212,9 +212,9 @@
                             <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
                             <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
                             <td>{{ mapping.external_name1 if mapping and mapping.external_name1 else '' }}</td>
-                            <td>{{ gen_company.ref_uuid if gen_company else '—' }}</td>
-                            <td>{{ gen_company.id if gen_company else '—' }}</td>
-                            <td>{{ gen_company.name if gen_company else '—' }}</td>
+                            <td>{{ gen_company.ref_uuid if gen_company else '–' }}</td>
+                            <td>{{ gen_company.id if gen_company else '–' }}</td>
+                            <td>{{ gen_company.name if gen_company else '–' }}</td>
                         </tr>
                     {% else %}
                         <tr>

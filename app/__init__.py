@@ -46,7 +46,7 @@ def create_app():
     # В production deb-пакет раскладывает статику в /usr/share/generation-app/static,
     # а старую папку /opt/generation-app/app/app/static может удалять postinst.
     # Чтобы /static/* продолжал работать даже без nginx-alias, используем shared static,
-    # если каталог существует (иначе — дефолтный app/static для dev/Windows).
+    # если каталог существует (иначе – дефолтный app/static для dev/Windows).
     shared_static_dir = os.getenv("GENERATION_APP_STATIC_DIR") or "/usr/share/generation-app/static"
     if Path(shared_static_dir).is_dir():
         app = Flask(__name__, static_folder=shared_static_dir, static_url_path="/static")
@@ -213,7 +213,7 @@ def create_app():
     scheduled_backup_service.init_app(app)
 
 
-    # Слушатель для установки search_path — РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
+    # Слушатель для установки search_path – РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
     def _set_search_path(dbapi_connection, _):
         search_path = app.config.get("DB_SEARCH_PATH", "public")
         with dbapi_connection.cursor() as cursor:
@@ -306,13 +306,13 @@ def create_app():
         from app.generation.prospective_places.models.gaes import prospective_place_type_gaes_model  # noqa: F401
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import external_mapping
-        importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
-        importlib.import_module("app.economics.models")  # noqa: F401 — таблицы «Экономика» (gs_ekp)
-        importlib.import_module("app.electrical_intensity.models")  # noqa: F401 — электроёмкость (gs_ei)
-        importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
-        importlib.import_module("app.energy_balance.models")  # noqa: F401 — таблицы gs_bem
-        importlib.import_module("app.territories.models")  # noqa: F401 — таблицы gs_ter
-        importlib.import_module("app.ecology.models")  # noqa: F401 — таблицы gs_eco
+        importlib.import_module("app.power_demand.models")  # noqa: F401 – без «import app.…», иначе затрём Flask app
+        importlib.import_module("app.economics.models")  # noqa: F401 – таблицы «Экономика» (gs_ekp)
+        importlib.import_module("app.electrical_intensity.models")  # noqa: F401 – электроёмкость (gs_ei)
+        importlib.import_module("app.energy_consumption.models")  # noqa: F401 – таблицы gs_ec
+        importlib.import_module("app.energy_balance.models")  # noqa: F401 – таблицы gs_bem
+        importlib.import_module("app.territories.models")  # noqa: F401 – таблицы gs_ter
+        importlib.import_module("app.ecology.models")  # noqa: F401 – таблицы gs_eco
 
         # Проброс мапперов
         db.configure_mappers()
@@ -474,7 +474,7 @@ def create_app():
                     session.info["_refdata_changed"] = True
 
             def _after_commit(session) -> None:
-                """После коммита при изменениях справочников — очищаем refdata-кэши."""
+                """После коммита при изменениях справочников – очищаем refdata-кэши."""
                 try:
                     if session.info.pop("_skip_refdata_cache_invalidation", False):
                         session.info.pop("_refdata_changed", None)
@@ -487,7 +487,7 @@ def create_app():
                     from flask import has_request_context, request
                     if has_request_context():
                         # В refdata много bulk-операций/импортов, которые не всегда попадают в session.dirty.
-                        # Но на GET страницы часто пишутся логи (commit) — их нельзя превращать в инвалидацию кэша.
+                        # Но на GET страницы часто пишутся логи (commit) – их нельзя превращать в инвалидацию кэша.
                         # Поэтому "force" делаем только для изменяющих запросов.
                         is_refdata = (request.path or "").startswith("/refdata")
                         is_mutation = (request.method or "").upper() in {"POST", "PUT", "PATCH", "DELETE"}
@@ -548,7 +548,7 @@ def create_app():
             except Exception as e:
                 app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
 
-            # Фоновый импорт сводки потребления — daemon-поток; после рестарта/reloader он мёртв,
+            # Фоновый импорт сводки потребления – daemon-поток; после рестарта/reloader он мёртв,
             # а статус в Redis мог остаться «running» (UI зависает на N/M).
             try:
                 from app.energy_consumption.services.energy_consumption_summary_import_jobs import (
@@ -938,7 +938,7 @@ def create_app():
         else:
             return render_template("errors/500.html"), 500
 
-    # Прогрев JSON-сводок «Нагрузки» — только после user_loader (context builders
+    # Прогрев JSON-сводок «Нагрузки» – только после user_loader (context builders
     # читают current_user через flask-login).
     import sys
 

@@ -34,7 +34,7 @@ UNIT_CONF_LABELS: dict[str, str] = {
     "unknown": "ед. неясна",
 }
 
-# Цепочка энергоблока (напоминание) — как в canvas.
+# Цепочка энергоблока (напоминание) – как в canvas.
 ENERGY_BLOCK_CHAIN: tuple[dict[str, str], ...] = (
     {"step": "1", "result": "ewtp", "formula": "qotr · y / 1000", "unit": "тыс. кВт·ч"},
     {"step": "2", "result": "snk", "formula": "sn_ee / e · 100", "unit": "%"},
@@ -132,7 +132,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "kind": "both",
         "formula": "snk = sn_ee / e · 100",
         "notes": (
-            "Числитель — sn_ee (тыс. кВт·ч), знаменатель — выработка ЭЭ (e). "
+            "Числитель – sn_ee (тыс. кВт·ч), знаменатель – выработка ЭЭ (e). "
             "Удельные: snk; Станции: SNK. snk_calc равен SNK топливных параметров "
             "(формула sn_ee / e · 100 или сохранённый FuelParam.snk). "
             "В энергоблоке: ekotp = (e − ewtp) · (1 − snk/100)."
@@ -152,7 +152,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "model": "SpecificFuelConsumption",
         "kind": "input",
         "formula": "используется только в btp_calc",
-        "notes": "Привязан к году. На карточке группы — редактируемый вход.",
+        "notes": "Привязан к году. На карточке группы – редактируемый вход.",
     },
     {
         "code": "snbas",
@@ -210,7 +210,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
     {
         "code": "nust",
         "access": "NUST",
-        "label": "Руст — установленная мощность",
+        "label": "Руст – установленная мощность",
         "meaning": "Установленная электрическая мощность группы оборудования.",
         "unit": "МВт",
         "unit_conf": "inferred",
@@ -223,7 +223,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
     {
         "code": "nr",
         "access": "NR",
-        "label": "Ррасп — располагаемая мощность",
+        "label": "Ррасп – располагаемая мощность",
         "meaning": "Располагаемая электрическая мощность.",
         "unit": "МВт",
         "unit_conf": "inferred",
@@ -243,7 +243,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "group": "Мощность и часы",
         "model": "FuelParam",
         "kind": "both",
-        "formula": "h = e / nust · 1000  (если nust > 0; при hfix=1 — вручную)",
+        "formula": "h = e / nust · 1000  (если nust > 0; при hfix=1 – вручную)",
         "notes": "Access calce: согласование часов с выработкой. hfix=1 фиксирует значение.",
     },
     {
@@ -316,7 +316,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "code": "eotp",
         "access": "EOTP",
         "label": "Отпуск электроэнергии",
-        "meaning": "Отпуск ЭЭ с шин (после СН) — сумма конденсационного и теплофикационного отпуска.",
+        "meaning": "Отпуск ЭЭ с шин (после СН) – сумма конденсационного и теплофикационного отпуска.",
         "unit": "млн кВтч",
         "unit_conf": "inferred",
         "group": "Энергобаланс ЭЭ",
@@ -349,7 +349,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "model": "FuelParam",
         "kind": "calc",
         "formula": "eust = (ekotp · bk + etpotp · btp) / 1000",
-        "notes": "При VED∈{1,4} — ветвь bbas/Kh.",
+        "notes": "При VED∈{1,4} – ветвь bbas/Kh.",
     },
     {
         "code": "sn_ee",
@@ -448,8 +448,8 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "kind": "calc",
         "formula": "sn_t = sn_te / q · 1000",
         "notes": (
-            "Числитель — sn_te (тыс. кВт·ч), знаменатель — отпуск тепловой энергии (q). "
-            "В формах Access — SNT."
+            "Числитель – sn_te (тыс. кВт·ч), знаменатель – отпуск тепловой энергии (q). "
+            "В формах Access – SNT."
         ),
     },
     # --- Топливо ---
@@ -480,7 +480,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "kind": "both",
         "formula": "",
         "notes": (
-            "Дальнейшая детализация — ExtraFuelParam (gaz_prir, kuzngd, …) "
+            "Дальнейшая детализация – ExtraFuelParam (gaz_prir, kuzngd, …) "
             "и региональные угли (don…sah)."
         ),
     },
@@ -506,7 +506,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "access": "NUMB1120 / numb1120",
         "label": "Код электростанции / группы",
         "meaning": "Код группы оборудования (= EquipmentGroup.numb). Ключ связи удельных и параметров.",
-        "unit": "—",
+        "unit": "–",
         "unit_conf": "confirmed",
         "group": "Идентификаторы",
         "model": "FuelParam / Specific / Group",
@@ -533,10 +533,10 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "label": "Тип ТЭС (VED)",
         "meaning": (
             "Рабочий код Access «Станции(Схема).VED» за год: "
-            "0 — оболочка родителя составной станции (не входит в Σ при ved>0); "
-            "1 — КЭС, отрасль; 2 — ТЭЦ, отрасль; "
-            "3 — ТЭЦ, промпредприятия; 4 — КЭС, промпредприятия; "
-            "99 — родитель помечен к разбиению, группы ещё не вставлены. "
+            "0 – оболочка родителя составной станции (не входит в Σ при ved>0); "
+            "1 – КЭС, отрасль; 2 – ТЭЦ, отрасль; "
+            "3 – ТЭЦ, промпредприятия; 4 – КЭС, промпредприятия; "
+            "99 – родитель помечен к разбиению, группы ещё не вставлены. "
             "Не путать с EquipmentGroup.vedomstvo (1 отрасль / 2 пром)."
         ),
         "unit": "код",
@@ -545,7 +545,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "model": "FuelParam",
         "kind": "id",
         "formula": "",
-        "notes": "Ветвь удельных EUST при VED∈{1,4}; отбор расчёта — (ved>0).",
+        "notes": "Ветвь удельных EUST при VED∈{1,4}; отбор расчёта – (ved>0).",
     },
     {
         "code": "obor / obl / dep / oes / er / gk / be",
@@ -572,7 +572,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "model": "расчёт (_calculate_energy_part)",
         "kind": "intermediate",
         "formula": "ekotp = (e − ewtp) · (1 − sn_eff/100)",
-        "notes": "В Access — локальная переменная VBA, не колонка таблицы.",
+        "notes": "В Access – локальная переменная VBA, не колонка таблицы.",
     },
     {
         "code": "etpotp",
@@ -585,7 +585,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "model": "расчёт (_calculate_energy_part)",
         "kind": "intermediate",
         "formula": "etpotp = ewtp · sntp",
-        "notes": "В Access — локальная переменная VBA, не колонка таблицы.",
+        "notes": "В Access – локальная переменная VBA, не колонка таблицы.",
     },
     {
         "code": "hours_util",
@@ -611,7 +611,7 @@ def list_equipment_group_params_for_page() -> list[dict[str, Any]]:
         kind = str(p.get("kind") or "")
         formula = str(p.get("formula") or "").strip()
         notes = str(p.get("notes") or "").strip()
-        formula_notes = " · ".join(x for x in (formula, notes) if x) or "—"
+        formula_notes = " · ".join(x for x in (formula, notes) if x) or "–"
         rows.append(
             {
                 **p,

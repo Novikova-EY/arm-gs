@@ -18,7 +18,7 @@ def get_filter_choices_for_equipment_group():
     """Возвращает словарь {col: [(value, label), ...]} для выпадающих фильтров."""
     choices = {}
 
-    # Поля из EquipmentGroupExternalMapping (code, type_, n1, n2, p1, p2 — Integer; остальные — String)
+    # Поля из EquipmentGroupExternalMapping (code, type_, n1, n2, p1, p2 – Integer; остальные – String)
     int_cols = {"code", "type_", "n1", "n2", "p1", "p2"}
     mapping_cols = [
         "code", "name_topl", "type_", "tm", "n1", "n2", "p1", "p2", "gruppa_oborud",
@@ -36,7 +36,7 @@ def get_filter_choices_for_equipment_group():
                 vals.append((str(v).strip(), str(v).strip()))
         choices[col] = [("", "Все")] + vals
 
-    # equipment_group_ref_uuid — типы групп оборудования из Генерации
+    # equipment_group_ref_uuid – типы групп оборудования из Генерации
     current_version_id = get_current_db_version_id()
     eg_rows = (
         EquipmentGroupType.query.with_entities(

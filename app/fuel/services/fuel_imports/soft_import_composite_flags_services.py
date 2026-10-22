@@ -6,13 +6,13 @@
 1) обновить у уже существующих EG по numb:
    флаги comp/main/niv и словарные поля (d, r, name_ext, vedomstvo, be, gk,
    gkf, er, n1/n2, p1/p2, addr, codegor, note, …);
-   поле name (название в АРМ после объединения) не перезаписывается —
+   поле name (название в АРМ после объединения) не перезаписывается –
    Excel NAME / name_ext → name_ext;
-2) Phase A — родители для семей, где дети уже есть в АРМ (по database_version_id);
-3) Phase B — COMP=1 без детей (архив/отменённые планы): только если явно
+2) Phase A – родители для семей, где дети уже есть в АРМ (по database_version_id);
+3) Phase B – COMP=1 без детей (архив/отменённые планы): только если явно
    create_phase_b_parents=True / галка «Включая phase B»; по умолчанию выкл,
    в отчёте показывается как отложенное.
-4) Отсутствующие NUMB — создать непривязанные EG в текущей версии БД:
+4) Отсутствующие NUMB – создать непривязанные EG в текущей версии БД:
    create_missing_numbs=True / галка «Создать отсутствующие NUMB».
 
 Гарантии безопасности:
@@ -102,7 +102,7 @@ def _safe_int(value: Any) -> int | None:
         return None
     if isinstance(value, str):
         text = value.strip()
-        if not text or text in {"—", "-", "None", "null", "NULL"}:
+        if not text or text in {"–", "-", "None", "null", "NULL"}:
             return None
         value = text
     try:
@@ -449,7 +449,7 @@ class SoftCompositeFlagsResult:
             lines.append(
                 f"Phase B отложена (галка «включая phase B» выкл): "
                 f"{self.phase_b_unique_numbs} уникальных numb / "
-                f"{self.phase_b_would_create} строк — не создаём "
+                f"{self.phase_b_would_create} строк – не создаём "
                 f"(архив/отменённые планы)."
             )
         if self.missing_numbs_enabled:
@@ -467,7 +467,7 @@ class SoftCompositeFlagsResult:
             lines.append(
                 f"Отсутствующие NUMB отложены (галка выкл): "
                 f"{self.missing_numbs_unique} уникальных numb / "
-                f"{self.missing_numbs_would_create} строк — не создаём."
+                f"{self.missing_numbs_would_create} строк – не создаём."
             )
         if self.parent_shells_skipped_no_station:
             lines.append(
@@ -578,11 +578,11 @@ def soft_import_composite_flags_from_imena_excel(
     существующие группы по numb: флаги comp/main/niv и словарные поля.
     Не создаёт группы из id_station / id_machine и не перезаписывает name.
 
-    dry_run=True — только отчёт, commit не делается.
+    dry_run=True – только отчёт, commit не делается.
     Phase A: родители для семей с детьми в АРМ (по умолчанию вкл).
-    Phase B: COMP=1 без детей — только если create_phase_b_parents=True
+    Phase B: COMP=1 без детей – только если create_phase_b_parents=True
     (по умолчанию выкл: архив/отменённые планы).
-    Отсутствующие NUMB: create_missing_numbs=True — EG в текущей версии БД
+    Отсутствующие NUMB: create_missing_numbs=True – EG в текущей версии БД
     без Station (связь вручную).
     """
     t0 = time.perf_counter()
@@ -615,7 +615,7 @@ def soft_import_composite_flags_from_imena_excel(
     if not present_fields and not present_meta:
         raise ValueError(
             "В файле нет колонок COMP / MAIN / NIV и нет словарных полей "
-            "(d, r, name, vedomstvo, be, gk, n1, p1, addr, …) — нечего обновлять."
+            "(d, r, name, vedomstvo, be, gk, n1, p1, addr, …) – нечего обновлять."
         )
 
     excel_by_numb: dict[str, dict[str, int | None]] = {}
@@ -726,7 +726,7 @@ def soft_import_composite_flags_from_imena_excel(
             if len(result.warnings) < 40:
                 result.warnings.append(
                     f"numb={numb_key} id={eg.id}: в Access «{str(excel_name)[:70]}», "
-                    f"в АРМ «{str(eg_label)[:70]}». Код группы, скорее всего, чужой — "
+                    f"в АРМ «{str(eg_label)[:70]}». Код группы, скорее всего, чужой – "
                     "проверьте NUMB."
                 )
         if not flag_changed and not dict_changes:
@@ -821,7 +821,7 @@ def soft_import_composite_flags_from_imena_excel(
             if len(unique) > 1 and len(result.warnings) < 40:
                 result.warnings.append(
                     f"id={eg.id} «{(eg.name or eg.name_ext or '')[:60]}»: "
-                    f"несколько NUMB по названию ({', '.join(unique[:6])}) — пропуск."
+                    f"несколько NUMB по названию ({', '.join(unique[:6])}) – пропуск."
                 )
             continue
         numb_key = unique[0]
@@ -931,7 +931,7 @@ def soft_import_composite_flags_from_imena_excel(
     missing_write = bool(create_missing_numbs) and not dry_run and target_ver is not None
     if create_missing_numbs and not dry_run and target_ver is None:
         result.warnings.append(
-            "Не определена текущая версия БД — отсутствующие NUMB не создаём."
+            "Не определена текущая версия БД – отсутствующие NUMB не создаём."
         )
     missing = create_missing_numbs_from_excel(
         sess,

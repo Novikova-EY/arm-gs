@@ -316,7 +316,7 @@ def update_energy_unit_service(data, user):
                     changes.append(format_field_change("id_regional_energy_system", old_name, new_name, "energy_unit"))
                     obj.id_regional_energy_system = new_val
 
-            # Если есть реальные изменения — лог и добавление в список
+            # Если есть реальные изменения – лог и добавление в список
             if changes:
                 log_to_db(
                     user, 

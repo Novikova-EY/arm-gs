@@ -40,7 +40,7 @@ def build_accum_fixed_capital_excel_stream(context: dict[str, Any]) -> BytesIO:
 
     row_idx = 2
     for block in context.get("territory_blocks") or []:
-        title = f"{block.get('abbr', '')} — {block.get('label', '')}"
+        title = f"{block.get('abbr', '')} – {block.get('label', '')}"
         ws.cell(row=row_idx, column=1, value=title).font = Font(bold=True)
         row_idx += 1
         for ved_row in block.get("rows") or []:

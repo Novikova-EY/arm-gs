@@ -27,26 +27,26 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Название (name)</label>
-                            <input type="text" name="name" class="form-control station-name" value="{{ request.form.name or '' }}" placeholder="—">
+                            <input type="text" name="name" class="form-control station-name" value="{{ request.form.name or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Название Топливо (name_ext)</label>
-                            <input type="text" name="name_ext" class="form-control" value="{{ request.form.name_ext or '' }}" placeholder="—">
+                            <input type="text" name="name_ext" class="form-control" value="{{ request.form.name_ext or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Типы турбин (tm)</label>
-                            <input type="text" name="tm" class="form-control" value="{{ request.form.tm or '' }}" placeholder="—">
+                            <input type="text" name="tm" class="form-control" value="{{ request.form.tm or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
-                            <input type="text" name="numb" class="form-control" value="{{ request.form.numb or '' }}" placeholder="—">
+                            <input type="text" name="numb" class="form-control" value="{{ request.form.numb or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label fw-semibold">Действующая (d)</label>
+                            <label class="form-label fw-semibold">Признак действующей станции (d)</label>
                             <select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (request.form.d or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label fw-semibold">Расширяемая (r)</label>
+                            <label class="form-label fw-semibold">Признак расширяемой станции (r)</label>
                             <select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (request.form.r or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
                         </div>
                         <div class="col-md-2 col-6">
@@ -55,15 +55,15 @@
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Группа оборудования/составная станция (niv)</label>
-                            <input type="text" name="niv" class="form-control" value="{{ request.form.niv or '' }}" placeholder="—">
+                            <input type="text" name="niv" class="form-control" value="{{ request.form.niv or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Признак составной станции (comp)</label>
-                            <input type="text" name="comp" class="form-control" value="{{ request.form.comp or '' }}" placeholder="—">
+                            <input type="text" name="comp" class="form-control" value="{{ request.form.comp or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Код группы оборудования (main)</label>
-                            <input type="text" name="main" class="form-control" value="{{ request.form.main or '' }}" placeholder="—">
+                            <input type="text" name="main" class="form-control" value="{{ request.form.main or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">K (по годам)</label>
@@ -71,31 +71,31 @@
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
-                            <input type="text" name="n1" class="form-control" value="{{ request.form.n1 or '' }}" placeholder="—">
+                            <input type="text" name="n1" class="form-control" value="{{ request.form.n1 or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
-                            <input type="text" name="n2" class="form-control" value="{{ request.form.n2 or '' }}" placeholder="—">
+                            <input type="text" name="n2" class="form-control" value="{{ request.form.n2 or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
-                            <input type="text" name="p1" class="form-control" value="{{ request.form.p1 or '' }}" placeholder="—">
+                            <input type="text" name="p1" class="form-control" value="{{ request.form.p1 or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
-                            <input type="text" name="p2" class="form-control" value="{{ request.form.p2 or '' }}" placeholder="—">
+                            <input type="text" name="p2" class="form-control" value="{{ request.form.p2 or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                            <input type="text" name="ordnumb" class="form-control" value="{{ request.form.ordnumb or '' }}" placeholder="—">
+                            <input type="text" name="ordnumb" class="form-control" value="{{ request.form.ordnumb or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Адрес (addr)</label>
-                            <input type="text" name="addr" class="form-control" value="{{ request.form.addr or '' }}" placeholder="—">
+                            <input type="text" name="addr" class="form-control" value="{{ request.form.addr or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Примечание (note)</label>
-                            <input type="text" name="note" class="form-control" value="{{ request.form.note or '' }}" placeholder="—">
+                            <input type="text" name="note" class="form-control" value="{{ request.form.note or '' }}" placeholder="–">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Субъект РФ (obl)</label>

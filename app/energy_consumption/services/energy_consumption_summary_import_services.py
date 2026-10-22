@@ -92,7 +92,7 @@ _YEAR_HEADER_RE = re.compile(
 )
 _YEAR_HEADER_NUMSTR_RE = re.compile(r"^\s*(\d{4})(?:\.0+)?\s*$")
 
-# Для поиска строки с годами в файле — без совпадения со справочником Years (его может ещё не быть).
+# Для поиска строки с годами в файле – без совпадения со справочником Years (его может ещё не быть).
 _YEAR_HEADER_PLAUSIBLE = range(1990, 2051)
 
 
@@ -284,7 +284,7 @@ def _load_summary_workbook_from_bytes(raw: bytes):
         ) from e
     except Exception as e:
         raise ValueError(
-            "Не удалось прочитать файл Excel — книга повреждена, неполная или в неподдерживаемом формате. "
+            "Не удалось прочитать файл Excel – книга повреждена, неполная или в неподдерживаемом формате. "
             "Откройте её в Excel, сохраните заново как .xlsx и повторите импорт."
         ) from e
 
@@ -398,7 +398,7 @@ def _resolve_row_perimeter_variant_code(
     *,
     variant_column_mode: bool,
 ) -> Optional[str]:
-    """Пустая ячейка варианта — без варианта периметра (None), без наследования сверху."""
+    """Пустая ячейка варианта – без варианта периметра (None), без наследования сверху."""
     if not variant_column_mode:
         return None
     return _parse_optional_variant_cell(raw_variant_cell)
@@ -462,8 +462,8 @@ def _pick_exact_match(label: str, pairs: list[tuple[Any, str]]) -> Optional[Any]
     return exact[0]
 
 
-# Агрегаты верхнего уровня без FK (РФ, ЭЭС России) — вариант из столбца perimeter-variants.
-# «ЕЭС России» (EnergySystemType) — отдельно, через справочник типов энергосистемы.
+# Агрегаты верхнего уровня без FK (РФ, ЭЭС России) – вариант из столбца perimeter-variants.
+# «ЕЭС России» (EnergySystemType) – отдельно, через справочник типов энергосистемы.
 _AGGREGATE_MODEL_BY_BASE_LABEL: dict[str, Type[Any]] = {
     _norm_entity_label(EES_RUSSIA_AGGREGATE_NAME): EesRussiaEnergyConsumptionParameter,
     _norm_entity_label("Россия"): RussiaFederationEnergyConsumptionParameter,
@@ -500,19 +500,19 @@ _IMPORT_SKIPPED_ROW_LABELS = frozenset(
 
 
 def _is_ees_unified_import_label(label: str) -> bool:
-    """«ЕЭС России» — тип энергосистемы (EnergySystemType), не агрегат ЭЭС России."""
+    """«ЕЭС России» – тип энергосистемы (EnergySystemType), не агрегат ЭЭС России."""
     base = _strip_import_variant_suffixes_from_label(label)
     return _norm_entity_label(base) == _EES_UNIFIED_IMPORT_LABEL_CF
 
 
 def _is_calculated_ees_russia_import_label(label: str) -> bool:
-    """«ЭЭС России» (электроэнергетические системы) — расчёт, не пишется в БД."""
+    """«ЭЭС России» (электроэнергетические системы) – расчёт, не пишется в БД."""
     base = _strip_import_variant_suffixes_from_label(label)
     return _norm_entity_label(base) == _CALCULATED_EES_RUSSIA_BASE_LABEL_CF
 
 
 def _is_ees_russia_aggregate_import_label(label: str) -> bool:
-    """Агрегат «ЭЭС России» с вариантом периметра — импортируется в EesRussia*."""
+    """Агрегат «ЭЭС России» с вариантом периметра – импортируется в EesRussia*."""
     base = _strip_import_variant_suffixes_from_label(label)
     return _norm_entity_label(base) == _CALCULATED_EES_RUSSIA_BASE_LABEL_CF
 
@@ -613,7 +613,7 @@ def _import_row_year_numeric_pairs(
     Для «ЕЭС России … с зарядом ГАЭС» (``with_nt_with_gaes`` / ``without_nt_with_gaes``)
     числа в шаблоне часто стоят правее, чем у «Россия» / «ЕЭС России» без НТ (пустые
     ячейки в начале блока годов). Разреженные строки привязываем к последним N годам
-    сетки; плотный блок со сдвигом — сдвигаем влево на ширину «пустого хвоста».
+    сетки; плотный блок со сдвигом – сдвигаем влево на ширину «пустого хвоста».
     """
     del variant_column_mode  # выравнивание одинаково для обоих форматов шаблона
     year_col_indices = sorted(year_cols.keys())
@@ -649,7 +649,7 @@ def _import_row_year_numeric_pairs(
                     shifted.append((year_cols[target_ci], val))
             if len(shifted) == len(values):
                 return shifted
-        # Разреженные строки у правого края сетки — последние N лет; иначе год берём
+        # Разреженные строки у правого края сетки – последние N лет; иначе год берём
         # из фактической колонки (шаблон «Для работы в АРМе»: факт 2024–2025, прогноз пуст).
         if len(values) < len(year_col_indices) and last_val_ci >= last_year_ci:
             target_cols = year_col_indices[-len(values) :]
@@ -697,7 +697,7 @@ def _ees_russia_gaes_import_perimeter_variant_from_excel(
 
 
 def _is_kaliningrad_sync_zone_import_label(label: str) -> bool:
-    """«Синхронная зона Калининградской области» — расчётная строка сводки, не из Excel."""
+    """«Синхронная зона Калининградской области» – расчётная строка сводки, не из Excel."""
     label_n = _norm_entity_label(label)
     return label_n.startswith("синхронная зона") and "калин" in label_n
 
@@ -937,7 +937,7 @@ def _is_unresolved_first_sa_gaes_kaliningrad_import_label(
     label: str,
     ctx: dict[str, list[tuple[Any, str]]],
 ) -> bool:
-    """Подпись похожа на импорт первой СЗ с ГАЭС, но не сопоставилась — не писать в базовую СЗ."""
+    """Подпись похожа на импорт первой СЗ с ГАЭС, но не сопоставилась – не писать в базовую СЗ."""
     if _resolve_first_sa_summary_import_binding(label, ctx) is not None:
         return False
     label_n = _norm_entity_label(label)
@@ -1100,7 +1100,7 @@ def _resolve_row_binding(
     return None
 
 
-# Лист-заглушка «млн. кВт.ч» (несколько строк без сетки годов) — не считаем ошибкой при разборе.
+# Лист-заглушка «млн. кВт.ч» (несколько строк без сетки годов) – не считаем ошибкой при разборе.
 _OPTIONAL_GRID_MAX_ROWS = 6
 
 _SCREEN_EXPORT_ENTITY_HEADER = "энергосистема"
@@ -1140,7 +1140,7 @@ def _merge_perimeter_variant_duplicate_year_values(
     """Убирает только нулевые заглушки; разные варианты одной сущности сохраняются отдельно.
 
   Пустая ячейка perimeter-variants → ``None`` (NULL в БД). Для одной сущности могут быть
-  параллельные строки без варианта и с ``o1`` (например, «ЭС Камчатского края») — обе
+  параллельные строки без варианта и с ``o1`` (например, «ЭС Камчатского края») – обе
   записываются в свои варианты периметра.
 
   Строка с явным кодом варианта, нулевая по всем годам, пропускается целиком. Отдельные
@@ -1344,7 +1344,7 @@ def _single_regional_district_id_for_res(
 ) -> Optional[int]:
     """
     Если в связях региональная ЭС привязана ровно к одному субъекту РФ и этот субъект
-    есть в указанной версии справочника — вернуть его id, иначе None.
+    есть в указанной версии справочника – вернуть его id, иначе None.
     """
     stmt = select(regional_district_regional_energy_system.c.regional_district_id).where(
         regional_district_regional_energy_system.c.regional_energy_system_id
@@ -1393,7 +1393,7 @@ def _regional_district_accepts_import_perimeter_variant(
     """Можно ли записать код варианта в параметры субъекта РФ (в т.ч. при зеркале с РЭС).
 
     Пустой вариант (NULL в БД) допустим всегда: при импорте Excel он не валидируется
-  против каталога привязок. Явный код — только если он привязан к этому субъекту.
+  против каталога привязок. Явный код – только если он привязан к этому субъекту.
     """
     if perimeter_variant_code is None:
         return True
@@ -1418,7 +1418,7 @@ def _mirror_res_accumulator_rows_to_single_district_rd(
     """Дублирует суммы импорта по РЭС в параметры единственного субъекта этой РЭС (если он один).
 
     Если в файле по этому субъекту за тот же год уже есть строка, сопоставленная именно как
-    субъект РФ, зеркало не добавляют — без этого значения суммировались бы дважды.
+    субъект РФ, зеркало не добавляют – без этого значения суммировались бы дважды.
     """
     res_model = RegionalEnergySystemEnergyConsumptionParameter
     fk_res = _MODEL_FK[res_model]
@@ -1453,7 +1453,7 @@ def _collapse_labels_to_bind_keys(
 ]:
     """Отбор годов, входящих в справочник Years данной версии; привязка к объектам версии.
 
-    Второй элемент — множество (id_subj_rf, год), для которых в файле уже есть сумма как по
+    Второй элемент – множество (id_subj_rf, год), для которых в файле уже есть сумма как по
     субъекту РФ (без дубля зеркалом с РЭС).
 
     Если у сущности нет привязок вариантов периметра, явный код из Excel (например ``o1``)
@@ -1534,7 +1534,7 @@ def _collapse_labels_to_bind_keys(
             acc[key] += total
             cleared_pvc_only_keys.add(key)
         elif key in cleared_pvc_only_keys:
-            # «Родная» NULL-строка важнее сброшенного o1 — подменяем, не складываем.
+            # «Родная» NULL-строка важнее сброшенного o1 – подменяем, не складываем.
             acc[key] = total
             cleared_pvc_only_keys.discard(key)
         else:
@@ -1653,7 +1653,7 @@ def _apply_accumulator_for_version(
     import_user = _import_username(user)
     deduped_parents: set[tuple[Any, ...]] = set()
     for (model, fk_column, parent_id, year_n, pvc), total in acc.items():
-        # Агрегаты без родителя: один и тот же parent_id (=0) на все годы — включать год в ключ,
+        # Агрегаты без родителя: один и тот же parent_id (=0) на все годы – включать год в ключ,
         # иначе _dedupe_aggregate_energy_consumption_rows_for_year вызывается только для первого года
         # и лишние строки по другим годам остаются → «удвоение» в суммах/таблицах.
         if fk_column == _FK_AGGREGATE_NO_PARENT:
@@ -1758,7 +1758,7 @@ _FORMULA_ROW_PERSIST_PARAMETER_KEYS: tuple[str, ...] = (
 )
 
 
-# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez — только экранный расчёт.
+# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez – только экранный расчёт.
 # У OES-стиля perimeter_variant_code=None совпадает с базовой строкой; запись в БД
 # затирала бы ручной ввод (потребление − заряд вместо потребления).
 # См. _is_display_only_without_gaes_injected_summary_row в summary_services.
@@ -1983,7 +1983,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(
     (и он есть в той же версии справочника): лист «млн. кВт.ч» → поле по субъекту,
     лист «СиПР» → поле СиПР по субъекту. Если для того же субъекта и года в файле уже
     есть строка, сопоставленная как субъект РФ (а не как РЭС), копирование с РЭС не
-    выполняется — иначе сумма на субъекте удваивается.
+    выполняется – иначе сумма на субъекте удваивается.
 
     Если лист «млн. кВт.ч» есть, но это короткая заглушка без таблицы, показатели «млн. кВтч»
     из файла не обновляются (как при отсутствии данных на листе).

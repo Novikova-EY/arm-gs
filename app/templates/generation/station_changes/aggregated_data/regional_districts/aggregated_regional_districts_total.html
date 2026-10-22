@@ -26,11 +26,11 @@
                 {% if current_year_split is not none and year == current_year_split %}
                     <td class="power-column"></td>
                     <td class="power-column">
-                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                        {{ event_data.get(year, '–') | format_decimal if event_data }}
                     </td>
                 {% else %}
                     <td class="power-column">
-                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                        {{ event_data.get(year, '–') | format_decimal if event_data }}
                     </td>
                 {% endif %}
             {% endfor %}
@@ -45,7 +45,7 @@
                     {% endfor %}
                     {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
                 {% else %}
-                    —
+                    –
                 {% endif %}
             </td>
             <td></td>

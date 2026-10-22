@@ -52,9 +52,9 @@ def _sa_chi_row(sa_id: int, label: str) -> dict:
         "parent_id": sa_id,
         "id_synchronous_area": sa_id,
         "entity_label": label,
-        "year_values": ["—", "—"],
+        "year_values": ["–", "–"],
         "year_numeric_tooltips": ["", ""],
-        "hist_value": "—",
+        "hist_value": "–",
         "hist_numeric_tooltip": "",
         "pd_pd_chi_row": True,
     }

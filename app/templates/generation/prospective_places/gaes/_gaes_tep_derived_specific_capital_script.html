@@ -88,9 +88,9 @@
         if (yrDisp && idYearGes) {
             if (idYearGes.value && cfg.yearIdToNumber) {
                 const n = cfg.yearIdToNumber[String(idYearGes.value)];
-                yrDisp.textContent = n != null && n !== undefined ? String(n) : "—";
+                yrDisp.textContent = n != null && n !== undefined ? String(n) : "–";
             } else {
-                yrDisp.textContent = "—";
+                yrDisp.textContent = "–";
             }
         }
     }

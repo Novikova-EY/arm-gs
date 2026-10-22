@@ -552,7 +552,7 @@ def test_south_federal_district_without_nt_compact_label_for_fo_summary():
 
 
 def test_kaliningrad_sync_area_label_omits_without_nt_suffix():
-    """СЗ Калининграда не пара с/без НТ — суффикс «без НТ» в названии не нужен."""
+    """СЗ Калининграда не пара с/без НТ – суффикс «без НТ» в названии не нужен."""
     from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model import (
         SynchronousAreaDemandParameter,
     )

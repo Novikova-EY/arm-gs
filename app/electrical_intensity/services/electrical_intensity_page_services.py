@@ -75,7 +75,7 @@ def parse_electrical_intensity_include_long_years() -> bool:
 
 def parse_electrical_intensity_summary_year_range() -> tuple[int, int]:
 
-    """По умолчанию — полный диапазон отчётного + среднесрочного + долгосрочного периода."""
+    """По умолчанию – полный диапазон отчётного + среднесрочного + долгосрочного периода."""
 
     bounds = filter_year_list_for_page()
 

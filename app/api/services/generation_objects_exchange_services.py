@@ -86,16 +86,16 @@ GENERATION_MACHINES_COMMENT = (
     "Поле «Модернизация целесообразна» всегда false: такого признака в АРМ нет; "
     "на карточке агрегата есть «Ожидаемый год модернизации с изменением мощности» "
     "и «Ожидаемый год модернизации без изменения мощности» "
-    "(в JSON — «Дата модернизации блока»).\n\n"
+    "(в JSON – «Дата модернизации блока»).\n\n"
     "Поле station_external_code добавлено для связи со станцией "
     "(тот же код, что external_code в generation_stations).\n\n"
-    "Поле «Станционный номер» — «Номер агрегата» с карточки агрегата.\n\n"
+    "Поле «Станционный номер» – «Номер агрегата» с карточки агрегата.\n\n"
     "14.10.2026 - добавлено поле \"Станционный номер\""
 )
 
 
 def json_number(value: Any) -> int | float | None:
-    """Decimal/число в JSON: целое без точки, иначе float; пустое — None."""
+    """Decimal/число в JSON: целое без точки, иначе float; пустое – None."""
     if value is None or value == "":
         return None
     if isinstance(value, bool):
@@ -123,17 +123,17 @@ def _quantize_number(value: Any, quant: str) -> float:
 
 
 def generation_mwh(value: Any) -> float:
-    """Выработка из БД (млн кВт·ч), в JSON — 3 знака после запятой."""
+    """Выработка из БД (млн кВт·ч), в JSON – 3 знака после запятой."""
     return _quantize_number(value, "0.001")
 
 
 def capacity_mw(value: Any) -> float:
-    """Установленная мощность, МВт — 6 знаков после запятой (как в БД)."""
+    """Установленная мощность, МВт – 6 знаков после запятой (как в БД)."""
     return _quantize_number(value, "0.000001")
 
 
 def energy_zone_number(raw: Any) -> int | None:
-    """Номер энергозоны в JSON: целое; «не указано» и пустое — null."""
+    """Номер энергозоны в JSON: целое; «не указано» и пустое – null."""
     if raw is None:
         return None
     text = str(raw).strip()
@@ -155,7 +155,7 @@ def station_page_name(station: Any) -> str:
 
 
 def station_page_subject(station: Any) -> str | None:
-    """Субъект РФ — как поле «Субъект РФ» на карточке."""
+    """Субъект РФ – как поле «Субъект РФ» на карточке."""
     district = getattr(station, "regional_district", None)
     name = (getattr(district, "name", None) or "").strip() if district else ""
     if name:
@@ -179,7 +179,7 @@ def _district_synchronous_area_full_name(district: Any) -> str | None:
 
 
 def station_page_zone(station: Any) -> str | None:
-    """Зона станции — синхронная зона субъекта РФ с карточки станции."""
+    """Зона станции – синхронная зона субъекта РФ с карточки станции."""
     district = getattr(station, "regional_district", None)
     name = _district_synchronous_area_full_name(district)
     if name:
@@ -190,8 +190,8 @@ def station_page_zone(station: Any) -> str | None:
 
 
 def station_page_oes(station: Any) -> str | None:
-    """ОЭС/ТИТЭС — как поле «ОЭС» на карточке станции (например «ТИТЭС Сибири»)."""
-    # Station.union_energy_system — property; у SimpleNamespace в тестах может быть строка.
+    """ОЭС/ТИТЭС – как поле «ОЭС» на карточке станции (например «ТИТЭС Сибири»)."""
+    # Station.union_energy_system – property; у SimpleNamespace в тестах может быть строка.
     direct = getattr(station, "union_energy_system", None)
     if isinstance(direct, str):
         text = direct.strip()
@@ -225,7 +225,7 @@ def _district_energy_zone_number(district: Any) -> Any:
 
 
 def station_page_energy_zone(station: Any) -> Any:
-    """Номер энергозоны — как у субъекта РФ на карточке станции."""
+    """Номер энергозоны – как у субъекта РФ на карточке станции."""
     district = getattr(station, "regional_district", None)
     number = _district_energy_zone_number(district)
     if number is not None and str(number).strip():
@@ -264,7 +264,7 @@ def json_date_or_dash(raw: Any) -> str:
 
 
 def json_year_as_date(raw: Any) -> str:
-    """Год → 01.01.ГГГГ; уже дата — как есть; пусто — «-»."""
+    """Год → 01.01.ГГГГ; уже дата – как есть; пусто – «-»."""
     if raw is None or raw == "":
         return MISSING_DATE
     if isinstance(raw, int):
@@ -278,7 +278,7 @@ def json_year_as_date(raw: Any) -> str:
 
 
 def machine_page_number(machine: Any) -> str | None:
-    """Станционный номер — «Номер агрегата» с карточки; пусто — None."""
+    """Станционный номер – «Номер агрегата» с карточки; пусто – None."""
     number = getattr(machine, "machine_number", None)
     if number is None:
         return None
@@ -481,7 +481,7 @@ def _load_station_capacity_map(
     years: list[int],
     version_id: int | None,
 ) -> dict[tuple[int, int], Decimal]:
-    """Сумма p_ust неархивных агрегатов по станции и году — как на карточке станции."""
+    """Сумма p_ust неархивных агрегатов по станции и году – как на карточке станции."""
     nested = load_stations_powers_by_year(station_ids, years, version_id)
     result: dict[tuple[int, int], Decimal] = {}
     for station_id, by_year in nested.items():
@@ -540,7 +540,7 @@ def build_generation_objects_rows(
     """Станция × год. Планируемая: Руст года = 0, а в будущем году Руст > 0.
 
     Строка собирается с карточки электростанции: название, тип, субъект РФ;
-    зона и номер энергозоны — по субъекту РФ карточки. Станции без названия
+    зона и номер энергозоны – по субъекту РФ карточки. Станции без названия
     на карточке в набор не входят.
     """
     caps_by_station = _capacity_by_station(capacity_map)
@@ -793,7 +793,7 @@ def load_generation_machines_dataset(
 
 
 def list_exchange_datasets() -> dict[str, Any]:
-    """Совместимость: канон — app.api.services.exchange_api_services."""
+    """Совместимость: канон – app.api.services.exchange_api_services."""
     from app.api.services.exchange_api_services import (
         list_exchange_datasets as _list,
     )

@@ -8,19 +8,19 @@
 - бинарным поиском подбирает коэффициент `k` (или `kn`, если база пустая),
   чтобы сумма `e` приблизилась к целевому Ераспред.
 
-Опционально (флаг apply_restrictions — аналог открытого окна «Анализ_по_областям»):
+Опционально (флаг apply_restrictions – аналог открытого окна «Анализ_по_областям»):
 - берёт kobl из таблицы (как Access при открытой форме; 0/overflow → 1);
 - умножает часы на kobl по субъекту (obl) рабочей строки топлива (Станции.OBL);
 - Access enddis: Ограничения_Click и GoTo BDis, пока irestr<15 (14 проходов).
-  Если emin/emax уже выполнены — дальше kobl не меняется, повтор Dist
+  Если emin/emax уже выполнены – дальше kobl не меняется, повтор Dist
   тождественен: стоп (как оставшиеся проходы Access с тем же kobl).
-  Ветки часов как Access: hfix=1 / hb=0 / NUST=0 — kobl в формулу H не входит.
+  Ветки часов как Access: hfix=1 / hb=0 / NUST=0 – kobl в формулу H не входит.
 
-Access MsgBox «нет NR → HFIX»: в вебе — двухшаговый сценарий на /fuel/calculation
+Access MsgBox «нет NR → HFIX»: в вебе – двухшаговый сценарий на /fuel/calculation
 (список кандидатов → фиксация H=0/hfix=1 по выбранным → продолжение Распред).
 
 Как Кнопка27: «Коэфф» не вызывается. Берётся уже сохранённая сводка и EWTP
-на станциях (после ручной правки). Нет сводки — ошибка: сначала «Коэфф».
+на станциях (после ручной правки). Нет сводки – ошибка: сначала «Коэфф».
 """
 from __future__ import annotations
 
@@ -134,7 +134,7 @@ def restriction_live_payload(
 
     def num(val, *, digits: int | None = None) -> dict[str, str | None]:
         if val is None:
-            return {"raw": None, "text": "—"}
+            return {"raw": None, "text": "–"}
         d = display_digits if digits is None else digits
         fmt = format_decimal_for_display if d == 2 else format_decimal_trim_for_display
         return {"raw": str(val), "text": fmt(val, digits=d)}
@@ -162,8 +162,8 @@ def restriction_live_payload(
     }
 
 
-# Живая Кнопка27 СиПР: новые ГТ — obor 20|90|24|89 → ch·kngt (не knps).
-# gs_fue_restrictions.kobl — numeric(36, 16). Access Востока (Якутия) даёт
+# Живая Кнопка27 СиПР: новые ГТ – obor 20|90|24|89 → ch·kngt (не knps).
+# gs_fue_restrictions.kobl – numeric(36, 16). Access Востока (Якутия) даёт
 # kobl≈4e3…2e4, когда emin структурно недостижим; потолок 100 сбрасывал эталон.
 KOBL_ABS_MAX = Decimal("20000")
 
@@ -183,7 +183,7 @@ def oes_ved_restriction_filter_text(oes_code: int) -> str:
 
 
 def fuel_param_obl_code(row: EquipmentGroupFuelParam | None) -> int | None:
-    """Access Станции(Схема).OBL на строке года — не EquipmentGroup.obl справочника."""
+    """Access Станции(Схема).OBL на строке года – не EquipmentGroup.obl справочника."""
     if row is None:
         return None
     raw = getattr(row, "obl", None)
@@ -244,7 +244,7 @@ def restriction_unmet_subjects_hfix_locked(
     через kobl: все станции Распреда с ved>0 либо hfix=1, либо Hбаз=0
     (ветка «новая», часы = ch·kn*, kobl нет), либо NUST=0 (E=0).
 
-    Восток 2027: Якутская ГРЭС-2 (773) без hfix, но Hбаз 2024 = 0 — kobl
+    Восток 2027: Якутская ГРЭС-2 (773) без hfix, но Hбаз 2024 = 0 – kobl
     в формулу H не входит (ветка «новая»). Распред этот факт не использует
     как ранний стоп внешнего BDis: в Access его нет (irestr<15 GoTo BDis).
     """
@@ -345,7 +345,7 @@ def _is_hfix(row: EquipmentGroupFuelParam | None) -> bool:
 
 
 def _access_bdis_skip_no_specific(spec) -> bool:
-    """Access Кнопка27: ``If U.NoMatch Then GoTo skip1`` — E/H не трогаем."""
+    """Access Кнопка27: ``If U.NoMatch Then GoTo skip1`` – E/H не трогаем."""
     return spec is None
 
 
@@ -520,7 +520,7 @@ class DistributionStageService:
                 continue
             pending.append((equipment_group_id, cur_row))
 
-        # Подпись в блоке «Ррасп = 0» — поле «Название» из «Общая информация»,
+        # Подпись в блоке «Ррасп = 0» – поле «Название» из «Общая информация»,
         # а не FuelParam.name (там часто старое имя из БД Топливо).
         name_by_id: dict[int, str] = {}
         pending_ids = [gid for gid, _ in pending]
@@ -751,11 +751,11 @@ class DistributionStageService:
         """
         Часы из строки FuelParam для Распред (база hb и HFIX).
 
-        Access: ``hb = z(w("h"))`` / ``z(w("h"))`` при hfix — NULL→0.
+        Access: ``hb = z(w("h"))`` / ``z(w("h"))`` при hfix – NULL→0.
         В АРМ после импорта ``h`` часто пуст при заполненных e/nust; без
         восстановления действующие уходят в ветку «новая» (H=ch·kn*), подбор k
         не на чем крутить, ΣE зависает (типично EWTP·1.04 или ch·kn*).
-        Если ``synthesize_from_e_nust`` и h пуст — H = E/NUST·1000
+        Если ``synthesize_from_e_nust`` и h пуст – H = E/NUST·1000
         (как после calce в Access). Для HFIX синтез не используем.
         """
         if row is None:
@@ -773,7 +773,7 @@ class DistributionStageService:
     def _seed_bisection_k(k: Decimal) -> Decimal:
         """
         Access берёт k с формы и ищет в [k−0.1, k+0.1] без окна 0.8…1.2.
-        ОЭС Востока / Сибири после ограничений дают k≈1.85 / 0.59 — сброс
+        ОЭС Востока / Сибири после ограничений дают k≈1.85 / 0.59 – сброс
         в 1 уводит раздачу на десятки процентов. 0 / overflow → 1, как kobl.
         """
         if k <= 0 or abs(k) > Decimal("10"):
@@ -873,7 +873,7 @@ class DistributionStageService:
             return ewtp
 
         nust = d0(cur_row.nust)
-        # Access: z(w!HFIX <> 1) — Null HFIX не включает формулу прироста
+        # Access: z(w!HFIX <> 1) – Null HFIX не включает формулу прироста
         if _access_allows_capacity_growth(cur_row) and nust > nustb and h_current > ch and nustb > 0:
             e1 = (nustb * h_current + (nust - nustb) * ch) / D1000
         else:
@@ -964,11 +964,11 @@ class DistributionStageService:
         """
         Порт Ограничения_Click: пересчёт ecur/ecurdis/H/Hdis/etp/kobl по emin/emax.
 
-        ecur — ΣE субъекта по ОЭС/ved>0/году текущей версии БД (Access: одна
+        ecur – ΣE субъекта по ОЭС/ved>0/году текущей версии БД (Access: одна
         рабочая таблица). Без версии сюда попадали копии станций всех версий,
         ecur раздувался в ~8 раз, kobl за 14 проходов BDis переполнял numeric.
 
-        Субъект — FuelParam.obl (Станции.OBL), не EquipmentGroup.obl справочника.
+        Субъект – FuelParam.obl (Станции.OBL), не EquipmentGroup.obl справочника.
         """
         all_oes_ids = select_equipment_group_ids_for_calculation(
             self.session,
@@ -1065,7 +1065,7 @@ class DistributionStageService:
                 sum_e += d0(row.e)
                 sum_n += d0(row.nust)
             for gid in filter_group_ids:
-                # Access sumprochdis: (ved>0) and filter1 — FuelParam.ved за год
+                # Access sumprochdis: (ved>0) and filter1 – FuelParam.ved за год
                 row = by_key.get((gid, cyear))
                 if row is None:
                     continue
@@ -1077,7 +1077,7 @@ class DistributionStageService:
                 sum_edis += d0(row.e)
                 sum_etp += d0(row.ewtp)
 
-            # Access не сбрасывает kobl=1 для «прочих» при lim=0 — только домножает.
+            # Access не сбрасывает kobl=1 для «прочих» при lim=0 – только домножает.
             kobl = d0(residual.kobl) if residual.kobl is not None else D1
             residual.ecur = sum_e
             residual.h = (sum_e / sum_n * D1000) if sum_n > 0 else D0
@@ -1161,7 +1161,7 @@ class DistributionStageService:
             raise ValueError(
                 "Нет сводки этапа «Коэфф» для этого параметра. "
                 "Сначала нажмите «Коэфф» (как в Access: Кнопка5, затем Кнопка27). "
-                "После Коэфф можно править EWTP на станциях — Распред их не пересчитает."
+                "После Коэфф можно править EWTP на станциях – Распред их не пересчитает."
             )
 
         by_key = self._fuel_param_by_group_year(
@@ -1212,7 +1212,7 @@ class DistributionStageService:
                     "Откройте «Ограничения» и проверьте данные."
                 )
             # Галочка = форма открыта: kobl из таблицы, как Access RecordsetClone.
-            # Не сбрасываем в 1 — иначе 14 проходов с (k эталона, kobl=1)
+            # Не сбрасываем в 1 – иначе 14 проходов с (k эталона, kobl=1)
             # сходятся в другую точку, чем Access. Overflow/0 → 1.
             for restr in restriction_rows:
                 restr.kobl = self._seed_restriction_kobl(restr.kobl)
@@ -1253,7 +1253,7 @@ class DistributionStageService:
         # Access: irestr=1 … If irestr < 15 Then GoTo BDis → 14 внешних прохода.
         outer_max = 14 if apply_restrictions else 1
         restriction_outer_iterations = 0
-        # VBA: Dim hb / bm на уровне Кнопка27_Click — живёт через again: и GoTo BDis.
+        # VBA: Dim hb / bm на уровне Кнопка27_Click – живёт через again: и GoTo BDis.
         cursor_state = AccessBdisCursorState()
         ud_bookmark = AccessSeekBookmark()
 
@@ -1311,7 +1311,7 @@ class DistributionStageService:
                         database_version_id=effective_db_version,
                     )
                     # Access: If U.NoMatch Then GoTo skip1. Пустое окно этой
-                    # станции при не-NoMatch — bm предыдущей (не 2021).
+                    # станции при не-NoMatch – bm предыдущей (не 2021).
                     if _access_bdis_skip_no_specific(spec):
                         skipped_group_ids.append(equipment_group_id)
                         continue
@@ -1322,7 +1322,7 @@ class DistributionStageService:
 
                     hfix = _is_hfix(cur_row)
                     if hfix:
-                        # Access: If hfix=1 Then GoTo calce — часы не трогаем формулой
+                        # Access: If hfix=1 Then GoTo calce – часы не трогаем формулой
                         h_current = self._hours_from_fuel_row(cur_row)
                     elif hb == 0:
                         h_current = self._new_capacity_hours(
@@ -1407,7 +1407,7 @@ class DistributionStageService:
 
             # Access enddis: lim=1, Ограничения_Click, irestr+1, If irestr<15 GoTo BDis.
             # Раннего стопа по hfix/hb/NUST в VBA нет. Если emin/emax уже в коридоре,
-            # Ограничения не меняет kobl — оставшиеся Dist тождественны, можно выйти.
+            # Ограничения не меняет kobl – оставшиеся Dist тождественны, можно выйти.
             row.lim = 1
             self._recalculate_restriction_kobl(
                 restriction_rows=restriction_rows,

@@ -38,7 +38,7 @@ def build_population_excel_stream(context: dict[str, Any]) -> BytesIO:
 
     row_idx = 2
     for pop_row in context.get("population_rows") or []:
-        label = f"{pop_row.get('abbr', '')} — {pop_row.get('label', '')}"
+        label = f"{pop_row.get('abbr', '')} – {pop_row.get('label', '')}"
         ws.cell(row=row_idx, column=1, value=label)
         cells = pop_row.get("cells") or {}
         for col_idx, year in enumerate(years, start=2):

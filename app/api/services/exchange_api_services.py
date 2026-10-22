@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Сервисы JSON-API обмена: один набор — отдельный endpoint.
+"""Сервисы JSON-API обмена: один набор – отдельный endpoint.
 
 Первый запрос клиента (discovery): ``GET /api/config``.
 
-Версии БД — отдельный API:
+Версии БД – отдельный API:
 ``app.api.services.database_versions_api_services``.
 
-Выгрузка данных — по id версии и имени набора:
+Выгрузка данных – по id версии и имени набора:
 ``GET /api/datasets/<database_version>/<dataset>``.
 """
 from __future__ import annotations
@@ -123,7 +123,7 @@ def list_exchange_datasets() -> dict[str, Any]:
 def build_exchange_config(*, base_url: str) -> dict[str, Any]:
     """Discovery для внешнего клиента: первый запрос в сторону АРМ.
 
-    ``datasets`` — реализованные JSON-наборы со страницы
+    ``datasets`` – реализованные JSON-наборы со страницы
     ``/output_documents_transfer`` (без ``database_versions``: он в
     ``database_versions_url``).
     """

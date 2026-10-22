@@ -47,17 +47,17 @@ def check_machine_names(show_all: bool = False):
         machine_name = (m.machine_name or "").strip()
         match = machine_name == display_name
 
-        station_name = "—"
+        station_name = "–"
         if m.machine_station:
-            station_name = m.machine_station.name or "—"
+            station_name = m.machine_station.name or "–"
 
         if show_all or not match:
             results.append({
                 "machine_id": m.id,
                 "station": station_name,
-                "machine_number": m.machine_number or "—",
-                "machine_name": machine_name or "—",
-                "display_name": display_name or "—",
+                "machine_number": m.machine_number or "–",
+                "machine_name": machine_name or "–",
+                "display_name": display_name or "–",
                 "match": match,
             })
 

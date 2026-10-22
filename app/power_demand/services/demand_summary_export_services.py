@@ -83,7 +83,7 @@ def _excel_cell_value_for_parameter(
 ) -> tuple[Any, bool]:
     if not force_numeric and parameter_key in _EXCEL_TEXT_PARAMETER_KEYS:
         if raw in (None, ""):
-            return "—", False
+            return "–", False
         return raw, False
     return excel_numeric_cell_value(raw, verification=verification, zero_as_dash=False)
 

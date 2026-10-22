@@ -90,7 +90,7 @@ def _assert_perimeter_variant_year_allowed(
 def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
     """
     Одно поле формы: «Исторический максимум» (hist) или номер года.
-    Пустое значение — срез «год» без выбранного года (новая незаполненная строка).
+    Пустое значение – срез «год» без выбранного года (новая незаполненная строка).
     """
     s = str(raw or "").strip()
     if s == "hist":
@@ -264,7 +264,7 @@ def _peak_datetime_as_msk(dt):
 
 
 def _peak_datetime_is_year_only_msk(dt) -> bool:
-    """Ввод «только год» сохраняется как 1 января 00:00 МСК — в столбце «исторический максимум» показываем год."""
+    """Ввод «только год» сохраняется как 1 января 00:00 МСК – в столбце «исторический максимум» показываем год."""
     d = _peak_datetime_as_msk(dt)
     if d is None:
         return False
@@ -291,7 +291,7 @@ def format_peak_datetime(dt) -> str:
 
 
 def format_peak_datetime_for_slice(dt, hist_slice: bool) -> str:
-    """Сводка: в столбце «исторический максимум» для ввода только года — строка «ГГГГ», иначе как format_peak_datetime."""
+    """Сводка: в столбце «исторический максимум» для ввода только года – строка «ГГГГ», иначе как format_peak_datetime."""
     if dt is None:
         return ""
     if hist_slice and _peak_datetime_is_year_only_msk(dt):
@@ -359,7 +359,7 @@ def _single_regional_district_id_for_res(
     *,
     database_version_id: int,
 ) -> Optional[int]:
-    """Один субъект РФ у РЭС — id субъекта в указанной версии справочника, иначе None."""
+    """Один субъект РФ у РЭС – id субъекта в указанной версии справочника, иначе None."""
     stmt = select(regional_district_regional_energy_system.c.regional_district_id).where(
         regional_district_regional_energy_system.c.regional_energy_system_id
         == regional_energy_system_id
@@ -451,9 +451,9 @@ def get_demand_rows(
     perimeter_variant_code: Any = _UNSET,
 ):
     """
-    Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
+    Список строк параметров для родителя. fk_column_name=None – модель без FK (РФ целиком).
 
-    perimeter_variant_code: для моделей с PerimeterVariantColumnMixin — None (базовый периметр)
+    perimeter_variant_code: для моделей с PerimeterVariantColumnMixin – None (базовый периметр)
     или код из app.common.perimeter_variant.registry.
     """
     from app.power_demand.services.pd_demand_rows_bulk_cache import (
@@ -684,7 +684,7 @@ def resolve_max_power_mw_for_save(
 ) -> Optional[Decimal]:
     """
     Видимое поле может быть округлено относительно БД. Если текст совпадает с отображением
-    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе — то, что ввёл пользователь.
+    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввёл пользователь.
     """
     vis = parse_decimal(visible_raw if visible_raw is not None else "")
     if not str(db_snapshot_raw or "").strip():
@@ -709,7 +709,7 @@ def validate_demand_post_complete(
     """
     Проверяет, что все строки, которые должны сохраниться, заполнены.
     Строки, отмеченные на удаление, не проверяются.
-    Полностью пустая новая строка (без id) допустима — пропускается.
+    Полностью пустая новая строка (без id) допустима – пропускается.
     """
     ids = form_data.getlist("row_id[]")
     slice_years = form_data.getlist("slice_year[]")
@@ -836,7 +836,7 @@ def save_demand_rows_from_post(
 ) -> tuple[int, int]:
     """
     Обрабатывает POST с полями row_id[], slice_year[], p_max[], dt[], tnv[], oes[], ees[], es[], ez[], del[].
-    slice_year[]: «hist» — исторический максимум; иначе — номер года (строка цифр).
+    slice_year[]: «hist» – исторический максимум; иначе – номер года (строка цифр).
     Возвращает (saved_count, deleted_count).
     """
     validate_demand_post_complete(
@@ -1032,7 +1032,7 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
 
 def _dash_summary_display(value: Any) -> str:
     if value in (None, ""):
-        return "—"
+        return "–"
     return str(value)
 
 
@@ -1048,7 +1048,7 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
     if str(parameter_key or "").startswith("coeff_k_"):
         if hasattr(row, "__table__") and parameter_key in row.__table__.columns:
             v = getattr(row, parameter_key, None)
-            # «Округл (k)» 1–3 / −1; «Не округлять» (0) — не более 6 знаков (как Numeric(25, 6)).
+            # «Округл (k)» 1–3 / −1; «Не округлять» (0) – не более 6 знаков (как Numeric(25, 6)).
             dig = (
                 COEFF_K_DECIMAL_PLACES
                 if rounding_digits == 0
@@ -1065,7 +1065,7 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
                 if v is not None
                 else None
             )
-        return "—"
+        return "–"
     if parameter_key == "max_power":
         v = getattr(row, "max_power_consumption_mw", None)
         return _summary_numeric_display(v, digits=rounding_digits)
@@ -1098,7 +1098,7 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
         return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
-    return "—"
+    return "–"
 
 
 _SUMMARY_STANDALONE_DEMAND_MODELS = frozenset(
@@ -1125,7 +1125,7 @@ def _validate_summary_parent_binding(
 
 
 def parse_summary_slice_key(slice_key: Any) -> tuple[bool, Optional[int]]:
-    """«hist» → исторический максимум; иначе — номер года."""
+    """«hist» → исторический максимум; иначе – номер года."""
     if slice_key is None or slice_key == "":
         raise ValueError("Не указан срез (год или исторический максимум).")
     if slice_key == "hist":
@@ -1221,8 +1221,8 @@ def _summary_row_pvc_compatible_with_target(
 ) -> bool:
     """Совместимость pvc строки БД с вариантом блока сводки при сохранении по ``row_id``.
 
-    - ``NULL`` — legacy без варианта: можно назначить на «без НТ» (не на «с НТ»).
-    - Один код в той же НТ-группе (GAES) — допустим upgrade/совпадение группы.
+    - ``NULL`` – legacy без варианта: можно назначить на «без НТ» (не на «с НТ»).
+    - Один код в той же НТ-группе (GAES) – допустим upgrade/совпадение группы.
     """
     if row_pvc == target_pvc:
         return True
@@ -1597,15 +1597,15 @@ def _fmt_pd_snap_val(
     is_hist: bool = False,
 ) -> str:
     if val is None:
-        return "—"
+        return "–"
     if key == "peak_datetime":
         s = format_peak_datetime_for_slice(val, is_hist)
-        return s if s else "—"
+        return s if s else "–"
     if key == "note":
         s = str(val).strip()
-        return s if s else "—"
+        return s if s else "–"
     if key == "avg_temp":
-        return format_decimal_trim_for_display(val, digits=0) or "—"
+        return format_decimal_trim_for_display(val, digits=0) or "–"
     if key.startswith("coeff_k_") or key in (
         "max_power",
         "combined_on_oes",
@@ -1624,9 +1624,9 @@ def _fmt_pd_snap_val(
         "calculated_max_ees_via_ez_mw",
         "calculated_max_power_consumption_mw",
     ):
-        return format_decimal_trim_for_display(val, digits=rounding_digits) or "—"
+        return format_decimal_trim_for_display(val, digits=rounding_digits) or "–"
     s = str(val).strip()
-    return s if s else "—"
+    return s if s else "–"
 
 
 def _pd_snap_numeric_equal(a: Any, b: Any) -> bool:
@@ -1721,12 +1721,12 @@ def _parent_binding_label_for_pd_summary_log(
         q = filter_by_explicit_db_version(q, model_cls, int(vid))
     ent = q.first()
     if ent is None:
-        return f"{ru_short}=— (нет в справочнике для версии БД)"
+        return f"{ru_short}=– (нет в справочнике для версии БД)"
     nm = getattr(ent, "name", None)
     name_s = str(nm).strip() if nm is not None else ""
     if name_s:
         return f"{ru_short}={name_s}"
-    return f"{ru_short}=—"
+    return f"{ru_short}=–"
 
 
 def _maybe_log_pd_summary_cell(
@@ -1883,7 +1883,7 @@ def _resolve_perimeter_variant_for_save(raw: Any) -> Any:
 
 
 def _parse_reassign_variant_code_payload(raw: Any) -> Any:
-    """Разбор кода варианта для переноса: None — сброс (NULL в БД), _UNSET — ключ не передан."""
+    """Разбор кода варианта для переноса: None – сброс (NULL в БД), _UNSET – ключ не передан."""
     if raw is _UNSET:
         return _UNSET
     if raw in (None, ""):
@@ -1933,7 +1933,7 @@ def save_demand_summary_cell(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — сохранение сводки невозможно."
+            "В системе нет зарегистрированных версий БД – сохранение сводки невозможно."
         )
     anchor_vid = get_current_version()
     display_vid = anchor_vid if anchor_vid in version_ids else version_ids[0]
@@ -2175,7 +2175,7 @@ def save_demand_summary_cell(
             raise ValueError(
                 "Не удалось сохранить значение. Обновите страницу или проверьте привязку строки к объекту."
             )
-        return "—"
+        return "–"
 
     _maybe_log_pd_summary_cell(
         summary_log_scope,
@@ -2226,7 +2226,7 @@ def _resolve_summary_block_perimeter_variant_code(
     *,
     validate_entity_binding: bool = True,
 ) -> str | None | Any:
-    """Разбор кода варианта для блока сводки; пустое значение — сброс (NULL в БД)."""
+    """Разбор кода варианта для блока сводки; пустое значение – сброс (NULL в БД)."""
     if raw is _UNSET:
         return _UNSET
     if raw in (None, ""):
@@ -2508,7 +2508,7 @@ def _reassign_summary_entity_perimeter_variant_all_versions(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — сохранение варианта периметра невозможно."
+            "В системе нет зарегистрированных версий БД – сохранение варианта периметра невозможно."
         )
     user = _username()
     updated = 0
@@ -2615,7 +2615,7 @@ def _seed_summary_block_variant_marker_rows(
     version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
-            "В системе нет зарегистрированных версий БД — сохранение варианта периметра невозможно."
+            "В системе нет зарегистрированных версий БД – сохранение варианта периметра невозможно."
         )
     model_name = getattr(model, "__name__", "")
     created: list[Any] = []
@@ -2750,7 +2750,7 @@ def _assert_summary_perimeter_variant_reassign_allowed(
     )
     if conflict is not None and getattr(conflict, "id", None) != getattr(row, "id", None):
         raise ValueError(
-            f"Для года {year_n} уже есть данные с вариантом «{to_variant_code or '—'}». "
+            f"Для года {year_n} уже есть данные с вариантом «{to_variant_code or '–'}». "
             "Сначала удалите или перенесите их вручную."
         )
 
@@ -2803,7 +2803,7 @@ def reassign_summary_entity_perimeter_variant(
         )
         if from_group and to_group and from_group != to_group:
             raise ValueError(
-                "Нельзя перенести данные между блоками «с НТ» и «без НТ» — "
+                "Нельзя перенести данные между блоками «с НТ» и «без НТ» – "
                 "выберите вариант в той же НТ-группе."
             )
 

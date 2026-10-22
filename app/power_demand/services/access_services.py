@@ -26,7 +26,7 @@ POWER_DEMAND_EDIT_ROLE_FULL_NAMES = frozenset(
 
 
 def can_edit_power_demand(user) -> bool:
-    """Редактирование, формулы и «Проверка» — для Нагрузки-админ/редактор и admin."""
+    """Редактирование, формулы и «Проверка» – для Нагрузки-админ/редактор и admin."""
     if not getattr(user, "is_authenticated", False):
         return False
     for role in getattr(user, "roles", []) or []:

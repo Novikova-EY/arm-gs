@@ -230,7 +230,7 @@ endblock %} {% block extra_head %}
     </div>
   </div>
 
-  {% macro power(value) -%} {%- if value is none -%}—{%- else -%} {{
+  {% macro power(value) -%} {%- if value is none -%}–{%- else -%} {{
   value|format_decimal_trim(comparison.rounding_digits) }} {%- endif -%} {%-
   endmacro %}
 
@@ -272,7 +272,7 @@ endblock %} {% block extra_head %}
               >расхождение</span
             >{% endif %}
           </td>
-          <td>{{ row.numb if row.numb is not none else '—' }}</td>
+          <td>{{ row.numb if row.numb is not none else '–' }}</td>
           <td>{% if row.tree_prefix %}<span class="text-muted me-1" aria-hidden="true">{{ row.tree_prefix }}</span>{% endif %}{% if row.equipment_group_id %}<a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=row.equipment_group_id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ row.group_name }}</a>{% else %}{{ row.group_name }}{% endif %}</td>
           <td>{{ row.group_type }}</td>
           <td>{{ row.machine_number }}</td>
@@ -328,7 +328,7 @@ endblock %} {% block extra_head %}
             row.p_rasp_mismatch)) %}<span class="badge text-bg-danger ms-2"
               >расхождение</span
             >{% endif %}{% if row.kind == 'unclassified' %}
-            <span class="text-muted small">(территория не определена — в итоги ЕЭС / ОЭС / РЭС не входят)</span>{% endif
+            <span class="text-muted small">(территория не определена – в итоги ЕЭС / ОЭС / РЭС не входят)</span>{% endif
             %}
           </td>
           <td
@@ -364,7 +364,7 @@ endblock %} {% block extra_head %}
           <td>
             {% if row.kind == 'generation_orphan' %}Без станции{% endif %}
           </td>
-          <td>{{ row.numb if row.numb is not none else '—' }}</td>
+          <td>{{ row.numb if row.numb is not none else '–' }}</td>
           {% if row.equipment_group_cell_first is not defined or
           row.equipment_group_cell_first %}
           <td rowspan="{{ row.equipment_group_cell_rowspan|default(1) }}">
@@ -388,9 +388,9 @@ endblock %} {% block extra_head %}
           {% if comparison.show_p_rasp %}
           <td class="numeric">{{ power(row.p_rasp) }}</td>
           {% endif %}
-          <td class="numeric">—</td>
+          <td class="numeric">–</td>
           {% if comparison.show_p_rasp %}
-          <td class="numeric">—</td>
+          <td class="numeric">–</td>
           {% endif %}
         </tr>
         {% elif row.kind == 'numb' %}
@@ -439,8 +439,8 @@ endblock %} {% block extra_head %}
             {% if row.ambiguous_station_links %}{% for station in row.ambiguous_station_links %}{% if not loop.first %}; {% endif %}<a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ station.name }}</a>{% endfor %}{% elif row.station_name and row.station_name.startswith('Без связи') %}{{ row.station_name }}{% endif %}
           </td>
           <td>
-            {{ row.numb if row.numb is not none else '—' }}
-            {% if not row.has_param %}<span class="badge text-bg-secondary ms-1">нет NUST/NR за год</span>{% elif row.ved is not none and row.ved|int == 0 %}<span class="badge text-bg-warning ms-1">ved=0 — строка группировки</span>{% elif row.ved is none or row.ved|int < 0 %}<span class="badge text-bg-warning ms-1">ved={{ row.ved if row.ved is not none else 'NULL' }}</span>{% endif %}
+            {{ row.numb if row.numb is not none else '–' }}
+            {% if not row.has_param %}<span class="badge text-bg-secondary ms-1">нет NUST/NR за год</span>{% elif row.ved is not none and row.ved|int == 0 %}<span class="badge text-bg-warning ms-1">ved=0 – строка группировки</span>{% elif row.ved is none or row.ved|int < 0 %}<span class="badge text-bg-warning ms-1">ved={{ row.ved if row.ved is not none else 'NULL' }}</span>{% endif %}
             {% if row.ved0_check %}{% if row.ved0_check.nust_mismatch or (comparison.show_p_rasp and row.ved0_check.nr_mismatch) %}<span class="badge text-bg-danger ms-1">расхождение с суммой частей</span>{% elif comparison.show_p_rasp %}<span class="badge text-bg-success ms-1">NUST/NR совпадают с суммой частей</span>{% else %}<span class="badge text-bg-success ms-1">NUST совпадает с суммой частей</span>{% endif %}{% endif %}
           </td>
           <td colspan="{{ 6 if comparison.show_p_rasp else 5 }}">

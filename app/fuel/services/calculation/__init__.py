@@ -2,9 +2,9 @@
 """
 Сервисы страницы «Расчёт» (/fuel/calculation) по вкладкам этапов:
 
-- coefficient — «Коэфф»
-- distribution — «Распред»
-- fuel — «Топливо»
+- coefficient – «Коэфф»
+- distribution – «Распред»
+- fuel – «Топливо»
 """
 from app.fuel.services.calculation.coefficient import (  # noqa: F401
     CoeffStageRunResult,

@@ -22,7 +22,7 @@
 По умолчанию источник: --source-version 20 (id строки в gs_sys.gs_database_versions).
 
 Дополнительно:
-  --no-mirror   — только шаг 1, без дублирования РЭС -> субъект
+  --no-mirror   – только шаг 1, без дублирования РЭС -> субъект
 """
 from __future__ import annotations
 
@@ -260,7 +260,7 @@ def copy_from_source_to_other_versions(
 
 def mirror_res_to_single_regional_district(*, apply_changes: bool) -> dict[str, int]:
     """
-    Для каждой версии БД: РЭС с одним субъектом — копируем поля из RES в RD.
+    Для каждой версии БД: РЭС с одним субъектом – копируем поля из RES в RD.
     """
     stats = defaultdict(int)
     vids = [
@@ -385,7 +385,7 @@ def main() -> None:
         print()
 
         if not target_ids:
-            print("Других версий нет — шаг 1 пропускается.")
+            print("Других версий нет – шаг 1 пропускается.")
         print()
 
         if apply_changes:
@@ -415,7 +415,7 @@ def main() -> None:
                 target_vids=target_ids,
                 apply_changes=apply_changes,
             )
-            print("Шаг 1 — копирование в другие версии (по моделям, ~insert/update):")
+            print("Шаг 1 – копирование в другие версии (по моделям, ~insert/update):")
             for name in sorted(set(ins) | set(upd)):
                 print(f"  {name}: insert={ins.get(name, 0)}, update={upd.get(name, 0)}")
             if skipfk:
@@ -427,7 +427,7 @@ def main() -> None:
         mir: dict[str, int] = {}
         if not args.no_mirror:
             mir = mirror_res_to_single_regional_district(apply_changes=apply_changes)
-            print("Шаг 2 — РЭС с одним субъектом -> RegionalDistrictDemandParameter:")
+            print("Шаг 2 – РЭС с одним субъектом -> RegionalDistrictDemandParameter:")
             for k, v in sorted(mir.items()):
                 print(f"  {k}: {v}")
             print()

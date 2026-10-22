@@ -27,7 +27,7 @@ def test_clean_name_quotes(source, expected):
 @pytest.mark.parametrize(
     "source, expected",
     [
-        ("—", "—"),
+        ("–", "–"),
         ("", ""),
         ("123", "123"),
         ("1234", "1 234"),
@@ -52,7 +52,7 @@ def test_format_decimal_for_display_applies_thousand_grouping():
         (None, None),
         ("", None),
         ("  ", None),
-        ("—", None),
+        ("–", None),
         ("1 234", Decimal("1234")),
         ("1 234,5", Decimal("1234.5")),
         ("1\u00a0234,56", Decimal("1234.56")),
@@ -72,7 +72,7 @@ def test_parse_decimal_from_display_invalid():
 
 
 def test_display_precision_keeps_full_k_when_cell_shows_one_digit():
-    """Ячейка «1» при 1 знаке — не правка; 1.0296 вместо 1.045 — правка."""
+    """Ячейка «1» при 1 знаке – не правка; 1.0296 вместо 1.045 – правка."""
     from app.common.services.help_services import (
         coalesce_posted_numeric_with_stored,
         format_decimal_trim_for_display,

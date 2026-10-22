@@ -1,4 +1,4 @@
-{# Одна строка: выработка электроэнергии от собственника (округление — AJAX). #}
+{# Одна строка: выработка электроэнергии от собственника (округление – AJAX). #}
 {% set can_edit_energy = can_edit_station_energy if can_edit_station_energy is defined else can_edit %}
 <tr>
   <td
@@ -54,7 +54,7 @@
       style="min-width: 6rem"
     />
     {% endif %} {% else %} {% if v is not none %} {{
-    format_station_energy_gen_display(v) }} {% else %} — {% endif %} {% endif %}
+    format_station_energy_gen_display(v) }} {% else %} – {% endif %} {% endif %}
   </td>
   {% endfor %}
 </tr>

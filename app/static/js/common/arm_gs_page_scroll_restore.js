@@ -1,6 +1,6 @@
 /**
  * Восстановление прокрутки после сохранения (POST / reload).
- * Учитывает wrapTablePages() в base.html — restore только после window.load.
+ * Учитывает wrapTablePages() в base.html – restore только после window.load.
  */
 (function (window, document) {
     "use strict";
@@ -74,7 +74,7 @@
 
     /**
      * Сброс вертикального скролла таблицы к верху.
-     * На max/oes/fo/ez скролл у .page-table-scroll; на coeff — у .pd-coeff-summary-scroll-wrap.
+     * На max/oes/fo/ez скролл у .page-table-scroll; на coeff – у .pd-coeff-summary-scroll-wrap.
      */
     function scrollTableTop(opts) {
         opts = opts || {};
@@ -335,7 +335,7 @@
     function getHScrollEl(opts) {
         if (opts && opts.hScrollEl) {
             var explicit = opts.hScrollEl;
-            // На max/oes/fo/ez wrap с overflow:visible — X-скролл у .page-table-scroll.
+            // На max/oes/fo/ez wrap с overflow:visible – X-скролл у .page-table-scroll.
             if (
                 explicit
                 && explicit.id === "powerDemandSummaryScrollWrap"
@@ -456,7 +456,7 @@
         if (typeof window.refreshPowerDemandSummaryLayout === "function") {
             window.refreshPowerDemandSummaryLayout();
         }
-        // Если цель — конкретная строка, «успех» только при её нахождении.
+        // Если цель – конкретная строка, «успех» только при её нахождении.
         // Иначе scrollTop (часто 0 на coeff) раньше считался успехом и consume
         // убивал состояние до появления строки в DOM.
         var success = state.rowAnchor ? rowFound : (rowFound || scrollApplied);

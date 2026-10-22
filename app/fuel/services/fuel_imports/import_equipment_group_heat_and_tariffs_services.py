@@ -134,7 +134,7 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
     if isinstance(value, str):
         s = value.strip().replace("\u00a0", " ").replace("\xa0", " ")
         s = "".join(ch for ch in s if ch != " ")
-        if not s or s.lower() in ("nan", "—", "-", "–"):
+        if not s or s.lower() in ("nan", "–", "-", "–"):
             return None
     try:
         if isinstance(value, Decimal):
@@ -207,8 +207,8 @@ def _resolve_equipment_groups_from_numb(numb1120_val):
 def _targets_for_row(numb1120_val):
     """
     Цели записи для всех версий БД:
-    - для каждой EG с тем же numb1120 — (equipment_group_id, database_version_id);
-    - для версий без такой EG — (None, database_version_id).
+    - для каждой EG с тем же numb1120 – (equipment_group_id, database_version_id);
+    - для версий без такой EG – (None, database_version_id).
     """
     from app.refdata.services.refdata_all_versions_common import (
         all_database_version_ids_for_refdata,
@@ -338,7 +338,7 @@ def _find_existing_record(
         q = _filter_eq_or_null(
             q, EquipmentGroupHeatAndTariffs.database_version_id, database_version_id
         )
-        # ndv_st не в UNIQUE, но различает строки Access — предпочитаем точное совпадение
+        # ndv_st не в UNIQUE, но различает строки Access – предпочитаем точное совпадение
         if ndv_st is not None:
             matched = q.filter(
                 EquipmentGroupHeatAndTariffs.ndv_st == ndv_st
@@ -549,8 +549,8 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     years_loaded: set[int] = set()
     writes_since_commit = 0
     COMMIT_EVERY = 10000
-    # Не expire'ить объекты после batch commit — иначе лишние SELECT при следующих правках.
-    # expire_on_commit — атрибут Session, не scoped_session (db.session).
+    # Не expire'ить объекты после batch commit – иначе лишние SELECT при следующих правках.
+    # expire_on_commit – атрибут Session, не scoped_session (db.session).
     sa_session = _orm_session()
     prev_expire = getattr(sa_session, "expire_on_commit", True)
     if hasattr(sa_session, "expire_on_commit"):
@@ -682,7 +682,7 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     years_txt = (
         f"{min(years_loaded)}–{max(years_loaded)}"
         if years_loaded
-        else "—"
+        else "–"
     )
     message = (
         "Загрузка данных в EquipmentGroupHeatAndTariffs завершена "

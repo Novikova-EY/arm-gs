@@ -14,8 +14,8 @@
   python scripts/repair_regional_district_ref_uuids.py --target local,gs01 --apply
 
 Цели:
-  local — DB_HOST из .env (локальная машина)
-  gs01  — GS01_DB_HOST (по умолчанию 10.31.205.27), те же DB_USER/DB_NAME
+  local – DB_HOST из .env (локальная машина)
+  gs01  – GS01_DB_HOST (по умолчанию 10.31.205.27), те же DB_USER/DB_NAME
 """
 from __future__ import annotations
 
@@ -275,7 +275,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Записать изменения (без флага — только план)",
+        help="Записать изменения (без флага – только план)",
     )
     args = parser.parse_args()
     _load_dotenv()
