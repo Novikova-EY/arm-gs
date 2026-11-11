@@ -204,7 +204,7 @@ def save_machine_details_across_versions(
     if all_change_lines:
         log_lines.extend(all_change_lines[:30])
         if len(all_change_lines) > 30:
-            log_lines.append(f"... ещё {len(all_change_lines) - 30} строк")
+            log_lines.append(f"... еще {len(all_change_lines) - 30} строк")
     if warnings:
         log_lines.append("Предупреждения:")
         log_lines.extend(f"  ! {w}" for w in warnings)

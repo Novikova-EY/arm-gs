@@ -167,6 +167,7 @@ def get_equipment_groups_with_specific_fuel_cost_data(
     base_query = (
         db.session.query(EquipmentGroup, EquipmentGroupSpecificFuelCost)
         .outerjoin(EquipmentGroupSpecificFuelCost, join_cond)
+        .filter(or_(EquipmentGroup.d.is_(None), EquipmentGroup.d != 9))
     )
 
     if hasattr(EquipmentGroup, "database_version_id"):
@@ -282,7 +283,13 @@ def build_equipment_group_specific_fuel_cost_hierarchy(rows):
 
     equipment_group_ids = [eg.id for eg, _ in (rows or []) if eg]
     _vid = get_current_db_version_id()
-    parent_by_numb = resolve_composite_parents_by_numb(rows, database_version_id=_vid)
+    parent_by_numb = {
+        numb: parent
+        for numb, parent in resolve_composite_parents_by_numb(
+            rows, database_version_id=_vid
+        ).items()
+        if parent.d != 9
+    }
     eg_station_metadata = _get_equipment_group_station_mapping_with_display_order(
         equipment_group_ids, all_versions=True
     )

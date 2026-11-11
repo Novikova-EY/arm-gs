@@ -41,6 +41,21 @@
     </div>
   </form>
 
+  <p class="text-muted">Сброс настроек очищает личные фильтры и настройки отображения при следующем открытии страницы пользователем. Вход, выбранная версия БД и общий кеш сохраняются.</p>
+  {% for u in users %}
+  <form id="reset-settings-{{ u.id }}" method="POST"
+        action="{{ url_for('users_bp.reset_settings', user_id=u.id) }}"
+        data-username="{{ u.username }}"
+        onsubmit="return confirm('Сбросить личные фильтры и настройки отображения пользователя «' + this.dataset.username + '»?');">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+    <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    <input type="hidden" name="page" value="{{ pagination.page }}">
+    <input type="hidden" name="per_page" value="{{ per_page }}">
+  </form>
+  {% endfor %}
+
   {# ---- Основная форма сохранения (POST) ---- #}
   <form method="POST" action="{{ url_for('users_bp.list_users') }}">
     {{ form.hidden_tag() }}
@@ -127,6 +142,8 @@
               <th class="text-center align-middle" style="width:70px;">{{ role.name_full }}</th>
             {% endfor %}
 
+            <th class="text-center align-middle" style="width:170px;">Личные настройки</th>
+
             <!-- Удалить -->
             <th class="text-center align-middle" style="width:70px;">Удалить</th>
           </tr>
@@ -161,12 +178,17 @@
               {% endfor %}
 
               <td class="text-center align-middle">
+                <button type="submit" form="reset-settings-{{ u.id }}"
+                        class="btn btn-outline-warning btn-sm"
+                        aria-label="Сбросить настройки пользователя {{ u.username }}">Сбросить настройки</button>
+              </td>
+              <td class="text-center align-middle">
                 <input type="checkbox" name="users_delete[]" value="{{ u.id }}" class="form-check-input">
               </td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="{{ 4 + roles|length }}" class="text-center align-middle">Нет данных для отображения</td>
+              <td colspan="{{ 5 + roles|length }}" class="text-center align-middle">Нет данных для отображения</td>
             </tr>
           {% endfor %}
         </tbody>

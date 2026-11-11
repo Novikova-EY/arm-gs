@@ -791,7 +791,7 @@ def test_with_boilers_tabs_keep_only_station_boilers(monkeypatch):
     )
     monkeypatch.setattr(fced, "_expand_fuel_param_rows_for_year_interval", lambda rows, start, end: rows)
     # Как и настоящий сборощик, возвращает блоки всех групп из rows_in – в том числе тех,
-    # чьи строки уже отфильтрованы (без отбора по группам такая станция всплывёт).
+    # чьи строки уже отфильтрованы (без отбора по группам такая станция всплывет).
     monkeypatch.setattr(
         egfps,
         "build_equipment_group_fuel_params_hierarchy",
@@ -1143,7 +1143,7 @@ def test_composite_filled_row_sums_subgroups_only():
     # «Генерация» – станционный показатель: не утраивается.
     assert row[4] == 328
     assert row[5] == "отрасль"
-    # У подгрупп параметров ПГ нет – остаётся значение головы.
+    # У подгрупп параметров ПГ нет – остается значение головы.
     assert row[6] == Decimal("767471.9")
 
 

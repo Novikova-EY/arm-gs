@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Кэш индекса потребления ЭЭ для расчёта ЧЧИ на сводке /power_demand/summary/oes/."""
+"""Кэш индекса потребления ЭЭ для расчета ЧЧИ на сводке /power_demand/summary/oes/."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Встроенный fallback-каталог (если в БД ещё нет записей)."""
+"""Встроенный fallback-каталог (если в БД еще нет записей)."""
 from __future__ import annotations
 
 from app.common.perimeter_variant.registry_types import (

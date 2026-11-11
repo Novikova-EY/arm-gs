@@ -99,21 +99,21 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_res_oes_k",
         pages=ALL_COEFF_PAGES,
         aggregation_level="РЭС",
-        cell_name="k (совмещённый на ОЭС)",
+        cell_name="k (совмещенный на ОЭС)",
         default_text="k = Совмещенный максимум потребления мощности ОЭС / Максимум потребления мощности",
     ),
     _def(
         "coeff_res_ees_k",
         pages=ALL_COEFF_PAGES,
         aggregation_level="РЭС",
-        cell_name="k (совмещённый на ЕЭС)",
+        cell_name="k (совмещенный на ЕЭС)",
         default_text="k = Совмещенный максимум потребления мощности ЕЭС / Максимум потребления мощности",
     ),
     _def(
         "coeff_res_cz_k",
         pages=ALL_COEFF_PAGES,
         aggregation_level="ФО / РЭС",
-        cell_name="k (совмещённый на ЦЗ России)",
+        cell_name="k (совмещенный на ЦЗ России)",
         default_text=(
             "k = Совмещенное потребление мощности на час максимума ЦЗ России "
             "/ Максимальное потребление мощности"
@@ -123,7 +123,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_res_fo_k",
         pages=ALL_COEFF_PAGES,
         aggregation_level="РЭС / субъект",
-        cell_name="k (совмещённый на ФО)",
+        cell_name="k (совмещенный на ФО)",
         default_text=(
             "k = Совмещенное потребление мощности на час прохождения максимума ФО "
             "/ Максимальное потребление мощности"
@@ -133,7 +133,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_res_ez_k",
         pages=ALL_COEFF_PAGES,
         aggregation_level="РЭС",
-        cell_name="k (совмещённый на ЭЗ)",
+        cell_name="k (совмещенный на ЭЗ)",
         default_text=(
             "k = Совмещенное потребление мощности на час прохождения максимума ЭЗ "
             "/ Максимальное потребление мощности"
@@ -143,7 +143,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_fo_calc_max",
         pages=frozenset({PAGE_COEFF_FO}),
         aggregation_level="Федеральный округ",
-        cell_name="k (расчётный максимум ФО)",
+        cell_name="k (расчетный максимум ФО)",
         default_with_nt=(
             "k = Расчетное максимальное потребление мощности "
             "/ Максимальное потребление мощности ФО (с НТ)"
@@ -157,7 +157,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_ez_calc_max",
         pages=frozenset({PAGE_COEFF_EZ}),
         aggregation_level="Энергозона",
-        cell_name="k (расчётный максимум энергозоны)",
+        cell_name="k (расчетный максимум энергозоны)",
         default_text=(
             "k = Расчетное максимальное потребление мощности "
             "/ Максимальное потребление мощности энергозоны"
@@ -783,7 +783,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_ues_calc_max_oes",
         pages=frozenset({PAGE_COEFF_OES}),
         aggregation_level="ОЭС",
-        cell_name="k (расчётный максимум ОЭС)",
+        cell_name="k (расчетный максимум ОЭС)",
         default_with_nt="k = Расчетный максимум потребления мощности ОЭС / Максимум потребления мощности ОЭС (с НТ)",
         default_without_nt="k = Расчетный максимум потребления мощности ОЭС / Максимум потребления мощности ОЭС (без НТ)",
     ),
@@ -791,7 +791,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_ues_combined_ees",
         pages=frozenset({PAGE_COEFF_OES}),
         aggregation_level="ОЭС",
-        cell_name="k (совмещённый на ЕЭС)",
+        cell_name="k (совмещенный на ЕЭС)",
         default_with_nt="k = Совмещенный максимум потребления мощности на ЕЭС / Максимум потребления мощности ОЭС (с НТ)",
         default_without_nt="k = Совмещенный максимум потребления мощности на ЕЭС / Максимум потребления мощности ОЭС (без НТ)",
     ),
@@ -799,7 +799,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_ues_calc_combined_ees",
         pages=frozenset({PAGE_COEFF_OES}),
         aggregation_level="ОЭС",
-        cell_name="k (расчётный совмещённый максимум потребления мощности на ЕЭС)",
+        cell_name="k (расчетный совмещенный максимум потребления мощности на ЕЭС)",
         default_with_nt="k = Расчетный совмещенный максимум потребления мощности на ЕЭС / Максимум потребления мощности ОЭС (с НТ)",
         default_without_nt="k = Расчетный совмещенный максимум потребления мощности на ЕЭС / Максимум потребления мощности ОЭС (без НТ)",
     ),
@@ -807,7 +807,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_calculated_max_ees_via_oes",
         pages=frozenset({PAGE_COEFF_OES, PAGE_COEFF_EZ}),
         aggregation_level="Показатель",
-        cell_name="k (расчётный максимум ЕЭС через ОЭС)",
+        cell_name="k (расчетный максимум ЕЭС через ОЭС)",
         default_with_nt="k = Расчетное максимальное потребление мощности (через ОЭС) / Максимум потребления мощности (ЕЭС России с НТ)",
         default_without_nt="k = Расчетное максимальное потребление мощности (через ОЭС) / Максимум потребления мощности (ЕЭС России без НТ)",
     ),
@@ -815,7 +815,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         "coeff_k_calculated_max_ees_via_es",
         pages=frozenset({PAGE_COEFF_OES}),
         aggregation_level="Показатель",
-        cell_name="k (расчётный максимум ЕЭС через РЭС)",
+        cell_name="k (расчетный максимум ЕЭС через РЭС)",
         default_with_nt="k = Расчетное максимальное потребление мощности (через РЭС) / Максимум потребления мощности (ЕЭС России с НТ)",
         default_without_nt="k = Расчетное максимальное потребление мощности (через РЭС) / Максимум потребления мощности (ЕЭС России без НТ)",
     ),
@@ -829,37 +829,37 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
     _def(
         "coeff_f_gs10",
         pages=ALL_COEFF_PAGES,
-        aggregation_level="Столбец «Расчётный коэффициент совмещения»",
+        aggregation_level="Столбец «Расчетный коэффициент совмещения»",
         cell_name="для ГС (10 лет)",
         default_text=(
-            "Среднее арифметическое коэффициентов k по годам отчётного периода "
+            "Среднее арифметическое коэффициентов k по годам отчетного периода "
             "(10 лет: N−9…N, N – базовый год)"
         ),
     ),
     _def(
         "coeff_f_gs10trim",
         pages=ALL_COEFF_PAGES,
-        aggregation_level="Столбец «Расчётный коэффициент совмещения»",
+        aggregation_level="Столбец «Расчетный коэффициент совмещения»",
         cell_name="для ГС (10 лет без min и max)",
         default_text=(
-            "По годам отчётного периода (N−9…N): из значений k исключаются одно минимальное "
+            "По годам отчетного периода (N−9…N): из значений k исключаются одно минимальное "
             "и одно максимальное, для остальных вычисляется среднее"
         ),
     ),
     _def(
         "coeff_f_gs5",
         pages=ALL_COEFF_PAGES,
-        aggregation_level="Столбец «Расчётный коэффициент совмещения»",
+        aggregation_level="Столбец «Расчетный коэффициент совмещения»",
         cell_name="для СиПР (5 лет)",
         default_text=(
             "Среднее арифметическое коэффициентов k по пяти годам N−4…N "
-            "(N – базовый год отчётного периода)"
+            "(N – базовый год отчетного периода)"
         ),
     ),
     _def(
         "coeff_f_sample",
         pages=ALL_COEFF_PAGES,
-        aggregation_level="Столбец «Расчётный коэффициент совмещения»",
+        aggregation_level="Столбец «Расчетный коэффициент совмещения»",
         cell_name="Выборка",
         default_text=(
             "Среднее арифметическое коэффициентов k по годам, отмеченным в выпадающем списке "
@@ -1252,7 +1252,7 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         cell_name="Небаланс, МВт",
         default_text=(
             "Разность между «Максимальное потребление мощности, МВт» для сущности «ЦЗ России» "
-            "и суммой совмещённых на ЦЗ России максимумов региональных энергосистем "
+            "и суммой совмещенных на ЦЗ России максимумов региональных энергосистем "
             "(предыдущая строка блока)."
         ),
     ),

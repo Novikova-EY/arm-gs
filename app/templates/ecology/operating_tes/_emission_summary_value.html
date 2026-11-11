@@ -2,7 +2,7 @@
 <input type="text" class="form-control form-control-sm ot-edit-value"
        data-year="{{ col.year }}"
        data-territory="{{ col.coefficient_territory_slug }}"
-       data-affiliation="all"
+       data-affiliation="{{ col.coefficient_affiliation|default('all') }}"
        data-field="{{ row.editable_field }}"
        data-update-url="{{ url_for(value_endpoint, territory_slug=col.coefficient_territory_slug, sheet_slug='koeff') }}"
        data-capture-total="{{ row.capture_totals[col.slug] }}"

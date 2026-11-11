@@ -16,6 +16,14 @@ from app.common.models.database_version_model import DatabaseVersion
 from app.logs.services.logging_service import log_to_db
 
 
+def get_general_scheme_end_year(current_year: int | None) -> int | None:
+    """Разработка с 2024 года каждые 6 лет на 18 лет; актуализация не сдвигает конец."""
+    if current_year is None or current_year < 2024:
+        return None
+    cycle = (current_year - 2024) // 6
+    return 2024 + cycle * 6 + 18
+
+
 def get_current_year_info(version_id):
     """
     Получает информацию о текущем годе для указанной версии БД.
@@ -186,12 +194,10 @@ def update_current_year(version_id, new_year, user):
                 get_year_feature_dict_for_version,
             )
             from app.common.services.get_services.years.years_get_services import (
-                get_year_list_full,
                 clear_planning_period_year_caches,
             )
 
             get_year_feature_dict_for_version.cache_clear()
-            get_year_list_full.cache_clear()
             clear_planning_period_year_caches()
         except Exception:
             # Кэш – оптимизация, не должен ломать основную операцию

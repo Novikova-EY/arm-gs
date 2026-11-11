@@ -73,7 +73,7 @@ def main() -> None:
         sum_wnt_wg = svc._year_values_sum_ues_in_first_sa_with_nt_with_gaes_with_kaliningrad_es(
             fid, y, pk
         )[YEAR]
-        print("=== Компоненты расчёта (из кода, до UI) ===\n")
+        print("=== Компоненты расчета (из кода, до UI) ===\n")
         print(f"Σ ОЭС (с НТ с зарядом): {sum_wnt_wg}")
         for ues_id in svc._union_energy_system_ids_for_synchronous_area(fid):
             if int(ues_id) in svc._first_sa_with_nt_with_gaes_ues_exclude_ids():

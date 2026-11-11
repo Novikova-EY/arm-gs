@@ -1,0 +1,11 @@
+[CACHE REFRESH] Запущено фоновое обновление кэша каждые 25 минут
+[SORTED CACHE HIT REDIS] Используется закэшированный список из 1234 станций
+[CACHE WARMUP] Кэш уже существует (1234 станций), пропускаем прогрев
+VERIFICATION_JSON:{"database_version_id": 37, "snapshot_id": 65, "year": 2024, "scope": "operating", "exact_payload_match": true, "stored_numeric_values": 385, "page_cells_verified": 1209, "other_territories_empty": true, "total_fuel_display": "308 933,8", "total_generation_display": "738,9"}
+
+[2026-10-23 15:09:03,297] INFO in __init__: Redis connection established successfully
+[2026-10-23 15:09:03,585] INFO in scheduled_backup_service: Автоматические бэкапы отключены в конфигурации
+[2026-10-23 15:09:04,476] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-10-23 15:09:04,479] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-10-23 15:09:04,480] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-10-23 15:09:05,126] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок

@@ -254,23 +254,23 @@
 
             if (requireOE) {
                 if (!fieldNonempty(oesIn)) {
-                    issues.push(rowLabel + ': не заполнено «Совмещённый на ОЭС».');
+                    issues.push(rowLabel + ': не заполнено «Совмещенный на ОЭС».');
                 } else if (parseDecimal(oesIn.value) == null) {
-                    issues.push(rowLabel + ': некорректное число в «Совмещённый на ОЭС».');
+                    issues.push(rowLabel + ': некорректное число в «Совмещенный на ОЭС».');
                 }
                 if (!fieldNonempty(eesIn)) {
-                    issues.push(rowLabel + ': не заполнено «Совмещённый на ЕЭС».');
+                    issues.push(rowLabel + ': не заполнено «Совмещенный на ЕЭС».');
                 } else if (parseDecimal(eesIn.value) == null) {
-                    issues.push(rowLabel + ': некорректное число в «Совмещённый на ЕЭС».');
+                    issues.push(rowLabel + ': некорректное число в «Совмещенный на ЕЭС».');
                 }
             }
 
             if (requireEZ) {
                 if (!fieldNonempty(ezIn)) {
-                    issues.push(rowLabel + ': не заполнено «Совмещённый на энергозону, МВт».');
+                    issues.push(rowLabel + ': не заполнено «Совмещенный на энергозону, МВт».');
                 } else if (parseDecimal(ezIn.value) == null) {
                     issues.push(
-                        rowLabel + ': некорректное число в «Совмещённый на энергозону, МВт».'
+                        rowLabel + ': некорректное число в «Совмещенный на энергозону, МВт».'
                     );
                 }
             }

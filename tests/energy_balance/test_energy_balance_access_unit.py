@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from flask_login import LoginManager
 from jinja2 import ChoiceLoader, DictLoader, FileSystemLoader
 from werkzeug.datastructures import MultiDict
@@ -54,10 +54,17 @@ def test_anonymous_cannot_edit_even_with_edit_role():
 
 
 @pytest.fixture
-def balance_app():
+def balance_app(monkeypatch):
+    from app.energy_balance.services import energy_balance_cache
+    monkeypatch.setattr(energy_balance_cache, "get_redis_client", lambda: None)
     app = Flask(__name__)
     app.config.update(TESTING=True, SECRET_KEY="test")
     LoginManager(app)
+
+    @app.before_request
+    def current_version():
+        g.current_db_version = 7
+
     app.register_blueprint(energy_balance_bp, url_prefix="/energy_balance")
     return app
 
@@ -72,8 +79,8 @@ def test_all_mutating_routes_deny_readers_before_calling_handler(balance_app, mo
     client = balance_app.test_client()
     checked = set()
     for rule in balance_app.url_map.iter_rules():
-        if rule.endpoint in {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers"}:
-            continue  # POST только применяет фильтры.
+        if rule.endpoint in {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers", "energy_balance_bp.refresh_data"}:
+            continue  # POST применяет фильтры или обновляет кеш, но не меняет данные.
         for method in rule.methods - {"GET", "HEAD", "OPTIONS"}:
             handler = Mock(return_value="handler called")
             monkeypatch.setitem(balance_app.view_functions, rule.endpoint, handler)
@@ -103,7 +110,7 @@ def test_readers_can_open_every_page_export_and_apply_filters(balance_app, monke
         if not rule.endpoint.startswith("energy_balance_bp."):
             continue
         methods = rule.methods & {"GET", "HEAD", "OPTIONS"}
-        if rule.endpoint in {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers"}:
+        if rule.endpoint in {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers", "energy_balance_bp.refresh_data"}:
             methods.add("POST")
         for method in methods:
             monkeypatch.setitem(balance_app.view_functions, rule.endpoint, lambda **kwargs: "allowed")
@@ -122,6 +129,7 @@ def templates():
         autoescape=True,
     )
     env.globals.update(
+        get_reference_years=lambda: [2026, 2027],
         csrf_token="test-token",
         url_for=lambda endpoint, **kwargs: "/" + endpoint,
         current_user=_user("generation-reader"),

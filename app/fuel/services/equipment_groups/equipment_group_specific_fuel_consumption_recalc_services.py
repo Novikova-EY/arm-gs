@@ -11,13 +11,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
 from app.extensions import db
 from app.common.services.database_version_filter import (
     get_current_db_version_id,
-    set_db_version_on_create,
 )
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
@@ -25,11 +23,10 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
-    calc_y_calc,
-    calc_btp_calc,
-    calc_sntp_calc,
-    calc_bk_calc,
-    calc_snk_calc,
+    calculate_specific_fuel_consumption_calc,
+)
+from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_services import (
+    specific_fuel_consumption_source_query,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     _sync_numb1120_from_equipment_group,
@@ -61,11 +58,11 @@ def recalculate_all_specific_fuel_consumption_calc(
     :param equipment_group_ids: несколько групп (объединяется с equipment_group_id)
     :param start_year, end_year: вместе с equipment_group_id – диапазон лет
     :param commit: False при вызове из orchestrator до общего commit
-    :param all_versions: если True – пересчёт по всем версиям БД (без фильтра
+    :param all_versions: если True – пересчет по всем версиям БД (без фильтра
         текущей версии); иначе только текущая активная версия
     :return: количество созданных/обновленных записей
     """
-    query = EquipmentGroupFuelParam.query
+    query = specific_fuel_consumption_source_query()
     if year is not None:
         query = query.filter(EquipmentGroupFuelParam.year_number == year)
     else:
@@ -84,7 +81,7 @@ def recalculate_all_specific_fuel_consumption_calc(
         if end_year is not None:
             query = query.filter(EquipmentGroupFuelParam.year_number <= end_year)
 
-    # Периметр версии: группы оборудования текущей версии (как у пересчёта цен).
+    # Периметр версии: группы оборудования текущей версии (как у пересчета цен).
     # Дополнительно фильтруем FuelParam.database_version_id, чтобы не трогать
     # чужие копии параметров при рассинхроне штампа версии.
     current_version_id = None if all_versions else get_current_db_version_id()
@@ -124,17 +121,6 @@ def recalculate_all_specific_fuel_consumption_calc(
         by_key[key].append(p)
 
     updates_count = 0
-    Q6 = Decimal("0.000001")
-
-    def q6(val):
-        if val is None:
-            return None
-        try:
-            d = Decimal(str(val))
-            return d.quantize(Q6)
-        except (InvalidOperation, TypeError):
-            return val
-
     # no_autoflush: не сбрасывать pending INSERT до поиска по UQ
     with db.session.no_autoflush:
         for (eg_id, year_number), param_list in by_key.items():
@@ -152,63 +138,36 @@ def recalculate_all_specific_fuel_consumption_calc(
                 year_number=year_number,
             ).first()
 
+            # UQ не включает версию: чужую строку нельзя ни использовать,
+            # ни перештамповывать в текущую версию ради записи результата.
+            if consumption is not None and consumption.database_version_id != version_id:
+                continue
+
             coeff_k = (
                 consumption.k
                 if (consumption is not None and consumption.k is not None)
                 else None
             )
 
-            y_calc_val = calc_y_calc(param)
-            btp_calc_val = calc_btp_calc(param, coeff_k)
-            sntp_calc_val = calc_sntp_calc(param)
-            bk_calc_val = calc_bk_calc(param, btp_calc_val, sntp_calc_val)
-            snk_calc_val = calc_snk_calc(param)
-
-            y_calc_val = q6(y_calc_val)
-            btp_calc_val = q6(btp_calc_val)
-            sntp_calc_val = q6(sntp_calc_val)
-            bk_calc_val = q6(bk_calc_val)
-            snk_calc_val = q6(snk_calc_val) if snk_calc_val is not None else None
+            values = calculate_specific_fuel_consumption_calc(param, coeff_k)
 
             if consumption is None:
                 consumption = EquipmentGroupSpecificFuelConsumption(
                     equipment_group_id=eg_id,
                     year_number=year_number,
                     database_version_id=version_id,
-                    y_calc=y_calc_val,
-                    btp_calc=btp_calc_val,
-                    sntp_calc=sntp_calc_val,
-                    bk_calc=bk_calc_val,
-                    snk_calc=snk_calc_val,
+                    **values,
                 )
-                set_db_version_on_create(consumption)
                 db.session.add(consumption)
                 _sync_numb1120_from_equipment_group(consumption, eg_id)
                 updates_count += 1
             else:
                 changed = False
 
-                if (
-                    not all_versions
-                    and consumption.database_version_id != version_id
-                ):
-                    consumption.database_version_id = version_id
-                    changed = True
-                if consumption.y_calc != y_calc_val:
-                    consumption.y_calc = y_calc_val
-                    changed = True
-                if consumption.btp_calc != btp_calc_val:
-                    consumption.btp_calc = btp_calc_val
-                    changed = True
-                if consumption.sntp_calc != sntp_calc_val:
-                    consumption.sntp_calc = sntp_calc_val
-                    changed = True
-                if consumption.bk_calc != bk_calc_val:
-                    consumption.bk_calc = bk_calc_val
-                    changed = True
-                if consumption.snk_calc != snk_calc_val:
-                    consumption.snk_calc = snk_calc_val
-                    changed = True
+                for attr, value in values.items():
+                    if getattr(consumption, attr) != value:
+                        setattr(consumption, attr, value)
+                        changed = True
                 if _sync_numb1120_from_equipment_group(consumption, eg_id):
                     changed = True
 

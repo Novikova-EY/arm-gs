@@ -60,7 +60,7 @@ _FUEL_DB_IMPORT_HINT = (
 
 _IMENA_ON_FUEL_DB_HINT = (
     "Этот файл – выгрузка Access «Имена_станций». "
-    "Его нужно загружать жёлтой кнопкой «Проверить / загрузить флаги» "
+    "Его нужно загружать желтой кнопкой «Проверить / загрузить флаги» "
     "(при необходимости отметьте «Создать отсутствующие NUMB»), "
     "а не синей «Импорт из Excel». "
     "Синяя кнопка принимает только шаблон АРМ с колонками id_station и equipment_group "
@@ -74,13 +74,13 @@ _FUEL_DB_TEMPLATE_COLS = frozenset({"equipment_group", "id_station"})
 def excel_basename_lower(filename: str | None) -> str:
     name = (filename or "").strip().replace("\\", "/")
     name = name.rsplit("/", 1)[-1]
-    return name.lower().replace("ё", "е")
+    return name.lower().replace("\u0451", "е")
 
 
 def _normalize_header(col: Any) -> str:
     s = "" if col is None else str(col)
     s = s.replace("\r", " ").replace("\n", " ").replace("\u00a0", " ").strip().lower()
-    s = s.replace("ё", "е")
+    s = s.replace("\u0451", "е")
     s = " ".join(s.split())
     s = s.replace(" ", "_")
     s = "".join(ch for ch in s if ch.isalnum() or ch == "_")
@@ -92,7 +92,7 @@ def filename_looks_like_access_stations_or_extra_fuel(filename: str | None) -> b
     base = excel_basename_lower(filename)
     if not base:
         return False
-    # «Имена_станций» содержит «станци», но это разрешённый файл soft-import.
+    # «Имена_станций» содержит «станци», но это разрешенный файл soft-import.
     if ("имен" in base and "станц" in base) or ("imena" in base and "stanci" in base):
         return False
     if any(base.startswith(p) for p in _EXTRA_NAME_PREFIXES):
@@ -152,7 +152,11 @@ def reject_access_stations_or_extra_fuel_excel(
     :param context: «fuel_db» | «soft_import» – уточняет текст подсказки.
     """
     by_name = filename_looks_like_access_stations_or_extra_fuel(filename)
-    by_headers = headers_look_like_access_stations_or_extra_fuel(file)
+    norms = _peek_excel_header_norms(file) or set()
+    by_headers = bool(norms & _ACCESS_FUEL_TABLE_MARKER_COLS)
+    # Название шаблона групп тоже может содержать «Станции»; структура важнее имени.
+    if context == "fuel_db" and _FUEL_DB_TEMPLATE_COLS <= norms and not by_headers:
+        return
     if not by_name and not by_headers:
         return
 

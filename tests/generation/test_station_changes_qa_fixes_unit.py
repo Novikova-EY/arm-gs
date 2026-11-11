@@ -76,17 +76,17 @@ def test_station_type_order_includes_snee():
     assert STATION_TYPE_ORDER_FOR_TOTALS.index("СЭС") < STATION_TYPE_ORDER_FOR_TOTALS.index("СНЭЭ")
 
 
-# --- D: start year floor is conceptual (route clamps); filter template uses 2022 ---
+# --- D: фильтры годов используют справочник, ограничения колонок задает маршрут ---
 
 
-def test_station_changes_start_year_options_exclude_2021():
+def test_station_changes_year_options_use_reference():
     from pathlib import Path
 
     text = Path("app/templates/generation/station_changes/station_changes_filters_third_row.html").read_text(
         encoding="utf-8"
     )
-    assert "range(2022, 2043)" in text
-    assert "range(2021, 2043)" not in text
+    assert text.count("{% for year in get_reference_years() %}") == 2
+    assert "range(" not in text
 
 
 # --- E: float precision capped at 3 decimals when «не округлять» ---

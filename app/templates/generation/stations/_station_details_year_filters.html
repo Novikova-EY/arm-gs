@@ -1,0 +1,23 @@
+<form method="GET" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
+    {% for key, value in request.args.items() %}
+        {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endif %}
+    {% endfor %}
+
+    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+    <select name="start_year" id="start_year" class="form-select" style="width: auto;">
+        {% for year in get_reference_years() %}
+        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+    <select name="end_year" id="end_year" class="form-select" style="width: auto;">
+        {% for year in get_reference_years() %}
+        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-outline-success">Применить</button>
+</form>

@@ -3,7 +3,7 @@
 Write/update-слой для EquipmentGroupSpecificFuelConsumption.
 
 Ручной ввод полей k, y, btp, sntp, bk, snk (и др.) с карточки группы.
-На странице расчётного модуля edit_data – те же столбцы, что на
+На странице расчетного модуля edit_data – те же столбцы, что на
 stations_equipment_group_specific_fuel_consumption: numb1120, k, y/y_calc,
 btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc;
 numb1120 только просмотр, при сохранении = EquipmentGroup.numb;
@@ -220,8 +220,8 @@ def save_specific_fuel_consumption_for_year(
     allow_calc_attrs: bool = False,
 ) -> tuple[EquipmentGroupSpecificFuelConsumption | None, dict]:
     """
-    Создаёт/обновляет строку за год.
-    Новая строка не создаётся, если записи нет и все входные значения пустые.
+    Создает/обновляет строку за год.
+    Новая строка не создается, если записи нет и все входные значения пустые.
     """
     effective_db_version = database_version_id
     if effective_db_version is None:
@@ -312,7 +312,7 @@ def save_specific_fuel_consumption_bulk(
     return result
 
 
-# Поля ручного ввода на странице расчётного модуля.
+# Поля ручного ввода на странице расчетного модуля.
 # Входные (кроме годов «факт»); *_calc – для всех признаков, кроме «план».
 CALC_EDIT_PAGE_FORM_INPUT_ATTRS = ("k", "y", "btp", "sntp", "bk", "snk")
 CALC_EDIT_PAGE_CALC_ATTRS = tuple(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
@@ -349,7 +349,7 @@ def apply_specific_fuel_consumption_bulk_save_from_form(
     rounding_digits: int = 1,
 ) -> tuple[int, list[str]]:
     """
-    Массовое сохранение удельных показателей со страницы расчётного модуля.
+    Массовое сохранение удельных показателей со страницы расчетного модуля.
     Входные k – кроме годов «факт».
     *_calc – кроме годов «факт» (для «план» и прочих признаков – редактируются).
     numb1120 подставляется из EquipmentGroup.numb.

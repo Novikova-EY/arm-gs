@@ -1,23 +1,16 @@
 # -*- coding: utf-8 -*-
 """Выработка ЭЭ по типам станций для листов баланса электрической энергии.
 
-Источники по признаку года (YearFeature):
-- факт / текущий – суммы со страницы ee_generation (станция × год × тип × зона);
-- план – для ТЭС суммы столбца «Выработка ЭЭ» (E) со страницы
-  stations_equipment_group_fuel_params (группа × год × зона);
-  для остальных типов (АЭС, ГЭС, ГАЭС, СНЭЭ) – те же суммы
-  со страницы ee_generation, что и для факт/текущий;
-  для СЭС/ВЭС в плановых (и при необходимости текущем) годах, если в
-  ``StationEnergyGeneration`` нет значения, подставляется тот же расчёт, что
-  на карточке станции / странице «Выработка ВИЭ»
-  (``compute_ves_ses_plan_generation``).
+Для АЭС, ГЭС, ГАЭС и СНЭЭ используются годовые значения тех же станций,
+что и на соответствующих страницах выработки. Для АЭС, ГЭС, СЭС и ВЭС
+учитываются сохраненные итоги групп станций со страниц-источников.
+Для СЭС/ВЭС в плановых (и при необходимости текущем) годах при отсутствии
+значения в ``StationEnergyGeneration`` используется расчет со страницы
+«Выработка ВИЭ» (``compute_ves_ses_plan_generation``).
 
-Для ГЭС и ГАЭС дополнительно суммируется годовой итог таблицы
-«Прогноз выработки электрической энергии электростанцией» с карточек
-перспективных площадок: средневодный год (сценарий medium_50 / 50%) –
-только ОЭС Северо-Запада, Центра, Волги, Урала и Юга; у остальных
-листов – маловодный год (low_95 / 95%). Суммы ЕЭС и 1-й СЗ складывают
-листы с этой же водностью.
+Плановая выработка ТЭС берется из столбца «Выработка ЭЭ» (E) страницы
+stations_equipment_group_fuel_params. Генерация ГЭС и ГАЭС из прогнозов
+перспективных площадок не добавляется к значениям страниц-источников.
 """
 
 from __future__ import annotations
@@ -88,7 +81,7 @@ def _decimal_or_zero(raw: Any) -> Decimal:
 
 
 def _norm_year_feature(name: Any) -> str:
-    return " ".join(str(name or "").split()).casefold().replace("ё", "е")
+    return " ".join(str(name or "").split()).casefold().replace("\u0451", "е")
 
 
 def classify_ee_balance_generation_years(
@@ -144,7 +137,7 @@ def forecast_scenario_for_hydro_year(hydro_year: Any) -> str:
         SCENARIO_MEDIUM_50,
     )
 
-    raw = str(hydro_year or "").strip().casefold().replace("ё", "е")
+    raw = str(hydro_year or "").strip().casefold().replace("\u0451", "е")
     if raw in _HYDRO_YEAR_LOW_ALIASES:
         return SCENARIO_LOW_95
     return SCENARIO_MEDIUM_50
@@ -154,7 +147,7 @@ def _norm_hydro_sheet_name(name: Any) -> str:
     return (
         str(name or "")
         .casefold()
-        .replace("ё", "е")
+        .replace("\u0451", "е")
         .replace("-", " ")
         .replace("  ", " ")
         .strip()
@@ -573,8 +566,61 @@ def _type_id_to_group_key(groups: list[dict[str, Any]]) -> dict[int, str]:
     return mapping
 
 
+def _apply_station_group_generation_overrides(
+    stations: list[Any],
+    generation_by_station: dict[int, dict[int, Any]],
+    type_to_key: dict[int, str],
+    years: list[int],
+) -> dict[int, dict[int, Any]]:
+    """Apply energy totals entered on the AES, GES and VES/SES source pages."""
+    page_for_key = {
+        GENERATION_AES_KEY: "aes",
+        GENERATION_GES_KEY: "ges",
+        "generation_ses": "ses-ves",
+        "generation_ves": "ses-ves",
+        "generation_ses_ves": "ses-ves",
+    }
+    members_by_page: dict[str, dict[int, list[Any]]] = {}
+    for station in stations:
+        group_id = getattr(station, "id_station_group", None)
+        type_id = getattr(station, "id_station_type", None)
+        station_id = getattr(station, "id", None)
+        if group_id is None or type_id is None or station_id is None:
+            continue
+        page_key = page_for_key.get(type_to_key.get(int(type_id), ""))
+        if page_key:
+            members_by_page.setdefault(page_key, {}).setdefault(int(group_id), []).append(station)
+
+    if not members_by_page:
+        return generation_by_station
+
+    from app.energy_balance.services.ee_balance_station_group_services import load_group_values
+
+    for page_key, groups in members_by_page.items():
+        group_values = load_group_values(list(groups), page_key, years)
+        for group_id, members in groups.items():
+            representative = min(
+                members,
+                key=lambda station: (
+                    str(getattr(station, "name", "") or "").casefold(),
+                    int(station.id),
+                ),
+            )
+            representative_values = generation_by_station.setdefault(int(representative.id), {})
+            for year in years:
+                stored = group_values.get((group_id, int(year)))
+                override = getattr(stored, "energy", None) if stored is not None else None
+                if override is None:
+                    continue
+                representative_values[int(year)] = override
+                for member in members:
+                    if int(member.id) != int(representative.id):
+                        generation_by_station.setdefault(int(member.id), {}).pop(int(year), None)
+    return generation_by_station
+
+
 def _ves_ses_type_key_from_group(group_key: str | None) -> str | None:
-    """Ключ типа для расчёта плана ВИЭ; None – станция не СЭС/ВЭС."""
+    """Ключ типа для расчета плана ВИЭ; None – станция не СЭС/ВЭС."""
     key = str(group_key or "")
     if key == "generation_ses":
         return "ses"
@@ -623,11 +669,11 @@ def apply_ves_ses_plan_generation_to_station_map(
     years: list[int],
     year_features: dict[Any, Any] | None = None,
 ) -> dict[int, dict[int, Any]]:
-    """В пустые годы СЭС/ВЭС подставляет расчёт с карточки станции (без записи в БД).
+    """В пустые годы СЭС/ВЭС подставляет расчет с карточки станции (без записи в БД).
 
     Для каждого года из ``years``: если в ``generation_by_station`` нет значения
-    (``None`` / ключ отсутствует), берётся ``compute_ves_ses_plan_generation``.
-    Явно сохранённый ноль оставляем.
+    (``None`` / ключ отсутствует), берется ``compute_ves_ses_plan_generation``.
+    Явно сохраненный ноль оставляем.
     """
     if not stations or not years or not type_to_key:
         return generation_by_station
@@ -875,6 +921,8 @@ def _load_stations_for_generation() -> list[Any]:
                 Station.id_regional_energy_system,
                 Station.id_regional_district,
                 Station.id_energy_unit,
+                Station.id_station_group,
+                Station.name,
             ).all()
         )
     except Exception:
@@ -1178,6 +1226,12 @@ def load_ee_balance_generation_inputs(
                     type_to_key,
                     years=ee_generation_years,
                 )
+                generation_by_station = _apply_station_group_generation_overrides(
+                    stations,
+                    generation_by_station,
+                    type_to_key,
+                    ee_generation_years,
+                )
             except Exception:
                 _logger.exception("ee balance generation: ves/ses plan generation overlay failed")
                 pass
@@ -1228,16 +1282,6 @@ def load_ee_balance_generation_inputs(
             for year, amount in year_map.items():
                 bucket[year] = bucket.get(year, Decimal("0")) + amount
 
-    hydro_by_year: dict[str, tuple] = {}
-    for hydro_key in (HYDRO_YEAR_AVERAGE, HYDRO_YEAR_LOW):
-        try:
-            hydro_by_year[hydro_key] = _load_hydro_forecast_generation_by_territory(
-                wanted_years, groups, hydro_key
-            )
-        except Exception:
-            _logger.exception("ee balance generation: hydro forecast generation load failed")
-            hydro_by_year[hydro_key] = ({}, {}, {}, {})
-
     sheet_specs = _sheet_specs(sheets)
     sheets_by_slug = {
         str(item.get("slug") or ""): item for item in (sheets or []) if item.get("slug")
@@ -1266,21 +1310,14 @@ def load_ee_balance_generation_inputs(
         else:
             continue
         sheet = sheets_by_slug.get(slug) or {"slug": slug, "territory": territory}
-        sheet_hydro_year = hydro_year_for_balance_sheet(sheet, sheets) or HYDRO_YEAR_LOW
-        hydro_by_key = _hydro_map_for_territory(
-            hydro_by_year.get(sheet_hydro_year), kind, entity_id
-        )
         sheet_inputs = _empty_sheet_inputs(groups, wanted_years)
         for group in iter_station_type_groups(groups):
             group_key = group["key"]
             year_map = (by_key or {}).get(group_key) or {}
-            hydro_year_map = (hydro_by_key or {}).get(group_key) or {}
             for year in wanted_years:
                 if year in fact_current_years or (
                     year in plan_years and group_key in plan_filled_keys
                 ):
-                    sheet_inputs[group_key][year] = _decimal_or_zero(
-                        year_map.get(year)
-                    ) + _decimal_or_zero(hydro_year_map.get(year))
+                    sheet_inputs[group_key][year] = _decimal_or_zero(year_map.get(year))
         inputs[slug] = sheet_inputs
     return inputs

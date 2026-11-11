@@ -11,9 +11,11 @@ from unittest.mock import patch
 from flask import Flask
 
 from app.ecology.routes import ecology_routes as eco_routes
+from app.ecology.routes import ecology_totals_summary_routes as totals_routes
 from app.ecology.routes import new_tes_routes
 from app.ecology.routes import operating_tes_routes
 from app.ecology.routes.ecology_bp import ecology_bp
+from app.ecology.services import export_ecology_totals_summary_services as totals_export_services
 from app.ecology.services.gis_tek_constants import PAGE_TITLES, REPORT_PG
 
 
@@ -135,6 +137,27 @@ def test_gis_tek_export_logs_downloaded_file():
         PAGE_TITLES[REPORT_PG],
         "gis_tek_parnikovye_gazy.xlsx",
     )
+
+
+def test_ecology_totals_summary_export_returns_xlsx_download():
+    app = Flask(__name__)
+    context = {"page_title": "Итоговые суммы экологии"}
+    with (
+        app.test_request_context("/ecology/totals_summary/sample/export/"),
+        patch.object(totals_routes, "_ecology_totals_page_context", return_value=context),
+        patch.object(
+            totals_export_services,
+            "export_ecology_totals_summary_to_excel",
+            return_value=BytesIO(b"excel"),
+        ),
+        patch.object(totals_routes, "log_file_download") as download,
+    ):
+        response = totals_routes.totals_summary_export.__wrapped__("sample")
+
+    assert response.mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert response.headers["Content-Disposition"].startswith("attachment;")
+    assert download.call_args.args[0] == context["page_title"]
+    assert download.call_args.kwargs["details"] == ["лист=sample"]
 
 
 def test_formula_save_logs_before_and_after():

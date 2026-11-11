@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.common.perimeter_variant.constants import ENTITY_KIND_RUSSIA_FEDERATION
+from app.common.perimeter_variant.registry import CODE_WITH_NT
 from app.energy_consumption.pages._summary_page_transforms import (
     apply_max_summary_page_variant_behaviour,
     finalize_oes_max_summary_tites_formula,
@@ -29,6 +31,17 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
 )
 
 PAGE_TEMPLATE = "energy_consumption/pages/summary_oes.html"
+_RUSSIA_WITH_NT_ELECTRICITY_PARAMETER_LABEL = "Потребление электрической энергии, млрд кВтч"
+
+
+def _set_russia_with_nt_electricity_parameter_label(summary_rows: list[dict]) -> None:
+    for row in summary_rows:
+        if (
+            row.get("entity_kind") == ENTITY_KIND_RUSSIA_FEDERATION
+            and str(row.get("perimeter_variant_code") or "").startswith(CODE_WITH_NT)
+            and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
+        ):
+            row["parameter_label"] = _RUSSIA_WITH_NT_ELECTRICITY_PARAMETER_LABEL
 
 
 def build_summary_oes_page_context(
@@ -139,4 +152,5 @@ def build_summary_oes_page_context(
     context["summary_rows"] = filter_oes_max_summary_page_hidden_rows(
         list(context.get("summary_rows") or [])
     )
+    _set_russia_with_nt_electricity_parameter_label(context["summary_rows"])
     return context

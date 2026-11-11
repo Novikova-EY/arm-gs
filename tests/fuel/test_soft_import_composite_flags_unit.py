@@ -48,7 +48,7 @@ def test_read_imena_dataframe_aliases():
 
 
 def test_soft_import_dry_run_phase_b_without_children(monkeypatch):
-    """Пустой индекс EG → phase A=0, phase B создаёт COMP=1 «в пустоту»."""
+    """Без версионных EG создание родителей не планируется."""
     df = pd.DataFrame(
         [
             {"NUMB": 999001, "COMP": 1, "MAIN": None, "NIV": None, "NAME": "Alone"},
@@ -99,8 +99,8 @@ def test_soft_import_dry_run_phase_b_without_children(monkeypatch):
     assert result.eg_rows_updated == 0
     assert result.parent_shells_would_create == 0
     assert result.phase_b_enabled is False
-    assert result.phase_b_unique_numbs == 1
-    assert result.phase_b_would_create >= 1
+    assert result.phase_b_unique_numbs == 0
+    assert result.phase_b_would_create == 0
     assert result.phase_b_created == 0
     assert result.missing_numbs_enabled is False
     assert result.missing_numbs_created == 0
@@ -110,7 +110,7 @@ def test_soft_import_dry_run_phase_b_without_children(monkeypatch):
 
 
 def test_create_parents_skips_when_require_station(monkeypatch):
-    """require_station=True: без Station родителя не создаём."""
+    """require_station=True: без Station родителя не создаем."""
     child = SimpleNamespace(
         id=101,
         numb=20,
@@ -216,12 +216,12 @@ def test_phase_b_plans_rows_per_version(monkeypatch):
         },
     )
     assert result.unique_parent_numbs == 1
-    assert result.created_or_planned == 3  # None, 7, 20
-    assert result.created_without_station == 2  # None and 20
+    assert result.created_or_planned == 2  # 7, 20
+    assert result.created_without_station == 1  # 20
 
 
 def test_soft_import_dry_run_create_missing_numbs_reports_child(monkeypatch):
-    """Пустой индекс EG + create_missing_numbs: в отчёте есть ребёнок 999002."""
+    """Пустой индекс EG + create_missing_numbs: в отчете есть ребенок 999002."""
     df = pd.DataFrame(
         [
             {"NUMB": 999001, "COMP": 1, "MAIN": None, "NIV": None, "NAME": "Alone"},

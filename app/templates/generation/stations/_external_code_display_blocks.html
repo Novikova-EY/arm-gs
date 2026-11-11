@@ -1,0 +1,16 @@
+{% from 'generation/stations/_external_code_rows.html' import station_row, machine_rows, equipment_group_row, station_rows with context %}
+{% if external_code_display_blocks is defined %}
+    {% for block in external_code_display_blocks.get(station.id, []) %}
+        {% if block.equipment_group %}
+            {{ equipment_group_row(block.equipment_group) }}
+            {% for member in block.members %}
+                {{ station_row(member.station, nested=True) }}
+                {{ machine_rows(member.machines, member.station) }}
+            {% endfor %}
+        {% else %}
+            {{ station_rows(block.station, block.groups, block.machines) }}
+        {% endif %}
+    {% endfor %}
+{% else %}
+    {{ station_rows(station) }}
+{% endif %}

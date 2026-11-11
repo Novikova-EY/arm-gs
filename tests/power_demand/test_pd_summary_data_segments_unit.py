@@ -102,7 +102,7 @@ def test_filter_core_includes_summary_perimeter_variant_rows():
 
 
 def test_filter_perimeter_variant_calc_rows_in_calc_max_not_core():
-    """Расчётные строки варианта периметра – сегмент calc_max (с обогащением), не core."""
+    """Расчетные строки варианта периметра – сегмент calc_max (с обогащением), не core."""
     binding_block = _block(
         {
             "parameter_key": "max_power",

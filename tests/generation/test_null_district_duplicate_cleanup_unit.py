@@ -54,7 +54,7 @@ def test_ambiguous_keepers_with_children_are_blocked():
         keeper_codes=["a", "b"],
         keeper_rd_names=["ЯНАО", "ХМАО"],
     )
-    assert item.blocked_reason == "несколько одноимённых станций с субъектом в той же версии"
+    assert item.blocked_reason == "несколько одноименных станций с субъектом в той же версии"
     assert item.keeper_id is None
 
 

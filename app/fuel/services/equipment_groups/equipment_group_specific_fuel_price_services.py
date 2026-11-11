@@ -3,10 +3,10 @@
 """
 Read/query/display для страницы «Цена для групп оборудования».
 
-Пересчёт полей xxx_c в БД – в equipment_group_specific_fuel_price_recalc_services;
+Пересчет полей xxx_c в БД – в equipment_group_specific_fuel_price_recalc_services;
 формулы – в equipment_group_specific_fuel_price_calc_services.
 
-Ниже _apply_calculated_specific_fuel_prices только подставляет расчётные значения
+Ниже _apply_calculated_specific_fuel_prices только подставляет расчетные значения
 в объект для отображения (read-only), без записи в сессию.
 """
 
@@ -29,7 +29,7 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_calc
 )
 
 
-# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчёт)
+# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчет)
 CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
 
 
@@ -157,7 +157,7 @@ _SPECIFIC_FUEL_PRICE_BASE = [
     ("group", "group", False),
 ]
 
-# Колонки: сначала все xxx_c (из БД/Excel), затем блок xxx_c_calc (расчётные)
+# Колонки: сначала все xxx_c (из БД/Excel), затем блок xxx_c_calc (расчетные)
 SPECIFIC_FUEL_PRICE_COLUMNS = []
 _SPECIFIC_FUEL_PRICE_CALC_COLUMNS = []
 for attr, label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE:
@@ -168,7 +168,7 @@ for attr, label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE:
         )
 SPECIFIC_FUEL_PRICE_COLUMNS.extend(_SPECIFIC_FUEL_PRICE_CALC_COLUMNS)
 
-# Пары загруженное / расчётное для временного фильтра расхождений
+# Пары загруженное / расчетное для временного фильтра расхождений
 # (ugol_c – синтетический столбец без поля в БД / _price_calc)
 CALC_MISMATCH_BASE_ATTRS = tuple(
     attr
@@ -255,7 +255,7 @@ def build_specific_fuel_price_column_hierarchy(
 ) -> dict:
     """
     Иерархия столбцов цены: блок xxx_c и отдельный блок xxx_c_calc,
-    каждый упорядочен/свёрнут по Fuel.parent_id (как edit_data / стоимость).
+    каждый упорядочен/свернут по Fuel.parent_id (как edit_data / стоимость).
     """
     from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
         build_fuel_param_columns_hierarchy,
@@ -340,7 +340,7 @@ def build_specific_fuel_price_column_hierarchy(
 
 def _apply_calculated_specific_fuel_prices(rows):
     """
-    Для витрины: вычисляет xxx_c по формулам и кладёт в param._price_calc.
+    Для витрины: вычисляет xxx_c по формулам и кладет в param._price_calc.
     Исходные поля модели из БД не меняет.
     """
     from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (

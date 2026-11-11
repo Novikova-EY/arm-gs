@@ -274,7 +274,7 @@ def ved_consumption_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк ВЭД {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )
@@ -480,7 +480,7 @@ def accum_fixed_capital_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк ВЭД {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )
@@ -637,7 +637,7 @@ def product_output_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк ВЭД {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )
@@ -794,7 +794,7 @@ def population_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )
@@ -941,7 +941,7 @@ def accum_monetary_income_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )

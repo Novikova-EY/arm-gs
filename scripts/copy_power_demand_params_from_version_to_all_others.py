@@ -11,7 +11,7 @@
 
 2) Для каждой версии БД: для каждой РЭС, в которую входит ровно один субъект РФ,
    в соответствующую строку RegionalDistrictDemandParameter записываются те же
-   показатели, что и в RegionalEnergySystemDemandParameter (совмещённый на ЭЗ с РЭС
+   показатели, что и в RegionalEnergySystemDemandParameter (совмещенный на ЭЗ с РЭС
    копируется в combined_on_es субъекта).
 
 Запуск из корня репозитория:
@@ -99,7 +99,7 @@ SCRIPT_USER = "script:copy_power_demand_params_from_version"
 
 
 def _align_gs_pd_id_sequences() -> None:
-    """Подгоняет SERIAL/sequence для id под MAX(id) в каждой таблице gs_pd (иначе nextval даёт занятый id)."""
+    """Подгоняет SERIAL/sequence для id под MAX(id) в каждой таблице gs_pd (иначе nextval дает занятый id)."""
     seen: set[str] = set()
     for model, _ in MODEL_FK_SPECS:
         t = model.__tablename__
@@ -335,7 +335,7 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Только отчёт, без записи (по умолчанию, если нет --apply).",
+        help="Только отчет, без записи (по умолчанию, если нет --apply).",
     )
     parser.add_argument(
         "--apply",

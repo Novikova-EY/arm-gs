@@ -90,7 +90,7 @@ def restore_empty_machine_names_by_external_code(
     Восстанавливает ``MachineName`` из других копий агрегата по ``external_code``.
 
     - заполняет пустые ``name`` у существующих строк;
-    - при ``create_missing=True`` создаёт недостающие годы по ``MachineTesType`` /
+    - при ``create_missing=True`` создает недостающие годы по ``MachineTesType`` /
       ``MachinePower`` (и годам донора), подставляя имя с донора.
 
     Существующие непустые имена не перезаписываются (при only_empty=True).
@@ -181,7 +181,7 @@ def restore_empty_machine_names_by_external_code(
 
     best_by_code_year = _build_donor_names_by_external_code(external_codes)
 
-    # Если у цели нет годов из powers/tes – берём годы донора
+    # Если у цели нет годов из powers/tes – берем годы донора
     for machine in machines_to_fix:
         code = (machine.external_code or "").strip()
         if not years_by_machine.get(machine.id) and code in best_by_code_year:

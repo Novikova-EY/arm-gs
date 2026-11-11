@@ -15,7 +15,7 @@
     <h1 class="text-center mb-4">{{ page_title }}</h1>
 
     <p class="text-muted text-center mb-3">
-        Редактируются только тексты подсказок (иконка «i»). Расчёт и импорт данных не меняются.
+        Редактируются только тексты подсказок (иконка «i»). Расчет и импорт данных не меняются.
     </p>
 
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
@@ -44,7 +44,7 @@
             <div class="collapse mt-2 power-demand-filters-collapse" id="ecFormulaFiltersCollapse">
                 <p class="small text-muted mb-2">
                     Фильтры по столбцам – в шапке таблицы (выпадающие списки с галочками, как в Excel).
-                    Для текста формулы – поле поиска в шапке столбца «Текст формулы».
+                    Для текста формулы – поле поиска в шапке столбца «Формула и пояснения».
                 </p>
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="ec-formula-clear-filters">
                     Сбросить все фильтры
@@ -79,7 +79,7 @@
             line-height: 1.35;
         }
         #ecFormulaSummaryTable td.ec-formula-page-cell {
-            white-space: pre-line;
+            white-space: normal;
             vertical-align: top;
         }
         #ecFormulaSummaryTable .filter-button {
@@ -124,8 +124,8 @@
         <div id="ecFormulaSummaryScrollWrap" class="table-responsive power-demand-summary-scroll" style="visibility: hidden;">
             <table id="ecFormulaSummaryTable"
                    class="table table-bordered table-striped table-hover align-middle power-demand-summary-table fuel-params-edit-table"
-                   data-save-url="{{ url_for('ecology_bp.operating_tes_formulas_save') }}"
-                   data-reset-url="{{ url_for('ecology_bp.operating_tes_formulas_reset') }}"
+                   data-save-url="{{ url_for('ecology_bp.operating_tes_formulas_save') if can_edit else '' }}"
+                   data-reset-url="{{ url_for('ecology_bp.operating_tes_formulas_reset') if can_edit else '' }}"
                    data-csrf-token="{{ csrf_token }}">
                 <colgroup>
                     <col style="width: 16%; min-width: 10rem;" />
@@ -139,8 +139,8 @@
                         <th class="text-center align-middle summary-entity-col">Страница</th>
                         <th class="text-center align-middle">Уровень агрегации</th>
                         <th class="text-center align-middle summary-parameter-col">Ячейка / показатель</th>
-                        <th class="text-center align-middle">Текст формулы</th>
-                        <th class="text-center align-middle">Действия</th>
+                        <th class="text-center align-middle">Формула и пояснения</th>
+                        <th class="text-center align-middle">{% if can_edit %}Действия{% endif %}</th>
                     </tr>
                     <tr class="table-secondary ec-formula-filter-row">
                         <th class="p-1">
@@ -205,18 +205,38 @@
                         data-filter-page-lines="{{ row.page_lines|join('||')|e }}"
                         data-filter-aggregation="{{ row.aggregation_level }}"
                         data-filter-cell="{{ row.cell_name }}">
-                        <td class="small ec-formula-page-cell">{{ row.page_labels }}</td>
+                        <td class="small ec-formula-page-cell">
+                            <ul class="list-unstyled mb-0">
+                                {% for page_line in row.page_lines %}
+                                <li class="mb-1">
+                                    {% if ' (/' in page_line %}
+                                    {% set page_parts = page_line.rsplit(' (', 1) %}
+                                    <a href="{{ page_parts[1][:-1] }}">{{ page_parts[0] }}</a>
+                                    {% else %}{{ page_line }}{% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
                         <td class="small">{{ row.aggregation_level }}</td>
                         <td class="small">{{ row.cell_name }}</td>
                         <td>
-                            <textarea class="form-control form-control-sm ec-formula-text-input fuel-param-input" rows="3"
-                                      data-default="{{ row.default_text|e }}"
-                                      aria-label="Текст формулы {{ row.cell_name }}">{{ row.formula_text }}</textarea>
+                            <div class="ecology-formula-preview" role="region" aria-label="Предпросмотр: {{ row.cell_name }}" aria-live="polite">{{ row.formula_text }}</div>
+                            {% if can_edit %}
+                            <details class="ecology-formula-editor">
+                                <summary>Редактировать текст подсказки</summary>
+                                <textarea class="form-control form-control-sm ec-formula-text-input fuel-param-input" rows="4"
+                                          data-default="{{ row.default_text|e }}"
+                                          aria-label="Текст формулы {{ row.cell_name }}">{{ row.formula_text }}</textarea>
+                                <div class="form-text">Предпросмотр обновляется при вводе. Для применения нажмите «Сохранить».</div>
+                            </details>
+                            {% endif %}
                         </td>
                         <td class="text-nowrap align-top">
+                            {% if can_edit %}
                             <button type="button" class="btn btn-sm btn-primary ec-formula-save-btn w-100">Сохранить</button>
                             {% if row.is_customized %}
                             <button type="button" class="btn btn-sm btn-outline-secondary ec-formula-reset-btn w-100 mt-1">Сброс</button>
+                            {% endif %}
                             {% endif %}
                         </td>
                     </tr>

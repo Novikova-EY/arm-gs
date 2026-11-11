@@ -11,9 +11,20 @@
         <h1 class="text-center mb-4">Действия пользователей</h1>
 
         <!-- Форма фильтрации и выбора количества строк -->
-        <form method="get" action="{{ url_for('logs.view_logs') }}" class="d-flex flex-nowrap align-items-end gap-2 mb-4">
+        <form method="get" action="{{ url_for('logs.view_logs') }}" class="d-flex flex-wrap align-items-end gap-2 mb-4">
             <div class="flex-grow-1" style="min-width: 8rem;">
                 <input type="text" name="username" class="form-control" placeholder="Фильтр по пользователю" value="{{ request.args.get('username', '') }}">
+            </div>
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            <div class="flex-shrink-0">
+                <label class="visually-hidden" for="logs-module-filter">Модуль</label>
+                <select name="module" id="logs-module-filter" class="form-select">
+                    <option value="">Все модули</option>
+                    {% for module in modules %}
+                        <option value="{{ module }}" {% if module_filter == module %}selected{% endif %}>{{ module }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="flex-shrink-0">
                 <select name="database_version_id" id="logs-database-version-filter" class="form-select">
@@ -50,6 +61,7 @@
             <div class="form-check mb-2 flex-shrink-0" style="white-space: nowrap;">
                 <input class="form-check-input" type="checkbox" name="show_page_events" value="true" id="show_page_events"
                        {% if show_page_events %}checked{% endif %}>
+                <input type="hidden" name="show_page_events" value="false">
                 <label class="form-check-label" for="show_page_events" style="font-size: 0.85em;">
                     Показать события "открыта страница"
                 </label>
@@ -72,6 +84,7 @@
                             sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc', 
                             per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
+                            module=module_filter,
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
@@ -88,6 +101,7 @@
                             sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc', 
                             per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
+                            module=module_filter,
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
@@ -104,6 +118,7 @@
                             sort_dir='asc' if sort_by != 'database_version_id' or sort_dir == 'desc' else 'desc', 
                             per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
+                            module=module_filter,
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
@@ -113,6 +128,14 @@
                                 Версия
                             </a>
                         </th>
+                        <th class="p-3">
+                            <a href="{{ url_for('logs.view_logs', sort_by='module',
+                                sort_dir='asc' if sort_by != 'module' or sort_dir == 'desc' else 'desc',
+                                module=module_filter, username=username_filter, action=action_filter,
+                                details=details_filter, database_version_id=database_version_filter,
+                                date_from=date_from or '', date_to=date_to or '', per_page=per_page,
+                                show_page_events='true' if show_page_events else 'false') }}">Модуль</a>
+                        </th>
                         <th class="p-3" style="width: 25%;">
                             <a href="{{ 
                             url_for('logs.view_logs', 
@@ -120,6 +143,7 @@
                             sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc', 
                             per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
+                            module=module_filter,
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
@@ -136,6 +160,7 @@
                             sort_dir='asc' if sort_by != 'details' or sort_dir == 'desc' else 'desc', 
                             per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
+                            module=module_filter,
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
@@ -153,6 +178,7 @@
                             <td class="p-3">{{ log.timestamp_msk.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] if log.timestamp_msk else '' }}</td>
                             <td class="p-3">{{ log.username }}</td>
                             <td class="p-3">{{ log.database_version_display or '–' }}</td>
+                            <td class="p-3">{{ log.module }}</td>
                             <td class="p-3">{{ log.action }}</td>
                             <td class="p-3">{{ log.details if log.details is not none else '–' }}</td>
                         </tr>

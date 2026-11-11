@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница расчёта по действующим ТЭС: вкладки территорий и листов макета."""
+"""Страница расчета по действующим ТЭС: вкладки территорий и листов макета."""
 
 from __future__ import annotations
 
@@ -79,6 +79,7 @@ from app.ecology.services.operating_tes_fuel_input_services import (
     bucket_top_input_amount,
     empty_fuel_bucket,
     fuel_amount_for_key,
+    fuel_bucket_for_level,
     get_fuel_module_consumption_row_specs,
 )
 from app.ecology.services.formula_text.operating_tes_formula_text_services import (
@@ -90,7 +91,7 @@ from app.ecology.services.formula_text.operating_tes_formula_text_services impor
 from app.ecology.services.operating_tes_territory_services import get_territory_columns
 from app.extensions import db
 
-CHAR_EDIT_FIELDS = {key for key, _label in CHAR_COLUMNS}
+CHAR_EDIT_FIELDS = {key for key, _label in CHAR_COLUMNS} | {"note"}
 _CHAR_HEADER_TITLES = {
     key: group["title"] for group in CHAR_HEADER_GROUPS for key in group["keys"]
 }
@@ -187,7 +188,7 @@ def format_cell(value: Any, digits: int | None = None) -> str:
 
 
 def group_territories(territories=None) -> list[dict[str, Any]]:
-    """Одна строка вкладок в порядке территорий расчёта."""
+    """Одна строка вкладок в порядке территорий расчета."""
     return [{"group": "territory", "sheets": get_territory_columns() if territories is None else territories}]
 
 
@@ -203,7 +204,7 @@ _FUEL_ROOTS = [spec for spec in FUEL_ROWS if not spec.get("parent_key")]
 
 
 def _characteristic_row_specs() -> list[dict[str, Any]]:
-    """Иерархия модуля топлива с прежними ключами сохранённых характеристик."""
+    """Иерархия модуля топлива с прежними ключами сохраненных характеристик."""
     keys_by_field = {field: key for key, field in FUEL_PARAM_FIELDS.items()}
     return [
         {**spec, "key": keys_by_field.get(spec["key"], spec["key"])}
@@ -220,7 +221,7 @@ def _nz(value: Any) -> Decimal | None:
 
 
 def sum_metric_tree(by_key: dict[str, dict[str, Decimal | None]], metric: str) -> Decimal | None:
-    """Сумма по дереву: дети, если есть данные, иначе значение узла (без двойного счёта)."""
+    """Сумма по дереву: дети, если есть данные, иначе значение узла (без двойного счета)."""
 
     def node_value(spec: dict[str, Any]) -> Decimal | None:
         children = tuple(spec.get("children") or ())
@@ -243,15 +244,16 @@ def _fallback_header_chars(
     fuel_key: str,
     year: int,
     children: tuple[str, ...],
-    char_overrides: dict[tuple[str, str, int], dict[str, Any]],
+    char_overrides: dict[tuple[Any, ...], dict[str, Any]],
     territory_slug: str,
+    affiliation: str = "all",
 ) -> dict[str, Any]:
-    chars = resolve_chars(fuel_key, year, char_overrides, territory_slug)
+    chars = resolve_chars(fuel_key, year, char_overrides, territory_slug, affiliation)
     if DEFAULT_CHARACTERISTICS.get(fuel_key):
         return chars
     for child in children:
         if DEFAULT_CHARACTERISTICS.get(child):
-            return resolve_chars(child, year, char_overrides, territory_slug)
+            return resolve_chars(child, year, char_overrides, territory_slug, affiliation)
     return chars
 
 
@@ -259,7 +261,6 @@ def load_characteristic_overrides(years: list[int]) -> dict[tuple[str, str, int]
     version_id = get_current_db_version_id()
     query = OperatingTesFuelCharacteristic.query.filter(
         OperatingTesFuelCharacteristic.year_number.in_(years),
-        OperatingTesFuelCharacteristic.territory_slug == DEFAULT_TERRITORY_SLUG,
     )
     if version_id is not None:
         query = query.filter(OperatingTesFuelCharacteristic.database_version_id == version_id)
@@ -273,7 +274,8 @@ def load_characteristic_overrides(years: list[int]) -> dict[tuple[str, str, int]
         payload["t_co2_per_tj"] = row.t_co2_per_tj
         payload["note"] = row.note
         payload["source_key"] = row.source_key
-        out[(row.territory_slug, row.fuel_key, int(row.year_number))] = payload
+        affiliation = getattr(row, "affiliation", "all") or "all"
+        out[(row.territory_slug, affiliation, row.fuel_key, int(row.year_number))] = payload
     return out
 
 
@@ -287,16 +289,26 @@ def load_coefficient_overrides(
     if version_id is not None:
         query = query.filter(OperatingTesCoefficient.database_version_id == version_id)
     out: dict[tuple[str, int, str], Decimal] = {}
-    for row in query.all():
+    priority_by_key: dict[tuple[str, int, str], int] = {}
+    rows = query.all()
+    for row in rows:
         amount = _d(row.value)
         if amount is None:
             continue
-        slug = row.territory_slug
-        if affiliation != "all" and slug == affiliation and row.affiliation == "all":
-            slug = "vsego"
-        elif row.affiliation != affiliation:
+        row_affiliation = getattr(row, "affiliation", "all") or "all"
+        if affiliation != "all" and row_affiliation not in {"all", affiliation}:
             continue
-        out[(slug, int(row.year_number), row.kind)] = amount
+        slug = row.territory_slug
+        priority = 3 if row_affiliation == affiliation and affiliation != "all" else 1
+        keys = [slug]
+        if affiliation != "all" and row_affiliation == "all" and slug == affiliation:
+            keys.append("vsego")
+            priority = 2
+        for target_slug in keys:
+            key = (target_slug, int(row.year_number), row.kind)
+            if priority > priority_by_key.get(key, 0):
+                out[key] = amount
+                priority_by_key[key] = priority
     return out
 
 
@@ -325,7 +337,6 @@ def ensure_default_persisted_rows(years: list[int]) -> None:
 
     char_q = OperatingTesFuelCharacteristic.query.filter(
         OperatingTesFuelCharacteristic.year_number.in_(years),
-        OperatingTesFuelCharacteristic.territory_slug == DEFAULT_TERRITORY_SLUG,
     )
     coeff_q = OperatingTesCoefficient.query.filter(
         OperatingTesCoefficient.year_number.in_(years)
@@ -333,30 +344,57 @@ def ensure_default_persisted_rows(years: list[int]) -> None:
     if version_id is not None:
         char_q = char_q.filter(OperatingTesFuelCharacteristic.database_version_id == version_id)
         coeff_q = coeff_q.filter(OperatingTesCoefficient.database_version_id == version_id)
+    char_rows = char_q.all()
     existing_chars = {
-        (row.territory_slug, row.fuel_key, int(row.year_number)) for row in char_q.all()
+        (row.territory_slug, getattr(row, "affiliation", "all") or "all", row.fuel_key, int(row.year_number))
+        for row in char_rows
     }
+    source_chars = {}
+    for row in char_rows:
+        source_chars[(
+            row.territory_slug,
+            getattr(row, "affiliation", "all") or "all",
+            row.fuel_key,
+            int(row.year_number),
+        )] = {
+            key: getattr(row, key) for key, _label in CHAR_COLUMNS
+        } | {"note": row.note, "source_key": row.source_key}
     existing_coeffs = {
         (row.territory_slug, int(row.year_number), row.kind)
         for row in coeff_q.all() if row.affiliation == "all"
     }
     added = False
+    affiliation_slugs = ("all", "minen", "prompred")
+    characteristic_territories = [item["slug"] for item in COEFFICIENT_TERRITORIES]
     for year in years:
         for fuel_key, defaults in DEFAULT_CHARACTERISTICS.items():
-            if (DEFAULT_TERRITORY_SLUG, fuel_key, year) in existing_chars:
-                continue
-            db.session.add(
-                OperatingTesFuelCharacteristic(
-                    territory_slug=DEFAULT_TERRITORY_SLUG,
-                    fuel_key=fuel_key,
-                    year_number=int(year),
-                    database_version_id=version_id,
-                    note=DEFAULT_CHAR_NOTES.get(fuel_key),
-                    source_key=DEFAULT_CHAR_SOURCES.get(fuel_key),
-                    **{key: defaults.get(key) for key, _label in CHAR_COLUMNS},
-                )
-            )
-            added = True
+            for territory_slug in characteristic_territories:
+                for affiliation in affiliation_slugs:
+                    identity = (territory_slug, affiliation, fuel_key, int(year))
+                    if identity in existing_chars:
+                        continue
+                    source = (
+                        source_chars.get((territory_slug, "all", fuel_key, int(year)))
+                        or source_chars.get((DEFAULT_TERRITORY_SLUG, "all", fuel_key, int(year)))
+                        or {}
+                    )
+                    db.session.add(
+                        OperatingTesFuelCharacteristic(
+                            territory_slug=territory_slug,
+                            affiliation=affiliation,
+                            fuel_key=fuel_key,
+                            year_number=int(year),
+                            database_version_id=version_id,
+                            note=source.get("note", DEFAULT_CHAR_NOTES.get(fuel_key)),
+                            source_key=source.get("source_key", DEFAULT_CHAR_SOURCES.get(fuel_key)),
+                            **{
+                                key: source.get(key, defaults.get(key))
+                                for key, _label in CHAR_COLUMNS
+                            },
+                        )
+                    )
+                    existing_chars.add(identity)
+                    added = True
         for territory in TERRITORIES:
             for kind in COEFF_KINDS:
                 triple = (territory["slug"], int(year), kind["key"])
@@ -383,19 +421,32 @@ def ensure_default_persisted_rows(years: list[int]) -> None:
 def resolve_chars(
     fuel_key: str,
     year: int,
-    overrides: dict[tuple[str, str, int], dict[str, Any]],
+    overrides: dict[tuple[Any, ...], dict[str, Any]],
     territory_slug: str = DEFAULT_TERRITORY_SLUG,
+    affiliation: str = "all",
 ) -> dict[str, Any]:
     base = dict(DEFAULT_CHARACTERISTICS.get(fuel_key) or {})
     if fuel_key in DEFAULT_CHAR_NOTES:
         base["note"] = DEFAULT_CHAR_NOTES[fuel_key]
     if fuel_key in DEFAULT_CHAR_SOURCES:
         base["source_key"] = DEFAULT_CHAR_SOURCES[fuel_key]
-    # Характеристики общие для всех территорий и принадлежностей.
-    extra = overrides.get((DEFAULT_TERRITORY_SLUG, fuel_key, year)) or {}
-    for key, value in extra.items():
-        if value is not None:
-            base[key] = value
+    if territory_slug in {"minen", "prompred"}:
+        territory_key = DEFAULT_TERRITORY_SLUG
+        affiliation = territory_slug
+    else:
+        territory_key = coefficient_territory_slug(territory_slug)
+    candidates = (
+        (DEFAULT_TERRITORY_SLUG, fuel_key, year),
+        (DEFAULT_TERRITORY_SLUG, "all", fuel_key, year),
+        (territory_key, "all", fuel_key, year),
+        (territory_key, affiliation, fuel_key, year),
+    )
+    extra = {}
+    for candidate in candidates:
+        for key, value in (overrides.get(candidate) or {}).items():
+            if value is not None:
+                extra[key] = value
+    base.update(extra)
     return base
 
 
@@ -412,6 +463,7 @@ def resolve_coeff(
     year: int,
     kind: str,
     overrides: dict[tuple[str, int, str], Decimal],
+    affiliation: str = "all",
 ) -> Decimal:
     if kind in {"ash_eta", "sulfur_eta", "co_k", "nox_n", "pg_k"}:
         # У специальных территорий на вкладке коэффициентов другие ключи.
@@ -496,9 +548,12 @@ def compute_year_bundle(
     bucket: dict[str, Decimal] | None,
     char_overrides: dict[tuple[str, str, int], dict[str, Any]],
     coeff_overrides: dict[tuple[str, int, str], Decimal],
+    affiliation: str = "all",
 ) -> dict[str, Any]:
     coeffs = {
-        kind["key"]: resolve_coeff(territory_slug, year, kind["key"], coeff_overrides)
+        kind["key"]: resolve_coeff(
+            territory_slug, year, kind["key"], coeff_overrides, affiliation=affiliation
+        )
         for kind in COEFF_KINDS
     }
     leaf_b: dict[str, Decimal | None] = {}
@@ -510,7 +565,7 @@ def compute_year_bundle(
         key = spec["key"]
         b_tce = fuel_amount_for_key(bucket, key)
         leaf_b[key] = b_tce
-        chars = resolve_chars(key, year, char_overrides, territory_slug)
+        chars = resolve_chars(key, year, char_overrides, territory_slug, affiliation)
         by_key[key] = _compute_leaf_emissions(key, b_tce, chars, coeffs)
     header_specs = sorted(
         [spec for spec in FUEL_ROWS if spec.get("is_header")],
@@ -527,7 +582,9 @@ def compute_year_bundle(
             computed = {metric: None for metric in _BUNDLE_METRICS}
             computed["b"] = b_tce
         else:
-            chars = _fallback_header_chars(key, year, children, char_overrides, territory_slug)
+            chars = _fallback_header_chars(
+                key, year, children, char_overrides, territory_slug, affiliation
+            )
             computed = _compute_leaf_emissions(key, b_tce, chars, coeffs)
         by_key[key] = computed
     _fill_headers(by_key)
@@ -559,7 +616,9 @@ def compute_year_bundle(
         "volumes": volumes,
         "coeffs": coeffs,
         "chars": {
-            spec["key"]: resolve_chars(spec["key"], year, char_overrides, territory_slug) for spec in FUEL_ROWS
+            spec["key"]: resolve_chars(
+                spec["key"], year, char_overrides, territory_slug, affiliation
+            ) for spec in FUEL_ROWS
         },
     }
 
@@ -575,18 +634,25 @@ def _row_dict(
     col_values_raw: dict[str, str],
     formula_tooltip: str = "",
     italic: bool = False,
+    is_fuel: bool = False,
     editable_values: bool = False,
     editable_field: str | None = None,
     pair_values: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     empty = not any(col_values_raw.get(col) not in (None, "", "0") for col in col_values_raw)
+    if is_fuel and indent == 0:
+        css_class = "table-info fw-bold"
+    elif (is_fuel and indent == 1) or kind == KIND_TOTAL:
+        css_class = "fw-bold" if indent else "table-info"
+    else:
+        css_class = ""
     return {
         "key": key,
         "label": label,
         "unit": unit,
         "kind": kind,
         "indent": indent,
-        "css_class": "table-info" if kind == KIND_TOTAL else "",
+        "css_class": css_class,
         "col_values": col_values,
         "col_values_raw": col_values_raw,
         "pair_values": pair_values or {},
@@ -647,6 +713,7 @@ def _build_specific_emission_tables(
     bundles: dict[str, Any],
     inputs: dict[int, Any],
     digits: int,
+    affiliation: str = "all",
 ) -> list[dict[str, Any]]:
     energy_title = "Удельные выбросы ЗВ и ПГ на единицу приведенной энергии, г/кВт.ч"
     electricity_title = "Удельные выбросы ЗВ и ПГ на единицу электрической энергии, г/кВт.ч"
@@ -663,7 +730,12 @@ def _build_specific_emission_tables(
     values = {table["key"]: {} for table in tables}
     for column in value_columns:
         slug = column["slug"]
-        bucket = inputs.get(column["year"], {}).get(column["territory_slug"])
+        bucket = fuel_bucket_for_level(
+            inputs,
+            column["year"],
+            column["territory_slug"],
+            column.get("calculation_affiliation", affiliation),
+        )
         fuel = bucket_field_amount(bucket, "b")
         electricity = bucket_top_input_amount(bucket, "ee_generation")
         heat = bucket_top_input_amount(bucket, "heat_output")
@@ -682,16 +754,12 @@ def _build_specific_emission_tables(
             key = spec["key"]
             mass = volumes[key]
             if key == "pollutants_total":
-                # CO is reported in tonnes while the other pollutants use thousand tonnes.
                 mass_for_energy = _sum_present([
                     volumes.get("ash"),
                     volumes.get("so2"),
                     volumes.get("nox"),
-                    volumes.get("co") / Decimal("1000")
-                    if volumes.get("co") is not None else None,
+                    volumes.get("co"),
                 ])
-            elif key == "co":
-                mass_for_energy = mass / Decimal("1000") if mass is not None else None
             else:
                 mass_for_energy = mass
             values["energy"][slug][key] = specific_per_energy(mass_for_energy, brought_energy)
@@ -714,9 +782,7 @@ def _build_specific_emission_tables(
                 digits,
             )
             formula = table["formula"]
-            if key == "co" and table["key"] in {"energy", "energy_fuel"}:
-                formula = formula.replace("М /", "М / 1000 /", 1)
-            elif key == "pollutants_total" and table["key"] in {"energy", "energy_fuel"}:
+            if key == "pollutants_total" and table["key"] in {"energy", "energy_fuel"}:
                 formula = f"Σ удельных выбросов ЗВ ({formula})"
             elif table["key"] == "fuel":
                 formula = solid_formula if key in {"ash", "so2"} else fuel_formula
@@ -724,7 +790,7 @@ def _build_specific_emission_tables(
                 key=key, label=spec["label"], unit="", kind=spec["kind"],
                 indent=spec["indent"], col_values=col_values, col_values_raw=col_raw,
                 formula_tooltip=(
-                    f"{formula}. М – выбросы из таблицы объемов, тыс. т (CO – т); "
+                    f"{formula}. М – выбросы из таблицы объемов, тыс. т; "
                     "выработка электроэнергии, млрд.кВт.ч, и отпуск тепла, тыс.Гкал, – данные модуля Топливо."
                     if table["key"] in {"energy", "energy_fuel"}
                     else f"{formula}. М – значение из таблицы объемов; В – расход топлива, всего, тыс.т у.т."
@@ -744,42 +810,88 @@ def build_operating_tes_table_context(
     affiliation: str = "all",
     coefficient_rounding_digits: Any = 0,
     fuel_scope: str = "operating",
+    specific_rounding_digits: Any = None,
+    show_affiliation_columns: bool = False,
 ) -> dict[str, Any] | None:
     sheet = get_calc_sheet(sheet_slug)
-    is_coefficient = sheet is not None and sheet["layout"] == "coeff"
+    layout = sheet["layout"] if sheet else None
+    show_affiliation_columns = show_affiliation_columns and layout in {"fuel", "volumes"}
+    if show_affiliation_columns:
+        affiliation = "all"
+    is_coefficient = layout == "coeff"
+    if affiliation not in {"all", "minen", "prompred"}:
+        return None
+    if is_coefficient and territory_slug in {"minen", "prompred"}:
+        affiliation, territory_slug = territory_slug, "vsego"
     if is_coefficient:
-        if territory_slug in {"minen", "prompred"}:
-            affiliation, territory_slug = territory_slug, "vsego"
         territory = get_coefficient_territory(territory_slug)
-        if affiliation not in {"all", "minen", "prompred"}:
-            return None
     else:
         territory = get_territory(territory_slug) or get_territory(DEFAULT_TERRITORY_SLUG)
     if territory is None or sheet is None:
         return None
     range_years = get_year_columns(start_year, end_year)
     selected_year = resolve_selected_year(view_year, range_years)
-    year_columns_mode = sheet["layout"] not in {"chars", "emission", "emission_tj", "volumes", "fuel"}
+    year_columns_mode = layout not in {"chars", "fuel", "emission", "emission_tj", "volumes"}
     years = [selected_year] if not year_columns_mode and selected_year is not None else range_years
     digits = resolve_rounding_digits(rounding_digits)
     coefficient_digits = resolve_rounding_digits(coefficient_rounding_digits or 0)
+    specific_digits = resolve_rounding_digits(
+        specific_rounding_digits if specific_rounding_digits not in (None, "") else digits
+    )
     from app.ecology.services.fuel_exchange_services import load_accepted_fuel_inputs
 
-    layout = sheet["layout"]
     territories = get_territory_columns()
-    coefficient_territories = get_territory_columns(COEFFICIENT_TERRITORIES) if is_coefficient else []
+    coefficient_territories = (
+        get_territory_columns(COEFFICIENT_TERRITORIES) if is_coefficient else []
+    )
     catalog = coefficient_territories if is_coefficient else territories
     territory = next(item for item in catalog if item["slug"] == territory["slug"])
-    territory_columns = [territory] if is_coefficient else territories
+    level_layout = layout == "chars"
+    if is_coefficient or level_layout:
+        territory_columns = [territory]
+    elif layout in {"fuel", "emission", "emission_tj", "volumes"} and (
+        show_affiliation_columns or not fuel_source
+    ):
+        territory_columns = [
+            item for item in territories if item["slug"] not in {"minen", "prompred"}
+        ]
+    else:
+        territory_columns = territories
+    affiliation_columns = (
+        [
+            {"slug": "all", "label": "Всего"},
+            *COEFFICIENT_AFFILIATIONS,
+        ]
+        if show_affiliation_columns else [{"slug": affiliation, "label": ""}]
+    )
     value_columns = [
-        {**terr, "slug": f'{terr["slug"]}:{year}', "territory_slug": terr["slug"], "year": year,
-         "coefficient_territory_slug": coefficient_territory_slug(terr["slug"])}
-        for terr in territory_columns for year in years
+        {
+            **terr,
+            "slug": (
+                f'{terr["slug"]}:{year}:{column_affiliation["slug"]}'
+                if show_affiliation_columns else f'{terr["slug"]}:{year}'
+            ),
+            "territory_slug": terr["slug"],
+            "year": year,
+            "affiliation": column_affiliation["slug"],
+            "affiliation_label": column_affiliation["label"],
+            "calculation_affiliation": (
+                terr["slug"] if terr["slug"] in {"minen", "prompred"}
+                else column_affiliation["slug"]
+            ),
+            "coefficient_affiliation": (
+                "all" if terr["slug"] in {"minen", "prompred"}
+                else column_affiliation["slug"]
+            ),
+            "coefficient_territory_slug": coefficient_territory_slug(terr["slug"]),
+        }
+        for terr in territory_columns for year in years for column_affiliation in affiliation_columns
     ]
     columns_by_key = {column["slug"]: column for column in value_columns}
     inputs: dict[int, Any] = {}
     bundles_by_terr: dict[str, Any] = {}
-    char_overrides: dict[tuple[str, str, int], dict[str, Any]] = {}
+    missing_affiliation_columns: set[str] = set()
+    char_overrides: dict[tuple[Any, ...], dict[str, Any]] = {}
     fuel_summary_errors = []
     if layout == "fuel":
         if fuel_source:
@@ -791,7 +903,10 @@ def build_operating_tes_table_context(
         else:
             inputs = load_accepted_fuel_inputs(years)
     elif layout == "coeff":
-        coeff_overrides = load_coefficient_overrides(years, affiliation)
+        coeff_overrides = (
+            load_coefficient_overrides(years, affiliation)
+            if affiliation != "all" else load_coefficient_overrides(years)
+        )
         default_slug = (
             affiliation if territory_slug == "vsego" and affiliation != "all" else territory_slug
         )
@@ -813,29 +928,74 @@ def build_operating_tes_table_context(
         input_overrides = {} if sheet["slug"] in {"zola", "sera", "co", "azot", "pg", "pg-tj"} else load_input_overrides(years)
         for year in years:
             by_terr = inputs.setdefault(year, {})
-            for terr in territory_columns:
-                slug = terr["slug"]
-                bucket = by_terr.get(slug)
+            for column in (item for item in value_columns if item["year"] == year):
+                slug = column["territory_slug"]
+                level_affiliation = column["calculation_affiliation"]
+                # Legacy accepted snapshots do not contain affiliation slices.
+                # Do not repeat their territory total in affiliation columns.
+                if show_affiliation_columns and level_affiliation != "all":
+                    bucket = by_terr.get(f"{slug}::{level_affiliation}")
+                    if bucket is None and slug == "vsego":
+                        bucket = by_terr.get(level_affiliation)
+                    if bucket is None:
+                        missing_affiliation_columns.add(column["slug"])
+                        continue
+                else:
+                    bucket = fuel_bucket_for_level(inputs, year, slug, level_affiliation)
                 if bucket is None:
                     bucket = empty_fuel_bucket()
+                if not show_affiliation_columns or level_affiliation == "all":
+                    for (ov_terr, y, row_key), amount in input_overrides.items():
+                        if ov_terr == slug and y == year:
+                            apply_input_override_to_bucket(bucket, row_key, amount)
+                level_key = f"{slug}::{level_affiliation}"
+                if level_affiliation == "all":
                     by_terr[slug] = bucket
-                for (ov_terr, y, row_key), amount in input_overrides.items():
-                    if ov_terr == slug and y == year:
-                        apply_input_override_to_bucket(bucket, row_key, amount)
+                elif level_key in by_terr:
+                    by_terr[level_key] = bucket
         char_overrides = load_characteristic_overrides(years)
-        coeff_overrides = load_coefficient_overrides(years)
+        coeff_overrides_by_affiliation = {}
+        for column in value_columns:
+            coefficient_affiliation = column["coefficient_affiliation"]
+            if coefficient_affiliation not in coeff_overrides_by_affiliation:
+                coeff_overrides_by_affiliation[coefficient_affiliation] = (
+                    load_coefficient_overrides(years, coefficient_affiliation)
+                    if coefficient_affiliation != "all"
+                    else load_coefficient_overrides(years)
+                )
         for column in value_columns:
             slug, year = column["territory_slug"], column["year"]
-            bundles_by_terr[column["slug"]] = compute_year_bundle(
-                slug, year, inputs.get(year, {}).get(slug), char_overrides, coeff_overrides,
+            level_affiliation = column["calculation_affiliation"]
+            bucket = (
+                None if column["slug"] in missing_affiliation_columns
+                else fuel_bucket_for_level(inputs, year, slug, level_affiliation)
             )
+            coeff_overrides = coeff_overrides_by_affiliation[
+                column["coefficient_affiliation"]
+            ]
+            bundles_by_terr[column["slug"]] = compute_year_bundle(
+                slug, year, bucket, char_overrides, coeff_overrides, level_affiliation,
+            )
+    def fuel_bucket_for_column(column_slug: str) -> dict[str, Decimal] | None:
+        column = columns_by_key[column_slug]
+        year = column["year"]
+        territory = column["territory_slug"]
+        level_affiliation = column["calculation_affiliation"]
+        if show_affiliation_columns and level_affiliation != "all":
+            by_territory = inputs.get(year, {})
+            bucket = by_territory.get(f"{territory}::{level_affiliation}")
+            if bucket is None and territory == "vsego":
+                bucket = by_territory.get(level_affiliation)
+            return bucket
+        return fuel_bucket_for_level(inputs, year, territory, level_affiliation)
+
     rows: list[dict[str, Any]] = []
     if layout == "fuel":
         for spec in TOP_INPUT_ROWS:
             col_values, col_raw = _cells_for_territories(
                 value_columns,
                 lambda slug, spec=spec: bucket_top_input_amount(
-                    inputs.get(columns_by_key[slug]["year"], {}).get(columns_by_key[slug]["territory_slug"]),
+                    fuel_bucket_for_column(slug),
                     spec["key"],
                 ),
                 digits,
@@ -855,7 +1015,7 @@ def build_operating_tes_table_context(
             col_values, col_raw = _cells_for_territories(
                 value_columns,
                 lambda slug, spec=spec: bucket_field_amount(
-                    inputs.get(columns_by_key[slug]["year"], {}).get(columns_by_key[slug]["territory_slug"]),
+                    fuel_bucket_for_column(slug),
                     spec["key"],
                 ),
                 digits,
@@ -869,6 +1029,7 @@ def build_operating_tes_table_context(
                     indent=spec.get("indent") or 0,
                     col_values=col_values,
                     col_values_raw=col_raw,
+                    is_fuel=True,
                     italic=bool(spec.get("indent")),
                 )
             )
@@ -879,11 +1040,14 @@ def build_operating_tes_table_context(
             values_by_year = {}
             raw_values = []
             for year in years:
-                chars = resolve_chars(spec["key"], year, char_overrides, territory_slug)
+                chars = resolve_chars(
+                    spec["key"], year, char_overrides, territory_slug, affiliation
+                )
                 values_by_year[year] = {
                     field: "" if is_group else format_cell(chars.get(field), digits=digits)
                     for field, _label in CHAR_COLUMNS
                 }
+                values_by_year[year]["note"] = "" if is_group else str(chars.get("note") or "")
                 raw_values.extend(None if is_group else chars.get(field) for field, _label in CHAR_COLUMNS)
             rows.append({
                 "key": spec["key"],
@@ -891,7 +1055,9 @@ def build_operating_tes_table_context(
                 "kind": spec["kind"],
                 "indent": spec.get("indent") or 0,
                 "italic": bool(spec.get("indent")),
-                "css_class": "table-info" if is_header else "",
+                "css_class": "table-info fw-bold" if not spec.get("indent") else (
+                    "fw-bold" if spec["indent"] == 1 or is_header else ""
+                ),
                 "editable_values": not is_group,
                 "char_values": values_by_year,
                 "is_empty": False if is_header else not any(value is not None for value in raw_values),
@@ -964,6 +1130,8 @@ def build_operating_tes_table_context(
                 if key == eta_key:
                     row.update(
                         editable_values=True, editable_field=eta_key,
+                        col_values_raw={col: format_cell(value, 0).replace(',', '.')
+                                        for col, value in col_raw.items()},
                         emitted_key=emitted_key,
                         capture_totals={col: str(values[total_key]) if values[total_key] is not None else ""
                                         for col, values in summary_values.items()},
@@ -997,6 +1165,7 @@ def build_operating_tes_table_context(
                         col_values={},
                         col_values_raw=col_raw,
                         pair_values=pair_values,
+                        is_fuel=True,
                         italic=bool(spec.get("indent")),
                     )
                 )
@@ -1019,6 +1188,7 @@ def build_operating_tes_table_context(
                         indent=spec.get("indent") or 0,
                         col_values=col_values,
                         col_values_raw=col_raw,
+                        is_fuel=True,
                         italic=bool(spec.get("indent")),
                     )
                 )
@@ -1066,6 +1236,9 @@ def build_operating_tes_table_context(
         else:
             formula_key = "nox_motkh" if sheet["slug"] == "azot" else emission_view["metric"]
             emission_view["metric_formula_html"] = format_emission_formula(ot_formula_text(formula_key))
+    level_territories = [
+        item for item in territories if item["slug"] not in {"minen", "prompred"}
+    ]
     return {
         "page_title": page_title,
         "page_title_html": format_emission_formula(page_title),
@@ -1080,8 +1253,14 @@ def build_operating_tes_table_context(
         "value_columns": value_columns,
         "year_columns_mode": year_columns_mode,
         "coefficient_territories": coefficient_territories,
+        "level_territories": level_territories,
         "coefficient_affiliations": COEFFICIENT_AFFILIATIONS,
+        "affiliation_columns": affiliation_columns if show_affiliation_columns else [],
+        "show_affiliation_columns": show_affiliation_columns,
         "affiliation": affiliation,
+        "territory_filter_storage_key": (
+            "ecology.operating_tes.territories" if show_affiliation_columns else None
+        ),
         "start_year": range_years[0] if range_years else None,
         "end_year": range_years[-1] if range_years else None,
         "view_year": selected_year,
@@ -1097,10 +1276,13 @@ def build_operating_tes_table_context(
         "filter_year_list": get_filter_year_list(),
         "rounding_digits": digits,
         "coefficient_rounding_digits": coefficient_digits,
+        "specific_rounding_digits": specific_digits,
         "year_features": get_year_feature_dict(),
         "rows": rows,
         "specific_emission_tables": (
-            _build_specific_emission_tables(value_columns, bundles_by_terr, inputs, digits)
+            _build_specific_emission_tables(
+                value_columns, bundles_by_terr, inputs, specific_digits, affiliation
+            )
             if layout == "volumes" else []
         ),
         "emission_view": emission_view,
@@ -1173,26 +1355,36 @@ def upsert_coefficient(
 
 
 def upsert_characteristic(
-    territory_slug: str, fuel_key: str, year: int, field: str, value: Any
+    territory_slug: str,
+    fuel_key: str,
+    year: int,
+    field: str,
+    value: Any,
+    affiliation: str = "all",
 ) -> OperatingTesFuelCharacteristic:
     if get_territory(territory_slug) is None:
         raise ValueError("Неизвестный срез характеристик")
+    if affiliation not in {"all", "minen", "prompred"}:
+        raise ValueError("Неизвестная принадлежность характеристик")
     if fuel_key not in _FUEL_BY_KEY and not any(
         spec["key"] == fuel_key for spec in _characteristic_row_specs()
     ):
         raise ValueError("Неизвестный вид топлива")
     if field not in CHAR_EDIT_FIELDS:
         raise ValueError("Неизвестное поле характеристики")
+    value_to_store = str(value or "") if field == "note" else _d(value)
     version_id = get_current_db_version_id()
-    territory_slug = DEFAULT_TERRITORY_SLUG
+    storage_territory = coefficient_territory_slug(territory_slug)
     log_context = context_lines(
         ("лист", "Характеристики"),
         ("территория", territory_label(territory_slug)),
+        ("принадлежность", affiliation_label(affiliation)),
         ("топливо", fuel_label(fuel_key)),
         ("год", int(year)),
     )
     query = OperatingTesFuelCharacteristic.query.filter_by(
-        territory_slug=territory_slug,
+        territory_slug=storage_territory,
+        affiliation=affiliation,
         fuel_key=fuel_key,
         year_number=int(year),
     )
@@ -1202,7 +1394,8 @@ def upsert_characteristic(
     row = query.first()
     if row is None:
         row = OperatingTesFuelCharacteristic(
-            territory_slug=territory_slug,
+            territory_slug=storage_territory,
+            affiliation=affiliation,
             fuel_key=fuel_key,
             year_number=int(year),
             database_version_id=version_id,
@@ -1211,18 +1404,21 @@ def upsert_characteristic(
             **{key: defaults.get(key) for key, _label in CHAR_COLUMNS},
         )
         db.session.add(row)
-        previous_value = defaults.get(field)
+        previous_value = defaults.get(field) if field != "note" else DEFAULT_CHAR_NOTES.get(fuel_key)
     else:
         stored_value = getattr(row, field, None)
-        previous_value = stored_value if stored_value is not None else defaults.get(field)
-    setattr(row, field, _d(value))
+        previous_value = stored_value if stored_value is not None else (
+            defaults.get(field) if field != "note" else DEFAULT_CHAR_NOTES.get(fuel_key)
+        )
+    setattr(row, field, value_to_store)
     db.session.commit()
     log_cell_change(
-        f"Характеристики – {territory_label(territory_slug)}",
-        characteristic_label(field),
+        f"Характеристики – {territory_label(territory_slug)} ({affiliation_label(affiliation)})",
+        "Примечание" if field == "note" else characteristic_label(field),
         previous_value,
         getattr(row, field),
         context=log_context,
+        number=field != "note",
     )
     return row
 

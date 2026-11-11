@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Проверка синхронизации сохранённых годовых агрегатов по ОЭС."""
+"""Проверка синхронизации сохраненных годовых агрегатов по ОЭС."""
 
 from decimal import Decimal
 from types import SimpleNamespace

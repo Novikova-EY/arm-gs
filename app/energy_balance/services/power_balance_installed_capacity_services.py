@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Мощности списка станций для балансов: p_ust по типам, ограничения и вводы Q4.
 
-Типы – справочник station_type (порядок display_order): «не указано» не берём,
+Типы – справочник station_type (порядок display_order): «не указано» не берем,
 ВЭС и СЭС суммируем в строку «СЭС, ВЭС» с подстроками СЭС и ВЭС. Территория –
 ОЭС или синхронная зона листа.
 Ограничения мощности – сумма Рогр (или Руст−Ррасп) по всем станциям территории.
@@ -65,7 +65,7 @@ SHEET_TERRITORY = {
 
 
 def _norm(text: str | None) -> str:
-    return (text or "").casefold().replace("ё", "е").strip()
+    return (text or "").casefold().replace("\u0451", "е").strip()
 
 
 def _is_unspecified_name(name: str | None) -> bool:
@@ -107,7 +107,7 @@ def _stable_type_key(name: str, type_id: int | None) -> str:
 
 
 def _plain_attr(obj: Any, name: str) -> Any:
-    """Значение атрибута без refresh: у detached/expired ORM getattr даёт DetachedInstanceError."""
+    """Значение атрибута без refresh: у detached/expired ORM getattr дает DetachedInstanceError."""
     data = getattr(obj, "__dict__", None)
     if isinstance(data, dict) and name in data:
         return data[name]
@@ -348,7 +348,7 @@ def accumulate_q4_p_ust_by_territory(
     district_to_ues: dict[int, int],
     district_to_sa: dict[int, int],
 ) -> dict[str, dict[int, dict[int, Decimal]]]:
-    """Сумма Руст агрегатов Q4 по ОЭС и СЗ; при дублях (machine, year) берём max id."""
+    """Сумма Руст агрегатов Q4 по ОЭС и СЗ; при дублях (machine, year) берем max id."""
     best_by_machine_year: dict[tuple[int, int], Any] = {}
     for row in rows or []:
         machine_id = getattr(row, "machine_id", None)
@@ -560,7 +560,13 @@ def load_power_balance_installed_capacity_inputs(
         return {}
     start_year = min(years)
     end_year = max(years)
-    aggregation_rows = get_full_aggregation_rows(start_year, end_year, station_ids)
+    from app.energy_balance.services.energy_balance_cache import get_energy_balance_cache_generation
+
+    # Баланс не должен повторно брать старые мощности из общего кеша агрегаций станций.
+    aggregation_rows = get_full_aggregation_rows(
+        start_year, end_year, station_ids,
+        filters={"_energy_balance_revision": f"eb:{get_energy_balance_cache_generation()}"},
+    )
     aggregated = aggregate_all_at_once(aggregation_rows)
     ues_by_type = _aggregated_metric(
         aggregated, "aggregate_union_energy_systems_by_station_types", "p_ust"
@@ -790,7 +796,7 @@ def assign_station_ids_for_shared_res_eu(
 
 
 def _station_ids_for_energy_unit_via_res(eu_id: int, eu_name: str) -> list[int]:
-    """Станции энергорайона: прямого id_energy_unit нет – берём РЭС, Чукотку режем по имени."""
+    """Станции энергорайона: прямого id_energy_unit нет – берем РЭС, Чукотку режем по имени."""
     from app.common.services.database_version_filter import filter_by_db_version
     from app.extensions import db
     from app.generation.models.station.station_model import Station

@@ -1090,7 +1090,7 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
         kto_updated = stats.get("station_kto_updated", 0)
         sign_updated = stats.get("station_sign_updated", 0)
         message = (
-            f"Импорт выработки ЭЭ за {years_label} завершён. "
+            f"Импорт выработки ЭЭ за {years_label} завершен. "
             f"Обновлено записей: {total_updated} "
             f"(станции: {stats['station_rows_updated']}"
             f"{f', КПО: {kto_updated}' if kto_updated else ''}"
@@ -1100,7 +1100,7 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
         )
     else:
         message = (
-            f"Импорт выработки ЭЭ за {parsed.year_number} г. завершён. "
+            f"Импорт выработки ЭЭ за {parsed.year_number} г. завершен. "
             f"Обновлено записей: {total_updated} "
             f"(станции: {stats['station_rows_updated']}, "
             f"ЭСПП: {stats['espp_rows_updated']}, "

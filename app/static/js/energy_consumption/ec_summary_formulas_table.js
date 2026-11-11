@@ -366,6 +366,54 @@
             return;
         }
 
+        if (table.dataset.liveSave === "power-demand" || table.dataset.liveSave === "electrical-intensity") {
+            const selector = ".ec-formula-text-input";
+            table.querySelectorAll(selector).forEach(function (field) {
+                field.dataset.initial = field.value;
+            });
+            async function saveFormula(url, body) {
+                const options = {
+                    method: "POST", credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json", "X-CSRFToken": csrfToken,
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    body: JSON.stringify(body)
+                };
+                const request = window.powerDemandSaveFetch || fetch;
+                const response = await request(url, options);
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.error || "Не удалось сохранить формулу.");
+            }
+            const live = window.bindConsumptionLiveSave(table, selector, async function (field) {
+                const value = field.value;
+                if (value === field.dataset.initial) return;
+                await saveFormula(saveUrl, {
+                    formula_key: field.closest("tr").dataset.formulaKey, formula_text: value
+                });
+                field.dataset.initial = value;
+            });
+            table.addEventListener("click", async function (event) {
+                const row = event.target.closest("tr[data-formula-key]");
+                if (!row) return;
+                const field = row.querySelector(selector);
+                if (event.target.classList.contains("ec-formula-save-btn")) live.enqueue(field);
+                if (!event.target.classList.contains("ec-formula-reset-btn")) return;
+                if (!confirm("Вернуть текст формулы по умолчанию?")) return;
+                await live.whenIdle();
+                try {
+                    await saveFormula(resetUrl, {formula_key: row.dataset.formulaKey});
+                    window.armGsPageScrollRestore.reload({table: table, anchorElement: field});
+                } catch (error) {
+                    field.classList.remove("is-save-success");
+                    field.classList.add("is-save-error");
+                    flashEl.textContent = error.message;
+                    flashEl.className = "alert alert-danger mx-2";
+                }
+            });
+            return;
+        }
+
         function showFlash(message, ok) {
             flashEl.textContent = message;
             flashEl.className = "alert alert-" + (ok ? "success" : "danger") + " mx-2";

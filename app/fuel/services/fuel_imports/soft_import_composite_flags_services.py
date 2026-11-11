@@ -9,16 +9,16 @@
    поле name (название в АРМ после объединения) не перезаписывается –
    Excel NAME / name_ext → name_ext;
 2) Phase A – родители для семей, где дети уже есть в АРМ (по database_version_id);
-3) Phase B – COMP=1 без детей (архив/отменённые планы): только если явно
+3) Phase B – COMP=1 без детей (архив/отмененные планы): только если явно
    create_phase_b_parents=True / галка «Включая phase B»; по умолчанию выкл,
-   в отчёте показывается как отложенное.
+   в отчете показывается как отложенное.
 4) Отсутствующие NUMB – создать непривязанные EG в текущей версии БД:
    create_missing_numbs=True / галка «Создать отсутствующие NUMB».
 
 Гарантии безопасности:
-- по умолчанию dry_run=True (только отчёт, без commit);
+- по умолчанию dry_run=True (только отчет, без commit);
 - не трогает агрегаты / MachineFuelParam;
-- не создаёт группы из id_station / id_machine (это синяя «Импорт из Excel»);
+- не создает группы из id_station / id_machine (это синяя «Импорт из Excel»);
 - пустые ячейки словарных полей не затирают значения в БД;
 - после записи синхронизирует FuelParam.ved=0 у родителей.
 """
@@ -181,7 +181,7 @@ def _norm_title(value: Any) -> str:
     """Сжатое имя для сопоставления Access NAME ↔ группа/станция АРМ."""
     if value is None:
         return ""
-    text = str(value).strip().lower().replace("ё", "е")
+    text = str(value).strip().lower().replace("\u0451", "е")
     out = []
     for ch in text:
         if ch.isalnum() or ch.isspace():
@@ -398,7 +398,7 @@ class SoftCompositeFlagsResult:
         if self.dry_run:
             lines.append(
                 "Таблица на странице не изменится, пока не отметите «Применить изменения» "
-                "и не загрузите файл ещё раз."
+                "и не загрузите файл еще раз."
             )
         lines.extend(
             [
@@ -449,8 +449,8 @@ class SoftCompositeFlagsResult:
             lines.append(
                 f"Phase B отложена (галка «включая phase B» выкл): "
                 f"{self.phase_b_unique_numbs} уникальных numb / "
-                f"{self.phase_b_would_create} строк – не создаём "
-                f"(архив/отменённые планы)."
+                f"{self.phase_b_would_create} строк – не создаем "
+                f"(архив/отмененные планы)."
             )
         if self.missing_numbs_enabled:
             lines.append(
@@ -467,7 +467,7 @@ class SoftCompositeFlagsResult:
             lines.append(
                 f"Отсутствующие NUMB отложены (галка выкл): "
                 f"{self.missing_numbs_unique} уникальных numb / "
-                f"{self.missing_numbs_would_create} строк – не создаём."
+                f"{self.missing_numbs_would_create} строк – не создаем."
             )
         if self.parent_shells_skipped_no_station:
             lines.append(
@@ -556,7 +556,7 @@ class SoftCompositeFlagsResult:
         for w in self.warnings[:12]:
             lines.append("⚠ " + w)
         if len(self.warnings) > 12:
-            lines.append(f"… и ещё предупреждений: {len(self.warnings) - 12}")
+            lines.append(f"… и еще предупреждений: {len(self.warnings) - 12}")
         lines.extend(self.reconciliation_lines[:16])
         return lines
 
@@ -576,12 +576,12 @@ def soft_import_composite_flags_from_imena_excel(
     """
     Читает Access-выгрузку «Имена_станций.xlsx» и мягко дозагружает
     существующие группы по numb: флаги comp/main/niv и словарные поля.
-    Не создаёт группы из id_station / id_machine и не перезаписывает name.
+    Не создает группы из id_station / id_machine и не перезаписывает name.
 
-    dry_run=True – только отчёт, commit не делается.
+    dry_run=True – только отчет, commit не делается.
     Phase A: родители для семей с детьми в АРМ (по умолчанию вкл).
     Phase B: COMP=1 без детей – только если create_phase_b_parents=True
-    (по умолчанию выкл: архив/отменённые планы).
+    (по умолчанию выкл: архив/отмененные планы).
     Отсутствующие NUMB: create_missing_numbs=True – EG в текущей версии БД
     без Station (связь вручную).
     """
@@ -837,7 +837,7 @@ def soft_import_composite_flags_from_imena_excel(
     if result.matched_numb == 0 and result.matched_by_name == 0:
         result.warnings.insert(
             0,
-            "Ни одна группа не сопоставилась с файлом. Жёлтая загрузка ищет "
+            "Ни одна группа не сопоставилась с файлом. Желтая загрузка ищет "
             "совпадение по NUMB (код группы в АРМ) или по точному названию. "
             "Группы без numb и без того же NAME, что в Access, остаются пустыми.",
         )
@@ -884,7 +884,7 @@ def soft_import_composite_flags_from_imena_excel(
         if not dry_run:
             result.parent_shells_created = shells.created_or_planned
 
-    # Phase B всегда считаем для отчёта; пишем только если галка вкл.
+    # Phase B всегда считаем для отчета; пишем только если галка вкл.
     phase_b_write = bool(create_phase_b_parents) and not dry_run
     phase_b = create_phase_b_comp1_parents_from_excel(
         sess,
@@ -928,10 +928,11 @@ def soft_import_composite_flags_from_imena_excel(
     if create_phase_b_parents:
         exclude_numbs |= phase_b.planned_numbs or set()
 
-    missing_write = bool(create_missing_numbs) and not dry_run and target_ver is not None
-    if create_missing_numbs and not dry_run and target_ver is None:
+    has_target_version = target_ver is not None and target_ver > 0
+    missing_write = bool(create_missing_numbs) and not dry_run and has_target_version
+    if create_missing_numbs and not dry_run and not has_target_version:
         result.warnings.append(
-            "Не определена текущая версия БД – отсутствующие NUMB не создаём."
+            "Не определена текущая версия БД – отсутствующие NUMB не создаем."
         )
     missing = create_missing_numbs_from_excel(
         sess,

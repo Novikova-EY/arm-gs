@@ -34,7 +34,6 @@ _ENERGY_CONSUMPTION_YOY_PARAMETER_KEYS = frozenset(
         ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
     }
 )
-_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS = 2
 _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS = 6
 _SIPR_INTEGER_DISPLAY_PARAMETER_KEYS = frozenset(
     {
@@ -68,12 +67,13 @@ def _excel_display_digits_for_row(
     sipr_on: bool,
     summary_table_page: bool,
     verification_row: bool,
+    growth_rounding_digits: int = 2,
 ) -> int:
     if verification_row:
         return _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS
     pk = str(row.get("parameter_key") or "")
     if pk in _ENERGY_CONSUMPTION_YOY_PARAMETER_KEYS:
-        return _ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS
+        return 6 if growth_rounding_digits == 0 else growth_rounding_digits
     if sipr_on and (
         row.get("pd_ec_sipr_integer_display_row")
         or (summary_table_page and pk in _SIPR_INTEGER_DISPLAY_PARAMETER_KEYS)
@@ -135,14 +135,16 @@ def _append_ec_summary_import_sheets(
     sipr = _build_import_format_matrix(
         summary_rows, years, parameter_key=_IMPORT_PARAMETER_KEYS[1]
     )
-    if len(mln) > 1:
-        ws_m = wb.create_sheet(SHEET_MLN_KVTCH)
-        for row in mln:
-            ws_m.append(row)
-    if len(sipr) > 1:
-        ws_s = wb.create_sheet(SHEET_SIPR)
-        for row in sipr:
-            ws_s.append(row)
+    for title, matrix in ((SHEET_MLN_KVTCH, mln), (SHEET_SIPR, sipr)):
+        if len(matrix) <= 1:
+            continue
+        ws = wb.create_sheet(title)
+        for row in matrix:
+            ws.append(row)
+        for cells in ws.iter_rows(min_row=2, min_col=3):
+            for cell in cells:
+                if cell.value is not None:
+                    cell.number_format = excel_number_format(0)
 
 
 def _verification_export_year_font(value: Any) -> Font:
@@ -160,6 +162,7 @@ def build_demand_summary_excel_stream(
     sheet_title: str,
     year_features: dict[int, Any] | dict[Any, Any] | None = None,
     rounding_digits: int = 1,
+    growth_rounding_digits: int = 2,
     sipr_on: bool = False,
     summary_table_page: bool = False,
 ) -> BytesIO:
@@ -233,6 +236,7 @@ def build_demand_summary_excel_stream(
             sipr_on=sipr_on,
             summary_table_page=summary_table_page,
             verification_row=verification_row,
+            growth_rounding_digits=growth_rounding_digits,
         )
 
         entity_cell = ""

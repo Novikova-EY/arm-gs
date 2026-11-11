@@ -44,7 +44,7 @@ PG_VALUE_COLUMNS: list[tuple[str, str]] = [
     ("co2_from_solid_fuel_t", "Выбросы СО2 от сжигания твердого топлива, т"),
 ]
 
-# Расчётные итоги не входят в PG_VALUE_COLUMNS: при импорте нужны только исходные поля.
+# Расчетные итоги не входят в PG_VALUE_COLUMNS: при импорте нужны только исходные поля.
 PG_TOTAL_COLUMNS: list[tuple[str, str]] = [
     ("total_fuel_consumption_tce", "Расход топлива, т у.т."),
     ("total_co2_from_fuel_t", "Выбросы СО2 от сжигания топлива, т"),
@@ -100,7 +100,7 @@ ZV_VALUE_COLUMNS: list[tuple[str, str]] = [
     ("other_gaseous_and_liquid", "прочие газообразные и жидкие"),
 ]
 
-# Верхняя строка шапки ЗВ: объединяет «всего», твёрдые и газообразные/жидкие.
+# Верхняя строка шапки ЗВ: объединяет «всего», твердые и газообразные/жидкие.
 ZV_EMISSIONS_BANNER_TITLE = "Всего выброшено в атмосферу ЗВ за год, т"
 
 # Двухрядная шапка ЗВ под баннером: пустая 2-я подпись – столбец на всю высоту группы.
@@ -121,7 +121,7 @@ ZV_VALUE_COLUMN_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ),
 ]
 
-# «Газообразные и жидкие вещества» – сумма слагаемых, не берётся из Excel.
+# «Газообразные и жидкие вещества» – сумма слагаемых, не берется из Excel.
 ZV_GASEOUS_AND_LIQUID_PARTS: tuple[str, ...] = (
     "sulfur_dioxide",
     "carbon_monoxide",
@@ -153,7 +153,7 @@ ZV_NORM_PARTS: tuple[str, ...] = (
     "voc",
     "other_gaseous_and_liquid",
 )
-# Набор по умолчанию: твёрдые вещества + диоксид серы + оксид углерода + оксиды азота.
+# Набор по умолчанию: твердые вещества + диоксид серы + оксид углерода + оксиды азота.
 ZV_NORM_DEFAULT_PARTS: tuple[str, ...] = (
     "solid_substances",
     "sulfur_dioxide",

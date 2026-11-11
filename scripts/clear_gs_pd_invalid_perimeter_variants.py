@@ -5,12 +5,12 @@
 
 Строка попадает под очистку (perimeter_variant_code -> NULL), если выполняется хотя бы одно:
   1) код отсутствует в справочнике вариантов периметра (gs_sys);
-  2) для сущности строки задана привязка вариантов, и код в неё не входит
+  2) для сущности строки задана привязка вариантов, и код в нее не входит
      (например with_nt / without_nt у «ЭЭС России», где допустимы только GAES-варианты).
 
 Дополнительно:
   --force-codes with_nt,without_nt  – сбросить эти коды во всех таблицах gs_pd,
-                                      даже если они ещё допустимы для другой сущности
+                                      даже если они еще допустимы для другой сущности
                                       (ОЭС Юга, Россия и т.д.). Используйте осознанно.
 
 Запуск из корня репозитория:
@@ -213,7 +213,7 @@ def main() -> None:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Записать изменения (по умолчанию только отчёт).",
+        help="Записать изменения (по умолчанию только отчет).",
     )
     parser.add_argument(
         "--yes",
@@ -229,7 +229,7 @@ def main() -> None:
     parser.add_argument(
         "--show-inventory",
         action="store_true",
-        help="Показать все непустые коды по таблицам перед отчётом об очистке.",
+        help="Показать все непустые коды по таблицам перед отчетом об очистке.",
     )
     args = parser.parse_args()
 
@@ -292,7 +292,7 @@ def main() -> None:
                     extra = f" [{reason.entity_kind}: {reason.entity_name}]"
                 print(f"  {table} id={row_id} {code!r} – {reason.reason}{extra}")
             if total > len(samples):
-                print(f"  ... и ещё {total - len(samples)} строк(и)")
+                print(f"  ... и еще {total - len(samples)} строк(и)")
 
         if not apply_changes:
             print()

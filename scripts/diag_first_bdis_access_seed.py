@@ -6,7 +6,7 @@
   python scripts/diag_first_bdis_access_seed.py
 
 nit=1: ΣE при Access k (без подбора).
-inner: полный первый внешний цикл (до 16), без пересчёта kobl на второй проход.
+inner: полный первый внешний цикл (до 16), без пересчета kobl на второй проход.
 """
 from __future__ import annotations
 

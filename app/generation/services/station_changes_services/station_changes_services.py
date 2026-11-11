@@ -500,7 +500,7 @@ def get_station_changes_list_data(
             show_all = False
 
     # 1. Все электростанции без пагинации
-    # Важно: передаём start_year/end_year – иначе отбор станций идёт по дефолтному диапазону
+    # Важно: передаем start_year/end_year – иначе отбор станций идет по дефолтному диапазону
     # и расходится с фильтрами/агрегацией страницы.
     station_data = get_station_changes_list(
         page=1,
@@ -735,7 +735,7 @@ def get_station_changes_list_data(
             f"total_pages={total_pages}"
         )
 
-    # 7. Rowspan только для станций текущей страницы (границы субъектов не рвём)
+    # 7. Rowspan только для станций текущей страницы (границы субъектов не рвем)
     _apply_region_and_gen_company_rowspans(grouped_page)
 
     # Маппинг "субъект РФ -> синхронная зона" (нужен для агрегатов по синхронным зонам)
@@ -1134,7 +1134,7 @@ def _flatten_stations_changes_hierarchy(grouped_stations) -> list[dict]:
     """
     Плоский список станций в порядке рендера шаблона + ключ soft-границы.
 
-    Граница как на station_list при суммах: не рвём субъект РФ / энергоузел
+    Граница как на station_list при суммах: не рвем субъект РФ / энергоузел
     (leaf_id в рамках EST→SA), даже если станции попали в разные РЭС.
     """
     flat_items: list[dict] = []
@@ -1206,7 +1206,7 @@ def _compute_changes_page_start_index(flat_items: list[dict], per_page_int: int,
 
 
 def _compute_changes_effective_total_pages(flat_items: list[dict], per_page_int: int) -> int:
-    """Фактическое число страниц с учётом удлинения до конца субъекта/энергоузла."""
+    """Фактическое число страниц с учетом удлинения до конца субъекта/энергоузла."""
     if per_page_int is None or per_page_int <= 0:
         return 1
     if not flat_items:
@@ -1268,7 +1268,7 @@ def _slice_changes_page_range(
 
 
 def _filter_grouped_stations_to_page(grouped_stations, page_flat_items: list[dict]):
-    """Оставляет в иерархии только станции текущей страницы (листы не рвём)."""
+    """Оставляет в иерархии только станции текущей страницы (листы не рвем)."""
     from collections import OrderedDict
 
     if not isinstance(grouped_stations, dict):
@@ -1422,7 +1422,7 @@ def _determine_changes_parent_totals_flags(
 ) -> dict:
     """
     Какие итоги выше субъекта показывать на странице.
-    Субъект/энергоузел не рвётся пагинацией – его итог всегда допустим при show_totals.
+    Субъект/энергоузел не рвется пагинацией – его итог всегда допустим при show_totals.
     """
     if show_all or not page_flat_items:
         return {
@@ -1476,7 +1476,7 @@ def _determine_changes_parent_totals_flags(
 def energy_unit_dative_for_totals(eu_name: str | None, eu_name_dat: str | None = None) -> str:
     """
     Подпись для «Итого по …» по энергоузлу.
-    Берётся из name_dat (дательный падеж), иначе – из наименования.
+    Берется из name_dat (дательный падеж), иначе – из наименования.
     """
     name_dat = (eu_name_dat or "").strip()
     if name_dat:
@@ -1671,8 +1671,8 @@ def _find_second_sync_area_id(sa_by_id: dict) -> int | None:
 
 def _sync_area_semantic_key(sa) -> tuple:
     """Семантический ключ СЗ для сопоставления между версиями БД."""
-    number = (getattr(sa, "number", "") or "").strip().lower().replace("ё", "е")
-    name_l = (getattr(sa, "name", "") or "").strip().lower().replace("ё", "е")
+    number = (getattr(sa, "number", "") or "").strip().lower().replace("\u0451", "е")
+    name_l = (getattr(sa, "name", "") or "").strip().lower().replace("\u0451", "е")
     if "калининград" in name_l:
         return ("kaliningrad",)
     if number == "1" or ("перв" in name_l and "калининград" not in name_l):
@@ -1745,12 +1745,12 @@ def resolve_effective_sync_area_id_from_parts(
     eu_name: str | None = None,
 ) -> int:
     """
-    Эффективная синхронная зона с учётом QA (по полям строки агрегации):
+    Эффективная синхронная зона с учетом QA (по полям строки агрегации):
     - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 – отдельная СЗ;
     - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
     - FK на СЗ из другой версии БД → ремап в текущий каталог.
 
-    0 означает «не относить к синхронной зоне» (строка не идёт в итоги СЗ).
+    0 означает «не относить к синхронной зоне» (строка не идет в итоги СЗ).
     """
     sa_id = _remap_sync_area_id_to_catalog(sa_id or 0, sa_by_id)
     rd_name_l = (rd_name or "").strip().lower()
@@ -1782,7 +1782,7 @@ def resolve_effective_sync_area_id(
     current_year: int | None = None,
 ) -> int:
     """
-    Эффективная синхронная зона с учётом QA:
+    Эффективная синхронная зона с учетом QA:
     - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 – отдельная СЗ;
     - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
     - FK на СЗ из другой версии БД → ремап в текущий каталог.

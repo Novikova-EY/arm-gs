@@ -25,6 +25,14 @@
 {%- endif -%}
 {%- endmacro %}
 
+{# Точные входы проверок, независимо от округления отображаемых значений. #}
+{% macro fuel_param_warning_value_attr(attr, param) -%}
+{%- if attr in ('nust', 'qotr', 'nt', 'q', 'nt_sum', 'h') -%}
+{%- set value = param|get_attr(attr) if param is not none else none -%}
+data-warning-value="{{ value if value is not none else '' }}"
+{%- endif -%}
+{%- endmacro %}
+
 {# numb1120 строки ТЭП, иначе EquipmentGroup.numb (как в карточке группы / формулах / batch preview) #}
 {% macro fuel_param_numb1120_display(param, group_entity) -%}
 {%- set v = param|get_attr('numb1120') if param is not none else none -%}

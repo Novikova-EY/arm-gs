@@ -247,10 +247,62 @@ def export_ee_balance_ves_ses():
     )
 
 
+@energy_balance_bp.route("/ee_balance/station-group/value/", methods=["PATCH"])
+@login_required
+def ee_balance_station_group_value():
+    from app.generation.models.station.station_group_model import StationGroup
+    from app.energy_balance.services.ee_balance_station_group_services import load_group_values, save_group_value
+    from app.common.services.database_version_filter import filter_by_db_version
+
+    if not _can_edit_ves_ses_energy():
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        group_id = int(data.get("group_id"))
+        year = int(data.get("year"))
+        end_year = int(data.get("end_year", year)) if data.get("kind") == "own_needs_percent" else year
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Неверная группа или год"), 400
+    if not 1900 <= year <= end_year <= 2200:
+        return jsonify(ok=False, error="Неверный год или период СН"), 400
+    group = filter_by_db_version(StationGroup.query, StationGroup).filter(StationGroup.id == group_id).one_or_none()
+    if group is None:
+        return jsonify(ok=False, error="Группа не найдена"), 404
+    try:
+        value = save_group_value(group, data.get("page_key"), year, data.get("kind"),
+                         data.get("value"), user=current_user, end_year=end_year)
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить параметры группы электростанций")
+        return jsonify(ok=False, error="Не удалось сохранить параметры группы"), 500
+    digits = resolve_ee_balance_rounding_digits(data.get("rounding_digits"))
+    result = dict(ok=True, kind=data.get("kind"), year=year,
+                  display=format_decimal_for_display(value, digits=digits) if value is not None else "",
+                  raw=_raw_title(value))
+    if data.get("kind") == "own_needs_percent":
+        years = range(year, end_year + 1) if value is not None else [year]
+        stored_values = load_group_values([group.id], data.get("page_key"), years)
+        result["own_needs_percent_updates"] = {
+            str(target_year): dict(display=result["display"], raw=result["raw"])
+            for target_year in years
+            if stored_values.get((group.id, target_year)) is None
+            or stored_values[(group.id, target_year)].own_needs is None
+        }
+    if data.get("kind") == "own_needs" and value is None:
+        stored = load_group_values([group.id], data.get("page_key"), [year]).get((group.id, year))
+        percent = stored.own_needs_percent if stored is not None else None
+        result["own_needs_percent"] = dict(
+            display=format_decimal_for_display(percent, digits=digits) if percent is not None else "",
+            raw=_raw_title(percent),
+        )
+    return jsonify(result)
+
+
 @energy_balance_bp.route("/ee_balance/ses-ves/value/", methods=["PATCH"])
 @login_required
 def ee_balance_ves_ses_value():
-    """Перекрёстное сохранение выработки СЭС/ВЭС (те же таблицы, что на карточке станции)."""
+    """Перекрестное сохранение выработки СЭС/ВЭС (те же таблицы, что на карточке станции)."""
     data = request.get_json(silent=True) or {}
     try:
         station_id = int(data.get("station_id"))
@@ -275,11 +327,21 @@ def ee_balance_ves_ses_value():
             return jsonify(ok=False, error="Коэффициент доступен только для ГЭС и ГАЭС"), 400
         if not _can_edit_ves_ses_energy():
             return jsonify(ok=False, error="Недостаточно прав"), 403
+        coefficient_year = None
+        coefficient_end_year = None
+        if is_ges:
+            try:
+                coefficient_year = int(data.get("year"))
+                coefficient_end_year = int(data.get("end_year", coefficient_year))
+            except (TypeError, ValueError):
+                return jsonify(ok=False, error="Неверный год или период СН"), 400
         try:
             coefficient = save_hydro_own_needs_coefficient(
                 station.id,
                 "ges" if is_ges else "gaes",
                 data.get("value"),
+                year=coefficient_year,
+                end_year=coefficient_end_year,
                 user=current_user,
                 station_name=station.name,
             )
@@ -298,6 +360,14 @@ def ee_balance_ves_ses_value():
             kind=kind,
             display=coefficient_display,
             raw=coefficient_display,
+            year=coefficient_year,
+            coefficient_updates={
+                str(year): {"display": coefficient_display, "raw": coefficient_display}
+                for year in range(
+                    coefficient_year,
+                    (coefficient_end_year if coefficient is not None else coefficient_year) + 1,
+                )
+            } if is_ges else {},
             changed=True,
         )
     if kind in {"own_needs", "own_needs_percent"} and not is_aes:
@@ -537,7 +607,7 @@ def ee_balance_tes_forecast_value(slug: str):
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
-        current_app.logger.exception("Не удалось сохранить помесячный расчёт выработки ТЭС")
+        current_app.logger.exception("Не удалось сохранить помесячный расчет выработки ТЭС")
         return jsonify(ok=False, error="Не удалось сохранить значение"), 500
     tes_total = saved.get("tes_total")
     tes_total_display = (

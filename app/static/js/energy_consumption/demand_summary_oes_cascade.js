@@ -107,7 +107,7 @@
     /**
      * На сводке по ОЭС выборы с разных уровней объединяются на сервере (OR), а не пересекаются.
      * Иначе обратная связь (например РЭС → одна ОЭС) сужает список ОЭС до одной строки, выпадает
-     * вторая выбранная ОЭС и все её РЭС из соседнего multiselect.
+     * вторая выбранная ОЭС и все ее РЭС из соседнего multiselect.
      */
     function unionAllowedWithCurrentSelection(allowedIds, currentSelectedIds) {
         if (!currentSelectedIds || currentSelectedIds.length === 0) {

@@ -4,12 +4,12 @@
 
 Порт основной логики Access из обработчика Кнопка27_Click:
 - берет агрегаты этапа «Коэфф» по параметру распределения;
-- пересчитывает выработку `e` по строкам топлива расчётного года;
+- пересчитывает выработку `e` по строкам топлива расчетного года;
 - бинарным поиском подбирает коэффициент `k` (или `kn`, если база пустая),
   чтобы сумма `e` приблизилась к целевому Ераспред.
 
 Опционально (флаг apply_restrictions – аналог открытого окна «Анализ_по_областям»):
-- берёт kobl из таблицы (как Access при открытой форме; 0/overflow → 1);
+- берет kobl из таблицы (как Access при открытой форме; 0/overflow → 1);
 - умножает часы на kobl по субъекту (obl) рабочей строки топлива (Станции.OBL);
 - Access enddis: Ограничения_Click и GoTo BDis, пока irestr<15 (14 проходов).
   Если emin/emax уже выполнены – дальше kobl не меняется, повтор Dist
@@ -19,7 +19,7 @@
 Access MsgBox «нет NR → HFIX»: в вебе – двухшаговый сценарий на /fuel/calculation
 (список кандидатов → фиксация H=0/hfix=1 по выбранным → продолжение Распред).
 
-Как Кнопка27: «Коэфф» не вызывается. Берётся уже сохранённая сводка и EWTP
+Как Кнопка27: «Коэфф» не вызывается. Берется уже сохраненная сводка и EWTP
 на станциях (после ручной правки). Нет сводки – ошибка: сначала «Коэфф».
 """
 from __future__ import annotations
@@ -163,13 +163,13 @@ def restriction_live_payload(
 
 
 # Живая Кнопка27 СиПР: новые ГТ – obor 20|90|24|89 → ch·kngt (не knps).
-# gs_fue_restrictions.kobl – numeric(36, 16). Access Востока (Якутия) даёт
+# gs_fue_restrictions.kobl – numeric(36, 16). Access Востока (Якутия) дает
 # kobl≈4e3…2e4, когда emin структурно недостижим; потолок 100 сбрасывал эталон.
 KOBL_ABS_MAX = Decimal("20000")
 
 
 def clamp_restriction_kobl(kobl: Decimal) -> Decimal:
-    """Не даём kobl взорвать numeric(36,16) на повторных проходах BDis."""
+    """Не даем kobl взорвать numeric(36,16) на повторных проходах BDis."""
     if kobl > KOBL_ABS_MAX:
         return KOBL_ABS_MAX
     if kobl < -KOBL_ABS_MAX:
@@ -223,7 +223,7 @@ def restriction_subject_targets_unmet(
     *,
     tolerance: Decimal = D03,
 ) -> bool:
-    """True, если именованный субъект ещё вне emin/emax (не строка «прочие»)."""
+    """True, если именованный субъект еще вне emin/emax (не строка «прочие»)."""
     return bool(
         restriction_unmet_named_obl_codes(rows, oes_code, tolerance=tolerance)
     )
@@ -292,7 +292,7 @@ def sum_e_of_distribution_processed_rows(
     group_ids_with_specific: set[int],
 ) -> tuple[Decimal, int]:
     """
-    ΣE по тем же строкам, что пишет «Распред»: ved>0 на расчётном годе и есть удельник.
+    ΣE по тем же строкам, что пишет «Распред»: ved>0 на расчетном годе и есть удельник.
 
     Превью «Коэфф» иначе включает группы без ТЭП, если EWTP уже задан (импорт/копия года),
     и их старое E ломает допуск «Топливо» после успешного Распред.
@@ -379,7 +379,7 @@ class DistributionStageRunResult:
 
 @dataclass
 class NrHfixCandidate:
-    """Станция расчётного года: NUST>0, NR=0, HFIX≠1 (Access MsgBox перед calce)."""
+    """Станция расчетного года: NUST>0, NR=0, HFIX≠1 (Access MsgBox перед calce)."""
 
     equipment_group_id: int
     name: str
@@ -432,7 +432,7 @@ class DistributionStageService:
         effective_db_version: int | None,
         byear: int | None = None,
     ) -> tuple[Decimal, int]:
-        """ΣE и число строк расчётного года, которые «Распред» реально пишет."""
+        """ΣE и число строк расчетного года, которые «Распред» реально пишет."""
         by_key = self._fuel_param_by_group_year(
             group_ids=group_ids,
             byear=None,
@@ -472,7 +472,7 @@ class DistributionStageService:
         database_version_id: int | None = None,
     ) -> list[NrHfixCandidate]:
         """
-        Access: NUST>0 And NR=0 And HFIX<>1 на расчётном годе (после успешного Seek удельника).
+        Access: NUST>0 And NR=0 And HFIX<>1 на расчетном годе (после успешного Seek удельника).
         """
         row = self.session.get(
             DistributionParameter,
@@ -561,8 +561,8 @@ class DistributionStageService:
         commit: bool = True,
     ) -> int:
         """
-        Access MsgBox Yes: w!H = 0, w!HFIX = 1 на расчётном годе.
-        Возвращает число обновлённых строк FuelParam.
+        Access MsgBox Yes: w!H = 0, w!HFIX = 1 на расчетном годе.
+        Возвращает число обновленных строк FuelParam.
         """
         if not equipment_group_ids:
             return 0
@@ -772,7 +772,7 @@ class DistributionStageService:
     @staticmethod
     def _seed_bisection_k(k: Decimal) -> Decimal:
         """
-        Access берёт k с формы и ищет в [k−0.1, k+0.1] без окна 0.8…1.2.
+        Access берет k с формы и ищет в [k−0.1, k+0.1] без окна 0.8…1.2.
         ОЭС Востока / Сибири после ограничений дают k≈1.85 / 0.59 – сброс
         в 1 уводит раздачу на десятки процентов. 0 / overflow → 1, как kobl.
         """
@@ -782,7 +782,7 @@ class DistributionStageService:
 
     @staticmethod
     def _seed_restriction_kobl(kobl) -> Decimal:
-        """Access при открытой форме берёт kobl из таблицы. 0 / пусто → 1."""
+        """Access при открытой форме берет kobl из таблицы. 0 / пусто → 1."""
         k = d0(kobl)
         if k <= 0:
             return D1
@@ -962,7 +962,7 @@ class DistributionStageService:
         effective_db_version: int | None = None,
     ) -> None:
         """
-        Порт Ограничения_Click: пересчёт ecur/ecurdis/H/Hdis/etp/kobl по emin/emax.
+        Порт Ограничения_Click: пересчет ecur/ecurdis/H/Hdis/etp/kobl по emin/emax.
 
         ecur – ΣE субъекта по ОЭС/ved>0/году текущей версии БД (Access: одна
         рабочая таблица). Без версии сюда попадали копии станций всех версий,
@@ -1199,7 +1199,7 @@ class DistributionStageService:
             if oes_code is None:
                 raise ValueError(
                     "Не удалось извлечь oes из filter_text параметра распределения "
-                    "для учёта ограничений."
+                    "для учета ограничений."
                 )
             restriction_rows = self._load_restriction_rows(
                 oes_code=oes_code,
@@ -1253,7 +1253,7 @@ class DistributionStageService:
         # Access: irestr=1 … If irestr < 15 Then GoTo BDis → 14 внешних прохода.
         outer_max = 14 if apply_restrictions else 1
         restriction_outer_iterations = 0
-        # VBA: Dim hb / bm на уровне Кнопка27_Click – живёт через again: и GoTo BDis.
+        # VBA: Dim hb / bm на уровне Кнопка27_Click – живет через again: и GoTo BDis.
         cursor_state = AccessBdisCursorState()
         ud_bookmark = AccessSeekBookmark()
 

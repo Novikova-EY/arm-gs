@@ -90,7 +90,7 @@ def quick_fix_seq(schema: str, table: str, col: str = "id"):
     Быстро выравнивает sequence под MAX(id) для указанной таблицы.
 
     Sequence никогда не уменьшается: в длинной транзакции (например, сохранение
-    machine_details во всех версиях БД) уже выданные, но ещё не закоммиченные id
+    machine_details во всех версиях БД) уже выданные, но еще не закоммиченные id
     не видны в MAX(id), и откат sequence приводил к UniqueViolation по PK.
     """
     with db.engine.begin() as conn:

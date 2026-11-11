@@ -44,9 +44,9 @@
       {% set next_args = dict(pag_args) %}
       {% set _ = next_args.update({'page': pag.page + 1, 'page_size': pag.page_size}) %}
       {% set _ = next_args.pop('per_page', None) %}
-      <a class="page-link" href="{{ url_for(_pag_endpoint, **next_args) }}">Вперёд »</a>
+      <a class="page-link" href="{{ url_for(_pag_endpoint, **next_args) }}">Вперед »</a>
       {% else %}
-      <span class="page-link">Вперёд »</span>
+      <span class="page-link">Вперед »</span>
       {% endif %}
     </li>
     <li class="page-item ms-2">

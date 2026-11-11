@@ -1,0 +1,38 @@
+[CACHE REFRESH] Запущено фоновое обновление кэша каждые 25 минут
+[CACHE WARMUP] Начинается прогрев кэша станций...
+[CACHE WARMUP] Загружено 1235 станций
+[SORTED CACHE REDIS] Закэширован отсортированный список из 1235 станций
+[CACHE WARMUP] Прогрев кэша завершен за 0.07 сек (1235 станций)
+============================================================
+ВНИМАНИЕ: Приложение запущено в режиме DEBUG!
+============================================================
+ * Serving Flask app 'app'
+ * Debug mode: on
+[PD SUMMARY WARMUP] done in 2.67s (warmed=6 skipped=0)
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE MISS] Данные агрегации закэшированы
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[CACHE REFRESH] Запуск периодического обновления кэша...
+[SORTED CACHE HIT REDIS] Используется закэшированный список из 1235 станций
+[CACHE WARMUP] Начинается прогрев кэша станций...
+[CACHE WARMUP] Загружено 1235 станций
+[SORTED CACHE] Список уже закэширован, пропускаем
+[CACHE WARMUP] Прогрев кэша завершен за 0.04 сек (1235 станций)
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE MISS] Данные агрегации закэшированы

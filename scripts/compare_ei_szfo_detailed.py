@@ -135,7 +135,7 @@ def main():
             ctx = build_electrical_intensity_page_context(**kw)
 
     block = next(b for b in ctx["territory_blocks"] if b.get("abbr") == "СЗФО")
-    print("СЗФО – сравнение фактических и расчётных точек графика\n")
+    print("СЗФО – сравнение фактических и расчетных точек графика\n")
 
     ok = mism = 0
     for section in block.get("ved_sections") or []:

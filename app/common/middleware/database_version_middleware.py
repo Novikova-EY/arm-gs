@@ -11,6 +11,21 @@ from app.common.services.database_version_services import get_default_version
 from app.extensions import db
 
 
+def resolve_initial_version_id():
+    """Выбирает сохраненную версию пользователя, затем активную версию БД."""
+    if current_user.is_authenticated and current_user.last_database_version_id is not None:
+        version = DatabaseVersion.query.filter_by(
+            id=current_user.last_database_version_id
+        ).first()
+        if version is not None:
+            return version.id
+
+    version = DatabaseVersion.query.filter_by(is_active=True).first()
+    if version is None:
+        version = get_default_version()
+    return version.id if version is not None else None
+
+
 def init_database_version_middleware(app):
     """
     Инициализирует middleware для управления версиями БД.
@@ -51,35 +66,16 @@ def init_database_version_middleware(app):
                         current_app.logger.debug(
                             f"[VERSION_MIDDLEWARE] Используется версия из сессии: {g.current_db_version}"
                         )
+                    _sync_user_last_version()
                     return
-            else:
-                # Версия None в сессии - это валидное значение
-                g.current_db_version = None
-                if not request.endpoint or not request.endpoint.startswith('static'):
-                    current_app.logger.debug("[VERSION_MIDDLEWARE] Используется версия None из сессии")
-                return
-        
-        # Если нет, берем активную версию из БД
-        active_version = DatabaseVersion.query.filter_by(is_active=True).first()
-        if active_version:
-            g.current_db_version = active_version.id
-            if not request.endpoint or not request.endpoint.startswith('static'):
-                current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена активная версия: {active_version.id} (v{active_version.version_number})")
-        else:
-            # Если активной версии нет, используем версию по умолчанию
-            default_version = get_default_version()
-            if default_version:
-                g.current_db_version = default_version.id
-                if not request.endpoint or not request.endpoint.startswith('static'):
-                    current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена версия по умолчанию: {default_version.id} (v{default_version.version_number})")
-            else:
-                # Если версии по умолчанию нет, работаем со всеми данными (None)
-                g.current_db_version = None
-                if not request.endpoint or not request.endpoint.startswith('static'):
-                    current_app.logger.debug(f"[VERSION_MIDDLEWARE] Версия по умолчанию не найдена, установлено: None")
 
-        # Всегда синхронизируем последнюю версию с пользователем (если авторизован)
-        _sync_user_last_version()
+        g.current_db_version = resolve_initial_version_id()
+        if current_user.is_authenticated:
+            if g.current_db_version is not None:
+                session['current_db_version'] = g.current_db_version
+            else:
+                session.pop('current_db_version', None)
+            _sync_user_last_version()
 
 
 def _sync_user_last_version():
@@ -146,6 +142,7 @@ def set_session_version(version_id):
         
         # Обновляем текущий контекст
         g.current_db_version = version_id
+        _sync_user_last_version()
 
         # Очищаем все кэши: иначе возможны данные от предыдущей версии БД
         try:

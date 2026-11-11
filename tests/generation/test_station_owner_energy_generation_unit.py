@@ -56,7 +56,7 @@ def test_clearing_zero_energy_is_detected_as_change():
 
 
 def _ves_station():
-    return SimpleNamespace(id=6719, station_type=SimpleNamespace(name="СЭС"))
+    return SimpleNamespace(id=6719, station_type=SimpleNamespace(name="СЭС"), is_generation_only=False)
 
 
 def _request_owner_generation_patch(monkeypatch, payload, *, roles, station=None):
@@ -104,7 +104,7 @@ def test_owner_generation_patch_saves_cell_and_returns_plan_sync(monkeypatch):
 
     def sync(_user, _station, **kwargs):
         sync_calls.append(kwargs)
-        return {"year": 2028, "value": "112,74", "rule": "Расчёт: выработка от собственника"}
+        return {"year": 2028, "value": "112,74", "rule": "Расчет: выработка от собственника"}
 
     monkeypatch.setattr(routes, "save_station_owner_energy_generation_service", save_owner)
     monkeypatch.setattr(routes, "_sync_owner_generation_to_plan_cell", sync)
@@ -127,7 +127,7 @@ def test_owner_generation_patch_saves_cell_and_returns_plan_sync(monkeypatch):
     assert body["gen"] == {
         "year": 2028,
         "value": "112,74",
-        "rule": "Расчёт: выработка от собственника",
+        "rule": "Расчет: выработка от собственника",
     }
     assert saved_forms == [
         (2028, 2028, {"st_owner_gen_2028": "112,74", "st_owner_gen_2028_orig": "100"})
@@ -157,7 +157,7 @@ def test_owner_generation_patch_is_rejected_outside_ves_ses(monkeypatch):
         monkeypatch,
         {"kind": "owner_generation", "year": "2028", "value": "112,74", "orig": ""},
         roles={"generation-editor"},
-        station=SimpleNamespace(id=6719, station_type=SimpleNamespace(name="ТЭС")),
+        station=SimpleNamespace(id=6719, station_type=SimpleNamespace(name="ТЭС"), is_generation_only=False),
     )
 
     assert status == 400
@@ -195,3 +195,15 @@ def test_energy_patch_rounding_keeps_zero_meaning_no_rounding():
         assert routes._rounding_from_energy_payload({"rounding": "2"}) == 2
         assert routes._rounding_from_energy_payload({}) == 2
         assert routes._rounding_from_energy_payload({"rounding": "7"}) == 2
+
+
+def test_owner_generation_patch_is_rejected_for_generation_only_station(monkeypatch):
+    station = _ves_station()
+    station.is_generation_only = True
+    body, status = _request_owner_generation_patch(
+        monkeypatch,
+        {"kind": "owner_generation", "year": "2028", "value": "112,74", "orig": ""},
+        roles={"generation-editor"}, station=station,
+    )
+    assert status == 400
+    assert not body["ok"]

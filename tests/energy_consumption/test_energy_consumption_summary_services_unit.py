@@ -1,6 +1,8 @@
 from decimal import Decimal
 from dataclasses import replace
 
+import pytest
+
 from app.energy_consumption.services import energy_consumption_summary_services as service
 
 
@@ -1082,7 +1084,7 @@ def test_expand_ees_unified_prefers_ees_russia_gaes_when_flag_set(monkeypatch):
 def test_apply_gaes_without_charge_formula_south_without_nt_without_gaes_is_formula_derived(
     monkeypatch,
 ):
-    """ОЭС Юга без НТ без заряда ГАЭС = с зарядом − заряд; всегда расчётная, на все годы."""
+    """ОЭС Юга без НТ без заряда ГАЭС = с зарядом − заряд; всегда расчетная, на все годы."""
     years = [2024, 2025, 2026]
     monkeypatch.setattr(
         service,
@@ -1221,7 +1223,7 @@ def test_apply_gaes_without_charge_formula_does_not_sum_south_nt_charge_twice():
 
 
 def test_apply_gaes_without_charge_formula_south_with_nt_without_gaes_is_formula_derived():
-    """ОЭС Юга с НТ без заряда ГАЭС = с зарядом − заряд; расчётная → пишется в БД."""
+    """ОЭС Юга с НТ без заряда ГАЭС = с зарядом − заряд; расчетная → пишется в БД."""
     years = [2024]
     source_row = _south_variant_row(service.CODE_WITH_NT_WITH_GAES, "150.0")
     charge_row = _south_gaes_charge_row_for_nt_group("20.0", nt_group="with_nt")
@@ -1818,8 +1820,9 @@ def test_formula_write_respects_perimeter_variant_year_bounds_even_when_input_un
     assert row["year_numeric_tooltips"][3] == "44.0"
 
 
-def test_yoy_write_uses_two_decimals_in_cell_and_hover_tooltip():
-    """Годовой темп прироста: title при наведении – те же 2 знака, что и в ячейке."""
+@pytest.mark.parametrize("rounding_digits, expected", [(0, "1,23456789"), (1, "1,23")])
+def test_yoy_write_respects_full_precision_mode_in_cell_and_tooltip(rounding_digits, expected):
+    """Без округления показываем полную точность; обычный режим сохраняет два знака."""
     row = {
         "parameter_key": service.ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
         "year_values": ["–", "–"],
@@ -1830,11 +1833,11 @@ def test_yoy_write_uses_two_decimals_in_cell_and_hover_tooltip():
         [2023, 2024],
         {2023: None, 2024: Decimal("1.23456789")},
         parameter_key=service.ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
-        rounding_digits=0,
+        rounding_digits=rounding_digits,
         respect_perimeter_variant_year_bounds=False,
     )
-    assert row["year_values"][1] == "1,23"
-    assert row["year_numeric_tooltips"][1] == "1,23"
+    assert row["year_values"][1] == expected
+    assert row["year_numeric_tooltips"][1] == "1,23456789"
 
 
 def test_formula_year_applies_ignores_skip_flag(monkeypatch):
@@ -1890,7 +1893,7 @@ def test_energy_unit_ec_perimeter_entity_context_resolves(monkeypatch):
             )
         return mod
 
-    monkeypatch.setattr("importlib.import_module", _fake_import_module)
+    monkeypatch.setattr("app.common.perimeter_variant.registry.import_module", _fake_import_module)
     ctx = perimeter_entity_context_for_model(
         "EnergyUnitEnergyConsumptionParameter",
         parent_fk_column="id_energy_unit",
@@ -2167,7 +2170,7 @@ def test_ees_russia_without_nt_gaes_verification_excludes_tites(monkeypatch):
 def test_ees_russia_without_nt_gaes_verification_uses_ec_aligned_sipr_components(
     monkeypatch,
 ):
-    """СиПР-слагаемые берём из потребления «с ГАЭС», даже если колонка СиПР без ГАЭС."""
+    """СиПР-слагаемые берем из потребления «с ГАЭС», даже если колонка СиПР без ГАЭС."""
     years = [2020]
     first_ec = Decimal("993025.5322992")
     second_ec = Decimal("40694.514342")
@@ -3113,7 +3116,7 @@ def test_apply_centralized_zone_without_nt_sum_formula():
     service.apply_centralized_zone_without_nt_sum_formula(rows, years, rounding_digits=1)
 
     cz_row = rows[0]
-    # В БД уже есть значения – формула не перезаписывает, строка остаётся редактируемой.
+    # В БД уже есть значения – формула не перезаписывает, строка остается редактируемой.
     assert cz_row["year_values"] == ["100", "200", "0"]
     assert cz_row.get("pd_ec_formula_derived_row") is not True
     assert service._CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP in str(
@@ -3540,7 +3543,7 @@ def test_inject_summary_table_cz_new_territories_reference_row_after_cz():
 
 
 def test_inject_summary_table_cz_new_territories_reference_row_after_cz_when_russia_first():
-    """На /summary/oes|fo|ez порядок «Россия → ЦЗ …»: справочная строка всё равно после ЦЗ."""
+    """На /summary/oes|fo|ez порядок «Россия → ЦЗ …»: справочная строка все равно после ЦЗ."""
     years = [2024]
     cz_then_russia = _cz_russia_nt_pair_rows_for_reference_test(years=years)
     russia_rows = [
@@ -4256,7 +4259,7 @@ def test_inject_south_ues_new_territories_places_check_after_nt_aggregate(monkey
 def test_inject_oes_summary_verification_rows_places_nt_check_after_new_territories(
     monkeypatch,
 ):
-    """Фоллбек-инжект проверки НТ ставит её сразу после «Новые территории»."""
+    """Фоллбек-инжект проверки НТ ставит ее сразу после «Новые территории»."""
     ues_model = "UnionEnergySystemEnergyConsumptionParameter"
     rows = [
         {
@@ -5042,7 +5045,7 @@ def test_inject_fo_summary_verification_rows_does_not_add_oes_cross_checks(
     )
 
 def test_summary_table_verification_uses_res_rows_before_compact_filter():
-    """На /summary-table/ РЭС скрыты, но сумма для «Проверка для …» берётся из полного дерева."""
+    """На /summary-table/ РЭС скрыты, но сумма для «Проверка для …» берется из полного дерева."""
     ues_model = "UnionEnergySystemEnergyConsumptionParameter"
     res_model = "RegionalEnergySystemEnergyConsumptionParameter"
     ues_id = 117
@@ -5759,6 +5762,11 @@ def test_build_oes_summary_table_raw_entities_matches_pd_top_order(monkeypatch):
         "_build_oes_summary_table_union_energy_system_entities",
         lambda **kwargs: [ues],
     )
+    monkeypatch.setattr(
+        service,
+        "_build_tites_sakha_yakutia_extra_energy_unit_entities",
+        lambda **kwargs: [],
+    )
 
     entities = service._build_oes_summary_table_raw_entities(
         include_russia_top_row=False,
@@ -6352,7 +6360,7 @@ def test_ezs_russia_without_nt_adds_kaliningrad_sa_from_split_year(monkeypatch):
     service.apply_ees_russia_gaes_aggregate_formulas(rows, years, rounding_digits=1)
 
     values = service._raw_year_values_from_summary_row(ezs, years)
-    # 2024: Калининград ещё в 1-й СЗ – не прибавляем 4912
+    # 2024: Калининград еще в 1-й СЗ – не прибавляем 4912
     assert values[2024] == Decimal("1172513.6")
     # 2025: 1087532.4 + 5141.5 + 50551.3 + 15962.7 = 1159187.9
     assert values[2025] == Decimal("1159187.9")
@@ -7925,7 +7933,7 @@ def test_tag_summary_rows_before_energy_zone_blocks():
 
 
 def test_remove_gaes_charge_preserves_summary_table_top_aggregate_rows():
-    """На /summary/energy_zones/ заряд ГАЭС остаётся в общем верху до блоков ЭЗ."""
+    """На /summary/energy_zones/ заряд ГАЭС остается в общем верху до блоков ЭЗ."""
     from app.energy_consumption.services.energy_consumption_gaes_charge_summary_services import (
         remove_gaes_charge_rows_from_summary_context,
     )
@@ -9810,7 +9818,7 @@ def test_apply_energy_zone_formula_to_summary_rows_overwrites_from_res_aggregate
 
 
 def test_apply_energy_zone_formula_falls_back_to_null_pvc_aggregates(monkeypatch):
-    """Если у ЭЗ with_nt, а у РЭС pvc пустой – берём агрегат (ez_id, None)."""
+    """Если у ЭЗ with_nt, а у РЭС pvc пустой – берем агрегат (ez_id, None)."""
     years = [2024]
     ez_id = 7
     monkeypatch.setattr(

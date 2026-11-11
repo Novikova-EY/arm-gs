@@ -41,7 +41,7 @@ def _year_kwargs() -> dict:
 
 @station_bp.route("/api/datasets", methods=["GET"])
 def list_generation_exchange_datasets():
-    """Список имён наборов (legacy). Канон: GET /api/datasets."""
+    """Список имен наборов (legacy). Канон: GET /api/datasets."""
     return jsonify(list_exchange_datasets())
 
 

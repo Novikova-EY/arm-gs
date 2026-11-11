@@ -595,7 +595,7 @@ def test_with_nt_ee_empty_until_nt_subjects_have_data():
 
 
 def test_with_nt_ee_shows_before_2023_when_nt_data_exists():
-    """«с НТ» не жёстко с 2023: если по НТ есть данные за 2022 – считаем 2022."""
+    """«с НТ» не жестко с 2023: если по НТ есть данные за 2022 – считаем 2022."""
     from unittest.mock import patch
 
     from app.common.perimeter_variant.constants import CODE_WITH_NT_WITHOUT_GAES

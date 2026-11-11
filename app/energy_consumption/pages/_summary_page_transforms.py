@@ -65,22 +65,22 @@ def convert_context_to_summary_table_page(
         apply_federal_district_formula_to_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_south_fd_new_territories_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_federal_district_without_gaes_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         apply_gaes_without_charge_formula_to_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         fo_res_sum_source_rows = list(source_summary_rows)
         inject_fo_summary_verification_rows(
@@ -88,53 +88,53 @@ def convert_context_to_summary_table_page(
             source_rows=list(context["summary_rows"]),
             fo_res_sum_source_rows=fo_res_sum_source_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     if context.get("active_summary") == "ez":
         apply_energy_zone_formula_to_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     if context.get("active_summary") == "oes":
         apply_summary_table_russia_federation_row_rules(context["summary_rows"])
         apply_oes_tites_root_formula_to_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows=source_summary_rows,
         )
         apply_summary_table_formula_calculations(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows_for_tites=source_summary_rows,
         )
         inject_summary_table_decentralized_zone_row(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_south_ues_new_territories_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         ues_res_sum_source_rows = list(source_summary_rows)
         inject_union_energy_system_without_gaes_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_oes_territory_detail_without_gaes_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         verification_source_rows = list(context["summary_rows"])
         inject_oes_summary_verification_rows(
@@ -142,7 +142,7 @@ def convert_context_to_summary_table_page(
             source_rows=verification_source_rows,
             ues_res_sum_source_rows=ues_res_sum_source_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         context["summary_rows"] = filter_oes_summary_hidden_tites_union_energy_system_rows(
             context["summary_rows"]
@@ -151,7 +151,7 @@ def convert_context_to_summary_table_page(
             context["summary_rows"],
             source_rows=source_summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     tag_energy_consumption_summary_rows_perimeter_variant_labels(
         context["summary_rows"],
@@ -171,7 +171,7 @@ def convert_context_to_summary_table_page(
     recompute_sipr_growth_metrics_for_summary_rows(
         context["summary_rows"],
         list(context.get("years") or []),
-        int(context.get("rounding_digits") or 1),
+        int(context.get("rounding_digits", 1)),
     )
     tag_ees_russia_sipr_integer_display_rows(context["summary_rows"])
     if context.get("active_summary") == "fo":
@@ -217,46 +217,46 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
         apply_federal_district_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_south_fd_new_territories_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_federal_district_without_gaes_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_oes_territory_detail_without_gaes_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         apply_gaes_without_charge_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         # «Проверка для ФО» на /summary/federal_districts/ не показываем.
     if context.get("active_summary") == "ez":
         apply_energy_zone_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_east_energy_zone_o1_res_energy_unit_verification_rows(
             summary_rows,
             source_rows=list(summary_rows),
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_east_energy_zone_o1_parent_verification_row(
             summary_rows,
             source_rows=list(summary_rows),
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     if context.get("active_summary") in ("fo", "ez"):
         # Верхние агрегаты пересчитываются формулами, затем выравниваются с hub
@@ -264,7 +264,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
         apply_summary_table_formula_calculations(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows_for_tites=eu_source_rows_for_tites,
         )
     if context.get("active_summary") == "oes":
@@ -275,36 +275,36 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             apply_oes_ees_unified_consumption_formula_to_summary_rows(
                 summary_rows,
                 years=list(context.get("years") or []),
-                rounding_digits=int(context.get("rounding_digits") or 1),
+                rounding_digits=int(context.get("rounding_digits", 1)),
                 ues_source_rows=eu_source_rows_for_tites,
             )
         apply_oes_tites_root_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows=eu_source_rows_for_tites,
         )
         apply_summary_table_formula_calculations(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows_for_tites=eu_source_rows_for_tites,
         )
         inject_south_ues_new_territories_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         ues_res_sum_source_rows = list(summary_rows)
         inject_union_energy_system_without_gaes_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         inject_oes_territory_detail_without_gaes_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         source_summary_rows = list(summary_rows)
         inject_oes_summary_verification_rows(
@@ -312,7 +312,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             source_rows=source_summary_rows,
             ues_res_sum_source_rows=ues_res_sum_source_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         summary_rows = filter_oes_summary_hidden_tites_union_energy_system_rows(
             summary_rows
@@ -321,7 +321,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             summary_rows,
             source_rows=ues_res_sum_source_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     tag_energy_consumption_summary_rows_perimeter_variant_labels(
         summary_rows,
@@ -341,7 +341,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     recompute_sipr_growth_metrics_for_summary_rows(
         summary_rows,
         list(context.get("years") or []),
-        int(context.get("rounding_digits") or 1),
+        int(context.get("rounding_digits", 1)),
     )
     tag_ees_russia_sipr_integer_display_rows(summary_rows)
     if context.get("active_summary") == "fo":
@@ -353,14 +353,14 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     collapse_gaes_variant_split_for_entities_without_stations(summary_rows)
     tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
     if context.get("active_summary") in ("oes", "fo", "ez"):
-        # Как на /power_demand/summary/oes/: «ЦЗ России» остаётся в режиме «Сводная таблица».
+        # Как на /power_demand/summary/oes/: «ЦЗ России» остается в режиме «Сводная таблица».
         keep_centralized_zone_rows_in_territory_compact(summary_rows)
     if context.get("active_summary") in ("oes", "fo", "ez"):
         # Общий верх сводной (ЦЗ / ЭЭС / ЕЭС / СЗ) – один hub /summary_table/.
         apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             start_year=int(context.get("start_year") or 0),
             end_year=int(context.get("end_year") or 0),
             filter_year_list=list(context.get("filter_year_list") or []),
@@ -370,13 +370,13 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
         _reapply_first_synchronous_area_gaes_variant_formulas(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
         # Проверки ЕЭС/первой СЗ – после выравнивания верха с hub.
         inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
             summary_rows,
             years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     _mark_summary_table_collapsed_nt_gaes_variant_row_rules(summary_rows)
     _mark_summary_table_nt_on_gaes_off_variant_row_rules(summary_rows)
@@ -400,14 +400,14 @@ def finalize_oes_max_summary_tites_formula(context: dict) -> dict:
     apply_oes_tites_root_formula_to_summary_rows(
         summary_rows,
         years=years,
-        rounding_digits=int(context.get("rounding_digits") or 1),
+        rounding_digits=int(context.get("rounding_digits", 1)),
         eu_source_rows=list(eu_source_rows),
     )
     if context.get("summary_table_standalone"):
         apply_ees_russia_gaes_aggregate_formulas(
             summary_rows,
             years,
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
             eu_source_rows_for_tites=list(eu_source_rows),
         )
     if not context.get("summary_table_standalone") and not any(
@@ -418,7 +418,7 @@ def finalize_oes_max_summary_tites_formula(context: dict) -> dict:
             summary_rows,
             source_rows=list(eu_source_rows),
             years=years,
-            rounding_digits=int(context.get("rounding_digits") or 1),
+            rounding_digits=int(context.get("rounding_digits", 1)),
         )
     context = dict(context)
     context["summary_rows"] = summary_rows

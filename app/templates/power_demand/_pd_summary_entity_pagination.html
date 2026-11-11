@@ -40,16 +40,16 @@
             {% if pag.has_next %}
             {% set next_args = pag_args.copy() %}
             {% set _ = next_args.update({'pd_page': pag.page + 1, 'pd_page_size': pag.page_size}) %}
-            <a class="page-link" href="{{ url_for(request.endpoint, **next_args) }}">Вперёд »</a>
+            <a class="page-link" href="{{ url_for(request.endpoint, **next_args) }}">Вперед »</a>
             {% else %}
-            <span class="page-link">Вперёд »</span>
+            <span class="page-link">Вперед »</span>
             {% endif %}
         </li>
         <li class="page-item ms-2">
             {% set all_args = pag_args.copy() %}
             {% set _ = all_args.update({'pd_page_size': 0}) %}
             {% set _ = all_args.pop('pd_page', None) %}
-            <a class="page-link" href="{{ url_for(request.endpoint, **all_args) }}">{{ pag.all_label | default('Показать всё') }}</a>
+            <a class="page-link" href="{{ url_for(request.endpoint, **all_args) }}">{{ pag.all_label | default('Показать все') }}</a>
         </li>
     </ul>
 </nav>

@@ -1,0 +1,68 @@
+{% macro column_header(column, rowspan=none) %}
+        <th scope="col" title="" data-column-key="{{ column.key }}"{% if rowspan %} rowspan="{{ rowspan }}"{% endif %} data-sipr-section="{{ 'events' if column.key in ('planned_modernization_year', 'AT', 'AU', 'AV') else 'after' if column.key in ('AW', 'AX', 'AY', 'AZ', 'BA', 'BC', 'BD', 'BF') else 'before' }}" class="text-center{% if active_calculation == 'equipment_runtime' and sheet == 'calculation' and column.calculation_toggle %} rs-runtime-result{% endif %}{% if column.highlight_color %} rs-runtime-highlight{% endif %}"{% if column.highlight_color %} style="--rs-runtime-column-bg: #{{ column.highlight_color }}"{% endif %}>{{ column.label }}
+            {% if active_calculation == 'equipment_runtime' and sheet == 'calculation' and column.key in ('AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'planned_modernization_year', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BC', 'BD', 'BF') %}
+            {% include 'rational_structure/_equipment_runtime_formula_info.html' %}
+            {% endif %}
+            {% if active_calculation == 'marginal_price' and column.key == 'Q' %}
+            <button type="button" class="btn btn-link p-0 border-0 bi bi-info-circle text-primary ms-1" title="{{ column.formula_help }}" aria-label="Формула: {{ column.label }}"></button>
+            {% endif %}
+            {% if active_calculation == 'equipment_runtime' %}
+            <select class="table-header-filter rs-column-filter" multiple data-filter-param="{{ column.param }}" data-value-type="text" data-placeholder="Все" aria-label="Фильтр: {{ column.label }}">
+                {% for value, label in column.options %}<option value="{{ value }}" {% if value in column.selected %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            {% endif %}
+        </th>
+{% endmacro %}
+<table class="table table-hover table-striped table-bordered align-middle rs-data-table rs-calculation-table{% if active_calculation == 'equipment_runtime' %} rs-technical-table{% elif active_calculation == 'marginal_price' %} rs-marginal-price-table{% endif %}">
+    <caption class="visually-hidden">{{ page_title }} – {{ table.name|default('') }}</caption>
+    {% set grouped = active_calculation == 'equipment_runtime' and sheet == 'calculation' %}
+    {% set event_keys = ('planned_modernization_year', 'AT', 'AU', 'AV') %}
+    <thead class="table-success"><tr>
+        {% for column in header_columns|default(table.columns) %}
+            {% if grouped and column.key in event_keys %}
+                {% if column.key == 'planned_modernization_year' %}
+                <th scope="colgroup" title="" colspan="4" data-sipr-span="events" class="rs-sipr-group rs-runtime-result">Мероприятия СиПР</th>
+                {% endif %}
+            {% else %}
+                {{ column_header(column, 2 if grouped else none) }}
+            {% endif %}
+        {% endfor %}
+    </tr>
+    {% if grouped %}<tr>
+        {% for column in header_columns|default(table.columns) %}
+            {% if column.key in event_keys %}{{ column_header(column) }}{% endif %}
+        {% endfor %}
+    </tr>{% endif %}</thead>
+    <tbody>
+        {% for row in rows %}
+        {% if active_calculation == 'marginal_price' and loop.changed(row['values']['A']) %}
+        <tr class="rs-year-heading"><th scope="rowgroup" colspan="{{ table.columns|length }}"><strong>{{ row['values']['A']|int }}</strong></th></tr>
+        {% endif %}
+        <tr {% if sheet|default('') == 'summary' and not row['values'].get('C') %}class="table-secondary"{% endif %}>
+            {% for column in table.columns if not (active_calculation == 'marginal_price' and column.key == 'Q' and not row.annual_energy_rowspan) %}
+            {% set annual = active_calculation == 'marginal_price' and column.key == 'Q' %}
+            {% set value = row.annual_energy if annual else row['values'].get(column.key) %}
+            {% set formula = column.formula_help if annual else row.formulas.get(column.key) %}
+            {% set cell_error = row.annual_energy_error if annual else column.key in row.errors %}
+            <td {% if annual %}rowspan="{{ row.annual_energy_rowspan }}" data-annual-energy-year="{{ row['values']['A']|int }}"{% endif %} class="{% if cell_error %}table-warning rs-calculation-error{% endif %} {% if not column.text %}{% if active_calculation == 'marginal_price' %}text-center{% elif value is number %}text-end{% endif %}{% endif %} {% if formula %}rs-formula-cell{% endif %}{% if active_calculation == 'equipment_runtime' and sheet == 'calculation' and column.calculation_toggle %} rs-runtime-result{% endif %}{% if column.highlight_color %} rs-runtime-highlight{% endif %}"
+                {% if column.highlight_color %}style="--rs-runtime-column-bg: #{{ column.highlight_color }}"{% endif %}
+                {% if formula %}title="{{ formula }}"{% endif %}>
+                {% if cell_error %}<span aria-label="{% if annual %}Не рассчитана годовая энергия за {{ row['values']['A']|int }} год{% else %}Ошибка в ячейке {{ column.key }}{{ row.source_row }}{% endif %}">{{ value if value is not none else 'Нет результата' }}</span>
+                {% elif active_calculation == 'marginal_price' and column.key == 'D' and row.equipment_group_id %}
+                <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=row.equipment_group_id) }}">{{ value }}</a>
+                {% elif active_calculation == 'marginal_price' and column.key == 'station' %}
+                {% for station in row.stations %}{% if not loop.first %}<br>{% endif %}<a href="{{ url_for('station_bp.station_details', station_id=station.id) }}">{{ station.name }}</a>{% else %}–{% endfor %}
+                {% elif value is none %}–
+                {% elif grouped and column.key == 'G' and row.station_id %}
+                <a href="{{ url_for('station_bp.station_details', station_id=row.station_id) }}">{{ value }}</a>
+                {% elif grouped and column.key == 'L' and row.station_id and row.machine_id %}
+                <a href="{{ url_for('station_bp.pgu_machine_details', station_id=row.station_id, machine_id=row.machine_id, pgu_machine_id=row.pgu_machine_id) if row.pgu_machine_id else url_for('station_bp.machine_details', station_id=row.station_id, machine_id=row.machine_id) }}">{{ value }}</a>
+                {% elif value is number and column.year|default(false) %}{{ value|format_decimal(-1)|replace(' ', '') }}
+                {% elif value is number and not column.text %}{{ value|format_decimal(-1 if column.integer else column.get('rounding_digits', rounding_digits)) }}
+                {% else %}{{ value }}{% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% else %}<tr><td colspan="{{ table.columns|length or 1 }}" class="text-center">По выбранным фильтрам данных нет.</td></tr>{% endfor %}
+    </tbody>
+</table>

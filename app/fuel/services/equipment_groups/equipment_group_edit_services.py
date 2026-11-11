@@ -184,7 +184,7 @@ def _display_relevant_set_station_links(set_rows, preferred_version_id):
     """
     Связи EquipmentGroupSetStation для карточки группы: по одной на каждую станцию.
 
-    Для станции берётся связь текущей/эффективной версии, иначе legacy NULL,
+    Для станции берется связь текущей/эффективной версии, иначе legacy NULL,
     иначе любая. Раньше при наличии хотя бы одной «точной» версии остальные
     станции (legacy) пропадали с карточки – сохранение numb снимало их с группы.
     """
@@ -962,7 +962,7 @@ def _parse_int_form_id(val) -> int | None:
 
 
 def form_has_grouping_station_sync(form_data) -> bool:
-    """Форма задаёт полный набор станций (карточка группы / fuelParamsForm)."""
+    """Форма задает полный набор станций (карточка группы / fuelParamsForm)."""
     if not form_data:
         return False
     return (
@@ -1045,7 +1045,7 @@ def sync_equipment_group_grouping_stations(
     Приводит набор станций группы к desired_station_ids: добавляет недостающие
     связи. Снимает только те станции, которые были на карточке (loaded) и
     пользователь убрал. Станции, которых не было в форме, не трогает –
-    иначе сохранение numb отвязывало ТЭС-3, если её чипа не было на карточке.
+    иначе сохранение numb отвязывало ТЭС-3, если ее чипа не было на карточке.
     """
     from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
         ensure_equipment_group_linked_to_station,
@@ -1110,9 +1110,9 @@ def _bind_equipment_group_grouping_station(
 ) -> str | None:
     """
     Привязывает группу к станции Generation: обновляет существующие связи
-    EquipmentGroupSet или создаёт новую, если связей ещё нет.
+    EquipmentGroupSet или создает новую, если связей еще нет.
 
-    Для составной станции (ребёнок берёт Station родителя) – замена на одну
+    Для составной станции (ребенок берет Station родителя) – замена на одну
     станцию. Для карточки группы используйте sync_equipment_group_grouping_stations.
     """
     has_sets = (
@@ -1273,6 +1273,30 @@ def resolve_equipment_group_energy_unit(raw_value, regional_district_id, version
     return resolved_id, None
 
 
+def validate_equipment_group_external_code(group, new_code: str) -> str | None:
+    from flask_login import current_user
+    from app.generation.services.station_services.external_code_check_services import (
+        _check_external_code_conflict,
+    )
+
+    if not current_user.is_authenticated or not current_user.is_admin:
+        return "Изменение external_code доступно только администратору."
+    if not new_code:
+        return "external_code не может быть пустым."
+    if len(new_code) > 36:
+        return "external_code не может быть длиннее 36 символов."
+    if new_code != (group.external_code or "").strip():
+        conflict_id = _check_external_code_conflict(
+            EquipmentGroup, group.id, group.database_version_id, new_code
+        )
+        if conflict_id is not None:
+            return (
+                f"Код {new_code!r} уже используется группой оборудования id={conflict_id} "
+                f"в версии БД {group.database_version_id}."
+            )
+    return None
+
+
 def update_equipment_group_from_form(equipment_group_id, form_data):
     """
     Обновляет EquipmentGroup из данных формы.
@@ -1297,6 +1321,15 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
         suggested_equipment_group_name,
     )
 
+    new_code = None
+    if "external_code" in form_data:
+        new_code = (form_data.get("external_code") or "").strip()
+        code_error = validate_equipment_group_external_code(group, new_code)
+        if code_error:
+            return False, code_error, [], None
+        if new_code == group.external_code:
+            new_code = None
+
     old_name_before = (group.name or "").strip()
     old_suggested_before = suggested_equipment_group_name(
         equipment_group_id, current_name=old_name_before
@@ -1306,7 +1339,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
     current_version_id = get_current_db_version_id()
 
     # Слияние по имени – только при переименовании. Иначе голова составной станции
-    # с тем же автоименем, что у дочерней группы, съедает ребёнка при смене типа.
+    # с тем же автоименем, что у дочерней группы, съедает ребенка при смене типа.
     name_changed = bool(new_name) and new_name != old_name_before
     if name_changed:
         result = rename_or_merge_equipment_group_for_station(
@@ -1324,6 +1357,12 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
     target_group = EquipmentGroup.query.filter_by(id=target_id).first()
     if not target_group:
         return False, "Группа оборудования не найдена", [], None
+
+    if target_id != equipment_group_id and new_code is not None:
+        code_error = validate_equipment_group_external_code(target_group, new_code)
+        if code_error:
+            db.session.rollback()
+            return False, code_error, [], None
 
     def _parse_int(val):
         if not val or not str(val).strip():
@@ -1363,6 +1402,13 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
         new_res_id = target_group.regional_energy_system_id
 
     change_details = []
+    if new_code is not None:
+        change_details.append((
+            "external_code",
+            _format_val_for_log(target_group.external_code),
+            new_code,
+        ))
+        target_group.external_code = new_code
 
     text_fields = [
         "name",
@@ -1582,7 +1628,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
             ))
 
     # Автоназвание: «Станция (тип)» при ровно одной привязанной станции.
-    # Ручное имя из формы сохраняется; поле остаётся редактируемым.
+    # Ручное имя из формы сохраняется; поле остается редактируемым.
     auto_name = apply_auto_equipment_group_name(
         target_group,
         old_name=old_name_before,
@@ -1613,7 +1659,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
 
 def _validate_and_sync_composite_fields(group: EquipmentGroup) -> str | None:
     """
-    Проверяет comp/main и при MAIN>0 подтягивает Station родителя на связи ребёнка.
+    Проверяет comp/main и при MAIN>0 подтягивает Station родителя на связи ребенка.
     Возвращает текст ошибки или None.
     """
     from app.extensions import db

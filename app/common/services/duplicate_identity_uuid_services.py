@@ -141,7 +141,7 @@ def _station_labels(ids: list[int]) -> dict[int, dict[str, Any]]:
             f"""
             SELECT id, name, name_combined, name_so
             FROM {SCHEMA_GENERATION}.gs_gen_stations
-            WHERE id IN :ids
+            WHERE id IN :ids AND is_generation_only IS FALSE
             """
         ).bindparams(bindparam("ids", expanding=True)),
         {"ids": ids},
@@ -245,6 +245,8 @@ def build_duplicate_identity_uuid_report(
             )
 
     station_ids = [item.row_id for item in station_rewrites]
+    station_labels = _station_labels(station_ids)
+    station_rewrites = [item for item in station_rewrites if item.row_id in station_labels]
     machine_ids = [item.row_id for item in machine_rewrites]
     refdata_total = sum(item["count"] for item in refdata_tables)
     return {
@@ -255,7 +257,7 @@ def build_duplicate_identity_uuid_report(
         ),
         "stations": {
             "count": len(station_rewrites),
-            "rows": _section_rows(station_rewrites, _station_labels(station_ids)),
+            "rows": _section_rows(station_rewrites, station_labels),
         },
         "machines": {
             "count": len(machine_rewrites),

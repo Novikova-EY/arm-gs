@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required
 
 from app.ecology.routes.ecology_bp import ecology_bp
@@ -93,8 +93,7 @@ def _render_report(kind: str):
 
 def _import_report(kind: str):
     if not can_edit_ecology(current_user):
-        flash("Недостаточно прав для загрузки данных.", "danger")
-        return _redirect_kind(kind)
+        abort(403)
     upload = request.files.get("file")
     if upload is None or not upload.filename:
         flash("Файл не выбран.", "danger")
@@ -120,7 +119,7 @@ def _import_report(kind: str):
         current_app.logger.exception("Импорт ГИС ТЭК (%s)", kind)
         flash("Не удалось выполнить импорт. Подробности – в журнале сервера.", "danger")
         return _redirect_kind(kind)
-    flash(stats.get("message") or "Импорт завершён.", "success")
+    flash(stats.get("message") or "Импорт завершен.", "success")
     return _redirect_kind(kind)
 
 
@@ -152,14 +151,12 @@ def hub():
 @ecology_bp.route("/formulas/")
 @login_required
 def operating_tes_formulas():
-    if not can_edit_ecology(current_user):
-        flash("Недостаточно прав для редактирования текстов формул.", "danger")
-        return redirect(url_for("ecology_bp.hub"))
     log_page_visit("Тексты формул")
     return render_template(
         "ecology/operating_tes/operating_tes_formulas.html",
         page_title="Тексты формул для модуля «Экология»",
         formula_rows=list_formulas_for_admin(),
+        can_edit=can_edit_ecology(current_user),
     )
 
 

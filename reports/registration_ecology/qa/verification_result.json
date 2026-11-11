@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "document": "АРМ_Экология_Описание_для_госрегистрации.docx",
+  "pages": 96,
+  "ecology_starts_on_page": 6,
+  "ecology_screen_presentations": 30,
+  "analysis_screenshots": 4,
+  "legacy_tabs": 4,
+  "route_declarations": 34,
+  "ecology_source_excerpts": 196,
+  "ecology_screenshots": 12,
+  "total_screenshots": 12,
+  "refdata_restored_byte_for_byte": true,
+  "ecology_code_and_tables_preserved": true,
+  "ecology_screenshots_preserved": true,
+  "styles_preserved": true,
+  "reference_report_unchanged": true,
+  "ecology_source_files_sha256_checked": 43,
+  "blank_pages": [],
+  "field_errors": [],
+  "text_outside_page": [],
+  "limitations": [
+    "No direct data edits, imports, PATCH requests or submission reviews sent",
+    "Analysis GET visits authorized by user; missing parameter rows may have been initialized; counts not checked",
+    "Other automatic-initialization screens documented from source only",
+    "Server build identity and scientific validation not established"
+  ]
+}

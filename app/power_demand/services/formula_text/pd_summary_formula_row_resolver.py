@@ -36,7 +36,7 @@ def _is_kaliningrad_synchronous_area(row: dict[str, Any]) -> bool:
 
 
 def _is_far_east_federal_district(row: dict[str, Any]) -> bool:
-    lbl = _label_cf(row).replace("ё", "е")
+    lbl = _label_cf(row).replace("\u0451", "е")
     for prefix in ("фо - ", "фо – "):
         if lbl.startswith(prefix):
             lbl = lbl[len(prefix) :].strip()

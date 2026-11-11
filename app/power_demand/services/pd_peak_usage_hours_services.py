@@ -760,7 +760,7 @@ def _chi_ec_consumption_year_applies_to_anchor(
     Для числителя ЧЧИ и строк «Потребление ЭЭ» на /power_demand/summary/ границы
     варианта соблюдаем всегда – кроме:
 
-    - «с НТ»: не режем по 2023; пустота задаётся наличием данных по субъектам
+    - «с НТ»: не режем по 2023; пустота задается наличием данных по субъектам
       «Новые территории» (``_chi_nt_subjects_have_consumption``).
     - «Первая синхронная зона» без НТ: ряд по всем годам; «Год с»=2025 ограничивает
       только вычитание Калининграда.
@@ -867,7 +867,7 @@ def _divide_combined_peak_usage_hours(
     ec_mln_kvt_ch: float | None,
     combined_on_mw: float | None,
 ) -> float | None:
-    """ЧЧИ совмещённого: (потребление, млн кВтч) / (совмещённое, МВт) × 1000."""
+    """ЧЧИ совмещенного: (потребление, млн кВтч) / (совмещенное, МВт) × 1000."""
     return _divide_hours(ec_mln_kvt_ch, combined_on_mw)
 
 
@@ -1317,7 +1317,7 @@ def inject_combined_peak_usage_hours_rows(
     years: list[int],
     _rounding_digits: int,
 ) -> None:
-    """ЧЧИ совмещённого потребления: потребление ЭЭ (млн кВтч) / combined_on (МВт) × 1000."""
+    """ЧЧИ совмещенного потребления: потребление ЭЭ (млн кВтч) / combined_on (МВт) × 1000."""
     if not summary_rows or not years:
         return
 

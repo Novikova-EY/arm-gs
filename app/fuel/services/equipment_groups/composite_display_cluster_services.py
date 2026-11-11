@@ -2,7 +2,7 @@
 """
 Кластеры отображения составных станций: ключ = parent numb (comp/main).
 
-Station через SetStation остаётся для машин/типов и подписи блока,
+Station через SetStation остается для машин/типов и подписи блока,
 но не является источником истины составности.
 
 allow_station_composite_fallback:
@@ -107,7 +107,7 @@ def assign_display_cluster_key(
                 return (f"composite:{numb}", "composite")
         # Одиночный comp=1 – fall through к station/standalone.
 
-    # Ребёнок с main, но родитель ещё не в выборке – всё равно кластер по main.
+    # Ребенок с main, но родитель еще не в выборке – все равно кластер по main.
     if not is_main_empty(getattr(eg, "main", None)):
         main = _as_int(getattr(eg, "main", None))
         return (f"composite:{main}", "composite")
@@ -135,7 +135,7 @@ def build_display_clusters(
     Группирует group_blocks в кластеры для station_blocks.
 
     parent_by_numb – EG-родители из БД (comp=1), которых может не быть в rows
-    (нет FuelParam) – нужны для имени жёлтой «всего» и composite_parent_eg_id.
+    (нет FuelParam) – нужны для имени желтой «всего» и composite_parent_eg_id.
     """
     eg_to_stations = eg_to_stations or {}
     parent_by_numb = parent_by_numb or {}
@@ -329,7 +329,7 @@ def apply_simple_station_summaries(
 ) -> list[dict]:
     """
     Итог составной станции – на строке родителя («…, всего»), как на fuel_params.
-    Отдельную жёлтую «станция, всего» для composites подавляет.
+    Отдельную желтую «станция, всего» для composites подавляет.
     """
     from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
         enrich_station_blocks_composite_display,

@@ -287,8 +287,11 @@ def add_station():
                 id_station_type=form.id_station_type.data,
                 id_regional_energy_system=default_res_id if is_fuel_decentralized_creator else None,
                 force_create=force_create,
+                is_generation_only=form.is_generation_only.data,
             )
             flash("Новая станция успешно создана!", "success")
+            if form.is_generation_only.data:
+                return redirect(url_for("energy_balance_bp.ee_generation", station_name_filter=new_station.name))
             return redirect(url_for("station_bp.station_details", station_id=new_station.id))
         except ValueError as e:
             if str(e) == "STATION_DUPLICATE":

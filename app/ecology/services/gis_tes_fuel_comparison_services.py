@@ -728,7 +728,7 @@ def apply_zv_column_group_headers(
     group_keys: tuple[str, ...],
     leaf_labels: dict[str, str],
 ) -> None:
-    """Двухрядная шапка: объединённый заголовок группы и короткие подписи столбцов."""
+    """Двухрядная шапка: объединенный заголовок группы и короткие подписи столбцов."""
     caption_rows, _key_row = _header_caption_rows(header_rows)
     if not caption_rows:
         return
@@ -826,7 +826,7 @@ def apply_zv_top_banner_headers(
     header_rows: list[list[dict[str, Any]]],
     banners: list[tuple[str, tuple[str, ...]]],
 ) -> None:
-    """Одна верхняя строка шапки с одной или несколькими объединёнными группами."""
+    """Одна верхняя строка шапки с одной или несколькими объединенными группами."""
     caption_rows, _key_row = _header_caption_rows(header_rows)
     if not caption_rows:
         return
@@ -910,7 +910,7 @@ def apply_zv_emissions_banner_headers(
     columns: list[dict[str, Any]],
     header_rows: list[list[dict[str, Any]]],
 ) -> None:
-    """Верхняя строка «Всего выброшено в атмосферу ЗВ за год, т» над всего / твёрдыми / газообразными."""
+    """Верхняя строка «Всего выброшено в атмосферу ЗВ за год, т» над всего / твердыми / газообразными."""
     from app.ecology.services.gis_tek_constants import ZV_EMISSIONS_BANNER_TITLE
 
     apply_zv_top_banner_headers(
@@ -1246,7 +1246,7 @@ def load_zv_ecology_overlay_by_numb_year(
         return {}
 
 
-# Строки для пересчёта ЗВ после правки: значения ЗВ, топливо/ТЭП и расчётные итоги.
+# Строки для пересчета ЗВ после правки: значения ЗВ, топливо/ТЭП и расчетные итоги.
 ZV_RELATED_CALC_KEYS: tuple[str, ...] = (
     "TVERD_V",
     "SO2_gaz",
@@ -1268,7 +1268,7 @@ def _zv_ecology_values_by_key(
     fuel: dict[str, Any] | None,
     norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, Any]:
-    """Свод значений по ключам столбцов для пересчёта итогов и удельных после правки."""
+    """Свод значений по ключам столбцов для пересчета итогов и удельных после правки."""
     by_key: dict[str, Any] = {
         excel_key: (zv_values or {}).get(field)
         for excel_key, field in ZV_ECOLOGY_OVERLAY_BY_KEY.items()
@@ -1326,7 +1326,7 @@ def _pg_ecology_values_by_key(
     pg_values: dict[str, Any] | None,
     fuel: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Свод значений по ключам столбцов для пересчёта d_* / K_* после правки."""
+    """Свод значений по ключам столбцов для пересчета d_* / K_* после правки."""
     by_key: dict[str, Any] = {}
     for excel_key, field in PG_ECOLOGY_OVERLAY_BY_KEY.items():
         by_key[excel_key] = (pg_values or {}).get(field)
@@ -1367,12 +1367,12 @@ def format_related_pg_ecology_cells(
     rounding_digits: int | str | None = None,
     emission_rounding_digits: int | str | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Форматирует отредактированную ячейку и все расчётные d_* / K_* / CO2 / UD_*."""
+    """Форматирует отредактированную ячейку и все расчетные d_* / K_* / CO2 / UD_*."""
     key = str(column_key or "").strip()
     related = PG_ECOLOGY_EDIT_RELATED_KEYS.get(key)
     if not related:
         related = (key,) + tuple(PG_DERIVED_COLUMN_KEYS) if key else tuple(PG_DERIVED_COLUMN_KEYS)
-    # Уникальный порядок: правка, затем расчётные.
+    # Уникальный порядок: правка, затем расчетные.
     ordered: list[str] = []
     for item in related:
         if item and item not in ordered:
@@ -1410,7 +1410,7 @@ def save_analysis_pg_ecology_cell(
     rounding_digits: int | str | None = None,
     emission_rounding_digits: int | str | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Сохраняет параметр ПГ и возвращает обновлённые отображаемые ячейки."""
+    """Сохраняет параметр ПГ и возвращает обновленные отображаемые ячейки."""
     key = str(column_key or "").strip()
     field = PG_ECOLOGY_OVERLAY_BY_KEY.get(key)
     if not field:
@@ -1444,12 +1444,12 @@ def format_related_zv_ecology_cells(
     specific_rounding_digits: int | str | None = None,
     norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, dict[str, Any]]:
-    """Форматирует отредактированную ячейку ЗВ и все расчётные итоги/удельные."""
+    """Форматирует отредактированную ячейку ЗВ и все расчетные итоги/удельные."""
     key = str(column_key or "").strip()
     related = ZV_ECOLOGY_EDIT_RELATED_KEYS.get(key)
     if not related:
         related = (key,) + tuple(ZV_COLUMN_FORMULA_KEYS) if key else tuple(ZV_COLUMN_FORMULA_KEYS)
-    # Уникальный порядок: правка, затем расчётные.
+    # Уникальный порядок: правка, затем расчетные.
     ordered: list[str] = []
     for item in related:
         if item and item not in ordered:
@@ -1488,7 +1488,7 @@ def save_analysis_zv_ecology_cell(
     specific_rounding_digits: int | str | None = None,
     norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> dict[str, dict[str, Any]]:
-    """Сохраняет параметр ЗВ и возвращает обновлённые отображаемые ячейки."""
+    """Сохраняет параметр ЗВ и возвращает обновленные отображаемые ячейки."""
     key = str(column_key or "").strip()
     field = ZV_ECOLOGY_OVERLAY_BY_KEY.get(key)
     if not field:
@@ -1721,7 +1721,9 @@ def _read_workbook_rows(path: Path) -> dict[str, list[list[Any]]]:
             if sheet_name == SKIP_SHEET_NAME:
                 continue
             worksheet = workbook[sheet_name]
-            by_name[sheet_name] = [list(row) for row in worksheet.iter_rows(values_only=True)]
+            by_name[sheet_name.replace("\u0451", "е")] = [
+                list(row) for row in worksheet.iter_rows(values_only=True)
+            ]
         return by_name
     finally:
         workbook.close()
@@ -1730,9 +1732,13 @@ def _read_workbook_rows(path: Path) -> dict[str, list[list[Any]]]:
 def _read_sheet_preview(path: Path, sheet_name: str, max_rows: int) -> list[list[Any]] | None:
     workbook = load_workbook(path, data_only=True, read_only=True)
     try:
-        if sheet_name not in workbook.sheetnames:
+        source_name = next(
+            (name for name in workbook.sheetnames if name.replace("\u0451", "е") == sheet_name),
+            None,
+        )
+        if source_name is None:
             return None
-        worksheet = workbook[sheet_name]
+        worksheet = workbook[source_name]
         rows: list[list[Any]] = []
         for index, row in enumerate(worksheet.iter_rows(values_only=True)):
             rows.append(list(row))
@@ -1855,7 +1861,7 @@ def _format_value(value: Any, numeric: bool, digits: int) -> str:
 
 
 def _format_full_value(value: Any) -> str:
-    """Значение целиком для подсказки при наведении: как в БД/расчёте, без округления."""
+    """Значение целиком для подсказки при наведении: как в БД/расчете, без округления."""
     if _is_blank(value):
         return ""
     return format_cell(value, digits=0)
@@ -1932,8 +1938,8 @@ _ID_FILTER_TO_FIELD = {
 def _clean_number(value: Any) -> Decimal | None:
     """Число без хвоста float-шума источника; None – пусто или не число.
 
-    Расчётные столбцы страницы (d_*, K_*, CO2, UD_*, ЗВ) считаем от очищенных
-    значений: иначе разность 3121 и 3120,2000000000003 даёт 0,7999999999997272.
+    Расчетные столбцы страницы (d_*, K_*, CO2, UD_*, ЗВ) считаем от очищенных
+    значений: иначе разность 3121 и 3120,2000000000003 дает 0,7999999999997272.
     """
     if _is_blank(value) or isinstance(value, bool):
         return None
@@ -1941,7 +1947,7 @@ def _clean_number(value: Any) -> Decimal | None:
 
 
 def _significant_float(value: Decimal) -> float:
-    """Расчётный столбец страницы – float, как и значения макета, но без шума."""
+    """Расчетный столбец страницы – float, как и значения макета, но без шума."""
     return float(drop_float_noise(value))
 
 
@@ -1982,7 +1988,7 @@ def _safe_sum(*values: Any) -> Any:
 
 
 def _brought_energy_mln_kwh(w_en: Any, teplo: Any) -> Any:
-    """Приведённая энергия, млн кВт·ч: W_en + Teplo / 859,8 · 1000."""
+    """Приведенная энергия, млн кВт·ч: W_en + Teplo / 859,8 · 1000."""
     energy = _clean_number(w_en)
     heat = _clean_number(teplo)
     if energy is None and heat is None:
@@ -2140,7 +2146,7 @@ def _compute_zv_total(
     filled: list[Any],
     source_columns: list[dict[str, Any]],
 ) -> list[Any]:
-    """Всего ЗВ: твёрдые вещества + газообразные и жидкие (всего)."""
+    """Всего ЗВ: твердые вещества + газообразные и жидкие (всего)."""
     out = list(filled)
     idx = _column_index(source_columns, {ZV_TOTAL_KEY})
     if idx is None:
@@ -2196,7 +2202,7 @@ def _compute_zv_specific_metrics(
     source_columns: list[dict[str, Any]],
     norm_zv_parts: list[str] | tuple[str, ...] = ZV_NORM_DEFAULT_PARTS,
 ) -> list[Any]:
-    """Приведённая энергия и удельные ЗВ: на энергию, на выработку и на топливо."""
+    """Приведенная энергия и удельные ЗВ: на энергию, на выработку и на топливо."""
     out = list(filled)
     solid = _filled_at(out, source_columns, {ZV_SOLID_KEY})
     so2 = _filled_at(out, source_columns, {"SO2_gaz"})
@@ -2284,7 +2290,7 @@ def ensure_zv_electricity_specific_column(
     header_rows: list[list[dict[str, Any]]],
     data_rows: list[list[Any]] | None = None,
 ) -> None:
-    """Столбец «на выработку электроэнергии» рядом с удельными на приведённую."""
+    """Столбец «на выработку электроэнергии» рядом с удельными на приведенную."""
     insert_column_after(
         columns,
         header_rows,
@@ -2424,7 +2430,7 @@ def apply_station_generation_overlay(
     columns: list[dict[str, Any]],
     overlay: dict[str, Any],
 ) -> list[Any]:
-    """Название станции «Генерации» и её «Руст»/выработка для строки года."""
+    """Название станции «Генерации» и ее «Руст»/выработка для строки года."""
     names = overlay.get("names_by_numb") or {}
     values = overlay.get("values_by_numb_year") or {}
     if not names and not values:
@@ -2450,7 +2456,7 @@ def _generation_stations_by_numb(
     numbs: list[int],
     version_id: int | None,
 ) -> dict[int, dict[int, str]]:
-    """NUMB группы оборудования → {ID станции «Генерации»: её название}."""
+    """NUMB группы оборудования → {ID станции «Генерации»: ее название}."""
     from app.ecology.services.gis_tek_page_services import (
         _equipment_group_query,
         linked_generation_stations,
@@ -2473,7 +2479,7 @@ def _generation_stations_by_numb(
 def _station_links_by_numb(
     stations_by_numb: dict[int, dict[int, str]],
 ) -> dict[int, list[dict[str, Any]]]:
-    """Ссылки на карточку станции: порядок имён как в столбце «Электростанция»."""
+    """Ссылки на карточку станции: порядок имен как в столбце «Электростанция»."""
     return {
         numb: [
             {"id": station_id, "name": name}
@@ -2583,8 +2589,8 @@ def load_station_affiliations_by_numb_year(
 ) -> dict[tuple[int, int], str]:
     """«Принадлежность» групп оборудования по годам – как на страницах ГИС ТЭК.
 
-    Тип станции берётся из кода VED строки «Топливо» за год; у оболочки составной
-    станции своего ved нет, поэтому тип берётся у её дочерних групп, если он у них
+    Тип станции берется из кода VED строки «Топливо» за год; у оболочки составной
+    станции своего ved нет, поэтому тип берется у ее дочерних групп, если он у них
     один (та же логика, что на /ecology/gis_tek/pg/ и /ecology/gis_tek/pollutants/).
     """
     numb_list = sorted({int(numb) for numb in numbs or [] if numb is not None})
@@ -2886,7 +2892,7 @@ def apply_zv_display_column_order(
     columns: list[dict[str, Any]],
     header_rows: list[list[dict[str, Any]]],
 ) -> None:
-    """Упорядочивает столбцы ЗВ, оставляя всего ЗВ на приведённую энергию справа."""
+    """Упорядочивает столбцы ЗВ, оставляя всего ЗВ на приведенную энергию справа."""
     for key_a, key_b in ZV_DISPLAY_COLUMN_SWAPS:
         idx_a = next((i for i, col in enumerate(columns) if col.get("key") == key_a), None)
         idx_b = next((i for i, col in enumerate(columns) if col.get("key") == key_b), None)
@@ -3025,7 +3031,7 @@ def _sum_filled_rows(
             for row in filled_list
         ]
         out[index] = _safe_sum(*parts)
-    # Пересчёт d_*/K_*/CO2/UD_* поверх сумм слагаемых (если столбцы есть).
+    # Пересчет d_*/K_*/CO2/UD_* поверх сумм слагаемых (если столбцы есть).
     return _compute_derived_columns(out, source_columns, norm_zv_parts)
 
 
@@ -3675,7 +3681,7 @@ def build_comparison_table_context(
         if numb1120_filter:
             wanted_numbs = set(numb1120_filter)
             # У сводной строки составной станции в numb – код головы, а фильтр может
-            # содержать код любой её подгруппы.
+            # содержать код любой ее подгруппы.
             groups = [
                 group
                 for group in groups

@@ -2190,8 +2190,8 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             db.session.add(machine)
             log_to_db(
                 user,
-                f"Удалён ожидаемый год модернизации без изм. мощности агрегата {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} электростанции '{station.name}': год {old_np} удалён (фактические даты перемаркировки/уточнения)"
+                f"Удален ожидаемый год модернизации без изм. мощности агрегата {station.name} ({district_name})",
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': год {old_np} удален (фактические даты перемаркировки/уточнения)"
             )
             print(f"[Сброс модерн. без изм. мощности] {station.name} – агрегат {machine.machine_number}: был {old_np}")
 

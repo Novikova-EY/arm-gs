@@ -3,7 +3,7 @@
 
 U.Index = numb2; Seek \">=\", numb1120, v, byear; последняя year ≤ cyear.
 Годы раньше byear не входят. Пустая строка в окне – Match (как в таблице Access).
-Нет строк в окне → None (Skip). Чужой Bookmark соседней станции не берём.
+Нет строк в окне → None (Skip). Чужой Bookmark соседней станции не берем.
 """
 from __future__ import annotations
 
@@ -57,8 +57,8 @@ def specific_consumption_has_payload(row) -> bool:
 def pick_specific_consumption_access_seek(rows, *, byear: int | None, cyear: int):
     """Последняя строка этой станции с byear ≤ year ≤ cyear.
 
-    Как VBA: не шаг назад «пока не найдём данные», не удельник соседней станции.
-    Пустой год в окне остаётся выбранным (Access Match).
+    Как VBA: не шаг назад «пока не найдем данные», не удельник соседней станции.
+    Пустой год в окне остается выбранным (Access Match).
     """
     window: list = []
     for row in rows:
@@ -89,7 +89,7 @@ def pick_specific_consumption_for_fuel(rows):
     """Топливо: год с данными; иначе последняя строка даже пустая.
 
     Access U.NoMatch – только когда записей нет совсем. Пустая строка 2026
-    (котельная 3607) всё равно Match: y/bk=0, но TUST = Q·TURT/1000 считается.
+    (котельная 3607) все равно Match: y/bk=0, но TUST = Q·TURT/1000 считается.
     Коэфф/Распред тоже Match на пустой строке, если в окне нет года с данными.
     """
     found = pick_specific_consumption_year_stepback(rows)
@@ -102,7 +102,7 @@ def inherit_null_specific_fields(picked, rows):
     """NULL-поля выбранного года заполнить ближайшим более ранним не-NULL.
 
     Не меняет ORM-строку (иначе flush записал бы чужой snk в 2026).
-    Явный 0 остаётся 0.
+    Явный 0 остается 0.
     """
     if picked is None:
         return None
@@ -235,7 +235,7 @@ def query_specific_consumption_year_stepback(
 ) -> EquipmentGroupSpecificFuelConsumption | None:
     """
     Актуальные удельные: max(year) ≤ target_year, у которого есть y/bk/….
-    Пустая строка расчётного года не перекрывает более раннюю с данными.
+    Пустая строка расчетного года не перекрывает более раннюю с данными.
     NULL в выбранной строке добираем из более ранних лет.
     """
     return _query_specific_consumption_with_picker(
@@ -297,7 +297,7 @@ def apply_access_seek_bookmark(this_row, bookmark: AccessSeekBookmark, *, no_mat
 
     ``this_row`` – последняя year этой станции в ``[byear, cyear]`` (или None).
     ``no_match`` – DAO Seek ``">=", numb, v, byear`` по *всей* таблице: нет ключа ≥.
-    Нет строк у себя, но Seek нашёл более позднюю станцию → оставляем bm
+    Нет строк у себя, но Seek нашел более позднюю станцию → оставляем bm
     предыдущей станции цикла (как живая Кнопка5/27/49).
     """
     if this_row is not None:

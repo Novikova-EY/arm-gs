@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Сервисы страницы «Расчёт» (/fuel/calculation) по вкладкам этапов:
+Сервисы страницы «Расчет» (/fuel/calculation) по вкладкам этапов:
 
 - coefficient – «Коэфф»
 - distribution – «Распред»

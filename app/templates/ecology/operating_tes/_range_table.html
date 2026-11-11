@@ -15,7 +15,11 @@
 </colgroup>
 <thead class="table-success">
   <tr class="text-center align-middle">
-    <th rowspan="2" class="ot-label-col">{{ 'Вид топлива' if is_chars or emission_view else 'Наименование' }}</th>
+    <th rowspan="2" class="ot-label-col">{{ 'Вид топлива' if is_chars or emission_view else 'Наименование' }}
+      {% if is_chars or emission_view or sheet.layout in ('fuel', 'coeff') %}
+      {% include 'ecology/operating_tes/_fuel_filter.html' %}
+      {% endif %}
+    </th>
     {% if is_chars %}
       {% for cell in char_header_cells %}
       <th colspan="{{ years|length }}" class="ot-char-title" title="{{ cell.title }}">{{ cell.title }}</th>

@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Импорт электроёмкости из Excel."""
+"""Импорт электроемкости из Excel."""
 
 from __future__ import annotations
 

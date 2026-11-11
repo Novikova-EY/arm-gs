@@ -2,10 +2,10 @@
 """
 Write/update-слой для EquipmentGroupFuelFormula.
 
-Импорт Excel остаётся в import_equipment_group_fuel_formula_services.py; здесь –
+Импорт Excel остается в import_equipment_group_fuel_formula_services.py; здесь –
 единый create/update для UI и возможной унификации с импортом.
 
-Выбор формулы для расчёта года – только в equipment_group_fuel_calculation_services.
+Выбор формулы для расчета года – только в equipment_group_fuel_calculation_services.
 """
 
 from __future__ import annotations
@@ -461,7 +461,7 @@ def apply_fuel_formula_bulk_save_from_form(
                         database_version_id=effective_db_version,
                     ).first()
                 )
-                # Не создаём пустые формулы «с нуля» при сохранении без текста
+                # Не создаем пустые формулы «с нуля» при сохранении без текста
                 if existing is None and not formtxt_stripped:
                     continue
 

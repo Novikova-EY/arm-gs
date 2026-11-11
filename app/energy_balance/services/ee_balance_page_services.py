@@ -40,6 +40,7 @@ from app.energy_balance.services.ee_balance_generation_services import (
     load_ee_balance_generation_inputs,
 )
 from app.energy_balance.services.ee_balance_manual_generation_services import (
+    current_ee_balance_generation_years,
     load_ee_balance_manual_generation_inputs,
     mark_manual_plan_generation_rows,
     overlay_manual_generation_inputs,
@@ -135,7 +136,7 @@ def group_ee_balance_sheets(
     groups = group_power_balance_sheets(items)
     if not any(sheet["slug"] == "2-sz-ees-vostok" for sheet in items):
         return groups
-    # Вторая зона и ОЭС Востока используют один баланс, без дублирования в расчётах.
+    # Вторая зона и ОЭС Востока используют один баланс, без дублирования в расчетах.
     oes_group = next((group for group in groups if group["group"] == GROUP_OES), None)
     if oes_group is None:
         oes_group = {"group": GROUP_OES, "sheets": []}
@@ -184,7 +185,7 @@ def get_ee_balance_sheet(slug: str) -> dict[str, Any] | None:
 
 
 def resolve_ee_balance_hydro_year(value: Any) -> str:
-    raw = str(value or "").strip().casefold().replace("ё", "е")
+    raw = str(value or "").strip().casefold().replace("\u0451", "е")
     if raw in {HYDRO_YEAR_LOW, "malovodnyy", "маловодный"}:
         return HYDRO_YEAR_LOW
     return HYDRO_YEAR_AVERAGE
@@ -598,7 +599,7 @@ def _plan_tes_from_consumption_tooltip(groups: list[dict[str, Any]], tes_key: st
 
 
 MAGADAN_TES_FORECAST_TOOLTIP = (
-    "Плановые годы: годовые итоги со страницы помесячного расчёта "
+    "Плановые годы: годовые итоги со страницы помесячного расчета "
     "(форма «БЭ по месяцам») по одноименным строкам."
 )
 
@@ -1086,7 +1087,11 @@ def build_ee_balance_tables(
         _logger.exception("ee balance page: tes monthly forecast overlay failed")
     _apply_plan_tes_from_consumption(inputs, sheets, years)
     inputs = overlay_manual_generation_inputs(
-        inputs, manual_generation_inputs, sheets=sheets, plan_years=plan_list
+        inputs,
+        manual_generation_inputs,
+        sheets=sheets,
+        plan_years=plan_list,
+        current_years=current_ee_balance_generation_years(years),
     )
     apply_power_balance_input_values(tables, inputs, rounding_digits=digits)
     _force_ee_units(tables)
@@ -1160,7 +1165,7 @@ def _ees_rossii_with_tites_source_slugs(
         slug = str(item.get("slug") or "")
         if not slug or slug in source_slugs or item.get("skip_table"):
             continue
-        name = str(item.get("sheet_name") or "").casefold().replace("ё", "е")
+        name = str(item.get("sheet_name") or "").casefold().replace("\u0451", "е")
         is_tites = "титес" in name
         is_tites_child = str(item.get("parent_slug") or "") in tites_hubs
         if is_tites or is_tites_child or item.get("station_capacity_breakdown"):
@@ -1281,7 +1286,7 @@ def _ural_tyumen_energy_system(sheets: list[dict[str, Any]]) -> dict[str, Any] |
         except (AttributeError, TypeError, ValueError):
             continue
         name = str(getattr(res, "name", None) or "").strip()
-        normalized_name = name.casefold().replace("ё", "е")
+        normalized_name = name.casefold().replace("\u0451", "е")
         if parent_id != ural_id or "тюмен" not in normalized_name:
             continue
         if "ханты" not in normalized_name and "ямало" not in normalized_name:
@@ -1341,7 +1346,7 @@ def _severo_zapad_region_sheets(
         if parent_id != ues_id:
             continue
         name = str(getattr(res, "name", None) or "").strip()
-        normalized_name = name.casefold().replace("ё", "е")
+        normalized_name = name.casefold().replace("\u0451", "е")
         for key, (token, label) in wanted.items():
             if key in found or token not in normalized_name:
                 continue
@@ -1595,7 +1600,10 @@ def _overlay_ural_without_tyumen_manual_generation(
     manual_inputs = load_ee_balance_manual_generation_inputs(years, sheets=[sheet])
     row_inputs = manual_inputs.get(URAL_WITHOUT_TYUMEN_SLUG, {})
     for row in payload.get("rows") or []:
-        values = row_inputs.get(str(row.get("key") or ""), {})
+        row_key = str(row.get("key") or "")
+        if row_key != GENERATION_TES_KEY:
+            continue
+        values = row_inputs.get(row_key, {})
         if not values:
             continue
         raw_values = row.setdefault("year_values_raw", {})

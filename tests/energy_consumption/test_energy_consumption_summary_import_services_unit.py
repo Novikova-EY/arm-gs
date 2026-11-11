@@ -111,7 +111,7 @@ def test_resolve_ees_russia_aggregate_binding_uses_ees_russia_model(monkeypatch)
 
 
 def test_aggregate_sheet_labels_skips_kaliningrad_sync_zone_in_variant_column_mode():
-    """СЗ Калининграда – расчётная строка; без кода варианта не должна попадать в импорт."""
+    """СЗ Калининграда – расчетная строка; без кода варианта не должна попадать в импорт."""
     matrix = [
         ("perimeter-variants", "Наименование", 2024, 2025),
         ("", "Синхронная зона Калининградской области", 100, 5141),
@@ -205,7 +205,7 @@ def test_aggregate_from_screen_export_matrix_reads_mln_and_sipr_rows():
 
 
 def test_collapse_labels_preserves_none_variant_when_variant_column_mode(monkeypatch):
-    """Строка Excel без варианта не подменяется на единственный О-1 при свёртке."""
+    """Строка Excel без варианта не подменяется на единственный О-1 при свертке."""
     monkeypatch.setattr(
         service,
         "_resolve_row_binding",

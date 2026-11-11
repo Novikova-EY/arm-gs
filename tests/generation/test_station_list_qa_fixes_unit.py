@@ -181,7 +181,7 @@ def test_parse_machine_commission_year():
 
 
 def test_commission_year_sort_ungrouped_voronezh_2042_not_first():
-    """Без группы оборудования каждый агрегат – отдельный блок; раньше порядок шёл по id."""
+    """Без группы оборудования каждый агрегат – отдельный блок; раньше порядок шел по id."""
     machines = [
         _sort_machine(id=10, date_commission_year=2042, machine_name="а"),
         _sort_machine(id=11, date_commission_year=2031, machine_name="б"),

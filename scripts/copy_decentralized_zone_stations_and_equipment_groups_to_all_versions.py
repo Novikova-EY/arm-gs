@@ -17,8 +17,10 @@
   * привязка агрегатов к группам в модуле «Топливо» (gs_fue_machine_fuel_param).
 
 Идентификаторы строк в целевой версии новые; межверсийная идентичность – external_code
-станции/агрегата/группы и ref_uuid справочников. Повторный запуск дублей не создаёт:
+станции/агрегата/группы и ref_uuid справочников. Повторный запуск дублей не создает:
 существующие строки (по external_code, (группа, год) и т.п.) пропускаются.
+Если существующий агрегат с тем же external_code привязан к другой станции,
+копирование текущей целевой версии отменяется с ошибкой, без перепривязки.
 
 Запуск (из корня репозитория, с настроенным .env / БД):
 
@@ -112,7 +114,7 @@ from app.refdata.models.refdata_for_stations.technologies.technology_type_model 
 )
 from app.refdata.models.years.year_model import Year
 
-# Служебные колонки: id выдаёт БД, created_at/updated_at – серверные значения.
+# Служебные колонки: id выдает БД, created_at/updated_at – серверные значения.
 SERVICE_COLUMNS = frozenset({"id", "created_at", "updated_at"})
 
 # Параметры групп оборудования: копируются по (группа, год) и не имеют собственного «смысла» версии.
@@ -157,7 +159,7 @@ MACHINE_FK_FIELDS = (
 )
 
 # Справочники, которых может не быть в целевой версии: для полноты набора копия строки
-# справочника создаётся в целевой версии с тем же ref_uuid (иначе у агрегата «пропадёт»
+# справочника создается в целевой версии с тем же ref_uuid (иначе у агрегата «пропадет»
 # генкомпания и в списке станций не будет колонки ГК).
 AUTO_COPIED_REFDATA = {GenCompany: "Генерирующая компания"}
 
@@ -297,12 +299,12 @@ def _detect_source_version() -> int | None:
         return None
     found.sort(key=lambda item: (-item[1], item[0]))
     if len(found) > 1 and found[0][1] == found[1][1]:
-        # Набор уже скопирован в несколько версий: берём самую старую (исходную) –
+        # Набор уже скопирован в несколько версий: берем самую старую (исходную) –
         # повторный запуск тогда ничего не меняет.
         print(
             f"Станции ДЗ есть в нескольких версиях {found[:3]}; "
             f"источник по умолчанию – {found[0][0]}. "
-            f"Другой источник задаётся через --source-version."
+            f"Другой источник задается через --source-version."
         )
     return found[0][0]
 
@@ -460,6 +462,15 @@ def _copy_machine(
         .first()
     )
     if existing is not None:
+        if existing.id_station != target_station_id:
+            raise ValueError(
+                f"Конфликт привязки агрегата external_code={source.external_code}: "
+                f"источник id={source.id}, станция id={source.id_station}; "
+                f"версия {target_version_id}, агрегат id={existing.id}, "
+                f"станция id={existing.id_station}, ожидается id={target_station_id}. "
+                "Копирование версии отменено; проверьте идентичность агрегата "
+                "и станции перед переносом."
+            )
         return existing, False
 
     fk_fields = {item[0] for item in MACHINE_FK_FIELDS}
@@ -993,7 +1004,7 @@ def main() -> int:
                     _commit_with_retry()
                 else:
                     db.session.rollback()
-            except Exception as exc:  # noqa: BLE001 – версия изолирована, отчёт в конце
+            except Exception as exc:  # noqa: BLE001 – версия изолирована, отчет в конце
                 db.session.rollback()
                 failures.append(version.id)
                 print(f"Версия {version.id} ({version.version_number}): ОШИБКА {exc!r}")

@@ -27,7 +27,7 @@ def seed_missing_analysis_zv_params_from_reports(
     station_numbs: set[int] | None = None,
     years: list[int] | None = None,
 ) -> int:
-    """Создаёт отсутствующие строки параметров из отчетных ЗВ (без перезаписи правок)."""
+    """Создает отсутствующие строки параметров из отчетных ЗВ (без перезаписи правок)."""
     from app.ecology.models.zv_param_calc_model import ZVParamCalc
     from app.ecology.models.zv_report_gis_tek_model import ZVReportGisTek
 
@@ -49,7 +49,7 @@ def upsert_analysis_zv_param_values(
     year_number: int,
     values: dict[str, Any],
 ) -> Any:
-    """Создаёт или обновляет параметры страницы анализа ЗВ."""
+    """Создает или обновляет параметры страницы анализа ЗВ."""
     from app.ecology.models.zv_param_calc_model import ZVParamCalc
     from app.ecology.models.zv_report_gis_tek_model import ZVReportGisTek
 

@@ -81,7 +81,7 @@
     white-space: normal;
     max-width: 100%;
 }
-/* Общие отступы меню; прокрутку не задаём здесь – иначе двойной скролл с .dp-thead-year-scroll */
+/* Общие отступы меню; прокрутку не задаем здесь – иначе двойной скролл с .dp-thead-year-scroll */
 .distribution-params-table thead .dp-thead-filter-menu {
     min-width: 11rem;
 }
@@ -112,12 +112,12 @@
     /* Сохраняет mb-2 последней строки кнопок внутри панели (как на edit_data) */
     display: flow-root;
 }
-/* Свёрнутая строка не занимает место в потоке (как на station_list) */
+/* Свернутая строка не занимает место в потоке (как на station_list) */
 .distribution-sticky-controls > .col-12:has(> #distributionImportExportCollapse:not(.show):not(.collapsing)) {
     display: none;
 }
 /* Без анимации высоты: иначе .collapsing { height:0 } + overflow:visible рисует
-   «Экспорт» поверх «Сбросить», а пересчёт липкой шапки растягивает это на секунды */
+   «Экспорт» поверх «Сбросить», а пересчет липкой шапки растягивает это на секунды */
 #distributionImportExportCollapse.collapsing {
     height: auto !important;
     transition: none !important;
@@ -130,7 +130,7 @@
 #distributionParamsTableContainer.table-responsive {
     overflow: visible !important;
 }
-/* Трёхстрочная шапка липнет под панелью кнопок/импорта */
+/* Трехстрочная шапка липнет под панелью кнопок/импорта */
 #distributionParamsTableContainer .distribution-params-table thead tr:nth-child(1) th {
     top: calc(var(--distribution-controls-sticky-height, 0px) + var(--sticky-thead-row1-top, 0px));
     z-index: 50;
@@ -426,7 +426,7 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Топливо»</a>
         {% set calc_qs = request.query_string.decode('utf-8') if request.query_string else '' %}
-        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Расчёт</a>
+        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Расчет</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Основные топливные параметры</a>
     </div>
 
@@ -1209,7 +1209,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 } else if (!isPeriod && st.new_rows_returned === 0 && st.ues_skip_no_filled_source_before_target > 0) {
                     diag += "\n\nПо данным сервера: есть строки с этим базовым годом, но для части ОЭС не найдена заполненная строка с расчитываемым годом строго меньше целевого.";
                 } else if (isPeriod && (st.new_rows_returned === 0 || st.new_rows_returned == null)) {
-                    diag += "\n\nПо данным сервера: за выбранный период не сформировано ни одной строки (нет источников с годом расчёта строго меньше целевого).";
+                    diag += "\n\nПо данным сервера: за выбранный период не сформировано ни одной строки (нет источников с годом расчета строго меньше целевого).";
                 }
                 var warnMsg =
                     "Нет строк для записи в базу.\n\n" +

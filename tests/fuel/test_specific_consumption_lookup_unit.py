@@ -86,7 +86,7 @@ def test_inherit_does_not_replace_explicit_zero():
 
 
 def test_inherit_skips_empty_year_then_uses_earlier_as_is():
-    """Нет payload в 2026 – как Access без этой строки: берём 2025 целиком."""
+    """Нет payload в 2026 – как Access без этой строки: берем 2025 целиком."""
     empty_2026 = _row(2026)
     row_2025 = _row(2025, snk=Decimal("13"), bk=None)
     picked = resolve_specific_consumption_for_fuel([empty_2026, row_2025])

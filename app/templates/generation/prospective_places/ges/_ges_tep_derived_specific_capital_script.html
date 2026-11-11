@@ -1,4 +1,4 @@
-{# Пересчёт «Удельные капиталовложения…» на лету. Ожидает ges_tep_price_derive_config. Оборачивайте в <script> при include. #}
+{# Пересчет «Удельные капиталовложения…» на лету. Ожидает ges_tep_price_derive_config. Оборачивайте в <script> при include. #}
 (function gesTepDerivedSpecificCapitalInit() {
     const cfg = {{ (ges_tep_price_derive_config or {})|tojson|safe }};
     if (cfg == null || typeof cfg !== "object") return;

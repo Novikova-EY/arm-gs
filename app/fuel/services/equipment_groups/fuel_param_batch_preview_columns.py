@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Колонки предпросмотра таблицы основных топливных параметров (пакетный пересчёт, страница «Расчёт»)."""
+"""Колонки предпросмотра таблицы основных топливных параметров (пакетный пересчет, страница «Расчет»)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 
-# Полный набор как на stations_equipment_group_fuel_params / пакетный пересчёт.
+# Полный набор как на stations_equipment_group_fuel_params / пакетный пересчет.
 FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
     ("numb1120", "Код группы оборудования", False),
     ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
@@ -62,7 +62,7 @@ FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
     ("nt_sum", EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL, True),
 ]
 
-# Входы и результаты этапов Коэфф / Распред / расчётных формул по строке (без долей по видам топлива).
+# Входы и результаты этапов Коэфф / Распред / расчетных формул по строке (без долей по видам топлива).
 FUEL_PARAM_PREVIEW_COLUMNS_CALCULATION: list[tuple[str, str, bool]] = [
     ("numb1120", "Код группы оборудования", False),
     ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
@@ -118,7 +118,7 @@ def resolve_fuel_param_preview_columns(
     column_set: str | None,
 ) -> tuple[list[tuple[str, str, bool]], list[str]]:
     """
-    column_set: «full» (по умолчанию) или «calculation» – только поля баланса и расчётных показателей по строке.
+    column_set: «full» (по умолчанию) или «calculation» – только поля баланса и расчетных показателей по строке.
     Возвращает (список колонок, атрибуты для сворачивания блока углей; для calculation – пусто).
     """
     key = (column_set or "full").strip().lower()

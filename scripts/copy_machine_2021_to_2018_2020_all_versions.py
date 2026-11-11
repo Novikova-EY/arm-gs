@@ -213,7 +213,7 @@ def main() -> None:
                 print("Изменения сохранены.")
             else:
                 db.session.rollback()
-                print("Dry-run завершён: все изменения отменены.")
+                print("Dry-run завершен: все изменения отменены.")
 
         except Exception:
             db.session.rollback()

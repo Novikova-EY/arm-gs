@@ -258,6 +258,20 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         index=True
     )
 
+    technical_inspection_codes = db.relationship(
+        "TechnicalInspectionCode",
+        foreign_keys="TechnicalInspectionCode.machine_id",
+        lazy="dynamic",
+    )
+
+    # Связь с техническими характеристиками Техинспекции
+    turbine_technical_characteristics = db.relationship(
+        'EquipmentTechnicalCharacteristic',
+        backref='machine',
+        foreign_keys='EquipmentTechnicalCharacteristic.machine_id',
+        lazy='dynamic'
+    )
+
     # ----- Runtime helpers (не маппятся в БД) -----
     def _is_pgu_parent_with_parts(self) -> bool:
         """PGU parent: years of commission/modernization shown on parts, not on whole PGU."""
@@ -695,7 +709,7 @@ def _make_new_machine_external_code() -> str:
     """
     Новый external_code должен быть постоянным идентификатором машины,
     а не функцией от изменяемых полей. Поэтому для genuinely new machine
-    выдаём uuid4 один раз и потом больше его не пересчитываем.
+    выдаем uuid4 один раз и потом больше его не пересчитываем.
     """
     return str(uuid.uuid4())
 
@@ -790,7 +804,7 @@ def _find_existing_machine_external_code(connection, target) -> str | None:
 
     Приоритет:
     1. По id_ti, если он есть и однозначен.
-    2. По жёсткой сигнатуре внутри семейства электростанции:
+    2. По жесткой сигнатуре внутри семейства электростанции:
        station.external_code + machine_number + machine_name + date_exploitation.
 
     Если однозначного матча нет, считаем машину genuinely new и генерируем
@@ -818,7 +832,7 @@ def generate_external_code_before_insert(mapper, connection, target):
     external_code больше не должен пересчитываться из текущих параметров машины:
     это постоянный identity-key логического агрегата между версиями БД.
     Поэтому при вставке сначала пытаемся найти уже существующий код семейства,
-    а если машины ещё нигде нет – выдаём новый UUID один раз.
+    а если машины еще нигде нет – выдаем новый UUID один раз.
     В одной версии БД код не должен совпадать с уже существующим агрегатом.
     """
     preferred = (target.external_code or "").strip() or None

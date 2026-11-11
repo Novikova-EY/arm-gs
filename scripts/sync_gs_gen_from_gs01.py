@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Полная копия БД gs_gen с удалённого сервера gs01 на локальный PostgreSQL.
+Полная копия БД gs_gen с удаленного сервера gs01 на локальный PostgreSQL.
 
 Использует pg_dump (custom format) + pg_restore.
 Перезаписывает объекты и данные в локальной БД gs_gen.
@@ -18,7 +18,7 @@
 Переменные окружения (или .env в корне проекта):
   GS01_DB_HOST   – хост gs01 (по умолчанию 10.31.205.27)
   GS01_DB_PORT   – порт (по умолчанию 5432)
-  DB_USER, DB_PASSWORD / DB_PASS, DB_NAME – учётные данные
+  DB_USER, DB_PASSWORD / DB_PASS, DB_NAME – учетные данные
   DB_HOST        – локальный хост (по умолчанию localhost)
   DB_PORT        – локальный порт
   PG_DUMP, PG_RESTORE, PSQL – пути к утилитам (опционально)
@@ -179,14 +179,14 @@ def _restore_local_alembic_versions(
     db_name: str,
     backup: dict[str, list[str]],
 ) -> None:
-    """Возвращает сохранённые ревизии после restore (серверные значения вытесняются)."""
+    """Возвращает сохраненные ревизии после restore (серверные значения вытесняются)."""
     if not backup:
         print("    backup alembic_version пуст – stamp после sync не выполнен")
         return
 
     for full_name, versions in backup.items():
         schema, table = full_name.split(".", 1)
-        # Таблица могла не попасть в дамп (exclude) – создаём при необходимости.
+        # Таблица могла не попасть в дамп (exclude) – создаем при необходимости.
         create_sql = (
             f"CREATE TABLE IF NOT EXISTS {schema}.{table} ("
             f"version_num VARCHAR(32) NOT NULL PRIMARY KEY);"
@@ -306,7 +306,7 @@ def main() -> int:
     print("=" * 60)
     print("Копирование БД gs_gen: gs01 -> localhost")
     print(f"  Источник:  {remote_host}:{remote_port}/{db_name} (user {remote_user})")
-    print(f"  Приёмник:  {local_host}:{local_port}/{db_name} (user {local_user})")
+    print(f"  Приемник:  {local_host}:{local_port}/{db_name} (user {local_user})")
     print(f"  Dump file: {dump_path}")
     if args.exclude_migrations:
         print(
@@ -441,7 +441,7 @@ def main() -> int:
         if not args.skip_dump:
             _run(dump_cmd, remote_env, "pg_dump с gs01")
             size_mb = dump_path.stat().st_size / (1024 * 1024)
-            print(f"    Дамп сохранён: {dump_path} ({size_mb:.1f} MiB)")
+            print(f"    Дамп сохранен: {dump_path} ({size_mb:.1f} MiB)")
         elif not dump_path.is_file():
             print(f"Ошибка: файл дампа не найден: {dump_path}", file=sys.stderr)
             return 1
@@ -466,7 +466,7 @@ def main() -> int:
             )
 
         print(
-            "\n    Закройте в pgAdmin вкладки Query Tool, подключённые к gs_gen "
+            "\n    Закройте в pgAdmin вкладки Query Tool, подключенные к gs_gen "
             "(иначе DROP SCHEMA может зависнуть)."
         )
         _run(drop_schemas_cmd, local_env, "удаление схем gs_* на локальной БД")
@@ -540,7 +540,7 @@ def main() -> int:
         "-c",
         sample_sql,
     ]
-    _run(sample_cmd, local_env, "контрольные счётчики (локально)")
+    _run(sample_cmd, local_env, "контрольные счетчики (локально)")
 
     alembic_check_sql = (
         "SELECT schema_name, version_num FROM ("

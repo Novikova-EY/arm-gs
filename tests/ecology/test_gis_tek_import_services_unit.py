@@ -54,7 +54,7 @@ def test_safe_decimal_drops_float_noise_from_excel_cells():
     assert safe_decimal(1.522) == Decimal("1.522")
     assert safe_decimal(863585.0) == Decimal("863585")
     assert safe_decimal("1,02963561999219") == Decimal("1.02963561999219")
-    # Для текста ограничение по знакам после запятой остаётся прежним (max_digits).
+    # Для текста ограничение по знакам после запятой остается прежним (max_digits).
     assert safe_decimal("0.12345678901234567890") == Decimal("0.1234567890123457")
 
 

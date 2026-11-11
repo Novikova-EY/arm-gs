@@ -99,10 +99,10 @@ def _parse_dp_row_from_form(
         try:
             id_base = int(id_base_s)
         except ValueError:
-            errors.append(f"Строка {label}: некорректный расчётный год (byear).")
+            errors.append(f"Строка {label}: некорректный расчетный год (byear).")
             return None, errors
         if db.session.get(Year, id_base) is None:
-            errors.append(f"Строка {label}: расчётный год не найден в справочнике.")
+            errors.append(f"Строка {label}: расчетный год не найден в справочнике.")
             return None, errors
 
     numeric: dict[str, object] = {}
@@ -226,7 +226,7 @@ def _write_distribution_parameter_delete_logs(user: Any, deleted_ids: list[int])
         log_to_db(
             user,
             "Параметры распределения: удаление из таблицы",
-            details=f"Удалён параметр распределения id={did}",
+            details=f"Удален параметр распределения id={did}",
             entity_type="distribution_parameter",
             entity_id=did,
         )
@@ -331,7 +331,7 @@ def apply_distribution_parameters_bulk_apply_from_payload(
 ) -> tuple[int, list[str]]:
     """
     Сохраняет строки во **все версии БД** (как импорт / сохранение формы).
-    Вставка или обновление по ОЭС + базовый год + расчётный год.
+    Вставка или обновление по ОЭС + базовый год + расчетный год.
     """
     from app.fuel.services.distribution_parameters.distribution_parameters_all_versions_services import (
         upsert_distribution_parameter_in_all_versions,
@@ -358,7 +358,7 @@ def apply_distribution_parameters_bulk_apply_from_payload(
         assert parsed is not None
         key = (parsed["id_ues"], parsed["id_base"], parsed["id_year"])
         if key in seen_keys:
-            errors.append(f"{label}: дубликат пары ОЭС/базовый год/расчётный год в запросе.")
+            errors.append(f"{label}: дубликат пары ОЭС/базовый год/расчетный год в запросе.")
             continue
         seen_keys.add(key)
         parsed_list.append(parsed)
@@ -382,7 +382,7 @@ def apply_distribution_parameters_bulk_apply_from_payload(
         byear_num = year_number_by_id(id_base)
         ues_uuid = ues_ref_uuid_by_id(id_ues)
         if year_num is None:
-            errors.append("Не удалось определить номер расчётного года.")
+            errors.append("Не удалось определить номер расчетного года.")
             continue
 
         data = {attr: numeric.get(attr) for attr in _NUMERIC_ATTRS}
@@ -433,7 +433,7 @@ def apply_distribution_parameters_save_from_form(
     user: Any | None = None,
 ) -> tuple[int, list[str]]:
     """
-    Обновляет/создаёт строки с формы и **синхронизирует во все версии БД**
+    Обновляет/создает строки с формы и **синхронизирует во все версии БД**
     (общий ``ref_uuid``).
 
     Returns:
@@ -548,7 +548,7 @@ def apply_distribution_parameters_save_from_form(
         year_num = year_number_by_id(id_year)
         byear_num = year_number_by_id(id_base)
         if year_num is None:
-            errors.append(f"Строка id={rid}: не удалось определить номер расчётного года.")
+            errors.append(f"Строка id={rid}: не удалось определить номер расчетного года.")
             continue
 
         _ref, _a, _u, _warns = upsert_distribution_parameter_in_all_versions(
@@ -573,7 +573,7 @@ def apply_distribution_parameters_save_from_form(
         year_num = year_number_by_id(parsed["id_year"])
         byear_num = year_number_by_id(parsed["id_base"])
         if year_num is None:
-            errors.append(f"Новая строка ({token}): не удалось определить номер расчётного года.")
+            errors.append(f"Новая строка ({token}): не удалось определить номер расчетного года.")
             continue
 
         _blank = DistributionParameter()

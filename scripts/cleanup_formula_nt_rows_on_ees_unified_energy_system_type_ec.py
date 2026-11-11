@@ -54,7 +54,7 @@ def _rows_to_delete() -> list[EnergySystemTypeEnergyConsumptionParameter]:
     if allowed & _MISPLACED_NT_CODES:
         print(
             "Предупреждение: в каталоге для «ЕЭС России» разрешены plain with_nt/without_nt; "
-            "скрипт всё равно удалит только строки типа «ЕЭС России», не ТИТЭС."
+            "скрипт все равно удалит только строки типа «ЕЭС России», не ТИТЭС."
         )
     type_ids = _ees_unified_type_ids_by_version()
     rows: list[EnergySystemTypeEnergyConsumptionParameter] = []

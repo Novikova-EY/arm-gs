@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Агрегаты ФО: сумма по полным title РЭС, не по округлённым year_values."""
+"""Агрегаты ФО: сумма по полным title РЭС, не по округленным year_values."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def test_summary_row_year_float_prefers_tooltip_over_rounded_display() -> None:
 
 
 def test_fo_combined_on_fo_aggregate_uses_tooltip_precision() -> None:
-    """Как Сибирский ФО при округлении «до целого»: display округлён, title – полный."""
+    """Как Сибирский ФО при округлении «до целого»: display округлен, title – полный."""
     years = [2022, 2024]
     rows = [
         {
@@ -53,7 +53,7 @@ def test_fo_combined_on_fo_aggregate_uses_tooltip_precision() -> None:
 
 
 def test_fo_aggregate_includes_tites_branch_res() -> None:
-    """Норильск (ТИТЭС) под Сибирским ФО входит в расчётный максимум ФО."""
+    """Норильск (ТИТЭС) под Сибирским ФО входит в расчетный максимум ФО."""
     years = [2022, 2023]
     rows = [
         {

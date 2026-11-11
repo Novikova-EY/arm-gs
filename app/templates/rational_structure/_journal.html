@@ -1,0 +1,22 @@
+<details class="mt-4 mb-3 rs-journal" data-logs-url="{{ url_for('rational_structure_module_bp.module_logs') }}">
+    <summary class="h5">Журнал изменений – Рациональная структура</summary>
+    <div class="form-check my-2">
+        <input class="form-check-input rs-journal-page-events" type="checkbox" id="rs-journal-page-events">
+        <label class="form-check-label" for="rs-journal-page-events">Показывать входы на страницы и вкладки</label>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered change-log-table" data-auto-export-excel="off">
+            <thead class="table-light"><tr>
+                <th class="log-col-datetime">Дата и время</th>
+                <th class="log-col-user">Пользователь</th>
+                <th class="log-col-action">Действие</th>
+                <th class="log-col-database-version">Версия базы данных</th>
+                <th class="log-col-details">Информация</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <p class="rs-journal-status" role="status" aria-live="polite"></p>
+    <button class="btn btn-outline-primary btn-sm rs-journal-more" type="button">Загрузить записи</button>
+</details>
+<script src="{{ url_for('static', filename='js/rational_structure/journal.js') }}"></script>

@@ -203,7 +203,7 @@ def _effective_flags(
 
 
 def _parent_display_name(donor: EquipmentGroup, meta: dict[str, Any], sess: Session) -> str:
-    """Имя родителя: Excel → Station.name → усечённое имя ребёнка."""
+    """Имя родителя: Excel → Station.name → усеченное имя ребенка."""
     excel_name = (meta.get("name") or "").strip()
     if excel_name:
         return excel_name[:255]
@@ -258,7 +258,7 @@ def _resolve_station_for_parent(
     Station для родителя целевой версии:
     1) голоса детей этой версии;
     2) иначе сиблинги других версий + resolve station по external_code;
-    3) иначе no_station (родителя всё равно можно создать «висящим»).
+    3) иначе no_station (родителя все равно можно создать «висящим»).
     """
     from app.fuel.services.equipment_groups.equipment_group_edit_services import (
         _resolve_grouping_station_id_for_db_version,
@@ -269,7 +269,7 @@ def _resolve_station_for_parent(
         resolved = _resolve_grouping_station_id_for_db_version(sid, target_ver)
         if resolved:
             return resolved, donor, status
-        # станция детей уже в нужной версии или resolve не нашёл копию –
+        # станция детей уже в нужной версии или resolve не нашел копию –
         # оставляем якорь (лучше, чем ничего)
         return sid, donor, status
 
@@ -280,7 +280,7 @@ def _resolve_station_for_parent(
     resolved = _resolve_grouping_station_id_for_db_version(sid2, target_ver)
     if resolved:
         return resolved, donor2, "sibling_fallback"
-    # копии станции в target_ver нет – всё же даём якорь с пометкой
+    # копии станции в target_ver нет – все же даем якорь с пометкой
     return sid2, donor2, "sibling_fallback_other_ver"
 
 
@@ -350,6 +350,8 @@ def _build_parent_eg(
     comp: int | None = 1,
     main: int | None = None,
 ) -> EquipmentGroup:
+    if ver is None or ver <= 0:
+        raise ValueError("Нельзя создать группу оборудования без версии БД.")
     main_n = _normalize_main(main if main is not None else meta.get("main"))
     eg = EquipmentGroup(
         name=str(name)[:255],
@@ -424,11 +426,11 @@ def create_missing_parent_shells_from_children(
     require_station: bool = False,
 ) -> ParentShellsResult:
     """
-    Phase A: создаёт EG-родителей там, где дети в АРМ ссылаются по MAIN,
+    Phase A: создает EG-родителей там, где дети в АРМ ссылаются по MAIN,
     а numb родителя для этой database_version_id отсутствует.
 
     Station: дети этой версии → сиблинги других версий (resolve по external_code).
-    Если станции нет – создаём «висящего» родителя (require_station=False по умолчанию).
+    Если станции нет – создаем «висящего» родителя (require_station=False по умолчанию).
     """
     sess = session or db.session
     excel_parents = excel_parents or {}
@@ -445,10 +447,14 @@ def create_missing_parent_shells_from_children(
         list
     )
     children_by_main: dict[int, list[EquipmentGroup]] = defaultdict(list)
+    skipped_unversioned = 0
 
     for eg in groups:
         numb = _as_int(eg.numb)
         ver = getattr(eg, "database_version_id", None)
+        if ver is None or ver <= 0:
+            skipped_unversioned += 1
+            continue
         flags = _effective_flags(eg, pending_flag_updates)
         main = flags["main"]
 
@@ -459,6 +465,10 @@ def create_missing_parent_shells_from_children(
             children_by_main_ver[(main, ver)].append(eg)
             children_by_main[main].append(eg)
 
+    if skipped_unversioned:
+        result.warnings.append(
+            f"Создание родителей: пропущено групп без версии БД – {skipped_unversioned}."
+        )
     unique_numbs: set[int] = set()
 
     for (main, ver), kids in sorted(
@@ -510,18 +520,18 @@ def create_missing_parent_shells_from_children(
             )
         elif st_status == "no_station":
             result.warnings.append(
-                f"Родитель numb={main} ver={ver}: Station нет – создаём без привязки."
+                f"Родитель numb={main} ver={ver}: Station нет – создаем без привязки."
             )
             result.created_without_station += 1
 
         if not meta:
             result.warnings.append(
-                f"Родитель numb={main}: нет строки в Excel – имя/поля с донора-ребёнка."
+                f"Родитель numb={main}: нет строки в Excel – имя/поля с донора-ребенка."
             )
         elif _as_int(meta.get("comp")) != 1:
             result.warnings.append(
                 f"Родитель numb={main}: в Excel COMP≠1, но дети ссылаются по MAIN – "
-                "создаём с comp=1."
+                "создаем с comp=1."
             )
 
         unique_numbs.add(main)
@@ -571,8 +581,9 @@ def create_phase_b_comp1_parents_from_excel(
     version_ids: list[int | None] | None = None,
 ) -> ParentShellsResult:
     """
-    Phase B: COMP=1 из Excel, которых ещё нет в АРМ ни в одной версии.
-    Создаёт родителя на каждую используемую database_version_id словаря EG.
+    Phase B: COMP=1 из Excel, которых еще нет в АРМ ни в одной версии.
+    Создает родителя на каждую используемую положительную database_version_id словаря EG.
+    Неверсионные группы не служат основанием для создания родителей.
     Station – по имени из Excel; если нет – «висит» без привязки.
     """
     sess = session or db.session
@@ -591,8 +602,10 @@ def create_phase_b_comp1_parents_from_excel(
             existing_numbs.add(n)
 
     versions = version_ids if version_ids is not None else _distinct_eg_version_ids(sess)
+    versions = [ver for ver in versions if ver is not None and ver > 0]
     if not versions:
-        versions = [None]
+        result.warnings.append("Phase B: нет версий БД – создание родителей пропущено.")
+        return result
 
     unique_numbs: set[int] = set()
     for numb_key, meta in sorted(
@@ -677,15 +690,16 @@ def create_missing_numbs_from_excel(
     exclude_numbs: set[int] | None = None,
 ) -> ParentShellsResult:
     """
-    Создаёт EquipmentGroup для NUMB из «Имена_станций», которых нет в текущей
+    Создает EquipmentGroup для NUMB из «Имена_станций», которых нет в текущей
     версии БД. Без привязки к Station – связь можно проставить вручную позже.
 
-    Не создаёт NUMB=0 и строки-заголовки. exclude_numbs – уже запланированные
+    Не создает NUMB=0 и строки-заголовки. exclude_numbs – уже запланированные
     Phase A/B, чтобы не дублировать.
     database_version_id=None: существование проверяется по всем версиям
-    (чтобы не предлагать дубликаты с ver=NULL); запись в этом режиме
-    вызывающий код должен запретить.
+    (чтобы не предлагать дубликаты с ver=NULL); запись в этом режиме запрещена.
     """
+    if not dry_run and (database_version_id is None or database_version_id <= 0):
+        raise ValueError("Нельзя создать отсутствующие NUMB без версии БД.")
     sess = session or db.session
     excel_rows = excel_rows or {}
     exclude = exclude_numbs or set()
@@ -772,6 +786,8 @@ def _ensure_parent_set_on_station(
     type_id: int,
     version_id: int | None,
 ) -> None:
+    if version_id is None or version_id <= 0:
+        raise ValueError("Нельзя создать связь группы со станцией без версии БД.")
     existing = (
         sess.query(EquipmentGroupSetStation)
         .filter_by(
@@ -815,7 +831,7 @@ def _ensure_parent_set_like_donor(
     *,
     version_id: int | None = None,
 ) -> None:
-    """Вешает родителя на (station, type); version берётся из аргумента или донора."""
+    """Вешает родителя на (station, type); version берется из аргумента или донора."""
     donor_sets = (
         sess.query(EquipmentGroupSet)
         .filter_by(equipment_group_id=donor.id)

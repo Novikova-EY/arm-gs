@@ -23,7 +23,7 @@ ACTION_TITLE_BY_SCOPE = {
     "ez": "сводка нагрузок по энергозонам",
 }
 
-# Журнал на сводках: первая порция и шаг «Показать ещё».
+# Журнал на сводках: первая порция и шаг «Показать еще».
 PD_SUMMARY_LOGS_INITIAL_LIMIT = 10
 PD_SUMMARY_LOGS_LOAD_MORE_LIMIT = 20
 
@@ -35,9 +35,9 @@ def entity_type_for_scope(scope: str) -> str:
 def pd_summary_logs_version_filter(database_version_id: int):
     """Записи журнала сводки: entity_id=версия или database_version_id=версия.
 
-    При записи entity_id берётся из строки параметров и может быть NULL, тогда
-    версия остаётся только в database_version_id (log_to_db). Фильтр только по
-    entity_id тогда даёт пустой журнал.
+    При записи entity_id берется из строки параметров и может быть NULL, тогда
+    версия остается только в database_version_id (log_to_db). Фильтр только по
+    entity_id тогда дает пустой журнал.
     """
     vid = int(database_version_id)
     return or_(Log.entity_id == vid, Log.database_version_id == vid)

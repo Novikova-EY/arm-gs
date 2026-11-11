@@ -571,7 +571,7 @@ def prospective_place_aes_details(id):
                 request.form,
             )
             if changes:
-                flash("Прогноз выработки электроэнергии сохранён.", "success")
+                flash("Прогноз выработки электроэнергии сохранен.", "success")
             else:
                 flash("Изменений в прогнозе выработки нет.", "info")
         except Exception as e:

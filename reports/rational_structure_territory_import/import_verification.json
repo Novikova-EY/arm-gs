@@ -1,0 +1,34 @@
+{
+  "source": "z:\\НИО-10\\АРМ ГС\\05. Шаблоны для АРМ ГС\\12. Рациональная структура\\Расчетные файлы\\Ввод данных_1.xlsx",
+  "source_sha256": "eb0d4cac0a552988305840cd490f1aabbc6e08ec5ce8723821bb386fc8a4c72d",
+  "version_id": 46,
+  "version": "ГС 2023-2042 (утвержденная)",
+  "counts": {
+    "created": 170,
+    "updated": 0,
+    "technologies": 157,
+    "sections": 13
+  },
+  "technology_fields_compared": 3611,
+  "matrix_cells_compared": 338,
+  "transfer_limits_compared": 26,
+  "other_territory_inputs_unchanged": true,
+  "migration": "rs26102604 applied directly; existing alembic_version marker preserved",
+  "production_template_render_checks": [
+    {
+      "url": "/rational_structure/territory_technologies",
+      "rendered": true,
+      "html_bytes": 232633
+    },
+    {
+      "url": "/rational_structure/territory_technologies?energy_zone=509",
+      "rendered": true,
+      "html_bytes": 62907
+    },
+    {
+      "url": "/rational_structure/territory_technologies?sheet=transfers",
+      "rendered": true,
+      "html_bytes": 69748
+    }
+  ]
+}

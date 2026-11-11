@@ -47,7 +47,7 @@ from app.generation.prospective_places.services.tep_capital_cost_current_year_se
 
 
 def _gaes_tep_derive_template_context():
-    """Контекст для расчёта удельных капвложений на карточке ГАЭС (как в таблице ТЭП)."""
+    """Контекст для расчета удельных капвложений на карточке ГАЭС (как в таблице ТЭП)."""
     from app.common.services.get_services.years.years_get_services import get_year_list_full
 
     ty = get_ges_tep_current_price_year_number()

@@ -16,7 +16,7 @@
                     {% if show_ewtp_formula_hint|default(false) and attr == 'ewtp' %}
                     <div class="d-flex flex-column align-items-center gap-1">
                         <span>{{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span></span>
-                        <button type="button" class="btn btn-outline-secondary rounded-circle p-0 border-0" style="width:1.15rem;height:1.15rem;font-size:0.65rem;line-height:1.05rem;" title="Теплофикационная выработка ЭЭ, тыс.кВтч (ewtp) = qotr · y / 1000. qotr – «Тепловое потребление (отборов турбин), тыс.Гкал» в этой строке. y – колонка (y): удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал из актуальной строки удельных расходов (год ≤ расчётного, последняя по году).">i</button>
+                        <button type="button" class="btn btn-outline-secondary rounded-circle p-0 border-0" style="width:1.15rem;height:1.15rem;font-size:0.65rem;line-height:1.05rem;" title="Теплофикационная выработка ЭЭ, тыс.кВтч (ewtp) = qotr · y / 1000. qotr – «Тепловое потребление (отборов турбин), тыс.Гкал» в этой строке. y – колонка (y): удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал из актуальной строки удельных расходов (год ≤ расчетного, последняя по году).">i</button>
                     </div>
                     {% else %}
                     {{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>

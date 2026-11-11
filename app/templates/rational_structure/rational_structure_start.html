@@ -1,0 +1,41 @@
+{% extends 'hub_base.html' %}
+{% from 'includes/hub_macros.html' import hub_tile %}
+{% block title %}Рациональная структура{% endblock %}
+{% block content %}
+<div class="home-outline">
+    <div class="home-outline__title-row">
+        <h1 class="home-outline__title">Модуль «Рациональная структура»</h1>
+    </div>
+    <section class="home-outline__section" aria-label="Отчетные данные">
+        <h2 class="home-outline__section-title">Отчетные данные</h2>
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('rational_structure_module_bp.technical_characteristics'), 'Технические характеристики турбин (Техинспекция)') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.hydro_technical_characteristics'), 'Гидротурбины (Техинспекция)') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.energy_boiler_technical_characteristics'), 'Энергетические котлы (Техинспекция)') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.water_boiler_technical_characteristics'), 'Водогрейные котлы (Техинспекция)') }}
+        </div>
+    </section>
+    <section class="home-outline__section" aria-label="Анализ данных">
+        <h2 class="home-outline__section-title">Анализ данных</h2>
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('rational_structure_module_bp.equipment_runtime'), 'Расчет наработки ЕГО', 'is-accent') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.marginal_price'), 'Расчет замыкающей цены', 'is-accent') }}
+        </div>
+    </section>
+    <hr class="my-4">
+    <section class="home-outline__section" aria-label="Исходные значения для рассчета">
+        <h2 class="home-outline__section-title">Исходные значения для рассчета</h2>
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('rational_structure_module_bp.territory_inputs'), 'Данные по территориям', 'is-accent') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.territory_technologies'), 'Технологии и МСК + МДП', 'is-accent') }}
+        </div>
+    </section>
+    <section class="home-outline__section" aria-label="Рассчитанные значения">
+        <h2 class="home-outline__section-title">Рассчитанные значения</h2>
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('rational_structure_module_bp.calculated_values', dataset_key='technologies'), 'Оптимизированные функционалы', 'is-accent') }}
+            {{ hub_tile(url_for('rational_structure_module_bp.calculated_values', dataset_key='powers'), 'Мощности по технологиям и районам', 'is-accent') }}
+        </div>
+    </section>
+</div>
+{% endblock %}

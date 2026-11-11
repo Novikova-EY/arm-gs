@@ -23,6 +23,15 @@ _DATASET_EI_COEF = "ei_coef"
 _DATASET_POP_EI_YEAR = "pop_ei_year"
 _DATASET_POP_EI_COEF = "pop_ei_coef"
 
+
+class ElectricalIntensityYearValues(dict):
+    """Map of EI cell values with explicit coefficient exclusions attached."""
+
+    def __init__(self, *args, excluded_years=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.excluded_years = frozenset(excluded_years)
+
+
 ALL_DATASETS = (
     _DATASET_PRODUCT_OUTPUT,
     _DATASET_VED_CONSUMPTION,
@@ -193,13 +202,21 @@ def _bulk_load_ei_year_values(
     q = model.query
     if version_id is not None:
         q = q.filter(model.database_version_id == version_id)
-    result: dict[int, dict[tuple[int, str, int], Decimal | None]] = {}
+    result: dict[int, ElectricalIntensityYearValues] = {}
     for row in q.all():
         if row.year_number is None or not row.row_kind:
             continue
         fd_id = int(row.id_federal_district)
-        key = (int(row.id_economic_activity_type), str(row.row_kind), int(row.year_number))
-        result.setdefault(fd_id, {})[key] = row.parameter_value
+        ved_id = int(row.id_economic_activity_type)
+        year = int(row.year_number)
+        row_kind = str(row.row_kind)
+        key = (ved_id, row_kind, year)
+        values = result.setdefault(fd_id, ElectricalIntensityYearValues())
+        values[key] = row.parameter_value
+        if row_kind == "graph_point" and getattr(
+            row, "is_excluded_from_calculation", False
+        ):
+            values.excluded_years = values.excluded_years | {(ved_id, year)}
     return result
 
 

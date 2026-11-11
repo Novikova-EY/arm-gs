@@ -12,6 +12,14 @@
         {% else %}
             {{ station_row.station_name }}
         {% endif %}
+        {% if station_row.is_generation_only %}
+        {% set generation_only_hint = 'Станция создана только для страницы «Выработка ЭЭ». Участвует в итогах этой страницы и не участвует в остальных расчетах.' %}
+        <span class="ee-generation-only-marker text-primary ms-1" tabindex="0"
+              data-bs-toggle="tooltip" data-bs-placement="top"
+              title="{{ generation_only_hint }}" aria-label="{{ generation_only_hint }}">
+            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+        </span>
+        {% endif %}
     </td>
     <td>{{ station_row.station_type_name }}</td>
     <td>{{ station_row.station_sign_display }}</td>
@@ -28,7 +36,15 @@
             </td>
             {% endif %}
         {% else %}
+            {% if station_row.is_generation_only and can_edit_energy_balance %}
+            <td class="ee-control-cell"><input class="form-control form-control-sm ee-station-value"
+                aria-label="{{ station_row.station_name }}: {{ period_label }}"
+                data-station-id="{{ station_row.station_id }}" data-period="{{ period_num }}"
+                value="{{ format_generation_input_value(station_row.periods.get(period_num), rounding_digits) }}"
+                inputmode="decimal" autocomplete="off"></td>
+            {% else %}
             <td>{{ format_generation_cell(station_row.periods.get(period_num)) }}</td>
+            {% endif %}
         {% endif %}
     {% endfor %}
 </tr>

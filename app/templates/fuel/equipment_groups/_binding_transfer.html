@@ -1,0 +1,102 @@
+<section id="bindingTransferPage" aria-labelledby="bindingTransferTitle"
+         data-url="{{ url_for('fuel_bp.equipment_group_binding_transfer') }}" data-csrf-token="{{ csrf_token }}"
+         data-catalog-url="{{ url_for('fuel_bp.stations_equipment_groups') }}">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 class="h4 mb-0" id="bindingTransferTitle">Перенос связей из другой версии базы данных</h1>
+        <a class="btn btn-outline-secondary" id="bindingTransferBack" href="{{ url_for('fuel_bp.stations_equipment_groups') }}">К словарю станций и групп оборудования</a>
+    </div>
+    <p class="mb-2">Целевая версия: <strong id="bindingTransferTarget">Загрузка…</strong></p>
+    <div class="mb-2">
+        <label class="form-label" for="bindingTransferDestination">Перенести в версию</label>
+        <select class="form-select" id="bindingTransferDestination" disabled></select>
+        <div class="form-text">Можно выбрать любую именованную версию, не меняя текущую версию приложения. Для заполнения всех версий повторите перенос для каждой цели. Столбец «Без версии» не заполняется.</div>
+    </div>
+    <p id="bindingTransferScope" class="small text-primary" hidden></p>
+    <p class="small text-muted mb-2">Типы агрегатов, явные привязки к итоговым группам и связи станций с типами и группами.
+        Источник и расчетные данные не меняются. Фильтры основной таблицы не ограничивают перенос.
+        При переходе из проверки external_code план ограничен выбранной группой и связанными с ней агрегатами и типами.</p>
+    <div class="row g-2 align-items-end mb-2">
+        <div class="col-md-9">
+            <label class="form-label" for="bindingTransferSource">Версия-источник</label>
+            <select class="form-select" id="bindingTransferSource" disabled><option value="">Выберите версию</option></select>
+        </div>
+        <div class="col-md-3 d-grid">
+            <button type="button" class="btn btn-outline-primary" id="bindingTransferPreview" disabled>Проанализировать</button>
+        </div>
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="bindingTransferCreate">
+        <label class="form-check-label" for="bindingTransferCreate">Создавать отсутствующие группы оборудования</label>
+        <div class="form-text">Без годовых параметров. Только при однозначном сопоставлении; агрегаты и справочники не создаются.</div>
+    </div>
+    <details class="small text-muted mb-2">
+        <summary>Ограничения и безопасность переноса</summary>
+        <p class="mb-1">Сопоставление выполняется по уникальным внешним кодам и UUID справочников.
+            Тип агрегата переносится независимо от итоговой группы, отличающийся тип заменяется исходным.
+            Пустой тип в источнике не очищает тип в цели. Неоднозначные записи и связи без станции
+            не переносятся автоматически. Явная привязка к итоговой группе не вычисляется по станции и типу.
+            Связи станций с типами и итоговыми группами только добавляются, без удаления существующих.</p>
+        <p class="mb-1">Мощности, даты, годовые параметры и результаты расчетов не копируются.
+            Перед массовым переносом сохраните резервную копию БД. Изменения фиксируются одной транзакцией,
+            а прежние значения сохраняются в журнале действий.</p>
+    </details>
+    <div id="bindingTransferMessage" class="alert d-none" role="status" aria-live="polite"></div>
+    <section id="bindingTransferResults" hidden aria-label="Предварительный план переноса">
+        <div id="bindingTransferSummary" class="small mb-2"></div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <label for="bindingTransferFilter" class="visually-hidden">Показать строки плана</label>
+            <select class="form-select form-select-sm w-auto" id="bindingTransferFilter">
+                <option value="changes">Изменения и проблемы</option>
+                <option value="ready">Можно перенести</option>
+                <option value="conflict">Замены итоговой группы агрегата</option>
+                <option value="blocked">Нельзя перенести автоматически</option>
+                <option value="same">Уже совпадает</option>
+                <option value="all">Все строки</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="bindingTransferSelect">Выбрать все безопасные</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="bindingTransferClear">Снять выбор</button>
+            <label class="visually-hidden" for="bindingTransferSearch">Поиск станции, агрегата или идентификатора</label>
+            <input type="search" class="form-control form-control-sm w-auto flex-grow-1" id="bindingTransferSearch" placeholder="Станция, агрегат, группа, external_code или ref_uuid">
+        </div>
+        <p class="small text-warning-emphasis">Замены итоговой группы выделены желтым и изначально не выбраны.
+            Типы агрегатов, включая замену отличающегося типа, выбраны автоматически, если сопоставление однозначно.
+            Тип и явная итоговая группа агрегата переносятся отдельными строками. Неразрешенные строки будут пропущены.</p>
+        <div class="table-responsive" style="max-height: 65vh;">
+            <table class="table table-sm table-bordered align-middle mb-0" style="min-width: 2400px;">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th scope="col">Выбор</th>
+                        <th scope="col">Станция / агрегат</th>
+                        <th scope="col">Сейчас в текущей версии</th>
+                        <th scope="col">Из источника</th>
+                        <th scope="col">external_code группы – текущая версия</th>
+                        <th scope="col">external_code группы – источник</th>
+                        <th scope="col">ref_uuid типа – текущая версия</th>
+                        <th scope="col">ref_uuid типа – источник</th>
+                        <th scope="col">Связь со станцией – текущая версия</th>
+                        <th scope="col">Связь со станцией – источник</th>
+                        <th scope="col">Результат анализа</th>
+                    </tr>
+                </thead>
+                <tbody id="bindingTransferRows"></tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <span class="small" id="bindingTransferSelection" aria-live="polite"></span>
+            <div class="btn-group btn-group-sm" aria-label="Страницы плана">
+                <button type="button" class="btn btn-outline-secondary" id="bindingTransferPrevious">Назад</button>
+                <button type="button" class="btn btn-outline-secondary" id="bindingTransferNext">Далее</button>
+            </div>
+        </div>
+    </section>
+    <div class="d-flex flex-wrap align-items-center gap-2 border-top pt-3 mt-3">
+        <div class="form-check w-100 small" id="bindingTransferConfirmation" hidden>
+            <input class="form-check-input" type="checkbox" id="bindingTransferConfirm">
+            <label class="form-check-label" for="bindingTransferConfirm">Подтверждаю перенос выбранных строк, включая отмеченные замены.</label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary" id="bindingTransferDownload" hidden>Скачать отчет Excel (.xlsx)</button>
+        <button type="button" class="btn btn-primary" id="bindingTransferApply" disabled>Перенести выбранные</button>
+        <button type="button" class="btn btn-outline-primary" id="bindingTransferRepeat" hidden>Перенести в следующую версию</button>
+        <button type="button" class="btn btn-success" id="bindingTransferReload" hidden>Открыть таблицу</button>
+    </div>
+</section>

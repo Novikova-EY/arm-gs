@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Экспорт таблицы электроёмкости в Excel (формат «Таблица 1»)."""
+"""Экспорт таблицы электроемкости в Excel (формат «Таблица 1»)."""
 
 from __future__ import annotations
 
@@ -362,7 +362,7 @@ class _ExcelExportWriter:
 
         for points, title, color, markers in (
             (fact, "Фактическая", _CHART_FACT_COLOR, True),
-            (calc, "Расчётная", _CHART_CALC_COLOR, False),
+            (calc, "Расчетная", _CHART_CALC_COLOR, False),
         ):
             block = self._chart_staging_block(points)
             if not block:

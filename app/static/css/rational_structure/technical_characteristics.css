@@ -1,0 +1,146 @@
+.rs-technical-page .rs-table-container {
+    max-height: 68vh;
+    overflow: auto;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.rs-technical-page .rs-technical-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+.rs-technical-table th,
+.rs-technical-table td {
+    min-width: 100px;
+    max-width: 170px;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    vertical-align: middle;
+}
+
+.rs-sticky-toolbar-page .rs-technical-table tbody td,
+.rs-sticky-toolbar-page .rs-technical-table tbody th {
+    text-align: center !important;
+}
+
+.rs-technical-page .rs-technical-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-bottom: 2.8rem;
+    background: var(--bs-success-bg-subtle, #d1e7dd);
+}
+
+.rs-sticky-toolbar-page .rs-table-toolbar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    padding: 0.5rem 0;
+    background: var(--bs-body-bg, #fff);
+}
+
+.rs-sticky-toolbar-page .rs-technical-table thead th {
+    top: var(--rs-table-toolbar-height, 0px);
+}
+
+.rs-technical-page .rs-technical-table thead th > .rs-column-filter,
+.rs-technical-page .rs-technical-table thead th > .numb1120-filter-wrap {
+    position: absolute;
+    left: 0.3rem;
+    right: 0.3rem;
+    bottom: 0.35rem;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+    margin-top: 0;
+}
+
+.rs-technical-table th:first-child,
+.rs-technical-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 130px;
+    max-width: 170px;
+    background: var(--bs-body-bg, #fff);
+}
+
+.rs-technical-page .rs-technical-table thead th:first-child {
+    z-index: 3;
+}
+
+.rs-technical-page .rs-file-input {
+    width: min(100%, 680px);
+}
+
+.rs-technical-page .rs-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.rs-filter-row .form-select,
+.rs-filter-row .form-control {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.rs-filter-row .btn {
+    flex-shrink: 0;
+}
+
+.rs-table-toolbar .form-select {
+    width: auto;
+}
+
+.rs-table-toolbar .rs-per-page {
+    min-width: 150px;
+}
+
+.rs-table-toolbar .rs-rounding {
+    min-width: 140px;
+}
+
+.rs-table-toolbar .rs-pagination {
+    min-width: 200px;
+}
+
+.rs-technical-table .rs-column-filter {
+    width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .rs-technical-page .rs-filter-row {
+        flex-wrap: wrap;
+    }
+
+    .rs-filter-row .form-select,
+    .rs-filter-row .form-control {
+        flex-basis: 12rem;
+    }
+}
+
+/* Стили для автосохранения (как на ee_transfers) */
+.rs-technical-table td .machine-id-input,
+.rs-technical-table td input[name="technical_inspection_code"] {
+    width: 100%;
+    padding: 0.125rem 0.25rem;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    text-align: center;
+}
+
+.rs-technical-table td .machine-id-input.is-save-success,
+.rs-technical-table td input[name="technical_inspection_code"].is-save-success {
+    box-shadow: inset 0 0 0 2px var(--bs-success);
+}
+
+.rs-technical-table td .machine-id-input.is-save-error,
+.rs-technical-table td input[name="technical_inspection_code"].is-save-error {
+    box-shadow: inset 0 0 0 2px var(--bs-danger);
+}

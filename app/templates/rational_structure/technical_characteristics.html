@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_config.title }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/technical_characteristics.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/pages.css') }}?v=1">
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2 rs-technical-page rs-data-page{% if page_key == 'turbines' %} rs-sticky-toolbar-page{% endif %}">
+    <div class="d-flex align-items-center gap-2 w-100 pb-1 mb-2">
+        <nav class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1 rs-page-nav" aria-label="Вид оборудования">
+            {% for key, config in pages.items() %}
+            <a class="btn {{ 'btn-primary' if key == page_key else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0 {% if key == page_key %}active{% endif %}"
+               {% if key == page_key %}aria-current="page"{% endif %}
+               href="{{ url_for(config.endpoint, year=selected_year) }}">{{ config.nav_label }}</a>
+            {% endfor %}
+        </nav>
+        <a class="btn btn-secondary fs-5 text-nowrap flex-shrink-0" href="{{ url_for('rational_structure_module_bp.hub') }}">Модуль «Рациональная структура»</a>
+    </div>
+    <h1 class="text-center mb-2">{{ page_config.title }}</h1>
+    {% if page_config.equipment_types|length > 1 %}
+    <div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Тип турбин">
+        <a class="btn {{ 'btn-primary' if not filters.equipment_type else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0 {% if not filters.equipment_type %}active{% endif %}" {% if not filters.equipment_type %}aria-current="page"{% endif %}
+           href="{{ url_for(page_config.endpoint, year=selected_year, rounding_digits=rounding_digits, per_page=per_page_param, search=filters.search, subject=filters.subject, station=filters.station, aggregate=filters.aggregate, match_status=filters.match_status) }}">Свод</a>
+        {% for key, label in equipment_type_choices.items() %}
+        <a class="btn {{ 'btn-primary' if filters.equipment_type == key else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0 {% if filters.equipment_type == key %}active{% endif %}" {% if filters.equipment_type == key %}aria-current="page"{% endif %}
+           href="{{ url_for(page_config.endpoint, year=selected_year, rounding_digits=rounding_digits, per_page=per_page_param, search=filters.search, subject=filters.subject, station=filters.station, aggregate=filters.aggregate, match_status=filters.match_status, equipment_type=key) }}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if version_id is none %}
+    <div class="alert alert-warning">Для просмотра и загрузки данных выберите версию базы данных.</div>
+    {% endif %}
+    <div class="rs-controls rs-data-controls mb-2">
+        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+            <button class="btn btn-outline-secondary text-body" type="button" data-bs-toggle="collapse" data-bs-target="#rsImportExportCollapse" aria-expanded="false" aria-controls="rsImportExportCollapse">📁 Импорт / Экспорт</button>
+            <p class="mb-0 fw-bold flex-grow-1 text-center">Найдено записей: {{ pagination.total }}</p>
+        </div>
+        {% if page_key == 'turbines' %}
+        <form method="get" id="rs-filter-form">
+            {% for param, values in header_filter_args.items() %}{% for value in values %}<input type="hidden" name="{{ param }}" value="{{ value }}">{% endfor %}{% endfor %}
+            {% for param, value in filters.items() %}{% if param != 'year' and value %}<input type="hidden" name="{{ param }}" value="{{ value }}">{% endif %}{% endfor %}
+        </form>
+        {% else %}
+        <div class="collapse show" id="rsFiltersCollapse">
+            <form method="get" id="rs-filter-form" class="rs-filter-row mb-2" aria-label="Фильтры технических характеристик">
+                {% for param, values in header_filter_args.items() %}{% for value in values %}<input type="hidden" name="{{ param }}" value="{{ value }}">{% endfor %}{% endfor %}
+                {% if filters.search %}<input type="hidden" name="search" value="{{ filters.search }}">{% endif %}
+                {% if page_config.equipment_types|length > 1 %}
+                <select class="form-select" id="rs-type" name="equipment_type" aria-label="Вид оборудования">
+                    <option value="">Все виды</option>
+                    {% for key, label in equipment_type_choices.items() %}<option value="{{ key }}" {% if filters.equipment_type == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+                {% endif %}
+                <input class="form-control" id="rs-subject" name="subject" value="{{ filters.subject }}" placeholder="Субъект ЭЭ" aria-label="Субъект ЭЭ">
+                <input class="form-control" id="rs-station" name="station" value="{{ filters.station }}" placeholder="Название станции" aria-label="Поиск по имени станции">
+                <input class="form-control" id="rs-aggregate" name="aggregate" value="{{ filters.aggregate }}" placeholder="Название агрегата" aria-label="Поиск по названию агрегата" title="Поиск по марке или станционному номеру агрегата">
+                {% if matchable %}
+                <select class="form-select" id="rs-match-status" name="match_status" aria-label="Статус сопоставления">
+                    <option value="">Все статусы</option>
+                    <option value="matched" {% if filters.match_status == 'matched' %}selected{% endif %}>Совпало</option>
+                    <option value="partial" {% if filters.match_status == 'partial' %}selected{% endif %}>Частично</option>
+                    <option value="ambiguous" {% if filters.match_status == 'ambiguous' %}selected{% endif %}>Неоднозначно</option>
+                    <option value="unmatched" {% if filters.match_status == 'unmatched' %}selected{% endif %}>Не найдено</option>
+                    <option value="not_checked" {% if filters.match_status == 'not_checked' %}selected{% endif %}>Не проверялось</option>
+                </select>
+                {% endif %}
+                <button class="btn btn-outline-primary" type="submit">Поиск</button>
+                <a class="btn btn-outline-danger" href="{{ url_for(page_config.endpoint) }}">Сбросить</a>
+            </form>
+        </div>
+        {% endif %}
+        <div class="collapse" id="rsImportExportCollapse">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+                {% set export_args = request.args.to_dict(flat=False) %}{% set _ = export_args.pop('section', none) %}
+                <a class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" href="{{ url_for('rational_structure_module_bp.export_technical_characteristics_excel', section=page_key, **export_args) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel</a>
+                {% if can_import %}
+                <form id="rsImportForm" class="d-flex align-items-center" action="{{ url_for('rational_structure_module_bp.import_technical_characteristics_excel') }}" method="post" enctype="multipart/form-data">
+                    {{ import_form.hidden_tag() }}
+                    <input type="hidden" name="year" id="rs-import-year" value="{{ selected_year }}">
+                    <input type="hidden" name="section" value="{{ page_key }}">
+                    <input class="d-none" type="file" id="rs-file" name="file" accept=".xlsx" aria-label="Книга технических характеристик" required {% if version_id is none %}disabled{% endif %}>
+                    <button id="rs-import-button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" type="button" {% if version_id is none %}disabled{% endif %}><i class="bi bi-upload" aria-hidden="true"></i> Импорт из Excel</button>
+                </form>
+                {% endif %}
+            </div>
+            {% if can_import %}<p class="small text-muted mb-0">Импорт загружает все годы из файла Excel только в текущую версию БД. Сохраненные коды Техинспекции имеют приоритет при сопоставлении.</p>{% endif %}
+        </div>
+    </div>
+    {% set pagination_endpoint = page_config.endpoint %}
+    <div class="rs-table-toolbar d-flex align-items-center flex-wrap gap-3 mb-2">
+        <div class="d-flex align-items-center gap-2 flex-nowrap">
+            <label for="rs-year" class="mb-0">Год:</label>
+            <select class="form-select" id="rs-year" name="year" form="rs-filter-form" aria-label="Отчетный год">
+                {% for year in years %}<option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-outline-success" type="submit" form="rs-filter-form">Применить</button>
+            <a class="btn btn-outline-danger" href="{{ url_for(page_config.endpoint) }}">Сбросить</a>
+        </div>
+        <div class="rs-pagination flex-grow-1 d-flex justify-content-center align-items-center">
+            {% if per_page is not none %}{% include 'generation/includes/pagination_station.html' %}{% endif %}
+        </div>
+        <div class="d-flex align-items-center flex-wrap justify-content-end gap-2 ms-auto">
+            <div class="d-flex align-items-center gap-1">
+                <label for="rs-rounding" class="mb-0">Округл:</label>
+                <select class="form-select rs-rounding" id="rs-rounding" name="rounding_digits" form="rs-filter-form" onchange="this.form.requestSubmit()">
+                    {% for digits, label in ((0, 'Не округлять'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (-1, 'Целое число')) %}
+                    <option value="{{ digits }}" {% if rounding_digits == digits %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label for="rs-per-page" class="mb-0">Показать:</label>
+                <select class="form-select rs-per-page" id="rs-per-page" name="per_page" form="rs-filter-form" onchange="this.form.requestSubmit()">
+                    {% for count in ('10', '25', '50', '100', 'all') %}<option value="{{ count }}" {% if count == per_page_param %}selected{% endif %}>{{ 'Все' if count == 'all' else count ~ ' записей' }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive rs-table-container" tabindex="0" role="region" aria-label="Технические характеристики {{ page_config.nav_label|lower }}">
+        <table class="table table-hover table-striped table-bordered align-middle mb-0 rs-technical-table rs-data-table">
+            <caption class="visually-hidden">{{ page_config.title }} за {{ selected_year }} год</caption>
+            <thead class="table-success">
+                <tr class="text-center align-middle">
+                    {% for column in header_columns %}
+                    <th scope="col" class="text-center">
+                        {{ column.label }}
+                        <select class="table-header-filter rs-column-filter" multiple data-filter-param="{{ column.param }}" data-value-type="text" data-placeholder="Все" aria-label="Фильтр: {{ column.label }}">
+                            {% for value, label in column.options %}
+                                {% if column.filter_labels and value in column.filter_labels %}
+                                    <option value="{{ value }}" {% if value in column.selected %}selected{% endif %}>{{ column.filter_labels[value] }}</option>
+                                {% else %}
+                                    <option value="{{ value }}" {% if value in column.selected %}selected{% endif %}>{{ label }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in pagination.items %}
+                {% set match_status = row.match_status %}
+                <tr class="align-middle {% if match_status == 'partial' %}table-warning{% elif match_status == 'ambiguous' %}table-info{% elif match_status == 'unmatched' %}table-danger{% endif %} rs-match-{{ match_status }}" data-match-status="{{ match_status }}">
+                    <td>{{ row.equipment_code or '–' }}</td>
+                    {% if matchable %}
+                    <td>
+                        {% if match_status == 'matched' %}
+                            <span class="badge bg-success">Совпало</span>
+                        {% elif match_status == 'partial' %}
+                            <span class="badge bg-warning text-dark">Частично</span>
+                        {% elif match_status == 'ambiguous' %}
+                            <span class="badge bg-info text-dark">Неоднозначно</span>
+                        {% elif match_status == 'unmatched' %}
+                            <span class="badge bg-danger">Не найдено</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Не проверялось</span>
+                        {% endif %}
+                        {% if match_status in ('partial', 'ambiguous', 'unmatched') and row.match_details and row.match_details.candidates %}
+                            <div class="mt-1 small text-muted">
+                                {% if row.match_details.reason %}
+                                    <div class="fw-bold">{{ row.match_details.reason }}</div>
+                                {% endif %}
+                                {% if match_status == 'partial' %}
+                                    {% for cand in row.match_details.candidates %}
+                                        <div>ID агрегата: {{ cand.machine_id }}{% if cand.pgu_machine_id %}/{{ cand.pgu_machine_id }}{% endif %}</div>
+                                        <div>Станция: {% if cand.station_id %}<a href="{{ url_for('station_bp.station_details', station_id=cand.station_id) }}">{{ cand.station_name }}</a>{% else %}{{ cand.station_name }}{% endif %}</div>
+                                        {% if cand.differences %}
+                                            {% for diff in cand.differences %}
+                                                <div>{{ diff.label }}:</div>
+                                                <div class="ms-2">Excel = {{ diff.source }},</div>
+                                                <div class="ms-2">БД = {{ diff.target }}</div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    {% if row.match_details.differing_fields %}
+                                        {{ row.match_details.differing_fields | join(', ') }}
+                                    {% endif %}
+                                    {% for cand in row.match_details.candidates %}
+                                        <div>ID агрегата: {{ cand.machine_id }}{% if cand.pgu_machine_id %}/{{ cand.pgu_machine_id }}{% endif %}, станция: {% if cand.station_id %}<a href="{{ url_for('station_bp.station_details', station_id=cand.station_id) }}">{{ cand.station_name }}</a>{% else %}{{ cand.station_name }}{% endif %}, номер: {{ cand.station_number or '–' }}, агрегат: {{ cand.equipment_brand or '–' }}, Руст = {{ cand.installed_electric_power or '–' }}</div>
+                                        {% if cand.differences %}
+                                            {% for diff in cand.differences %}
+                                                <div class="ms-2">{{ diff.label }}: Excel = {{ diff.source }}, БД = {{ diff.target }}</div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% set id_display = (row.machine_id ~ '/' ~ row.pgu_machine_id) if row.pgu_machine_id is not none else (row.machine_id if row.machine_id is not none else '') %}
+                        {% set station_id = row.match_details.get('station_id') if row.match_details else none %}
+                        <input type="text"
+                            class="form-control form-control-sm machine-id-input"
+                            value="{{ id_display }}"
+                            data-original="{{ id_display }}"
+                            data-turbine-id="{{ row.id }}"
+                            data-save-url="{{ url_for('rational_structure_module_bp.save_machine_id') }}"
+                            data-station-id="{{ station_id or '' }}"
+                            inputmode="text"
+                            autocomplete="off"
+                            style="width: 110px;">
+                    </td>
+                    {% endif %}
+                    {% for attr, label, kind in columns if attr != 'equipment_code' %}
+                    {% set value = row|attr(attr) %}
+                    <td {% if kind != 'text' %}class="text-center"{% endif %}>
+                        {%- if value is none or value == '' -%}
+                            –
+                        {%- elif attr == 'station_name' and station_head_group_ids.get(value|trim) -%}
+                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=station_head_group_ids[value|trim], year=selected_year) }}" title="Открыть головную группу оборудования">{{ value }}</a>
+                        {%- elif kind == 'number' -%}
+                            {{ value|format_decimal(rounding_digits) }}
+                        {%- else -%}
+                            {{ value }}
+                        {%- endif -%}
+                    </td>
+                    {% endfor %}
+                    {% for label in extra_labels %}<td>{{ row.extra_values.get(label) if row.extra_values.get(label) is not none else '–' }}</td>{% endfor %}
+                </tr>
+                {% else %}
+                <tr><td class="text-center p-4" colspan="{{ columns|length + extra_labels|length + (2 if matchable else 0) }}">Нет данных за {{ selected_year }} год по выбранным фильтрам.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if per_page is not none and pagination.pages > 1 %}
+    <div class="mt-3">
+        {% include 'generation/includes/pagination_station.html' %}
+    </div>
+    {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rational_structure/technical_characteristics.js') }}?v=5"></script>
+{% if page_key == 'turbines' %}<script src="{{ url_for('static', filename='js/rational_structure/sticky_table_toolbar.js') }}?v=1"></script>{% endif %}
+{% endblock %}

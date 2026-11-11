@@ -24,8 +24,8 @@ def test_soft_page_keeps_res_intact_when_limit_hits_mid_res():
     # РЭС-A: 3 группы, РЭС-B: 3 группы. per_page=2 → страница 1 забирает весь A.
     flat = [
         _item(1, 10, 100, 1, "a1"),
-        _item(1, 10, 100, 1, "a2"),  # составной ребёнок
-        _item(1, 10, 100, 1, "a3"),  # ещё ребёнок / сосед
+        _item(1, 10, 100, 1, "a2"),  # составной ребенок
+        _item(1, 10, 100, 1, "a3"),  # еще ребенок / сосед
         _item(1, 10, 200, 2, "b1"),
         _item(1, 10, 200, 2, "b2"),
         _item(1, 10, 200, 2, "b3"),
@@ -45,7 +45,7 @@ def test_soft_page_keeps_res_intact_when_limit_hits_mid_res():
 
 
 def test_soft_page_does_not_orphan_composite_parent_before_res_total():
-    # Как баг «Новгородская ТЭЦ, всего» без детей при жёстком срезе:
+    # Как баг «Новгородская ТЭЦ, всего» без детей при жестком срезе:
     # per_page=5 на границе РЭС забрал бы только родителя.
     flat = [
         _item(1, 10, 50, 1, f"prev{i}") for i in range(5)
@@ -86,7 +86,7 @@ def test_soft_page_extends_through_composite_cluster_inside_res():
         _item(1, 10, 100, 7, "nov-child2"),
         _item(1, 10, 200, 8, "other"),
     ]
-    # Жёсткий срез per_page=2: parent+child1 | child2+other.
+    # Жесткий срез per_page=2: parent+child1 | child2+other.
     start, end, total_pages, _ = slice_fuel_eg_page_range(flat, 2, 1)
     assert total_pages == 2
     assert [x["group_block"]["id"] for x in flat[start:end]] == [

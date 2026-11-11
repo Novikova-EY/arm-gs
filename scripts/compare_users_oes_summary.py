@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Сравнение сводки ОЭС под двумя учётками на msk-arm-gs01."""
+"""Сравнение сводки ОЭС под двумя учетками на msk-arm-gs01."""
 from __future__ import annotations
 
 import http.cookiejar
@@ -71,7 +71,7 @@ def extract(html: str) -> dict:
     out["selected_options"] = [re.sub(r"\s+", " ", unescape(x)).strip() for x in sel_opts[:15]]
     out["has_can_edit_inputs"] = 'class="form-control form-control-lg text-center fuel-param-input"' in html
     out["formula_derived_count"] = html.count("pd_ec_formula_derived") + html.count(
-        "Расчётная строка"
+        "Расчетная строка"
     )
     for label in (
         "Первая синхронная зона с НТ с зарядом ГАЭС",

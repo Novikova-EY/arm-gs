@@ -42,7 +42,7 @@ from app.common.services.get_services.years.years_get_services import (
 
 def build_machine_note_search_condition(machine_cls, pgu_cls, note_filter_value):
     """
-    Примечание агрегата (Machine) или вложенного ПГУ содержит подстроку (без учёта регистра).
+    Примечание агрегата (Machine) или вложенного ПГУ содержит подстроку (без учета регистра).
     Не включает примечание самой электростанции – только машины и ПГУ.
     """
     raw = (note_filter_value or "").strip()
@@ -820,15 +820,32 @@ def _ilike_contains_pattern(raw: str) -> str:
 
 
 def build_external_code_sql_filter(filters):
-    """Ищет станцию по Station.external_code или UUID любого её агрегата."""
+    """Поиск по UUID станции, агрегата и, на странице проверки, группы оборудования."""
     raw = (filters.get("external_code_filter") or "").strip()
     if not raw:
         return None
     pattern = _ilike_contains_pattern(raw)
-    return or_(
+    machine_condition = Machine.external_code.ilike(pattern, escape="\\")
+    if filters.get("external_code_check"):
+        machine_condition = and_(machine_condition, Machine.database_version_id.isnot(None))
+    conditions = [
         Station.external_code.ilike(pattern, escape="\\"),
-        Station.machines.any(Machine.external_code.ilike(pattern, escape="\\")),
-    )
+        Station.machines.any(machine_condition),
+    ]
+    if filters.get("external_code_check"):
+        from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+        from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+        from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
+
+        conditions.append(exists().where(
+            EquipmentGroupSetStation.station_id == Station.id,
+            EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id,
+            EquipmentGroupSet.equipment_group_id == EquipmentGroup.id,
+            EquipmentGroup.external_code.ilike(pattern, escape="\\"),
+            EquipmentGroup.database_version_id.isnot(None),
+        ).correlate(Station))
+        return and_(Station.database_version_id.isnot(None), or_(*conditions))
+    return or_(*conditions)
 
 
 def apply_external_code_sql_filter(query, filters):

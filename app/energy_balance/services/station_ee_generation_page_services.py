@@ -53,6 +53,10 @@ from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.generation.services.station_services.groupped_services import is_current_version
+from app.generation.services.station_services.station_access_services import (
+    get_decentralized_zone_energy_system_type_id,
+    is_decentralized_zone_station,
+)
 from app.generation.services.station_services.aggregation_cache import get_cached_page_position
 from app.generation.services.station_services.station_services import (
     determine_first_headers,
@@ -148,6 +152,8 @@ def _format_station_sign_display(station_sign: str | None) -> str:
 
 
 def _resolve_station_sign(station: Station) -> str:
+    if getattr(station, "is_generation_only", False):
+        return STATION_SIGN_UNSPECIFIED
     if _is_espp_station_sign(getattr(station, "station_sign", None)):
         return STATION_SIGN_ESPP
     return STATION_SIGN_UNSPECIFIED
@@ -312,12 +318,41 @@ def resolve_single_year_filter(request_args=None) -> tuple[int, list[int]]:
     return selected_year, available_years
 
 
-def _resolve_station_placement(station: Station) -> tuple[int, int, int, int, int]:
+def _get_filtered_decentralized_zone_est_id(
+    energy_system_type_filter: list[int] | None,
+) -> int | None:
+    selected_type_ids = {int(value) for value in energy_system_type_filter or []}
+    dz_est_id = (
+        get_decentralized_zone_energy_system_type_id() if selected_type_ids else None
+    )
+    return dz_est_id if dz_est_id in selected_type_ids else None
+
+
+def _resolve_station_placement(
+    station: Station,
+    *,
+    decentralized_zone_est_id: int | None = None,
+) -> tuple[int, int, int, int, int]:
     """Возвращает (est_id, ues_id, res_id, rd_id, eu_id) для иерархии и агрегатов."""
     rd_id = station.id_regional_district if station.id_regional_district is not None else -1
     eu_id = station.id_energy_unit if station.id_energy_unit is not None else 0
+    filtered_dz_est_id = None
+    if (
+        decentralized_zone_est_id is not None
+        and getattr(station, "id_regional_energy_system", None)
+        and is_decentralized_zone_station(station)
+    ):
+        filtered_dz_est_id = decentralized_zone_est_id
 
     if not station.regional_district:
+        if filtered_dz_est_id is not None:
+            return (
+                filtered_dz_est_id,
+                -1,
+                station.id_regional_energy_system,
+                rd_id,
+                eu_id,
+            )
         return -1, -1, -1, rd_id, eu_id
 
     res = None
@@ -343,9 +378,13 @@ def _resolve_station_placement(station: Station) -> tuple[int, int, int, int, in
 
     ues = getattr(res, "union_energy_system", None)
     if not ues or not is_current_version(ues):
-        return -1, -1, res.id, rd_id, eu_id
+        est_id = filtered_dz_est_id if filtered_dz_est_id is not None else -1
+        return est_id, -1, res.id, rd_id, eu_id
 
     est_id = ues.id_energy_system_type if ues.id_energy_system_type is not None else -1
+    # РЭС ДЗ может быть связано с ОЭС типа «не указано», поэтому выбранный тип ДЗ приоритетнее.
+    if filtered_dz_est_id is not None:
+        est_id = filtered_dz_est_id
     return est_id, ues.id, res.id, rd_id, eu_id
 
 
@@ -402,6 +441,7 @@ def build_generation_aggregates(
     espp_by_res: dict[int, dict[int, Decimal | None]] | None = None,
     period_columns: list[tuple[int, str]] | None = None,
     months_calendar_year: int | None = None,
+    energy_system_type_filter: list[int] | None = None,
 ) -> dict[str, dict]:
     """Суммы выработки ЭЭ по уровням иерархии.
 
@@ -421,16 +461,21 @@ def build_generation_aggregates(
     }
     res_placement: dict[int, tuple[int, int]] = {}
     res_to_sa: dict[int, int] = {}
+    filtered_dz_est_id = _get_filtered_decentralized_zone_est_id(
+        energy_system_type_filter
+    )
 
     for station in stations or []:
         periods = values_by_station.get(station.id, {})
-        est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(station)
+        est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(
+            station, decentralized_zone_est_id=filtered_dz_est_id
+        )
         sa_id = _resolve_station_synchronous_area_id(station)
         if res_id not in (None, -1) and res_id not in res_placement:
             res_placement[res_id] = (est_id, ues_id)
         if res_id not in (None, -1) and sa_id != -1 and res_id not in res_to_sa:
             res_to_sa[res_id] = sa_id
-        is_espp = _is_espp_station_sign(getattr(station, "station_sign", None))
+        is_espp = _resolve_station_sign(station) == STATION_SIGN_ESPP
 
         for period_key, value in periods.items():
             if is_espp and _period_uses_espp_svod(
@@ -535,7 +580,7 @@ def build_stations_sum_by_res(
         _est_id, _ues_id, res_id, _rd_id, _eu_id = _resolve_station_placement(station)
         if res_id in (None, -1):
             continue
-        is_espp = _is_espp_station_sign(getattr(station, "station_sign", None))
+        is_espp = _resolve_station_sign(station) == STATION_SIGN_ESPP
         for period_key, value in (values_by_station.get(station.id) or {}).items():
             if is_espp and _period_uses_espp_svod(
                 period_key, months_calendar_year=months_calendar_year
@@ -866,6 +911,7 @@ def build_station_ee_generation_hierarchy(
     espp_by_res: dict[int, dict[int, Decimal | None]] | None = None,
     *,
     months_calendar_year: int | None = None,
+    energy_system_type_filter: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Иерархия ЕЭС → ОЭС → РЭС → субъект РФ → энергоузел → строки электростанций."""
     est_names = dict(get_energy_system_type_map())
@@ -877,6 +923,10 @@ def build_station_ee_generation_hierarchy(
     ues_names[-1] = "Не указано"
     res_names[-1] = "Не указано"
     rd_names[-1] = "Не указано"
+
+    filtered_dz_est_id = _get_filtered_decentralized_zone_est_id(
+        energy_system_type_filter
+    )
 
     hierarchy = defaultdict(
         lambda: defaultdict(
@@ -890,7 +940,9 @@ def build_station_ee_generation_hierarchy(
     eu_names: dict[int, str] = {}
 
     for station in stations or []:
-        est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(station)
+        est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(
+            station, decentralized_zone_est_id=filtered_dz_est_id
+        )
 
         periods = {
             period_key: values_by_station.get(station.id, {}).get(period_key)
@@ -907,6 +959,7 @@ def build_station_ee_generation_hierarchy(
         hierarchy[est_id][ues_id][res_id][rd_id][eu_id].append(
             {
                 "station_id": station.id,
+                "is_generation_only": bool(getattr(station, "is_generation_only", False)),
                 "station_name": station.name or "–",
                 "kto_display": station.kto or "–",
                 "station_sign": _resolve_station_sign(station),
@@ -992,7 +1045,7 @@ def build_station_ee_generation_hierarchy(
 
 
 def _load_stations_for_aggregation(station_ids: list[int]) -> list[Station]:
-    """Загружает станции для расчёта агрегатов выработки ЭЭ."""
+    """Загружает станции для расчета агрегатов выработки ЭЭ."""
     if not station_ids:
         return []
     unique_ids = list(dict.fromkeys(station_ids))
@@ -1282,6 +1335,7 @@ def get_station_ee_generation_page_data(
         period_columns,
         espp_by_res=page_espp_by_res,
         months_calendar_year=months_calendar_year,
+        energy_system_type_filter=list_filters.get("energy_system_type_filter"),
     )
 
     if show_all:
@@ -1293,6 +1347,14 @@ def get_station_ee_generation_page_data(
             else (None, None)
         )
         show_headers = determine_first_headers(page_stations, prev_page_last_info)
+        selected_type_ids = {
+            int(value) for value in list_filters.get("energy_system_type_filter") or []
+        }
+        if page_stations and len(selected_type_ids) == 1:
+            type_headers = show_headers.setdefault("energy_system_types", set())
+            type_headers.clear()
+            if current_page == 1:
+                type_headers.add(next(iter(selected_type_ids)))
 
     should_show_totals = {
         "energy_units": {},
@@ -1305,6 +1367,9 @@ def get_station_ee_generation_page_data(
     generation_aggregates: dict[str, dict] = {}
     res_verification_by_res: dict[int, dict[int, Decimal | None]] = {}
     res_stations_left_by_res: dict[int, dict[int, Decimal | None]] = {}
+    decentralized_zone_control_by_period: dict[int, Decimal | None] = {}
+    decentralized_zone_station_sum_by_period: dict[int, Decimal | None] = {}
+    decentralized_zone_verification_by_period: dict[int, Decimal | None] = {}
 
     if show_totals or show_all:
         per_page_for_totals = None if show_all else per_page_int
@@ -1374,6 +1439,7 @@ def get_station_ee_generation_page_data(
                 espp_by_res=agg_espp_by_res,
                 period_columns=period_columns,
                 months_calendar_year=months_calendar_year,
+                energy_system_type_filter=list_filters.get("energy_system_type_filter"),
             )
             res_control_by_res = agg_res_control
             stations_sum_by_res = build_stations_sum_by_res(
@@ -1394,6 +1460,36 @@ def get_station_ee_generation_page_data(
                 agg_espp_by_res,
                 months_calendar_year=months_calendar_year,
             )
+            dz_est_id = _get_filtered_decentralized_zone_est_id(
+                list_filters.get("energy_system_type_filter")
+            )
+            if dz_est_id is not None:
+                from app.energy_balance.services.ee_generation_hierarchy_control_services import (
+                    load_hierarchy_control_generation,
+                )
+
+                hierarchy_controls = load_hierarchy_control_generation(
+                    list_start_year,
+                    list_end_year,
+                    period_mode=period_mode,
+                    selected_year=selected_year,
+                )
+                decentralized_zone_control_by_period = (
+                    hierarchy_controls.get("est", {}).get(dz_est_id, {})
+                )
+                decentralized_zone_station_sum_by_period = (
+                    generation_aggregates.get("energy_system_types", {}).get(
+                        dz_est_id, {}
+                    )
+                )
+                decentralized_zone_verification_by_period = (
+                    build_res_verification_by_res(
+                        {dz_est_id: decentralized_zone_control_by_period},
+                        {dz_est_id: decentralized_zone_station_sum_by_period},
+                        period_columns,
+                        months_calendar_year=months_calendar_year,
+                    ).get(dz_est_id, {})
+                )
 
     return {
         "stations": page_stations,
@@ -1416,4 +1512,7 @@ def get_station_ee_generation_page_data(
         "res_control_by_res": res_control_by_res,
         "res_stations_left_by_res": res_stations_left_by_res,
         "res_verification_by_res": res_verification_by_res,
+        "decentralized_zone_control_by_period": decentralized_zone_control_by_period,
+        "decentralized_zone_station_sum_by_period": decentralized_zone_station_sum_by_period,
+        "decentralized_zone_verification_by_period": decentralized_zone_verification_by_period,
     }

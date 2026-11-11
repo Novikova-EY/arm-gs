@@ -16,6 +16,7 @@ from app.generation.routes.stations.station_routes import (
 from app.generation.services.station_services.external_code_check_services import (
     all_db_versions_context,
     attach_external_codes_by_version,
+    build_external_code_check_blocks,
     get_database_versions_for_check,
     update_external_codes_from_check_page,
 )
@@ -188,6 +189,7 @@ def external_code_check():
             data["stations"],
             database_versions,
             identity_code_only=bool((filters.get("external_code_filter") or "").strip()),
+            external_code_filter=filters.get("external_code_filter"),
         )
 
     context = get_station_list_template_context(
@@ -200,8 +202,9 @@ def external_code_check():
     )
     context.update(
         {
-            "page_title": "Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных",
+            "page_title": "Проверка взаимосвязей электростанций, групп оборудования и агрегатов во всех версиях баз данных",
             "database_versions": database_versions,
+            "external_code_display_blocks": build_external_code_check_blocks(data["stations"]),
             "table_total_colspan": 3 + len(database_versions),
             "external_code_check_mode": True,
             "station_list_endpoint": "station_bp.external_code_check",

@@ -35,7 +35,7 @@ def seed_missing_params_from_reports(
     station_numbs: set[int] | None = None,
     years: list[int] | None = None,
 ) -> int:
-    """Создаёт отсутствующие строки параметров из отчетных данных (без перезаписи правок)."""
+    """Создает отсутствующие строки параметров из отчетных данных (без перезаписи правок)."""
     slug = str(sheet_slug or "").strip()
     if slug not in sheet_slugs:
         return 0
@@ -109,7 +109,7 @@ def upsert_param_values(
     year_number: int,
     values: dict[str, Any],
 ) -> Any:
-    """Создаёт или обновляет параметры страницы анализа."""
+    """Создает или обновляет параметры страницы анализа."""
     from app.common.services.database_version_filter import get_current_db_version_id
     from app.extensions import db
 

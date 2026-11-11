@@ -1,5 +1,5 @@
 {# ТЭП АЭС. aes_tep_show_price_years: true – исходные данные (столбцы «год»);
-false – в ценах года (расчётные удельные, без годов). #} {% set
+false – в ценах года (расчетные удельные, без годов). #} {% set
 aes_tep_show_price_years = aes_tep_show_price_years | default(true) %} {% set
 aes_tep_ncols = 21 if aes_tep_show_price_years else 17 %}
 <div class="table-responsive">

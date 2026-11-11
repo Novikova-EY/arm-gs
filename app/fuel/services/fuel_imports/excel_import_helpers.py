@@ -65,7 +65,7 @@ def normalize_composite_flags_column_name(name: object) -> str:
     """Column normalizer for soft composite-flags Excel imports."""
     if name is None:
         return ""
-    text = str(name).strip().lower().replace("ё", "е")
+    text = str(name).strip().lower().replace("\u0451", "е")
     out = []
     for ch in text:
         if ch.isalnum() or ch in ("_",):

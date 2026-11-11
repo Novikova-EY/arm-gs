@@ -1,0 +1,49 @@
+.rs-calculation-scroll {
+    max-height: calc(100vh - 7rem);
+    overflow: auto;
+    padding-bottom: 1.5rem;
+}
+.rs-calculation-stack {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    padding: 0.5rem;
+}
+.rs-calculation-scroll .rs-calculation-table thead th {
+    position: sticky;
+    top: var(--pd-summary-controls-sticky-height, 0px);
+    z-index: 3;
+    min-width: 105px;
+    max-width: 230px;
+    white-space: normal;
+}
+.rs-calculation-table td {
+    min-width: 100px;
+    max-width: 320px;
+    overflow-wrap: anywhere;
+}
+.rs-marginal-price-table td.text-center {
+    white-space: nowrap;
+}
+.rs-calculation-table td.text-end {
+    white-space: nowrap;
+}
+.rs-calculation-table .rs-formula-cell {
+    cursor: help;
+}
+.rs-calculation-table .rs-calculation-error {
+    font-weight: 600;
+}
+.rs-calculation-search {
+    width: min(360px, 100%);
+}
+.rs-data-page .rs-calculation-table .rs-year-heading th {
+    --bs-table-bg: #ffe5d0;
+    --bs-table-color: #663c00;
+    background-color: #ffe5d0;
+    color: #663c00;
+    box-shadow: none;
+    font-weight: 700;
+    text-align: left;
+}

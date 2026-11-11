@@ -9,7 +9,7 @@ from config import SCHEMA_POWER_DEMAND
 
 
 class PowerDemandSummaryFormulaText(db.Model, AuditMixin):
-    """Только текст формулы; расчёт значений ячеек не меняется."""
+    """Только текст формулы; расчет значений ячеек не меняется."""
 
     __tablename__ = "gs_pd_summary_formula_texts"
     __table_args__ = (

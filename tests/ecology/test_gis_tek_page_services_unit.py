@@ -325,7 +325,7 @@ def test_build_rows_from_equipment_groups_lists_all_groups():
     leftover = SimpleNamespace(
         id=11,
         station_numb=999,
-        gis_tek_station_name="Только отчёт",
+        gis_tek_station_name="Только отчет",
         station_type="КЭС",
         year_number=2022,
         database_version_id=1,
@@ -353,8 +353,8 @@ def test_build_rows_from_equipment_groups_lists_all_groups():
     assert by_numb[612]["equipment_group_name"] == "Группа Б"
     assert by_numb[612]["gis_tek_station_name"] == "–"
     assert by_numb[612]["metrics"]["gaseous_and_liquid"] is None
-    assert by_numb[999]["gis_tek_station_name"] == "Только отчёт"
-    # «Принадлежность» не берётся из отчёта (там station_type = «ТЭЦ»), только из VED.
+    assert by_numb[999]["gis_tek_station_name"] == "Только отчет"
+    # «Принадлежность» не берется из отчета (там station_type = «ТЭЦ»), только из VED.
     assert by_numb[1706]["station_affiliation"] == "–"
     assert by_numb[999]["station_affiliation"] == "–"
 
@@ -770,7 +770,7 @@ def test_station_types_by_equipment_group_skips_unmapped_ved(monkeypatch):
         3: "КЭС, промпредприятия",
         4: "КЭС, отрасль",
         5: "ТЭЦ, промпредприятия",
-        # оболочка 60: тип берём у её единственного ребёнка
+        # оболочка 60: тип берем у ее единственного ребенка
         6: "ТЭЦ, отрасль",
         7: "ТЭЦ, отрасль",
     }

@@ -1,0 +1,12 @@
+[2026-11-02 09:23:07,953] INFO in __init__: Redis connection established successfully
+[2026-11-02 09:23:08,005] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-02 09:23:08,572] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 09:23:08,995] INFO in fuel_db_import_worker: Запущен исполнитель импорта cc4bcf27-4ea4-4e86-9a57-25009b3b0021
+[IMPORT_FUEL_DB] Шаг 0: Старт. user=diagnostic filename=worker_diagnostic.xlsx
+[2026-11-02 09:23:09,000] INFO in import_fuel_db_equipment_groups_services: [IMPORT_FUEL_DB_EQUIPMENT_GROUPS] start user=diagnostic filename=worker_diagnostic.xlsx
+[IMPORT_FUEL_DB] Шаг 1: Чтение Excel – определение заголовков и колонок...
+[IMPORT_FUEL_DB]   Лист: Sheet
+[IMPORT_FUEL_DB]   Исходные колонки: ['diagnostic_only']
+[IMPORT_FUEL_DB]   Строк после dropna: 1
+[IMPORT_FUEL_DB]   Колонки после алиасов: []
+[2026-11-02 09:23:09,020] WARNING in fuel_db_import_jobs: Ошибка проверки фонового импорта cc4bcf27-4ea4-4e86-9a57-25009b3b0021: Неверный шаблон файла: отсутствует колонка equipment_group. Синяя «Импорт из Excel» принимает экспорт с этой страницы (колонки id_station и equipment_group). Access «Имена_станций.xlsx» загружайте желтой кнопкой «Проверить / загрузить флаги».

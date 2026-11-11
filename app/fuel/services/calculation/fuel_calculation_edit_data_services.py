@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Данные для страницы «Редактировать данные» из модуля расчёта (/fuel/calculation/equipment_group_fuel_params_edit_data).
+Данные для страницы «Редактировать данные» из модуля расчета (/fuel/calculation/equipment_group_fuel_params_edit_data).
 
 Те же источники, что и для stations_equipment_group_fuel_params: иерархия групп и основные топливные параметры
 за интервал лет (start_year–end_year), по строке на год для каждой группы.
@@ -262,10 +262,10 @@ def _load_missing_prev_year_fuel_params_into_index(
     display_pairs: list[tuple[int, int]],
 ) -> None:
     """
-    Догружает параметры за предыдущие годы, пока не найдётся непустая строка.
+    Догружает параметры за предыдущие годы, пока не найдется непустая строка.
 
     Полностью пустой год (нет записи или все показатели пустые) пропускается –
-    сравнение Nуст идёт с годом до него.
+    сравнение Nуст идет с годом до него.
     """
     pending: list[tuple[int, int]] = []
     for eid, year in display_pairs:
@@ -319,9 +319,9 @@ def build_fuel_param_row_warn_sets(rows: list) -> dict[str, Any]:
     - q_nt_sum_ratio_warn_rows: (q/nt_sum)*1000 >= 8000 (ячейка q)
     - h_hours_warn_rows: h (ЧЧИУМ) >= 8000 (ячейка h)
     - *_warn_msgs: тексты с нынешними часами и порогом
-    - qotr_composition_warn_rows: nust изменился к предыдущему непустому году, а qotr тот же (ячейка qotr)
-    - nust_changed_from_prev_year_rows: nust изменился к предыдущему непустому году (жёлтая строка).
-      Полностью пустая строка не подсвечивается; для сравнения берётся год до неё.
+    - qotr_composition_warn_rows: nust изменился к предыдущему непустому году, а положительный qotr тот же (ячейка qotr)
+    - nust_changed_from_prev_year_rows: nust изменился к предыдущему непустому году (желтая строка).
+      Полностью пустая строка не подсвечивается; для сравнения берется год до нее.
     """
     empty: dict[str, Any] = {
         "nust_changed_from_prev_year_rows": frozenset(),
@@ -400,9 +400,10 @@ def build_fuel_param_row_warn_sets(rows: list) -> dict[str, Any]:
         if not _nust_changed_vs_previous(prev_nust, curr_nust):
             continue
         nust_changed.add(key)
-        if _numeric_values_equal_for_compare(
+        qotr = _to_decimal_or_none(getattr(param, "qotr", None))
+        if qotr is not None and qotr > 0 and _numeric_values_equal_for_compare(
             getattr(prev_param, "qotr", None),
-            getattr(param, "qotr", None),
+            qotr,
         ):
             composition_warn.add(key)
 
@@ -471,15 +472,15 @@ def _apply_nust_nr_for_target_from_source_or_machines(
     """
     Руст/Ррасп: для «план» / «текущий (оценка)» – суммы p_ust/p_rasp (MachinePower) за целевой
     год, если у группы есть привязка к электростанции и есть агрегаты; иначе – как у базового года
-    (source). Суммы 0 с MachinePower не подменяются с базового года: 0 допустим (агрегат не введён
+    (source). Суммы 0 с MachinePower не подменяются с базового года: 0 допустим (агрегат не введен
     / выведен и т.д.).
 
     Тепловая мощность отборов, Гкал/ч (nt) при той же ветке: год строки = календарный год; из агрегатов группы
-    берём те, у кого в этом году в MachinePower суммарно p_ust (Рust) ≠ 0; по MachineFuelParam.nt
+    берем те, у кого в этом году в MachinePower суммарно p_ust (Рust) ≠ 0; по MachineFuelParam.nt
     этих агрегатов сумма (по одному взносу на агрегат). Версия MFP: текущая или NULL. Иначе nt как у source.
 
-    Поле nt_sum («Сумма тепловых мощностей, Гкал/ч») при расчёте nt по агрегатам выставляется равным этой же сумме – иначе после
-    копирования года остаётся nt_sum с базового года (часто целое), а nt – дробное с машин.
+    Поле nt_sum («Сумма тепловых мощностей, Гкал/ч») при расчете nt по агрегатам выставляется равным этой же сумме – иначе после
+    копирования года остается nt_sum с базового года (часто целое), а nt – дробное с машин.
 
     Кэш-параметры (все None – поведение как раньше, по одному SQL на вызов): ускоряют массовое
     «Добавить год/период» – по группе и году признак/привязка/список агрегатов считаются снаружи.
@@ -907,7 +908,7 @@ def enrich_fuel_hierarchy_summaries_with_extra(
                 for station_block in station_blocks:
                     station_rows: list = []
                     for gb in station_block.get("group_blocks") or []:
-                        # В итог станции не кладём родителя составной (как в enrich).
+                        # В итог станции не кладем родителя составной (как в enrich).
                         if gb.get("is_composite_parent") or gb.get("is_composite_total_row"):
                             continue
                         station_rows.extend(gb.get("rows") or [])
@@ -1043,9 +1044,10 @@ def apply_extra_fuel_params_from_edit_data_form(
     return changed_groups, errs, details_by_group
 
 
-def build_fuel_nazvl_to_name_map() -> dict[str, str]:
-    """Подписи столбцов топлива = Fuel.name из /refdata/fuel (ключ – nazvl без учёта регистра)."""
-    fuel_query = filter_by_db_version(Fuel.query, Fuel)
+def build_fuel_nazvl_to_name_map(version_id: int | None = None) -> dict[str, str]:
+    """Названия Fuel.name по nazvl; без version_id используется текущая версия БД."""
+    fuel_query = (Fuel.query.filter(Fuel.database_version_id == version_id)
+                  if version_id is not None else filter_by_db_version(Fuel.query, Fuel))
     return {
         (row.nazvl or "").casefold(): (row.name or "").strip()
         for row in fuel_query.with_entities(Fuel.nazvl, Fuel.name)
@@ -1155,7 +1157,7 @@ def build_fuel_param_columns_hierarchy(
     for fid in root_ids + _sort_fuel_ids(orphan_ids):
         _walk(fid)
 
-    # Виды топлива из столбцов, не найденные в справочнике / не обойдённые – в исходном порядке
+    # Виды топлива из столбцов, не найденные в справочнике / не обойденные – в исходном порядке
     for a in attrs_in_order:
         if a in fuel_attrs_set and a not in seen_fuel:
             ordered_fuel_attrs.append(a)
@@ -1407,7 +1409,7 @@ def build_fuel_calculation_edit_detail_panels_data(
     """
     Данные для нижней панели страницы equipment_group_fuel_params_edit_data:
     удельные показатели (вводимые y/btp/sntp/bk/snk, не *_calc), формулы топлива
-    и таблица «Параметры топлива» – сумма уникальных имён из formtxt на интервале лет
+    и таблица «Параметры топлива» – сумма уникальных имен из formtxt на интервале лет
     (столбцы отсортированы по русскому названию топлива);
     значения из EquipmentGroupExtraFuelParam (UGLI1) и из EquipmentGroupFuelParam
     (TOPLS|UGLI), согласно разбору формулы.
@@ -1685,7 +1687,7 @@ def _build_deferred_fuel_columns_payload(
     rounding_digits: int,
 ) -> dict[str, Any]:
     """
-    Данные свёрнутых (collapse_under) столбцов для отложенной вставки в DOM.
+    Данные свернутых (collapse_under) столбцов для отложенной вставки в DOM.
     В начальном HTML их нет – это главный выигрыш по размеру страницы (~80% ячеек).
     """
     collapse_under = fuel_param_column_hierarchy.get("collapse_under") or {}
@@ -1763,7 +1765,7 @@ def get_fuel_calculation_edit_data_view_model(
     show_all: bool = False,
 ) -> dict[str, Any]:
     """
-    Контекст таблицы основных топливных параметров по фильтрам расчётного модуля.
+    Контекст таблицы основных топливных параметров по фильтрам расчетного модуля.
 
     Пагинация по группам выполняется до разворота лет: на страницу попадают только
     параметры выбранных групп за весь интервал start_year–end_year.
@@ -1847,7 +1849,7 @@ def get_fuel_calculation_edit_data_view_model(
         and getattr(eg, "id", None) is not None
         and int(eg.id) in page_group_ids
     ]
-    # Группы без строк параметров в интервале всё равно нужны на странице
+    # Группы без строк параметров в интервале все равно нужны на странице
     raw_ids = {
         int(eg.id)
         for eg, _ in rows_page_raw
@@ -2103,7 +2105,7 @@ def copy_fuel_params_between_years_for_filters(
 
 # Показатели тепла с базового года (q – отдельно: приоритет «Тепло и тарифы (схемы теплоснабжения)»).
 # qotr – с Access «Станции(Схема)» / импорта ТЭП (форму «Тепло» / calcq не считаем).
-# nt задаётся в _apply_nust_nr_… (см. _sum_nt_for_machines_with_nonzero_p_ust_sum_in_year).
+# nt задается в _apply_nust_nr_… (см. _sum_nt_for_machines_with_nonzero_p_ust_sum_in_year).
 # hfix (+ h при фиксации): как в Access HFIX на каждом годе; иначе Распред пересчитает часы.
 # snk/sn_t – Access копирует ставки СН со строки станции; числители sn_ee/sn_te не копируем.
 _HEAT_FUEL_PARAM_COPY_ATTRS: tuple[str, ...] = ("q", "qotr", "nt_sum", "turt", "hfix")
@@ -2123,12 +2125,12 @@ def _copy_access_station_snk_snt(target, source, *, only_if_empty: bool = False)
     Access: SNK и SNt на строке «Станции» уезжают с размножением года.
 
     На цель пишем отображаемые ставки базового года (формула при наличии
-    sn_ee/sn_te, иначе сохранённые). Числители не копируем – иначе на новой E
+    sn_ee/sn_te, иначе сохраненные). Числители не копируем – иначе на новой E
     формула пересчитает SNK. Нули sn_ee/sn_te на цели сбрасываем в NULL,
     иначе UI покажет SNK/SNT = 0 вместо копии.
 
     only_if_empty: не затирать уже заданные ненулевые ставки (автодозаполнение
-    перед расчётом); «Добавить год» копирует всегда, как turt.
+    перед расчетом); «Добавить год» копирует всегда, как turt.
 
     True, если объект изменился.
     """
@@ -2161,7 +2163,7 @@ def _sn_rate_slot_is_empty(target, attr: str) -> bool:
     return shown is None or _numeric_is_zero(shown)
 
 # При создании строки за новый год («Добавить год/период») – идентификаторы Access
-# «Станции(Схема)» с базового года, в т.ч. VED (иначе filter1 ved>0 и ветки расчёта ломаются).
+# «Станции(Схема)» с базового года, в т.ч. VED (иначе filter1 ved>0 и ветки расчета ломаются).
 # На уже существующей строке копируем только пустые из этого списка (не затираем ручной ввод).
 _HEAT_NEW_ROW_IDENTITY_ATTRS: tuple[str, ...] = tuple(
     dict.fromkeys(("name",) + tuple(EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS))
@@ -2176,7 +2178,7 @@ def _seed_fuel_param_identity_from_source(
 ) -> None:
     """
     Проставляет identity-поля (ved, oes, obl, …) с базового года.
-    new_row=True – все поля; иначе только там, где на target ещё NULL.
+    new_row=True – все поля; иначе только там, где на target еще NULL.
     """
     for key in _HEAT_NEW_ROW_IDENTITY_ATTRS:
         if not hasattr(target, key) or not hasattr(source, key):
@@ -2304,10 +2306,10 @@ def copy_heat_fuel_param_columns_for_filters(
     Существующая строка за целевой год обновляется по тепловым полям; пустые identity
     (ved, oes, obl, …) дозаполняются с базового года.
     only_new_rows=True – не трогать уже существующие годы (посев промежуточных лет
-    перед расчётом, чтобы не сбросить QOTR расчётного года). Q из схем на существующие
+    перед расчетом, чтобы не сбросить QOTR расчетного года). Q из схем на существующие
     годы накладывает apply_heat_and_tariffs_q_for_groups.
-    При отсутствии строки создаётся новая с identity + теплом с базового года
-    (как размножение строки «Станции(Схема)» в Access – без этого ved остаётся NULL).
+    При отсутствии строки создается новая с identity + теплом с базового года
+    (как размножение строки «Станции(Схема)» в Access – без этого ved остается NULL).
 
     nust, nr, nt, nt_sum: см. _apply_nust_nr_for_target_from_source_or_machines (nt и nt_sum –
     сумма MachineFuelParam.nt по агрегатам группы с ненулевой суммой p_ust за целевой год; см.
@@ -2425,7 +2427,7 @@ def apply_heat_and_tariffs_q_for_groups(
     """
     На существующих строках ТЭП подставляет Q из «Тепло и тарифы» за тот же календарный год.
 
-    Как Access: отпуск на прогнозный год берётся из «Тепло из СТ», а не копией базового года.
+    Как Access: отпуск на прогнозный год берется из «Тепло из СТ», а не копией базового года.
     Уже заданный q (в т.ч. из импорта «Станции(Схема)») не затираем.
     Нет записи СТ за год – q не меняем. QOTR и прочие поля не трогаем.
     """
@@ -2462,7 +2464,7 @@ def apply_heat_and_tariffs_q_for_existing_rows(
     filter_end_year: int,
     target_year_numbers: list[int],
 ) -> int:
-    """Обёртка: группы по фильтрам страницы, затем apply_heat_and_tariffs_q_for_groups."""
+    """Обертка: группы по фильтрам страницы, затем apply_heat_and_tariffs_q_for_groups."""
     f = {**filters}
     f.pop("page", None)
     eg_ids = get_equipment_group_ids_for_fuel_params_filters(
@@ -2528,7 +2530,7 @@ def _save_main_fuel_param_detail_panel_values(
 ) -> None:
     """
     Обновление числовых полей EquipmentGroupFuelParam (доли TOPLS|UGLI) из нижней панели.
-    values_by_year: {год: {attr: сырьё с формы}}.
+    values_by_year: {год: {attr: сырье с формы}}.
     """
     from app.common.services.help_services import values_equal_by_display_precision
     from app.fuel.services.equipment_groups.equipment_group_fuel_params_write_services import (

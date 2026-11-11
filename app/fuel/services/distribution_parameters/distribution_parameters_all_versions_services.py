@@ -143,7 +143,7 @@ def upsert_distribution_parameter_in_all_versions(
     data: dict[str, Any],
 ) -> tuple[str, int, int, list[str]]:
     """
-    Создаёт/обновляет копию параметра во всех версиях БД.
+    Создает/обновляет копию параметра во всех версиях БД.
 
     Returns:
         (ref_uuid, added, updated, warnings)
@@ -235,7 +235,7 @@ def delete_distribution_parameter_in_all_versions(row_id: int) -> list[int]:
     Зависимые сводки/результаты «Коэфф» удаляются явно (ORM иначе обнуляет FK).
 
     Returns:
-        список удалённых id
+        список удаленных id
     """
     from app.fuel.models.coefficient.distribution_coefficient_summary_model import (
         DistributionCoefficientSummary,

@@ -17,6 +17,7 @@ from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.ecology.services import fuel_summary_services as summary
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.energy_systems.regional_energy_system_model import (
     RegionalEnergySystem,
 )
@@ -34,6 +35,7 @@ def fuel_session(monkeypatch):
         MachineFuelParam,
         RegionalEnergySystem,
         UnionEnergySystem,
+        EnergySystemType,
         service.EquipmentGroupSet,
         service.EquipmentGroupSetStation,
         service.Station,
@@ -54,14 +56,31 @@ def fuel_session(monkeypatch):
         monkeypatch.setattr(service.db, "session", session)
         monkeypatch.setattr(service, "get_current_db_version_id", lambda: 1)
         session.execute(
+            EnergySystemType.__table__.insert(),
+            [
+                {"id": 1, "name": "ЕЭС России", "database_version_id": 1},
+                {
+                    "id": 2,
+                    "name": service.DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME,
+                    "database_version_id": 1,
+                },
+            ],
+        )
+        session.execute(
             UnionEnergySystem.__table__.insert(),
-            [{"id": 1, "name": "ОЭС Центра"}, {"id": 2, "name": "ТИТЭС"}],
+            [
+                {"id": 1, "name": "ОЭС Центра", "id_energy_system_type": 1},
+                {"id": 2, "name": "ТИТЭС", "id_energy_system_type": 1},
+                {"id": 3, "name": "ОЭС с типом ДЭЗ", "id_energy_system_type": 2},
+            ],
         )
         session.execute(
             RegionalEnergySystem.__table__.insert(),
             [
                 {"id": 1, "name": "Центр", "name_full": "Центр", "name_rp": "Центра", "id_union_energy_system": 1},
                 {"id": 2, "name": "Норильский район", "name_full": "Норильский район", "name_rp": "Норильского района", "id_union_energy_system": 2},
+                {"id": 3, "name": "Децентрализованный район", "name_full": "Децентрализованный район", "name_rp": "Децентрализованного района", "id_union_energy_system": 3},
+                {"id": 4, "name": "не указано", "name_full": "не указано", "name_rp": "не указано", "id_union_energy_system": None},
             ],
         )
         session.execute(
@@ -73,7 +92,7 @@ def fuel_session(monkeypatch):
                 {"id": 4, "external_code": "test-4", "d": 2, "database_version_id": 1, "regional_energy_system_id": None},
             ],
         )
-        # Ни одна группа не имеет связи со станцией: это не должно терять её
+        # Ни одна группа не имеет связи со станцией: это не должно терять ее
         # из итогов, в том числе для котельных и неизвестной территории.
         for year in (2023, 2024):
             session.execute(
@@ -273,7 +292,7 @@ def test_station_energy_district_does_not_multiply_fuel_totals(fuel_session, by_
 @pytest.mark.parametrize("group_unit_id", [None, 1, 2])
 @pytest.mark.parametrize("station_unit_id", [None, 1, 2])
 @pytest.mark.parametrize("by_capacity", [False, True])
-def test_nikolaevsky_column_uses_only_equipment_group_energy_unit(
+def test_energy_unit_name_does_not_assign_decentralized_zone(
     fuel_session, group_unit_id, station_unit_id, by_capacity,
 ):
     _insert_group(fuel_session)
@@ -307,17 +326,83 @@ def test_nikolaevsky_column_uses_only_equipment_group_energy_unit(
     inputs = service.load_operating_tes_fuel_inputs([2023], by_capacity=by_capacity)[2023]
     if by_capacity:
         inputs = {slug: service.combine_capacity_buckets(bucket) for slug, bucket in inputs.items()}
-    # Та же территориальная принадлежность должна попасть в пакет для экологии.
+    # EnergyUnit name no longer decides the decentralized-zone column.
     summary_inputs = summary.load_fuel_summary([2023])[2023]
     for buckets, total in ((inputs, 1009), (summary_inputs, 999)):
         assert buckets["vsego"]["q"] == total
-        if group_unit_id == 1:
-            assert buckets["nikolaevsky"]["q"] == 999
-            assert buckets["nikolaevsky"]["gaz_prir"] == 15
-            assert "centr" not in buckets
-        else:
-            assert "nikolaevsky" not in buckets
-            assert buckets["centr"]["q"] == 999
+        assert "decentralized-zone" not in buckets
+        assert "centr" in buckets
+        assert buckets["centr"]["q"] == 999
+
+
+@pytest.mark.parametrize("by_capacity", [False, True])
+def test_station_energy_system_type_assigns_group_to_decentralized_zone(fuel_session, by_capacity):
+    _insert_group(fuel_session)
+    fuel_session.execute(
+        EquipmentGroup.__table__.update().where(EquipmentGroup.id == 99)
+        .values(regional_energy_system_id=1, energy_unit_id=1, r=1)
+    )
+    fuel_session.execute(
+        EquipmentGroupFuelParam.__table__.update()
+        .where(EquipmentGroupFuelParam.equipment_group_id == 99)
+        .values(nust=150)
+    )
+    _link_station(fuel_session, res_id=3)
+
+    inputs = service.load_operating_tes_fuel_inputs(
+        [2023], by_capacity=by_capacity,
+    )[2023]
+    if by_capacity:
+        inputs = {
+            slug: service.combine_capacity_buckets(bucket)
+            for slug, bucket in inputs.items()
+        }
+    summary_inputs = summary.load_fuel_summary([2023])[2023]
+
+    for buckets, total in ((inputs, 1009), (summary_inputs, 999)):
+        assert buckets["vsego"]["q"] == total, (total, buckets)
+        assert buckets["decentralized-zone"]["q"] == 999
+        assert "centr" not in buckets
+        assert "norilsk" not in buckets
+
+
+def test_station_card_decentralized_type_assigns_group_without_union_link(fuel_session):
+    _insert_group(fuel_session)
+    fuel_session.execute(
+        EquipmentGroup.__table__.update().where(EquipmentGroup.id == 99)
+        .values(regional_energy_system_id=1, r=1)
+    )
+    fuel_session.execute(
+        EquipmentGroupFuelParam.__table__.update()
+        .where(EquipmentGroupFuelParam.equipment_group_id == 99)
+        .values(nust=150)
+    )
+    # В карточке станции РЭС «не указано» показывается тип «Децентрализованная зона».
+    _link_station(fuel_session, res_id=4)
+
+    inputs = summary.load_fuel_summary([2023])[2023]
+
+    assert inputs["decentralized-zone"]["q"] == 999
+    assert "centr" not in inputs
+
+
+def test_new_tes_summary_assigns_zone_by_linked_station_energy_system_type(fuel_session):
+    _insert_group(fuel_session)
+    fuel_session.execute(
+        EquipmentGroup.__table__.update().where(EquipmentGroup.id == 99)
+        .values(d=1, r=2, n1="75", regional_energy_system_id=1)
+    )
+    fuel_session.execute(
+        EquipmentGroupFuelParam.__table__.update()
+        .where(EquipmentGroupFuelParam.equipment_group_id == 99)
+        .values(nust=150)
+    )
+    _link_station(fuel_session, res_id=3)
+
+    inputs, errors = summary.build_fuel_summary([2023])
+    assert errors["new_lt100"] == []
+    assert inputs["new_lt100"][2023]["decentralized-zone"]["q"] == 999
+    assert "centr" not in inputs["new_lt100"][2023]
 
 
 @pytest.mark.parametrize("station_version,group_res,expected", [
@@ -376,7 +461,7 @@ def test_unspecified_res_does_not_inherit_whole_subject_membership(fuel_session)
     })
     inputs = service.load_operating_tes_fuel_inputs([2023])[2023]
     assert "norilsk" not in inputs
-    assert "nikolaevsky" not in inputs
+    assert "decentralized-zone" not in inputs
 
 
 
@@ -399,12 +484,12 @@ def _summary_machine(session, machine_id, group_id, power, *, expected=2023, ver
 @pytest.mark.parametrize("d", [None, 0, 1, 2, 9])
 @pytest.mark.parametrize("r", [None, 0, 1, 2, 9])
 @pytest.mark.parametrize("capacity", [None, 0, Decimal("99.9"), 100, Decimal("100.1")])
-def test_summary_selects_groups_by_flags_and_yearly_nust(fuel_session, d, r, capacity):
+def test_summary_selects_groups_by_flags_and_capacity(fuel_session, d, r, capacity):
     fuel_session.execute(EquipmentGroup.__table__.update().values(d=9))
     _insert_group(fuel_session, d=d)
     fuel_session.execute(EquipmentGroup.__table__.update().where(
         EquipmentGroup.id == 99,
-    ).values(r=r))
+    ).values(r=r, n1=str(capacity) if capacity is not None else None))
     fuel_session.execute(EquipmentGroupFuelParam.__table__.update().where(
         EquipmentGroupFuelParam.equipment_group_id == 99,
     ).values(nust=capacity))
@@ -423,11 +508,40 @@ def test_summary_selects_groups_by_flags_and_yearly_nust(fuel_session, d, r, cap
         )
 
 
-def test_summary_uses_group_nust_each_year_and_preserves_territories_and_totals(fuel_session):
-    for group_id, d, r in ((1, 1, 1), (2, 1, 2), (3, None, None), (4, 1, 2)):
+@pytest.mark.parametrize("d,r", [(1, 2), (None, None)])
+@pytest.mark.parametrize("nust", [None, 50, 150])
+@pytest.mark.parametrize("n1,expected_scope", [
+    (None, None), ("", None), ("  ", None), ("не задано", None),
+    ("NaN", None), ("Infinity", None),
+    ("0", "new_lt100"), (" 99,9 ", "new_lt100"),
+    ("100", "new_ge100"), ("100.1", "new_ge100"),
+])
+def test_new_summary_uses_block_capacity_independently_of_nust(
+    fuel_session, d, r, nust, n1, expected_scope,
+):
+    fuel_session.execute(EquipmentGroup.__table__.update().values(d=9))
+    _insert_group(fuel_session, d=d)
+    fuel_session.execute(EquipmentGroup.__table__.update().where(
+        EquipmentGroup.id == 99,
+    ).values(r=r, n1=n1))
+    fuel_session.execute(EquipmentGroupFuelParam.__table__.update().where(
+        EquipmentGroupFuelParam.equipment_group_id == 99,
+    ).values(nust=nust))
+
+    inputs, errors = summary.build_fuel_summary([2023])
+
+    assert not any(errors.values())
+    for scope in inputs:
+        assert inputs[scope][2023].get("vsego", {}).get("q", 0) == (
+            999 if scope == expected_scope else 0
+        )
+
+
+def test_summary_uses_n1_for_all_years_and_preserves_territories_and_totals(fuel_session):
+    for group_id, d, r, n1 in ((1, 1, 1, None), (2, 1, 2, "60"), (3, None, None, "150"), (4, 1, 2, "100.1")):
         fuel_session.execute(EquipmentGroup.__table__.update().where(
             EquipmentGroup.id == group_id,
-        ).values(d=d, r=r))
+        ).values(d=d, r=r, n1=n1))
     fuel_session.execute(EquipmentGroupFuelParam.__table__.update().where(
         EquipmentGroupFuelParam.equipment_group_id == 2,
         EquipmentGroupFuelParam.year_number == 2023,
@@ -445,9 +559,9 @@ def test_summary_uses_group_nust_each_year_and_preserves_territories_and_totals(
     assert not any(errors.values())
     assert inputs["new_lt100"][2023]["vsego"]["b"] == 2
     assert inputs["new_lt100"][2023]["centr"]["b"] == 2
-    assert not inputs["new_lt100"][2024]
+    assert inputs["new_lt100"][2024]["vsego"]["b"] == 2
     assert inputs["new_ge100"][2023]["norilsk"]["b"] == 3
-    assert inputs["new_ge100"][2024]["vsego"]["b"] == 9
+    assert inputs["new_ge100"][2024]["vsego"]["b"] == 7
     for year in (2023, 2024):
         assert inputs["operating"][year]["vsego"]["b"] == 1
         for field, total in (("b", 10), ("e", 1000), ("q", 100)):
@@ -462,7 +576,7 @@ def test_summary_excludes_other_versions(fuel_session, version, param_version, s
     _insert_group(fuel_session, version=version, param_version=param_version)
     fuel_session.execute(EquipmentGroup.__table__.update().where(
         EquipmentGroup.id == 99,
-    ).values(r=r))
+    ).values(r=r, n1="50" if scope == "new_lt100" else "100"))
     fuel_session.execute(EquipmentGroupFuelParam.__table__.update().where(
         EquipmentGroupFuelParam.equipment_group_id == 99,
     ).values(nust=50 if scope == "new_lt100" else 100))

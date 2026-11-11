@@ -1,0 +1,12 @@
+{
+  "database_version_id": 37,
+  "snapshot_id": 65,
+  "year": 2024,
+  "scope": "operating",
+  "exact_payload_match": true,
+  "stored_numeric_values": 385,
+  "page_cells_verified": 1209,
+  "other_territories_empty": true,
+  "total_fuel_display": "308 933,8",
+  "total_generation_display": "738,9"
+}

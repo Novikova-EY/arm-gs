@@ -9,6 +9,10 @@ from decimal import Decimal
 from openpyxl import load_workbook
 
 import app.ecology.services.gis_tek_export_services as gis_tek_export
+from app.ecology.services.export_ecology_totals_summary_services import (
+    export_ecology_totals_summary_to_excel,
+)
+from app.ecology.services import gis_tes_fuel_comparison_services as analysis_services
 from app.ecology.services.export_gis_tes_fuel_comparison_services import (
     export_comparison_table_to_excel,
 )
@@ -127,6 +131,27 @@ def _sheet(stream) -> "object":
     return workbook.active
 
 
+def test_ecology_totals_summary_export_preserves_numeric_cells_and_rounding():
+    context = {
+        "columns": [
+            {"key": "NAME", "label": "Станция", "numeric": False},
+            {"key": "Year", "label": "Год", "numeric": True},
+            {"key": "co2", "label": "Выбросы CO2", "numeric": True},
+        ],
+        "header_rows": [],
+        "rounding_digits": 2,
+        "blocks": [{"rows": [{"cells": ["ТЭЦ", "2026", "1 234,50"]}]}],
+    }
+
+    ws = _sheet(export_ecology_totals_summary_to_excel(context))
+
+    assert ws["B2"].value == 2026
+    assert ws["B2"].number_format == "#,##0"
+    assert ws["C2"].value == 1234.5
+    assert ws["C2"].data_type == "n"
+    assert ws["C2"].number_format == "#,##0.##"
+
+
 def test_gis_tek_export_adds_ues_and_res_columns(monkeypatch):
     monkeypatch.setattr(
         gis_tek_export,
@@ -149,6 +174,36 @@ def test_gis_tek_export_adds_ues_and_res_columns(monkeypatch):
         "Архангельская ТЭЦ",
         12.5,
     ]
+
+
+def test_analysis_export_formats_numeric_columns_like_page_rounding():
+    context = _analysis_context()
+    context.update(rounding_digits=2, emission_rounding_digits=1, specific_rounding_digits=3)
+    emission_key = next(iter(analysis_services.EMISSION_COEFFICIENT_COLUMN_KEYS))
+    specific_key = next(iter(analysis_services.ZV_SPECIFIC_ROUNDING_COLUMN_KEYS))
+    for index, (key, label) in enumerate(((emission_key, "Эмиссия"), (specific_key, "Удельные")), start=4):
+        context['columns'].append({"key": key, "numeric": True, "source_index": index})
+        context['header_rows'][0].append({"column_key": key, "text": label})
+    groups = context['hierarchy'][0]['ues_list'][0]['res_list'][0]['groups']
+    for group in groups:
+        for row in group['rows']:
+            row['cells'].extend(["1,23456", "2,34567"])
+        for filled in group['filled_by_year'].values():
+            filled.extend([Decimal("1.23456"), Decimal("2.34567")])
+    context['hierarchy'][0]['ues_list'][0]['res_list'][0]['summary'] = {
+        "rows": [{"cells": ["Итог", "", "2023", "1 234,56", "1,23456", "2,34567"]}],
+    }
+
+    ws = _sheet(export_comparison_table_to_excel(context))
+
+    assert ws['E4'].number_format == '#,##0'
+    assert ws['F4'].number_format == '#,##0.##'
+    assert ws['G4'].number_format == '#,##0.#'
+    assert ws['H4'].number_format == '#,##0.###'
+    assert ws['G4'].value == 1.23456
+    assert ws['H4'].value == 2.34567
+    assert ws['G6'].number_format == '#,##0.#'
+    assert ws['H6'].number_format == '#,##0.###'
 
 
 def test_analysis_export_has_hidden_key_row():

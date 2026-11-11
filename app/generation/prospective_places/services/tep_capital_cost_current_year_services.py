@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Пересчёт ТЭП в цены текущего года и сервисы ``TepPriceConversionCoefficient``.
+"""Пересчет ТЭП в цены текущего года и сервисы ``TepPriceConversionCoefficient``.
 
-- Пересчёт столбцов «капзатраты без ПИР» и удельных показателей (тыс. руб./кВт) в строке ТЭП
+- Пересчет столбцов «капзатраты без ПИР» и удельных показателей (тыс. руб./кВт) в строке ТЭП
   (ГЭС, ГАЭС и др.) по коэффициентам по годам.
 - Снимок коэффициентов для модального UI, карта «номер года → коэффициент», создание /
   изменение / удаление записей справочника для текущей версии БД.
@@ -85,7 +85,7 @@ def fmt_thousand_rub_per_kw_scaled(
     coeff_by_year: dict[int, Decimal],
 ) -> str:
     """
-    Пересчёт удельного показателя (тыс. руб./кВт) из года привязки цены в ``target_year``.
+    Пересчет удельного показателя (тыс. руб./кВт) из года привязки цены в ``target_year``.
     Та же цепочка коэффициентов, что для сумм в млн руб.
     """
     if raw_val is None:
@@ -119,7 +119,7 @@ def fmt_million_rub_scaled(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal],
 ) -> str:
-    """Пересчёт одной суммы (млн руб) из года цены в target_year."""
+    """Пересчет одной суммы (млн руб) из года цены в target_year."""
     m = multiplier_price_year_to_current_year(
         year_obj.number if year_obj is not None else None,
         target_year,
@@ -158,7 +158,7 @@ def _effective_capital_ges_with_reservoir_million_rub(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal],
 ) -> Decimal | None:
-    """Млн руб «в т.ч. здания…» с тем же пересчётом в цены года, что и столбец капзатрат."""
+    """Млн руб «в т.ч. здания…» с тем же пересчетом в цены года, что и столбец капзатрат."""
     raw = getattr(r, "capital_cost_wo_pir_ges_with_reservoir_million_rub", None)
     if raw is None:
         return None
@@ -209,7 +209,7 @@ def rows_match_for_scaled_specific_semifixed_operating_costs(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal] | None,
 ) -> bool:
-    """Совпадение отображаемых удельных эксплуатационных затрат после пересчёта в цены года."""
+    """Совпадение отображаемых удельных эксплуатационных затрат после пересчета в цены года."""
     if len(group) <= 1:
         return True
     coeff = coeff_by_year or {}
@@ -237,7 +237,7 @@ def rows_match_for_derived_specific_capital_investment(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal] | None,
 ) -> bool:
-    """Совпадение отображаемых удельных капвложений (расчёт по капзатратам и мощности) в группе строк."""
+    """Совпадение отображаемых удельных капвложений (расчет по капзатратам и мощности) в группе строк."""
     if len(group) <= 1:
         return True
     first_r = group[0]
@@ -289,7 +289,7 @@ def resolve_year_id_for_calendar_year_number(year_number: int | None) -> int | N
 def apply_derived_specific_capital_investment_to_ges_tep_source_row(row: Any) -> None:
     """
     Записывает удельные капиталовложения и год привязки для строки ТЭП ГЭС (модель без «генераторного режима»):
-    капзатраты «ГЭС (с водохранилищем)» / установленная мощность, пересчёт в цены года ТЭП.
+    капзатраты «ГЭС (с водохранилищем)» / установленная мощность, пересчет в цены года ТЭП.
     """
     from app.common.services.get_services.years.years_get_services import (
         get_ges_tep_current_price_year_number,
@@ -310,7 +310,7 @@ def apply_derived_specific_capital_investment_to_ges_tep_source_row(row: Any) ->
 def apply_derived_specific_capital_investment_to_gaes_tep_source_row(row: Any) -> None:
     """
     Записывает удельные капиталовложения и год привязки по той же формуле, что и таблица ТЭП
-    (капзатраты «здания…» / мощность генераторного режима, пересчёт в цены года ТЭП).
+    (капзатраты «здания…» / мощность генераторного режима, пересчет в цены года ТЭП).
     Год для удельных капвложений совпадает с годом предоставления информации по строке
     «здания, сооружения, оборудование и бассейнами ГАЭС».
     """
@@ -337,7 +337,7 @@ def apply_derived_specific_capital_investment_to_tep_row_dict(
     target_year: int | None = None,
     coeff_by_year: dict[int, Decimal] | None = None,
 ) -> None:
-    """Подменяет ``specific_capital_investment_thous_rub_per_kw`` расчётным значением (in-place)."""
+    """Подменяет ``specific_capital_investment_thous_rub_per_kw`` расчетным значением (in-place)."""
     row_dict["specific_capital_investment_thous_rub_per_kw"] = (
         fmt_specific_capital_investment_thous_rub_per_kw_derived(
             r,
@@ -449,8 +449,8 @@ def get_price_coefficients_snapshot() -> dict:
 
 def get_tep_price_coefficient_by_year_map() -> dict[int, Decimal]:
     """
-    Номер календарного года → коэффициент пересчёта (текущая версия БД).
-    Для цепочки пересчёта цены из года P в текущий год Y используются коэффициенты
+    Номер календарного года → коэффициент пересчета (текущая версия БД).
+    Для цепочки пересчета цены из года P в текущий год Y используются коэффициенты
     за годы P+1 … Y включительно.
     """
     out: dict[int, Decimal] = {}
@@ -475,7 +475,7 @@ def get_tep_main_radio_price_year_number(
     Календарный год для подписи радиокнопки «в ценах N года» на ТЭП основных площадок.
 
     Если максимальный год в полях «год» блока «Стоимость (капзатраты без ПИР)» по
-    отображаемым строкам меньше целевого «текущего» года пересчёта – в подписи
+    отображаемым строкам меньше целевого «текущего» года пересчета – в подписи
     используется максимальный год среди строк таблицы коэффициентов (где задан
     коэффициент). Иначе – максимальный год из тех же полей исходных данных.
     """
@@ -518,7 +518,7 @@ def tep_main_rows_have_mixed_source_price_years(tep_source_rows: Iterable[Any] |
     True, если по разным строкам ТЭП в блоках «Капитальные затраты» и/или
     «Удельные условно-постоянные эксплуатационные затраты» заданы разные
     календарные года (по каждому из полей года – более одного ненулевого значения
-    среди строк). Тогда пересчёт в единые «цены года» для всей таблицы недоступен.
+    среди строк). Тогда пересчет в единые «цены года» для всей таблицы недоступен.
     """
     rows = list(tep_source_rows or ())
     if len(rows) <= 1:
@@ -553,7 +553,7 @@ def tep_main_rows_have_mixed_source_price_years(tep_source_rows: Iterable[Any] |
     return len(distinct_sf) > 1
 
 
-# Год цен по связям Year на энергоблоке АЭС (пересчёт удельных показателей, тыс. руб./кВт и аналоги)
+# Год цен по связям Year на энергоблоке АЭС (пересчет удельных показателей, тыс. руб./кВт и аналоги)
 AES_MACHINE_TEP_YEAR_RELATIONSHIP_ATTRS: tuple[str, ...] = (
     "year_specific_fuel_cost",
     "year_specific_fixed_operating_costs",
@@ -605,7 +605,7 @@ def get_aes_tep_main_radio_price_year_number(
 def aes_tep_rows_have_mixed_source_price_years(machines: Iterable[Any] | None) -> bool:
     """
     True, если среди отображаемых энергоблоков по любому из полей «год данных»
-    встречается более одного календарного года – единый пересчёт в «цены года» недоступен.
+    встречается более одного календарного года – единый пересчет в «цены года» недоступен.
     """
     rows = list(machines or ())
     if len(rows) <= 1:
@@ -642,7 +642,7 @@ def rows_match_for_scaled_thousand_rub_pair(
     target_year: int | None,
     coeff_by_year: dict[int, Decimal] | None,
 ) -> bool:
-    """Совпадение отображаемых удельных значений после пересчёта (тыс. руб./кВт и т.п.)."""
+    """Совпадение отображаемых удельных значений после пересчета (тыс. руб./кВт и т.п.)."""
     if len(group) <= 1:
         return True
     coeff = coeff_by_year or {}

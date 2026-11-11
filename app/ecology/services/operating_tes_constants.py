@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Константы расчёта по действующим ТЭС (макет «перевод в натур через К»)."""
+"""Константы расчета по действующим ТЭС (макет «перевод в натур через К»)."""
 from __future__ import annotations
 from decimal import Decimal
 from typing import Any
@@ -30,16 +30,16 @@ TERRITORIES: tuple[dict[str, Any], ...] = (
     {'slug': 'vostok', 'sheet_name': 'ОЭС Востока', 'group': 'territory'},
     {'slug': 'norilsk', 'sheet_name': 'ТИТЭС Сибири', 'group': 'special'},
     {'slug': 'isolated-dv', 'sheet_name': 'ТИТЭС Востока', 'group': 'special'},
-    {'slug': 'nikolaevsky', 'sheet_name': 'Децентрализованная зона (Николаевский энергорайон)', 'group': 'special'},
+    {'slug': 'decentralized-zone', 'sheet_name': 'Децентрализованная зона', 'group': 'special'},
 )
 
 COEFFICIENT_TERRITORIES: tuple[dict[str, Any], ...] = (
     *(item for item in TERRITORIES if item["slug"] not in {
-        "minen", "prompred", "isolated-dv", "nikolaevsky", "norilsk"
+        "minen", "prompred", "isolated-dv", "decentralized-zone", "norilsk"
     }),
     {"slug": "tites-sibir", "sheet_name": "ТИТЭС Сибири"},
     {"slug": "tites-vostok", "sheet_name": "ТИТЭС Востока"},
-    {"slug": "decentralized-zone", "sheet_name": "Децентрализованная зона (Николаевский энергорайон)"},
+    {"slug": "decentralized-zone", "sheet_name": "Децентрализованная зона"},
 )
 COEFFICIENT_AFFILIATIONS = (
     {"slug": "minen", "label": "Станции отрасли"},
@@ -645,7 +645,7 @@ DEFAULT_CHAR_NOTES: dict[str, str] = {
     "bashkir": "Тульганский (бурый)",
     "tuva": "Уголь каахемского месторождения",
     "tugnuy": "Каменный",
-    "okino": "Из статьи ВТИ-Урал (в пересчёте на рабочую)",
+    "okino": "Из статьи ВТИ-Урал (в пересчете на рабочую)",
     "zab_hard": "Как багучанский",
     "yakut_other": "Взято как нерюнгринские промпродукты",
     "ushumun": "Бурый",

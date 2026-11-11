@@ -1,5 +1,5 @@
 /**
- * Фильтры числовых кодов и признаков в шапке столбцов топливных таблиц.
+ * Фильтры кодов, признаков и текстовых значений в шапке столбцов таблиц.
  * Выпадающий список без Select2 (как фильтры ОЭС): кнопка, поле поиска, прокрутка, несколько кодов.
  */
 (function () {
@@ -126,12 +126,12 @@
         return true;
     }
 
-    function currentUrlValues(param) {
+    function currentUrlValues(param, textValues) {
         var params = new URLSearchParams(window.location.search);
         var out = [];
         var seen = {};
         params.getAll(param).forEach(function (v) {
-            parseCodes(v).forEach(function (s) {
+            (textValues ? [v] : parseCodes(v)).forEach(function (s) {
                 if (seen[s]) {
                     return;
                 }
@@ -145,8 +145,8 @@
 
     var applying = false;
 
-    function applyFilter(values, param) {
-        if (applying || sameValues(values, currentUrlValues(param))) {
+    function applyFilter(values, param, textValues) {
+        if (applying || sameValues(values, currentUrlValues(param, textValues))) {
             return;
         }
         applying = true;
@@ -187,6 +187,7 @@
         var param = selectEl.getAttribute("data-filter-param") || PARAM;
         var placeholder = selectEl.getAttribute("data-placeholder") || "Фильтр";
         var labelled = selectEl.hasAttribute("data-filter-param");
+        var textValues = selectEl.getAttribute("data-value-type") === "text";
 
         function optionLabel(value) {
             return ensureOption(selectEl, value).textContent;
@@ -229,6 +230,17 @@
         var list = document.createElement("div");
         list.className = "numb1120-filter-list d-flex flex-column gap-1";
 
+        var selectAll = document.createElement("button");
+        selectAll.type = "button";
+        selectAll.className = "btn btn-sm btn-outline-secondary mb-2";
+        selectAll.textContent = "Выбрать все найденные";
+        selectAll.addEventListener("click", function () {
+            list.querySelectorAll("label:not(.d-none) input").forEach(function (checkbox) {
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event("change"));
+            });
+        });
+
         var footer = document.createElement("div");
         footer.className = "numb1120-filter-footer d-flex justify-content-between gap-2";
         var resetBtn = document.createElement("button");
@@ -245,6 +257,9 @@
         var divider = document.createElement("hr");
         divider.className = "dropdown-divider";
         menu.appendChild(searchInput);
+        if (textValues) {
+            menu.appendChild(selectAll);
+        }
         menu.appendChild(list);
         menu.appendChild(divider);
         menu.appendChild(footer);
@@ -257,7 +272,7 @@
         document.body.appendChild(menu);
 
         function setButtonText() {
-            var applied = currentUrlValues(param);
+            var applied = currentUrlValues(param, textValues);
             btn.textContent = "";
             var label = document.createElement("span");
             if (!applied.length) {
@@ -278,7 +293,7 @@
 
         function restoreFromUrl() {
             var applied = {};
-            currentUrlValues(param).forEach(function (v) {
+            currentUrlValues(param, textValues).forEach(function (v) {
                 applied[v] = true;
                 ensureOption(selectEl, v);
             });
@@ -290,7 +305,7 @@
         function applySearchFilter() {
             var q = (searchInput.value || "").trim().toLowerCase();
             var codes = parseCodes(searchInput.value);
-            var useCodes = codes.length > 1;
+            var useCodes = !textValues && codes.length > 1;
             list.querySelectorAll("[data-search-text]").forEach(function (el) {
                 var text = el.getAttribute("data-search-text") || "";
                 var match;
@@ -347,7 +362,7 @@
 
             var spaceBelow = window.innerHeight - rect.bottom - 8;
             var spaceAbove = rect.top - 8;
-            var chrome = (searchInput.offsetHeight || 32) + (footer.offsetHeight || 40) + 24;
+            var chrome = (searchInput.offsetHeight || 32) + (footer.offsetHeight || 40) + (textValues ? selectAll.offsetHeight + 8 : 0) + 24;
             var listMax = Math.max(72, Math.min(256, Math.max(spaceBelow, spaceAbove) - chrome));
             list.style.maxHeight = listMax + "px";
 
@@ -390,11 +405,11 @@
 
         function confirmSelection() {
             var values = selectedValues(selectEl);
-            if (sameValues(values, currentUrlValues(param))) {
+            if (sameValues(values, currentUrlValues(param, textValues))) {
                 closeMenu();
                 return;
             }
-            applyFilter(values, param);
+            applyFilter(values, param, textValues);
         }
 
         function selectCodesFromInput() {
@@ -439,7 +454,7 @@
         headerClear.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            applyFilter([], param);
+            applyFilter([], param, textValues);
         });
 
         searchInput.addEventListener("input", applySearchFilter);
@@ -501,7 +516,7 @@
 
     function init() {
         injectStyles();
-        document.querySelectorAll("#numb1120HeaderFilter, select.equipment-group-flag-filter").forEach(initDropdown);
+        document.querySelectorAll("#numb1120HeaderFilter, select.equipment-group-flag-filter, select.table-header-filter").forEach(initDropdown);
     }
 
     if (document.readyState === "loading") {

@@ -101,7 +101,7 @@ def main():
                 by_year[y] = dp
 
         coeff = FuelCoefficientCalculationService()
-        print("=== сводка Коэфф: записанная vs живой пересчёт ===")
+        print("=== сводка Коэфф: записанная vs живой пересчет ===")
         for y in sorted(by_year):
             dp = by_year[y]
             stored = (

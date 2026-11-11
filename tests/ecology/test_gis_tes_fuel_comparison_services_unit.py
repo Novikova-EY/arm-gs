@@ -213,7 +213,7 @@ def test_four_sheets_except_list1():
     slugs = [item["slug"] for item in COMPARISON_SHEETS]
     names = [item["excel_name"] for item in COMPARISON_SHEETS]
     assert slugs == ["zv-vse", "pg-vse", "zv-bez-kot", "pg-bez-kot"]
-    assert names == ["ЗВ_всё", "ПГ_всё", "ЗВ_без кот", "ПГ_без кот"]
+    assert names == ["ЗВ_все", "ПГ_все", "ЗВ_без кот", "ПГ_без кот"]
     assert SKIP_SHEET_NAME == "Лист1"
     assert DEFAULT_SHEET_SLUG == "zv-vse"
     assert get_comparison_sheet("pg-vse")["page_title"].startswith("Парниковые газы")
@@ -531,7 +531,7 @@ def test_context_keeps_selected_year(tmp_path, monkeypatch):
     ws.append(["ФО", "ОЭС", "Субъект", "Станция", "Код", "Год", "Выработка"])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 12.44])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2018, 8])
-    for title in ("ПГ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_все", "ПГ_все", "Лист1"):
         wb.create_sheet(title)
         extra = wb[title]
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
@@ -588,7 +588,7 @@ def test_zv_vse_gaseous_total_is_sum_with_pollutants_formula(tmp_path, monkeypat
     path = tmp_path / "zv-gaseous.xlsx"
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     ws.append(
         [
             "Fed_okr",
@@ -624,7 +624,7 @@ def test_zv_vse_gaseous_total_is_sum_with_pollutants_formula(tmp_path, monkeypat
         ]
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 999, 1, 2, 3, 4, 5, 6])
-    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
@@ -735,7 +735,7 @@ def test_territory_filters_and_hidden_geo_columns(tmp_path, monkeypatch):
     ws.append(["ФО", "ОЭС", "Субъект", "Станция", "Код", "Год", "Выработка"])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1", 1, 2017, 12.44])
     ws.append(["ЦФО", "ОЭС Ц", "МО", "ТЭЦ-2", 2, 2017, 8])
-    for title in ("ПГ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_все", "ПГ_все", "Лист1"):
         wb.create_sheet(title)
         extra = wb[title]
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
@@ -821,7 +821,7 @@ def test_hierarchy_headers_and_pagination(tmp_path, monkeypatch):
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1", 1, 2017, 1])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-2", 2, 2017, 2])
     ws.append(["ЦФО", "ОЭС Ц", "МО", "ТЭЦ-3", 3, 2017, 3])
-    for title in ("ПГ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_все", "ПГ_все", "Лист1"):
         wb.create_sheet(title)
         extra = wb[title]
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
@@ -1600,7 +1600,7 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
     path = tmp_path / "zv-reported.xlsx"
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     keys = [
         "Fed_okr",
         "nameoes",
@@ -1636,7 +1636,7 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
     ws.append(keys)
     ws.append(labels)
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 10, 8, 20, 15, 30, 12, 40, 2])
-    for title in ("ЗВ_без кот", "ПГ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ПГ_без кот", "ПГ_все", "Лист1"):
         wb.create_sheet(title)
         extra = wb[title]
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
@@ -1716,10 +1716,10 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
 
 
 def _station_generation_workbook(path):
-    """«ЗВ_всё» с ТЭП-столбцами NUST/E – для столбцов сверки с «Генерацией»."""
+    """«ЗВ_все» с ТЭП-столбцами NUST/E – для столбцов сверки с «Генерацией»."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     ws.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "nust", "W_en"])
     ws.append(
         [
@@ -1735,7 +1735,7 @@ def _station_generation_workbook(path):
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500])
-    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_все", "Лист1"):
         extra = wb.copy_worksheet(ws)
         extra.title = title
     wb.save(path)
@@ -1921,10 +1921,10 @@ def test_load_station_generation_overlay_without_app_context():
 
 
 def _station_affiliation_workbook(path):
-    """«ЗВ_всё» с ТЭП-столбцом «Отпуск ТЭ» – для столбца «Принадлежность»."""
+    """«ЗВ_все» с ТЭП-столбцом «Отпуск ТЭ» – для столбца «Принадлежность»."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     ws.append(
         ["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "nust", "W_en", "Teplo"]
     )
@@ -1943,7 +1943,7 @@ def _station_affiliation_workbook(path):
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500, 30])
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500, 30])
-    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_все", "Лист1"):
         extra = wb.copy_worksheet(ws)
         extra.title = title
     wb.save(path)
@@ -2191,11 +2191,11 @@ def test_pg_pages_use_ecology_overlay_before_differences(tmp_path, monkeypatch):
             6.0,
         ]
     )
-    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
-    wb.copy_worksheet(ws).title = "ПГ_всё"
+    wb.copy_worksheet(ws).title = "ПГ_все"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -2399,7 +2399,7 @@ def test_safe_subtract():
 
 
 def test_safe_math_ignores_source_float_noise():
-    """Хвост double из БД не должен попадать в расчётные столбцы страницы."""
+    """Хвост double из БД не должен попадать в расчетные столбцы страницы."""
     from app.ecology.services.gis_tes_fuel_comparison_services import (
         _format_value,
         _safe_divide,
@@ -2428,7 +2428,7 @@ def test_format_value_keeps_significant_digits_when_not_rounding():
 
 
 def test_cell_titles_show_value_whole_regardless_of_rounding():
-    """Подсказка к ячейке – значение целиком, как в БД, без учёта «Округл»."""
+    """Подсказка к ячейке – значение целиком, как в БД, без учета «Округл»."""
     from app.ecology.services.gis_tes_fuel_comparison_services import cell_titles
 
     columns = [
@@ -2969,11 +2969,11 @@ def test_pg_pages_recompute_difference_columns_and_attach_formulas(tmp_path, mon
             999.0,
         ]
     )
-    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
-    wb.copy_worksheet(ws).title = "ПГ_всё"
+    wb.copy_worksheet(ws).title = "ПГ_все"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3148,11 +3148,11 @@ def test_emission_rounding_digits_apply_only_to_emission_columns(tmp_path, monke
         ]
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1", 1, 2017, 802393.6, 1275805.8, 999.0, 500.0])
-    for title in ("ЗВ_без кот", "ЗВ_всё", "Лист1"):
+    for title in ("ЗВ_без кот", "ЗВ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
-    wb.copy_worksheet(ws).title = "ПГ_всё"
+    wb.copy_worksheet(ws).title = "ПГ_все"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3300,11 +3300,11 @@ def test_zv_specific_rounding_digits_apply_only_to_specific_columns(tmp_path, mo
             999.0,
         ]
     )
-    for title in ("ПГ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ПГ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
-    wb.copy_worksheet(ws).title = "ЗВ_всё"
+    wb.copy_worksheet(ws).title = "ЗВ_все"
     wb.save(path)
     clear_comparison_cache()
     monkeypatch.setattr(
@@ -3467,7 +3467,7 @@ def test_save_analysis_zv_ecology_cell_saves_mapped_field(monkeypatch):
 
 
 def test_related_zv_cells_return_full_value_as_title(monkeypatch):
-    """В ответе на правку рядом с округлённым текстом – полное значение для подсказки."""
+    """В ответе на правку рядом с округленным текстом – полное значение для подсказки."""
     import app.ecology.services.gis_tes_fuel_comparison_services as svc
 
     monkeypatch.setattr(
@@ -3526,7 +3526,7 @@ def test_zv_analysis_columns_are_editable_and_use_params_overlay(tmp_path, monke
     path = tmp_path / "zv-edit.xlsx"
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     ws.append(
         [
             "Fed_okr",
@@ -3566,7 +3566,7 @@ def test_zv_analysis_columns_are_editable_and_use_params_overlay(tmp_path, monke
         ]
     )
     ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 708, 2017, 999, 1, 999, 1, 1, 1, 1, 1, 1])
-    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_все", "Лист1"):
         extra = wb.create_sheet(title)
         extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 708, 2017, 1])
@@ -3653,7 +3653,7 @@ def test_zv_selected_parts_apply_to_rows_summaries_and_export(
             "VIBROS_ekol", "GAZ and ZHID", "normir_ZV_na_ee", "normir_ZV_na_energ"]
     wb = Workbook()
     ws = wb.active
-    ws.title = "ЗВ_всё"
+    ws.title = "ЗВ_все"
     ws.append(keys)
     ws.append(keys)
     ws.append(["FD", "UES", "RES", "Station", 708, 2017] + [0] * (len(keys) - 6))

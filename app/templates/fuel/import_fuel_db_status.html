@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Статус импорта БД Топливо{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3">
+    <h1>Импорт данных БД Топливо</h1>
+    <p>Обработка выполняется в фоне. Закрытие страницы не останавливает импорт.</p>
+    <div id="fuelDbImportWidget" data-initial-job="{{ job.id }}" data-owner="{{ current_user.id }}"
+         data-active-url="{{ url_for('fuel_bp.fuel_db_import_active') }}"
+         data-status-url="{{ url_for('fuel_bp.fuel_db_import_status', job_id='JOB_ID') }}">
+        {% include 'fuel/_shared/fuel_db_import_status.html' %}
+    </div>
+    <noscript><a class="btn btn-outline-primary" href="{{ job.status_url }}">Обновить статус</a></noscript>
+    <a class="btn btn-secondary mt-2" href="{{ job.redirect_url }}">Вернуться к данным</a>
+</div>
+<script src="{{ url_for('static', filename='js/fuel/fuel_db_import.js') }}?v=1" defer></script>
+{% endblock %}

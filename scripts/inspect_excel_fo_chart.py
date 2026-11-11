@@ -32,10 +32,10 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
             for r2 in range(inten + 1, inten + 5):
                 b2 = str(ws_f.cell(r2, 2).value or "")
                 if "РАСЧЕТ" in b2.upper():
-                    print(f"  R{r2}: расчётная Y, formula 2010 = {ws_f.cell(r2, 4).value}")
+                    print(f"  R{r2}: расчетная Y, formula 2010 = {ws_f.cell(r2, 4).value}")
                     break
                 if b2.startswith("Накопленные") or b2 == "А=":
-                    print("  Расчётной строки/коэффициентов у свода ВРП нет (только факт)")
+                    print("  Расчетной строки/коэффициентов у свода ВРП нет (только факт)")
                     break
             break
 
@@ -68,7 +68,7 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
                 inten = r2 + 1
                 calc = r2 + 3
                 print(f"  R{acc}: X графика – накопленные инвестиции")
-                print(f"  R{inten}: Y факт – электроёмкость, formula 2011: {ws_f.cell(inten, 5).value}")
+                print(f"  R{inten}: Y факт – электроемкость, formula 2011: {ws_f.cell(inten, 5).value}")
                 # graph points row
                 gp = None
                 for r3 in range(inten + 1, calc):
@@ -77,8 +77,8 @@ def inspect_fd(ws_f, ws_v, lo: int, hi: int, fd_code: str) -> None:
                         break
                 if gp:
                     print(f"  R{gp}: характерные точки, formula 2011: {ws_f.cell(gp, 5).value}")
-                print(f"  R{calc}: Y расчёт, formula 2010: {ws_f.cell(calc, 4).value}")
-                print(f"         Y расчёт 2010 cached: {ws_v.cell(calc, 4).value}")
+                print(f"  R{calc}: Y расчет, formula 2010: {ws_f.cell(calc, 4).value}")
+                print(f"         Y расчет 2010 cached: {ws_v.cell(calc, 4).value}")
                 break
         break  # one VED example per FO
 

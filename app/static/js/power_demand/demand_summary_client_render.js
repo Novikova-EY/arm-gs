@@ -417,7 +417,7 @@
         applyInitialCoeffKVisibilityClass;
     applyInitialCoeffKVisibilityClass();
 
-    /** Строки k в DOM нужны только когда блоки k видимы (иначе – лишний объём). */
+    /** Строки k в DOM нужны только когда блоки k видимы (иначе – лишний объем). */
     function coeffKColumnsVisibleInDom() {
         var table = document.getElementById("powerDemandSummaryTable");
         if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
@@ -843,7 +843,7 @@
                 label +
                 '<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
                 escapeAttr(tip) +
-                '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>';
+                '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>';
         } else {
             inner = label;
         }
@@ -875,10 +875,17 @@
         if (canEditHistCell(row, cfg)) {
             clearHistCellDisabled(td);
             var hv = row.hist_value && row.hist_value !== "–" ? String(row.hist_value) : "";
-            var inp = document.createElement("input");
-            inp.type = "text";
+            var inp = document.createElement(pk === "peak_datetime" ? "textarea" : "input");
+            if (pk === "peak_datetime") {
+                inp.rows = 2;
+            } else {
+                inp.type = "text";
+            }
             inp.autocomplete = "off";
             inp.className = "form-control form-control-lg text-center fuel-param-input";
+            if (pk === "peak_datetime") {
+                inp.classList.add("power-demand-summary-datetime-field");
+            }
             inp.value = hv;
             inp.setAttribute("data-initial", hv);
             inp.setAttribute("data-slice", "hist");
@@ -1204,7 +1211,7 @@
             (kTip
                 ? '<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
                   escapeAttr(kTip) +
-                  '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта коэффициента k"></i>'
+                  '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета коэффициента k"></i>'
                 : "");
         tr.appendChild(labelTd);
 
@@ -1677,8 +1684,8 @@
 
     /**
      * Одна логическая строка → 1–2 <tr> (на coeff – показатель + строка k).
-     * Если следом идёт «Проверка …» для этого показателя – k откладывается
-     * и рисуется сразу после проверки (расчётный → проверка → k).
+     * Если следом идет «Проверка …» для этого показателя – k откладывается
+     * и рисуется сразу после проверки (расчетный → проверка → k).
      * opts: { prevRow, nextRow } из соседних summary_rows.
      */
     function buildRowNodes(
@@ -2616,7 +2623,7 @@
                     var histCurrent = histInp.value || "";
                     if (normInputForCompare(histInitial) !== normInputForCompare(histCurrent)) {
                         // Грязная hist-ячейка: не затираем ввод, но остальные поля строки
-                        // (формула и т.п.) ниже всё равно можно обновить.
+                        // (формула и т.п.) ниже все равно можно обновить.
                     } else {
                         var nextHist =
                             histValue && histValue !== "–" ? histValue : "";
@@ -2671,7 +2678,7 @@
     }
 
     /**
-     * После вставки расчётных строк вернуть «Проверка …» сразу под якорной
+     * После вставки расчетных строк вернуть «Проверка …» сразу под якорной
      * строкой показателя (перед строкой k, если она есть).
      */
     function repositionVerifyRowsInBlock(tbody, blockRows) {
@@ -3467,7 +3474,7 @@
             fo: "Все ФО",
             ez: "Все энергозоны",
         };
-        return labels[shellConfig.scope] || "Показать всё";
+        return labels[shellConfig.scope] || "Показать все";
     }
 
     function entityPaginationPageSizeFromUrl() {
@@ -3500,7 +3507,7 @@
     }
 
     function effectiveEntityPaginationPageSize() {
-        // «Сводная таблица» (compact): список короткий – всё на одной странице.
+        // «Сводная таблица» (compact): список короткий – все на одной странице.
         if (window.__pdPdSummaryTerritoryCompactMode === true) {
             return entityPaginationAllPageSize();
         }
@@ -3616,7 +3623,7 @@
             }
             addItem(String(p), p, false, p === page);
         }
-        addItem("Вперёд »", page + 1, !meta.has_next, false);
+        addItem("Вперед »", page + 1, !meta.has_next, false);
 
         var allLi = document.createElement("li");
         allLi.className = "page-item ms-2";
@@ -3729,8 +3736,8 @@
 
     function scrollSummaryToTopAfterPagination() {
         // Не тот контейнер, что powerDemandSummaryScrollWrap на max:
-        // Y-скролл у .page-table-scroll (см. style.css). Иначе после «Вперёд»
-        // остаёмся внизу таблицы. Также сбрасываем pending save-restore.
+        // Y-скролл у .page-table-scroll (см. style.css). Иначе после «Вперед»
+        // остаемся внизу таблицы. Также сбрасываем pending save-restore.
         var table =
             document.getElementById("powerDemandSummaryTable") ||
             document.querySelector("table.power-demand-summary-table");

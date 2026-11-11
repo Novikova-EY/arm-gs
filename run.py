@@ -10,7 +10,6 @@
 """
 import os
 from app import create_app
-from flask_compress import Compress
 
 # Устанавливаем окружение, если не задано
 if not os.getenv('FLASK_ENV'):
@@ -18,7 +17,6 @@ if not os.getenv('FLASK_ENV'):
 
 # Создаем приложение (для gunicorn и прямого запуска)
 app = create_app()
-Compress(app)
 
 # Экспортируем app для gunicorn
 # Gunicorn будет использовать: gunicorn --config gunicorn_config.py "run:app"
@@ -33,8 +31,10 @@ if __name__ == "__main__":
         print("ВНИМАНИЕ: Приложение запущено в режиме DEBUG!")
         print("=" * 60)
     
+    # Автоперезапуск при изменении исходников и тестов обрывает длительные импорты.
     app.run(
         debug=debug_mode,
+        use_reloader=False,
         threaded=True,
         host=os.getenv('FLASK_RUN_HOST', '127.0.0.1'),
         port=int(os.getenv('FLASK_RUN_PORT', 5000))

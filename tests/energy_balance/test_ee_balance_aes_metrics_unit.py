@@ -55,7 +55,7 @@ def test_hydro_coefficient_save_rejects_unknown_type_and_negative_values():
 def test_hydro_metrics_use_station_coefficient_for_each_year():
 
     maps = _hydro_metric_maps(
-        Decimal("0.025"),
+        Decimal("2.5"),
         {2024: Decimal("800"), 2025: Decimal("1000")},
         [2024, 2025],
         digits=1,
@@ -64,15 +64,15 @@ def test_hydro_metrics_use_station_coefficient_for_each_year():
     assert maps["own_needs"][2024] == Decimal("20.000")
     assert maps["own_needs_display"] == {2024: "20,0", 2025: "25,0"}
     assert maps["delivery_display"] == {2024: "780,0", 2025: "975,0"}
-    assert maps["own_needs_coefficient_display"] == "0,025"
+    assert maps["own_needs_coefficient_display"] == "2,5"
 
 
 def test_hydro_totals_sum_station_coefficient_results():
     years = [2025]
     total = _blank_total(years)
     for coefficient, generation in (
-        (Decimal("0.01"), Decimal("1000")),
-        (Decimal("0.02"), Decimal("2000")),
+        (Decimal("1"), Decimal("1000")),
+        (Decimal("2"), Decimal("2000")),
     ):
         metrics = _hydro_metric_maps(coefficient, {2025: generation}, years, digits=1)
         _accumulate_station(

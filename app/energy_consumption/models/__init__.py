@@ -32,3 +32,5 @@ from app.economics.models import (  # noqa: F401 – таблицы «Эконо
     product_output_formula_text_model,
     federal_district_population_parameter_model,
 )
+
+from app.energy_consumption.models import summary_row_note_model  # noqa: F401

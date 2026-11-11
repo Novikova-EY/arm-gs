@@ -18,8 +18,10 @@ from app.logs.services.logging_service import log_to_db
 from app.common.services.help_services import _clean_name
 from app.common.services.database_version_filter import (
     filter_by_explicit_db_version,
-    set_db_version_on_create,
     get_current_db_version_id,
+)
+from app.common.services.version_entity_resolve_services import (
+    load_by_id_with_version_or_anchor,
 )
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_model import Station
@@ -41,7 +43,7 @@ from app.fuel.services.fuel_imports.excel_import_helpers import (
 )
 
 
-# Нормализованные заголовки столбцов, из которых берётся EquipmentGroup.numb (как в экспорте со страницы).
+# Нормализованные заголовки столбцов, из которых берется EquipmentGroup.numb (как в экспорте со страницы).
 _GE_NUMB_SOURCE_COLUMN_NORMALS = frozenset(
     (
         "numb1120",
@@ -414,7 +416,7 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
 # «Котельные» смотрят только GE_GRUPPA_OBORUDOVANIYA_COLUMN – см. _get_equipment_group_for_kotelnye.
 EQUIPMENT_GROUP_COLUMN_NAMES = ("equipment_group",)
 
-# Разрешённые колонки после алиасов (лишние – type, Unnamed и т.д. – отбрасываются)
+# Разрешенные колонки после алиасов (лишние – type, Unnamed и т.д. – отбрасываются)
 ALLOWED_IMPORT_COLUMNS = frozenset([
     "equipment_group_id", "id_station", "id_machine", "ge_name_ext", "ge_comp", "ge_niv", "ge_main",
     "ge_numb", "ge_ordnumb", "ge_d", "ge_r", "ge_forem", "equipment_group",
@@ -539,7 +541,7 @@ def _equipment_group_matches_station_link(
     для которых сейчас обрабатывается строка импорта.
 
     Если в Excel попал equipment_group_id от одноименной электростанции из другого региона,
-    слепое переиспользование этой группы создаёт вторую связь EquipmentGroupSet и
+    слепое переиспользование этой группы создает вторую связь EquipmentGroupSet и
     переносит субъект/РЭС в карточке группы на "чужую" станцию.
 
     Для сценария ручного объединения нескольких станций в одну группу разрешаем
@@ -641,6 +643,14 @@ def _standalone_equipment_group_query(
     return query
 
 
+def _require_import_db_version(version_id: int | None, valid_version_ids: set[int]) -> None:
+    if version_id is None or version_id <= 0 or version_id not in valid_version_ids:
+        raise ValueError(
+            "Не определена действующая версия БД для импорта. "
+            "Выберите версию БД и повторите загрузку."
+        )
+
+
 def _find_or_create_standalone_equipment_group(
     group_name: str,
     db_version_id: int | None,
@@ -653,7 +663,8 @@ def _find_or_create_standalone_equipment_group(
     Если не найдена – создает и возвращает. Возвращает (eg, was_created).
     При numb: сначала ищет по (database_version_id, numb) для предотвращения дублей.
     """
-    if numb is not None and db_version_id is not None:
+    _require_import_db_version(db_version_id, valid_version_ids)
+    if numb is not None:
         eg_by_numb = (
             _standalone_equipment_group_query(db_version_id)
             .filter(EquipmentGroup.numb == str(numb))  # numb в БД может быть VARCHAR
@@ -680,10 +691,7 @@ def _find_or_create_standalone_equipment_group(
     eg.external_code = _generate_stable_external_code_standalone_equipment_group(
         group_name.strip() or KOTELNYE_GROUP_NAME, numb
     )
-    if db_version_id is not None and db_version_id in valid_version_ids:
-        eg.database_version_id = db_version_id
-    else:
-        set_db_version_on_create(eg)
+    eg.database_version_id = db_version_id
     db.session.add(eg)
     db.session.flush()
     return eg, True
@@ -704,6 +712,7 @@ def _find_or_create_kotelnaya_type_station_link(
     Обеспечивает наличие записи в gs_fue_equipment_group_type_stations для
     standalone-котельной: station_id = NULL, equipment_group_type_id = `котельная`.
     """
+    _require_import_db_version(db_version_id, valid_version_ids)
     kotelnaya_type = _find_kotelnaya_equipment_group_type_for_version(db_version_id)
     if kotelnaya_type is None:
         return None, False
@@ -712,14 +721,9 @@ def _find_or_create_kotelnaya_type_station_link(
         EquipmentGroupSetStation.station_id.is_(None),
         EquipmentGroupSetStation.equipment_group_type_id == kotelnaya_type.id,
     )
-    if db_version_id is not None:
-        link_query = link_query.filter(
-            EquipmentGroupSetStation.database_version_id == db_version_id
-        )
-    else:
-        link_query = link_query.filter(
-            EquipmentGroupSetStation.database_version_id.is_(None)
-        )
+    link_query = link_query.filter(
+        EquipmentGroupSetStation.database_version_id == db_version_id
+    )
     link = link_query.order_by(EquipmentGroupSetStation.id.asc()).first()
     if link is not None:
         return link, False
@@ -728,10 +732,7 @@ def _find_or_create_kotelnaya_type_station_link(
         station_id=None,
         equipment_group_type_id=kotelnaya_type.id,
     )
-    if db_version_id is not None and db_version_id in valid_version_ids:
-        link.database_version_id = db_version_id
-    else:
-        set_db_version_on_create(link)
+    link.database_version_id = db_version_id
     db.session.add(link)
     db.session.flush()
     return link, True
@@ -751,7 +752,7 @@ def _get_equipment_group_from_row(row, df_columns) -> str | None:
 
 def _get_equipment_group_for_kotelnye(row, df_columns) -> str | None:
     """
-    Для строк «Котельные»: текст берётся только из столбца Excel «Группа оборудования»
+    Для строк «Котельные»: текст берется только из столбца Excel «Группа оборудования»
     (после алиасов – GE_GRUPPA_OBORUDOVANIYA_COLUMN), не из equipment_group.
     """
     def _check_val(val):
@@ -870,6 +871,50 @@ def _safe_int(value) -> int | None:
     return None
 
 
+def _resolve_fuel_source_ids_for_import(
+    df: pd.DataFrame, versions: list[DatabaseVersion],
+) -> pd.DataFrame:
+    """Приводит ID к версии ТОПЛИВО до межверсионной обработки по external_code."""
+    id_columns = [
+        (column, model)
+        for column, model in (("id_station", Station), ("id_machine", Machine))
+        if column in df.columns
+        and any(_safe_int(value) is not None for value in df[column])
+    ]
+    if not id_columns:
+        return df
+
+    fuel_versions = [
+        version for version in versions
+        if re.search(r"\bтопливо\b", version.version_number, flags=re.IGNORECASE)
+    ]
+    if not fuel_versions:
+        # Без отдельной версии ТОПЛИВО остается доступен импорт обычного экспорта страницы.
+        return df
+    if len(fuel_versions) > 1:
+        raise ValueError(
+            "Найдены несколько версий БД ТОПЛИВО: "
+            + ", ".join(version.version_number for version in fuel_versions)
+            + ". Невозможно однозначно определить исходную версию ID из файла."
+        )
+
+    source_version_id = fuel_versions[0].id
+    resolved = df.copy()
+    for column, model in id_columns:
+        source_ids = {}
+        for value in df[column]:
+            entity_id = _safe_int(value)
+            if entity_id is None or entity_id in source_ids:
+                continue
+            # Экспорт другой версии также принимается: сначала ищем его аналог в ТОПЛИВО.
+            entity = load_by_id_with_version_or_anchor(model, entity_id, source_version_id)
+            source_ids[entity_id] = entity.id if entity is not None else entity_id
+        resolved[column] = df[column].map(
+            lambda value: source_ids.get(_safe_int(value), value)
+        )
+    return resolved
+
+
 def _normalize_eg_numb_from_db(equipment_group: EquipmentGroup | None) -> str | None:
     """Тот же вид, что numb из Excel в шаге 4.2 (_safe_str_int_strict)."""
     if not equipment_group:
@@ -899,7 +944,7 @@ def _find_equipment_group_by_numb_for_station_external_code(
     и только для того же типа группы оборудования.
 
     Глобальный поиск только по numb и external_code давал .first() по «любой» электростанции
-    с тем же кодом – в т.ч. одноимённые электростанции в разных субъектах. Ограничение по
+    с тем же кодом – в т.ч. одноименные электростанции в разных субъектах. Ограничение по
     family_ids сохраняет перенос между версиями одной электростанции и не подтягивает группу
     «соседней» электростанции с тем же external_code. Дополнительная фильтрация по
     equipment_group_type_id не дает склеивать в одну EquipmentGroup разные типы
@@ -1053,7 +1098,7 @@ def _get_station_family_for_import(station: Station | None) -> list[Station]:
 
     Сиблинг с пустым субъектом/РЭС при заполненном субъекте/РЭС у источника
     отбрасывается, если нормализованное имя не совпадает (иначе в семью попадали
-    одноимённые электростанции в разных регионах).
+    одноименные электростанции в разных регионах).
     """
     if not station or not station.external_code:
         return []
@@ -1073,7 +1118,7 @@ def _get_station_family_for_import(station: Station | None) -> list[Station]:
 
         if source_rd_id is not None and sibling_rd_id is not None and sibling_rd_id != source_rd_id:
             continue
-        # У субъекта задано, у «сиблинга» нет – не смешиваем разные одноимённые электростанции
+        # У субъекта задано, у «сиблинга» нет – не смешиваем разные одноименные электростанции
         if source_rd_id is not None and sibling_rd_id is None and source_name:
             if sibling_name and sibling_name != source_name:
                 continue
@@ -1306,7 +1351,7 @@ def _get_machine_family_for_import(
     Агрегаты с тем же external_code, что у machine, но только на станциях из «семейства»
     якорной электростанции.
 
-    anchor_station_id: id электростанции из Excel (id_station). Если задан, семейство берётся по
+    anchor_station_id: id электростанции из Excel (id_station). Если задан, семейство берется по
     этой электростанции – иначе по электростанции агрегата в БД. Иначе при расхождении id_station в
     файле и id_station у машины группа и связи создавались по «чужой» электростанции.
     """
@@ -1352,7 +1397,7 @@ def _get_machine_family_for_import(
             for station_id in allowed_station_ids
             if not _get_station_machine_company_ids_for_import(station_id).isdisjoint(anchor_company_ids)
         }
-        # Не смешиваем одноимённые электростанции с одинаковым external_code, если у них
+        # Не смешиваем одноименные электростанции с одинаковым external_code, если у них
         # полностью разные генкомпании: это разные семейства, как у ТЭС-2 в Карелии.
         if company_filtered_station_ids:
             allowed_station_ids = company_filtered_station_ids
@@ -1413,10 +1458,13 @@ def _get_machine_family_for_import(
             station_id,
             company_identity_keys=anchor_company_ids or None,
         )
-        matched_machine = _match_station_machine_by_gtp_codes_for_import(
-            same_code_candidates,
-            anchor_gtp_codes,
-        )
+        # Стабильный код важнее изменяемых названия и номера агрегата в другой версии.
+        matched_machine = same_code_candidates[0] if len(same_code_candidates) == 1 else None
+        if matched_machine is None:
+            matched_machine = _match_station_machine_by_gtp_codes_for_import(
+                same_code_candidates,
+                anchor_gtp_codes,
+            )
         if matched_machine is None:
             matched_machine = _match_station_machine_by_signature_for_import(
                 station_machines,
@@ -1537,10 +1585,11 @@ def _build_import_report_excel(df: pd.DataFrame, row_results: dict) -> BytesIO:
     return buf
 
 
-def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report: bool = True) -> dict:
+def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report: bool = True, on_progress=None) -> dict:
     """
     Шаг 1: строки с id_station и id_machine – привязка EquipmentGroupType к Machine.
-    По id_machine находим агрегат, по Machine.external_code – все агрегаты с тем же кодом,
+    ID станций и агрегатов сначала приводим к версии с ТОПЛИВО в названии.
+    По external_code исходных записей находим аналоги во всех версиях БД
     и назначаем Machine.id_equipment_group в зависимости от версии БД.
 
     Шаг 2: после прохода по найденным id_machine создаем EquipmentGroupSetStation
@@ -1565,9 +1614,11 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     # Защита: Access «Станции*.xlsx» / «Доп_угли» – только на «Сведения о работе ТЭС».
     reject_access_stations_or_extra_fuel_excel(filename, file=file, context="fuel_db")
-    # Access «Имена_станций» – только жёлтая кнопка soft-import, не этот шаблон.
+    # Access «Имена_станций» – только желтая кнопка soft-import, не этот шаблон.
     reject_imena_stanciy_on_fuel_db_import(filename, file=file)
 
+    if on_progress:
+        on_progress("Чтение Excel и проверка шаблона", 0, 0)
     print("[IMPORT_FUEL_DB] Шаг 1: Чтение Excel – определение заголовков и колонок...")
     xls = pd.ExcelFile(file)
     sheet_name = xls.sheet_names[0]
@@ -1590,7 +1641,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
             "Неверный шаблон файла: отсутствует колонка equipment_group. "
             "Синяя «Импорт из Excel» принимает экспорт с этой страницы "
             "(колонки id_station и equipment_group). "
-            "Access «Имена_станций.xlsx» загружайте жёлтой кнопкой "
+            "Access «Имена_станций.xlsx» загружайте желтой кнопкой "
             "«Проверить / загрузить флаги»."
         )
     has_machine = "id_machine" in df.columns
@@ -1641,6 +1692,8 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         DatabaseVersion.id > 0,
     ).all()
     valid_version_ids = {v.id for v in all_db_versions}
+    _require_import_db_version(current_version, valid_version_ids)
+    df = _resolve_fuel_source_ids_for_import(df, all_db_versions)
 
     def _find_import_anchor_equipment_group_type(
         group_text: str,
@@ -1667,7 +1720,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         fallback_version_id: int | None = None,
     ) -> EquipmentGroupType | None:
         """
-        Берёт канонический тип из текущей версии импорта и раскладывает
+        Берет канонический тип из текущей версии импорта и раскладывает
         его по нужной версии БД через ref_uuid.
         """
         anchor_type = _find_import_anchor_equipment_group_type(
@@ -1686,15 +1739,9 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
         return None
 
-    def _resolve_version_id(entity) -> int | None:
+    def _resolve_version_id(entity) -> int:
         version_id = getattr(entity, "database_version_id", None)
-        if version_id is None:
-            version_id = current_version
-        if version_id is not None and version_id not in valid_version_ids:
-            if current_version in valid_version_ids:
-                return current_version
-            return None
-        return version_id
+        return version_id if version_id in valid_version_ids else current_version
 
     station_variants_cache: dict[int, list[Station]] = {}
     equipment_group_type_version_cache: dict[
@@ -1870,7 +1917,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     ) -> int:
         """
         Переносит EquipmentGroupSet со source_link на target_link и удаляет дубликаты.
-        Возвращает число изменённых/deleted EquipmentGroupSet.
+        Возвращает число измененных/deleted EquipmentGroupSet.
         """
         moved_sets = 0
         source_sets = EquipmentGroupSet.query.filter(
@@ -1972,7 +2019,11 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     # has_numb_col = "numb" in df.columns
 
     print("[IMPORT_FUEL_DB] Шаг 3: Обработка строк (id_machine + id_station) – привязка групп к агрегатам...")
-    for index, row in df.iterrows():
+    if on_progress:
+        on_progress("Привязка групп к агрегатам", 0, len(df))
+    for row_number, (index, row) in enumerate(df.iterrows(), 1):
+        if on_progress and row_number % 25 == 0:
+            on_progress("Привязка групп к агрегатам", row_number, len(df))
         if row.isnull().all():
             skipped_empty += 1
             _audit_inc("row_empty", f"row_index={index}")
@@ -2021,7 +2072,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                     print(f"[IMPORT_FUEL_DB]     -> пропуск: нет equipment_group")
                 continue
 
-            # Строка только со станцией (без id_machine): создаём связи в шаге 4.1 без привязки агрегатов
+            # Строка только со станцией (без id_machine): создаем связи в шаге 4.1 без привязки агрегатов
             if machine_id is None:
                 anchor_station = Station.query.get(station_id_row)
                 if not anchor_station:
@@ -2247,6 +2298,8 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
             ):
                 pair_to_numb[(expanded_station_id, expanded_type_id, expanded_version_id)] = numb_val
 
+    if on_progress:
+        on_progress("Формирование связей групп оборудования во всех версиях БД", 0, 0)
     print("[IMPORT_FUEL_DB] Шаг 4.1: Формирование EquipmentGroupSetStation и EquipmentGroupSet...")
     try:
         # Собираем (station_id, equipment_group_type_id, version_id) для всех доступных версий БД,
@@ -2269,7 +2322,9 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 )
                 expanded_pairs.add((expanded_station_id, expanded_type_id, expanded_version_id))
 
-        for station_id, equipment_group_type_id, version_id in sorted(expanded_pairs):
+        for pair_number, (station_id, equipment_group_type_id, version_id) in enumerate(sorted(expanded_pairs), 1):
+            if on_progress and pair_number % 25 == 0:
+                on_progress("Формирование связей групп оборудования во всех версиях БД", pair_number, len(expanded_pairs))
             link, was_repaired, merged_set_count = (
                 _ensure_compatible_equipment_group_set_station_link(
                     station_id,
@@ -2286,10 +2341,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                     station_id=station_id,
                     equipment_group_type_id=equipment_group_type_id,
                 )
-                if version_id is not None:
-                    link.database_version_id = version_id
-                elif current_version is not None:
-                    set_db_version_on_create(link)
+                link.database_version_id = version_id
                 db.session.add(link)
                 db.session.flush()
                 created_links += 1
@@ -2372,7 +2424,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                         ignored_excel_equipment_group_ids_by_reason["not_found"].add(warning_key)
                         logger.warning(
                             "[IMPORT_FUEL_DB] equipment_group_id=%s из Excel не найден в БД. "
-                            "Создаётся/подбирается группа по стандартной логике (station_id=%s, type_id=%s, version=%s, is_new=%s).",
+                            "Создается/подбирается группа по стандартной логике (station_id=%s, type_id=%s, version=%s, is_new=%s).",
                             row_equipment_group_id,
                             station_id,
                             equipment_group_type_id,
@@ -2423,10 +2475,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                     if numb_from_map is not None:
                         equipment_group.numb = str(numb_from_map)
                     equipment_group.external_code = target_external_code
-                    if version_id is not None:
-                        equipment_group.database_version_id = version_id
-                    elif current_version is not None:
-                        set_db_version_on_create(equipment_group)
+                    equipment_group.database_version_id = version_id
                     db.session.add(equipment_group)
                     db.session.flush()
                     created_groups += 1
@@ -2482,8 +2531,12 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     updated_groups_fields = 0
     print("[IMPORT_FUEL_DB] Шаг 4.2: Обновление EquipmentGroup из строк Excel...")
+    if on_progress:
+        on_progress("Обновление данных групп оборудования", 0, len(df))
     try:
-        for index, row in df.iterrows():
+        for row_number, (index, row) in enumerate(df.iterrows(), 1):
+            if on_progress and row_number % 25 == 0:
+                on_progress("Обновление данных групп оборудования", row_number, len(df))
             if row.isnull().all():
                 continue
             if index in rows_with_empty_source_ids:
@@ -2678,9 +2731,10 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     created_kotelnye = 0
     created_kotelnye_links = 0
     created_kotelnye_sets = 0
-    # Котельные сохраняются во всех версиях БД (все записи DatabaseVersion без фильтра id>0)
+    # Котельные сохраняются во всех действующих версиях БД.
     kotelnye_all_versions = DatabaseVersion.query.filter(
         DatabaseVersion.id.isnot(None),
+        DatabaseVersion.id > 0,
     ).order_by(DatabaseVersion.id).all()
     kotelnye_version_ids: list[int] = [v.id for v in kotelnye_all_versions if v.id]
     if not kotelnye_version_ids and current_version:
@@ -2690,8 +2744,12 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         "[IMPORT_FUEL_DB] Шаг 4.2.5: Обработка «Котельные» – "
         "EquipmentGroup + EquipmentGroupSetStation(station_id=NULL) + EquipmentGroupSet..."
     )
+    if on_progress:
+        on_progress("Обработка котельных", 0, len(df))
     try:
-        for index, row in df.iterrows():
+        for row_number, (index, row) in enumerate(df.iterrows(), 1):
+            if on_progress and row_number % 25 == 0:
+                on_progress("Обработка котельных", row_number, len(df))
             if row.isnull().all():
                 continue
             if index in rows_with_empty_source_ids:
@@ -2840,8 +2898,12 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     updated_fuel_params = 0
     print("[IMPORT_FUEL_DB] Шаг 4.3: Заполнение MachineFuelParam (строки с id_machine и id_station)...")
+    if on_progress:
+        on_progress("Заполнение параметров агрегатов", 0, len(df))
     try:
-        for index, row in df.iterrows():
+        for row_number, (index, row) in enumerate(df.iterrows(), 1):
+            if on_progress and row_number % 25 == 0:
+                on_progress("Заполнение параметров агрегатов", row_number, len(df))
             if row.isnull().all():
                 continue
             if index in rows_with_empty_source_ids:
@@ -2914,8 +2976,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 if mtp is None:
                     mtp = MachineFuelParam(machine_id=m.id)
                     db_version_id = _resolve_version_id(m)
-                    if db_version_id is not None and db_version_id in valid_version_ids:
-                        mtp.database_version_id = db_version_id
+                    mtp.database_version_id = db_version_id
                     db.session.add(mtp)
                     db.session.flush()
 
@@ -2973,6 +3034,8 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     updated_specific_consumption_calc = 0
     try:
         print("[IMPORT_FUEL_DB] Шаг 4.4: Расчет удельных показателей (y_calc, btp_calc, sntp_calc, bk_calc)...")
+        if on_progress:
+            on_progress("Пересчет удельных показателей", 0, 0)
         updated_specific_consumption_calc = recalculate_all_specific_fuel_consumption_calc()
         print(
             f"[IMPORT_FUEL_DB]   Обновлено EquipmentGroupSpecificFuelConsumption (_calc): "

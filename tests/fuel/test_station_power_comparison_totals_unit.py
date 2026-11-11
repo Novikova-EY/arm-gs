@@ -177,6 +177,52 @@ def test_distinct_res_ids_with_the_same_name_are_not_merged(comparison_data, mon
     assert sorted(row["nust"] for row in regional_totals) == [Decimal("0"), Decimal("77")]
 
 
+def test_energy_system_types_follow_business_display_order(comparison_data, monkeypatch):
+    from app.common.services.get_services.energy_systems import (
+        energy_system_type_get_services,
+    )
+    from app.fuel.services.stations import stations_equipment_groups_services
+
+    comparison_data[service.Station].extend([
+        SimpleNamespace(id=3, name="ТЭС-ТИТЭС"),
+        SimpleNamespace(id=4, name="ТЭС-ДЭЗ"),
+    ])
+    for machine_id, station_id in ((104, 3), (105, 4)):
+        comparison_data[service.Machine].append(SimpleNamespace(
+            id=machine_id, id_station=station_id, id_equipment_group=None,
+            equipment_group=None, machine_number="1", machine_name="Агрегат",
+            is_archived=False,
+        ))
+        comparison_data[service.MachinePower].append(SimpleNamespace(
+            id=machine_id, id_machine=machine_id, year_number=2023,
+            p_ust=Decimal("1"), p_rasp=Decimal("1"),
+        ))
+
+    monkeypatch.setattr(
+        service, "_tpp_station_ids",
+        lambda version: {station.id for station in comparison_data[service.Station]},
+    )
+    monkeypatch.setattr(
+        stations_equipment_groups_services,
+        "_hierarchy_key_from_station",
+        lambda station: (
+            {1: 10, 2: 10, 3: 20, 4: 99}[station.id], 20, 30, None, None,
+        ),
+    )
+    monkeypatch.setattr(
+        energy_system_type_get_services, "get_energy_system_type_map",
+        lambda: {
+            10: "ЕЭС", 20: "ТИТЭС", 99: "Децентрализованная зона",
+        },
+    )
+
+    result = service.build_station_power_comparison(2023, paginate=False)
+
+    assert [row["label"] for row in result["display_rows"] if row["kind"] == "system"] == [
+        "ЕЭС", "ТИТЭС", "Децентрализованная зона",
+    ]
+
+
 @pytest.mark.parametrize("group_type", ["котельная", " КОТЕЛЬНАЯ ", "ТЭЦ; котельная"])
 def test_boiler_type_does_not_discard_electrical_fuel_power(group_type):
     totals = service._new_totals()
@@ -310,3 +356,139 @@ def test_hidden_boiler_only_region_keeps_its_fuel_summary(comparison_data):
     assert regional["nust"] == Decimal("13")
     assert regional["nr"] == Decimal("12")
     assert not any(row.get("group_id") == 15 for row in result["display_rows"])
+
+
+def test_fuel_group_nust_is_shown_under_decentralized_zone_station(
+    comparison_data, monkeypatch,
+):
+    from app.common.services.get_services.energy_systems import (
+        energy_system_type_get_services,
+    )
+    from app.generation.services.station_services import station_access_services
+    from app.fuel.services.stations import stations_equipment_groups_services
+
+    station = SimpleNamespace(id=3, name="ДЭЗ ТЭС")
+    comparison_data[service.Station].append(station)
+    group = SimpleNamespace(
+        id=17, numb=17, main=None, name="Группа ДЭЗ", regional_energy_system=None,
+    )
+    comparison_data[service.EquipmentGroup].append(group)
+    comparison_data[service.EquipmentGroupFuelParam].append(SimpleNamespace(
+        id=17, equipment_group_id=17, year_number=2023,
+        nust=Decimal("38.297"), nr=Decimal("30.3348"), ved=4,
+    ))
+    comparison_data[service.EquipmentGroupSetStation].append(SimpleNamespace(
+        id=100, station_id=station.id, equipment_group_type_id=1,
+    ))
+    links = service.EquipmentGroupSet.query.all()
+    links.append(SimpleNamespace(
+        equipment_group_id=group.id, equipment_group_set_station_id=100,
+    ))
+    monkeypatch.setattr(
+        stations_equipment_groups_services,
+        "_hierarchy_key_from_station",
+        lambda item: (99, -1, -1, None, None) if item.id == station.id
+        else (10, 20, 30, None, None),
+    )
+    monkeypatch.setattr(
+        station_access_services, "is_decentralized_zone_station",
+        lambda item: item.id == station.id,
+    )
+    monkeypatch.setattr(
+        energy_system_type_get_services, "get_energy_system_type_map",
+        lambda: {10: "ЕЭС", 99: "Децентрализованная зона"},
+    )
+
+    result = service.build_station_power_comparison(2023, paginate=False)
+    rows = result["display_rows"]
+    zone_total = next(
+        row for row in rows
+        if row["kind"] == "system" and row["label"] == "Децентрализованная зона"
+    )
+    fuel_row = next(row for row in rows if row.get("group_id") == group.id)
+
+    assert zone_total["nust"] == Decimal("38.297")
+    assert fuel_row["kind"] == "fuel"
+    assert fuel_row["station_name"] == station.name
+    assert fuel_row["nust"] == Decimal("38.297")
+
+
+def test_shared_fuel_group_nust_is_merged_with_multiple_decentralized_stations(
+    comparison_data, monkeypatch,
+):
+    from app.common.services.get_services.energy_systems import (
+        energy_system_type_get_services,
+    )
+    from app.generation.services.station_services import station_access_services
+    from app.fuel.services.stations import stations_equipment_groups_services
+
+    stations = comparison_data[service.Station]
+    group_types = comparison_data[service.EquipmentGroupType]
+    region = comparison_data[service.EquipmentGroup][0].regional_energy_system
+    group = SimpleNamespace(
+        id=17, numb=17, main=None, name="Общая группа ДЭЗ", regional_energy_system=region,
+    )
+    comparison_data[service.EquipmentGroup] = [group]
+    comparison_data[service.EquipmentGroupFuelParam] = [SimpleNamespace(
+        id=17, equipment_group_id=group.id, year_number=2023,
+        nust=Decimal("38.297"), nr=Decimal("30.3348"), ved=4,
+    )]
+    comparison_data[service.Machine] = [
+        SimpleNamespace(
+            id=104 + index, id_station=station.id, id_equipment_group=1,
+            equipment_group=group_types[0], machine_number=str(index + 1),
+            machine_name="Агрегат", is_archived=False,
+        )
+        for index, station in enumerate(stations)
+    ]
+    comparison_data[service.MachinePower] = [
+        SimpleNamespace(
+            id=104 + index, id_machine=104 + index, year_number=2023,
+            p_ust=Decimal("19.1485"), p_rasp=Decimal("15.1674"),
+        )
+        for index in range(len(stations))
+    ]
+    comparison_data[service.MachineFuelParam] = [
+        SimpleNamespace(machine_id=104 + index, equipment_group_id=group.id)
+        for index in range(len(stations))
+    ]
+    comparison_data[service.EquipmentGroupSetStation] = [
+        SimpleNamespace(id=101 + index, station_id=station.id, equipment_group_type_id=1)
+        for index, station in enumerate(stations)
+    ]
+    links = service.EquipmentGroupSet.query.all()
+    links[:] = [
+        SimpleNamespace(equipment_group_id=group.id, equipment_group_set_station_id=101 + index)
+        for index in range(len(stations))
+    ]
+
+    monkeypatch.setattr(
+        stations_equipment_groups_services,
+        "_hierarchy_key_from_station",
+        lambda _station: (99, -1, -1, None, None),
+    )
+    monkeypatch.setattr(
+        station_access_services,
+        "is_decentralized_zone_station",
+        lambda _station: True,
+    )
+    monkeypatch.setattr(
+        energy_system_type_get_services,
+        "get_energy_system_type_map",
+        lambda: {10: "ЕЭС", 99: "Децентрализованная зона"},
+    )
+
+    result = service.build_station_power_comparison(2023, paginate=False)
+    shared = next(
+        row for row in result["display_rows"]
+        if row["kind"] == "station_group" and row.get("equipment_group_id") == group.id
+    )
+    zone_total = next(
+        row for row in result["display_rows"]
+        if row["kind"] == "system" and row["label"] == "Децентрализованная зона"
+    )
+
+    assert shared["nust"] == Decimal("38.297")
+    assert shared["p_ust"] == Decimal("38.297")
+    assert zone_total["nust"] == Decimal("38.297")
+    assert not any(row.get("group_id") == group.id for row in result["display_rows"])

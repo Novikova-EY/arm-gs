@@ -77,6 +77,20 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
         foreign_keys='PGUMachineName.id_pgu_machine',
     )
 
+    technical_inspection_codes = db.relationship(
+        "TechnicalInspectionCode",
+        foreign_keys="TechnicalInspectionCode.pgu_machine_id",
+        lazy="dynamic",
+    )
+
+    # Связь с техническими характеристиками Техинспекции
+    turbine_technical_characteristics = db.relationship(
+        'EquipmentTechnicalCharacteristic',
+        backref='pgu_machine',
+        foreign_keys='EquipmentTechnicalCharacteristic.pgu_machine_id',
+        lazy='dynamic'
+    )
+
     # Даты/поля как в machine_model (165-202)
     # фактический год ввода в эксплуатацию
     date_exploitation = db.Column(db.Integer, nullable=True)

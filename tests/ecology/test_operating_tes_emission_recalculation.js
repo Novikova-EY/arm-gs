@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const template = fs.readFileSync(path.join(__dirname, '../../app/templates/ecology/operating_tes/operating_tes_table.html'), 'utf8');
 const start = template.indexOf('    const getFieldValue = function');
 assert.notEqual(start, -1);
-const end = template.indexOf('\n    const updateUrl', start);
+const end = template.indexOf('\n    const CSRF', start);
 
 function setup({total = '1234.5678', digits = '2', defaultCoefficient = '0.85'} = {}) {
     const target = {textContent: 'initial'};
@@ -21,6 +21,7 @@ function setup({total = '1234.5678', digits = '2', defaultCoefficient = '0.85'} 
             return target;
         }
     };
+    field.closest = () => table;
     const context = vm.createContext({table});
     vm.runInContext(template.slice(start, end) + '\nglobalThis.recalculate = recalculateEmitted;', context);
     return {
@@ -64,7 +65,7 @@ test('other editable fields do not change emission values', () => {
     assert.equal(row.enter('0.5'), 'initial');
 });
 
-function editableCoefficient({digits = '1', success = true} = {}) {
+function editableCoefficient({digits = '1', success = true, count = 1, pasteActive = false} = {}) {
     const listeners = {};
     const classes = new Set();
     const cell = {classList: {
@@ -84,14 +85,34 @@ function editableCoefficient({digits = '1', success = true} = {}) {
         addEventListener(name, listener) { listeners[name] = listener; }
     };
     const target = {textContent: '143,3'};
+    const fields = [field];
+    const targets = [target];
+    const fieldListeners = [listeners];
+    const row = {dataset: {rowKey: 'ash_eta'}, querySelectorAll() { return fields; }};
+    field.closest = selector => selector === 'td' ? cell : selector === 'table' ? table : row;
+    for (let i = 1; i < count; i++) {
+        const nextListeners = {};
+        fields.push({
+            ...field,
+            dataset: {...field.dataset, column: `territory${i}:2026`, territory: `territory${i}`},
+            addEventListener(name, listener) { nextListeners[name] = listener; }
+        });
+        targets.push({textContent: '143,3'});
+        fieldListeners.push(nextListeners);
+    }
     const requests = [];
     const table = {
         dataset: {roundingDigits: '2', coefficientRoundingDigits: digits, canEdit: '1', updateUrl: '/zola/value/', autosave: '1'},
-        querySelector() { return target; },
-        querySelectorAll() { return [field]; }
+        querySelector(selector) {
+            const index = fields.findIndex(item => selector.includes(`data-column="${item.dataset.column}"`));
+            return targets[index];
+        },
+        querySelectorAll() { return fields; }
     };
     const context = vm.createContext({
-        table, setTimeout() { return 1; }, clearTimeout() {},
+        table, document: {querySelectorAll() { return [table]; }},
+        window: {__armGsTableRowPasteActive: pasteActive},
+        setTimeout() { return 1; }, clearTimeout() {},
         async fetch(url, options) {
             requests.push({url, body: JSON.parse(options.body)});
             return {ok: success, async json() { return {ok: success, error: 'Save failed'}; }};
@@ -100,7 +121,8 @@ function editableCoefficient({digits = '1', success = true} = {}) {
     const scriptEnd = template.indexOf('\n  });', start);
     const script = template.slice(start, scriptEnd).replace(/const CSRF = .*;/, "const CSRF = 'test-token';");
     vm.runInContext(script, context);
-    return {field, target, requests, classes, emit(name) { listeners[name](); }};
+    return {field, target, fields, targets, requests, classes,
+        emit(name, index = 0) { fieldListeners[index][name](); }};
 }
 
 test('focusing exposes full precision and blurring restores rounded display without saving', () => {
@@ -167,5 +189,58 @@ test('cleared and invalid coefficients are not displayed as a rounded zero', () 
         row.emit('blur');
         assert.equal(row.field.value, value);
         assert.equal(row.field.dataset.rawValue, value);
+    }
+});
+
+test('editing a coefficient recalculates and saves only the selected territory', async () => {
+    const row = editableCoefficient({count: 4});
+    row.emit('focus', 1);
+    row.fields[1].value = '0,75321';
+    row.emit('input', 1);
+    assert.deepEqual(row.fields.map(field => field.dataset.rawValue),
+        ['0,8567', '0,75321', '0,8567', '0,8567']);
+    assert.deepEqual(row.fields.map(field => field.value), ['0,9', '0,75321', '0,9', '0,9']);
+    assert.deepEqual(row.targets.map(target => target.textContent), ['143,3', '246,79', '143,3', '143,3']);
+    row.emit('change', 1);
+    row.emit('blur', 1);
+    await new Promise(setImmediate);
+    assert.deepEqual(row.requests.map(request => [request.body.territory, request.body.value]),
+        [['territory1', '0,75321']]);
+    row.emit('focus', 3);
+    assert.equal(row.fields[3].value, '0,8567');
+});
+
+test('editing zero or the last cell leaves other coefficient values intact', async () => {
+    const row = editableCoefficient({count: 3});
+    row.emit('focus');
+    row.field.value = '0';
+    row.emit('input');
+    row.emit('change');
+    await new Promise(setImmediate);
+    assert.deepEqual(row.fields.map(field => field.dataset.rawValue), ['0', '0,8567', '0,8567']);
+    assert.deepEqual(row.targets.map(target => target.textContent), ['1 000', '143,3', '143,3']);
+    assert.equal(row.requests.length, 1);
+    row.emit('focus', 2);
+    row.fields[2].value = '1';
+    row.emit('input', 2);
+    row.emit('change', 2);
+    await new Promise(setImmediate);
+    assert.deepEqual(row.fields.map(field => field.dataset.rawValue), ['0', '0,8567', '1']);
+    assert.equal(row.requests.length, 2);
+});
+
+test('clearing, unchanged focus and row paste do not overwrite later coefficients', async () => {
+    for (const mode of ['clear', 'unchanged', 'paste']) {
+        const row = editableCoefficient({count: 3, pasteActive: mode === 'paste'});
+        row.emit('focus');
+        if (mode !== 'unchanged') {
+            row.field.value = mode === 'clear' ? '' : '0,25';
+            row.emit('input');
+        }
+        row.emit('change');
+        row.emit('blur');
+        await new Promise(setImmediate);
+        assert.deepEqual(row.fields.slice(1).map(field => field.dataset.rawValue), ['0,8567', '0,8567']);
+        assert.equal(row.requests.length, mode === 'unchanged' ? 0 : 1);
     }
 });

@@ -226,7 +226,7 @@ def _norm_label(text: str | None) -> str:
     return (
         (text or "")
         .casefold()
-        .replace("ё", "е")
+        .replace("\u0451", "е")
         .replace("-", " ")
         .replace("  ", " ")
         .strip()
@@ -997,7 +997,7 @@ def _row(
 
 
 def is_power_balance_flow_block_row(row: dict[str, Any]) -> bool:
-    """Строки перетока и дефицита с учётом перетока – скрываются кнопкой «+Перетоки»."""
+    """Строки перетока и дефицита с учетом перетока – скрываются кнопкой «+Перетоки»."""
     if row.get("is_flow_block"):
         return True
     key = str(row.get("key") or "")

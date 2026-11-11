@@ -76,9 +76,10 @@ SCHEMA_ELECTRICAL_INTENSITY = _normalize_schema_name(
 )
 SCHEMA_TERRITORIES = _normalize_schema_name(os.getenv("SCHEMA_TERRITORIES"), "gs_ter")
 SCHEMA_ECOLOGY = _normalize_schema_name(os.getenv("SCHEMA_ECOLOGY"), "gs_eco")
+SCHEMA_RATIONAL_STRUCTURE = _normalize_schema_name(os.getenv("SCHEMA_RATIONAL_STRUCTURE"), "gs_rs")
 DB_SEARCH_PATH = _normalize_search_path(
     os.getenv("DB_SEARCH_PATH"),
-    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em,gs_pd,gs_ec,gs_bem,gs_ekp,gs_ei,gs_ter,gs_eco",
+    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em,gs_pd,gs_ec,gs_bem,gs_ekp,gs_ei,gs_ter,gs_eco,gs_rs",
 )
 STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
     os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
@@ -139,9 +140,10 @@ class Config:
     )
     SCHEMA_TERRITORIES = _normalize_schema_name(os.getenv("SCHEMA_TERRITORIES"), "gs_ter")
     SCHEMA_ECOLOGY = _normalize_schema_name(os.getenv("SCHEMA_ECOLOGY"), "gs_eco")
+    SCHEMA_RATIONAL_STRUCTURE = SCHEMA_RATIONAL_STRUCTURE
     DB_SEARCH_PATH = _normalize_search_path(
         os.getenv("DB_SEARCH_PATH"),
-        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},{SCHEMA_POWER_DEMAND},{SCHEMA_ENERGY_CONSUMPTION},{SCHEMA_ENERGY_BALANCE},{SCHEMA_ECONOMICS},{SCHEMA_ELECTRICAL_INTENSITY},{SCHEMA_TERRITORIES},{SCHEMA_ECOLOGY},public",
+        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},{SCHEMA_POWER_DEMAND},{SCHEMA_ENERGY_CONSUMPTION},{SCHEMA_ENERGY_BALANCE},{SCHEMA_ECONOMICS},{SCHEMA_ELECTRICAL_INTENSITY},{SCHEMA_TERRITORIES},{SCHEMA_ECOLOGY},{SCHEMA_RATIONAL_STRUCTURE},public",
     )
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
         os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
@@ -209,7 +211,7 @@ class Config:
         os.getenv("MAX_FORM_MEMORY_SIZE", str(32 * 1024 * 1024))
     )
     # multipart: лимит числа частей (по умолчанию 1000). Страницы с тысячами ячеек
-    # (электроёмкость ФО и т.п.) при полном POST легко его превышают.
+    # (электроемкость ФО и т.п.) при полном POST легко его превышают.
     MAX_FORM_PARTS = int(os.getenv("MAX_FORM_PARTS", str(100_000)))
     # Общий лимит тела запроса (None = без лимита на уровне Flask). Имеет смысл >= MAX_FORM_MEMORY_SIZE.
     MAX_CONTENT_LENGTH = (

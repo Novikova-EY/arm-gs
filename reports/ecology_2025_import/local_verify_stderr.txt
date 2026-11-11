@@ -1,0 +1,7 @@
+[2026-11-02 06:25:08,771] INFO in __init__: Redis connection established successfully
+[2026-11-02 06:25:08,822] INFO in scheduled_backup_service: Автоматические бэкапы отключены в конфигурации
+[2026-11-02 06:25:09,371] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 06:25:09,374] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-02 06:25:09,375] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-02 06:25:10,001] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+[2026-11-02 06:25:10,016] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 0.02s (warmed=0 skipped=6)

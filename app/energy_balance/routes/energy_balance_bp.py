@@ -6,9 +6,9 @@ from app.energy_balance.services.access_services import can_edit_energy_balance
 
 energy_balance_bp = Blueprint("energy_balance_bp", __name__)
 
-# POST на этих страницах только применяет фильтры и перенаправляет на GET.
+# Эти POST не изменяют данные БД: применяют фильтры или обновляют кеш.
 _FILTER_POST_ENDPOINTS = frozenset(
-    {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers"}
+    {"energy_balance_bp.ee_generation", "energy_balance_bp.ee_transfers", "energy_balance_bp.refresh_data"}
 )
 
 

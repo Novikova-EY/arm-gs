@@ -12,6 +12,32 @@
 #flaskFlashMessages:not(:has(.alert-danger)) { display: none !important; }
 body.seg-import-export-open #flaskFlashMessages,
 body.seg-import-export-open #flaskFlashMessages .alert { display: block !important; }
+.seg-fuel-editable { position: relative; cursor: text; }
+.seg-fuel-display { cursor: inherit; }
+#stationsEquipmentGroupsTable td:has(textarea.seg-fuel-input),
+textarea.seg-fuel-input {
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+}
+textarea.seg-fuel-input { white-space: pre-wrap; }
+.seg-editing .seg-fuel-display { visibility: hidden; }
+.seg-fuel-input[hidden] { display: none !important; }
+.seg-fuel-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    resize: none;
+    font: inherit;
+    text-align: inherit;
+    border-radius: 0;
+    z-index: 1;
+}
+.seg-fuel-editable.seg-save-success { outline: 2px solid #198754; outline-offset: -2px; }
+.seg-fuel-editable.seg-save-error { outline: 2px solid #dc3545; outline-offset: -2px; }
 </style>
 {% endblock %}
 
@@ -207,6 +233,24 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3="{{ _v3 }}" data-col-4="{{ _v4 }}" data-col-5="{{ _v7 }}" data-col-6="{{ _v5 }}" data-col-7="{{ _v6 }}" data-col-8="{{ _v20 }}" data-col-9="{{ _v11 }}" data-col-10="{{ _v12 }}" data-col-11="{{ _v14 }}" data-col-12="{{ _v30 }}" data-col-13="{{ _v31 }}" data-col-14="{{ _v32 }}" data-col-15="{{ _v18 }}" data-col-16="{{ _v22 }}" data-col-17="{{ _v23 }}" data-col-18="{{ _v24 }}" data-col-19="{{ _v25 }}" data-col-20="{{ _v27 }}" data-col-21="{{ _v29 }}" data-col-22="{{ _v28 }}"
 {% endmacro %}
 
+{% macro fuel_inline_field(eg, field) %}
+{% if current_user.has_admin and eg %}
+    {% set value = eg|attr(field) %}
+    {% set select_fields = ('d', 'r', 'vedomstvo', 'be', 'gk', 'gkf', 'er', 'codegor') %}
+    {% set label = caller() %}
+    <span class="seg-fuel-display" role="button" tabindex="0" title="Нажмите для редактирования">{{ label }}</span>
+    {% if field in select_fields %}
+    <select class="form-select form-select-sm seg-fuel-input" data-field="{{ field }}" data-group-id="{{ eg.id }}" data-saved-value="{{ value if value is not none else '' }}" aria-label="{{ field }}" hidden>
+        <option value="{{ value if value is not none else '' }}" selected>{{ label|striptags|trim }}</option>
+    </select>
+    {% elif field != 'numb' %}
+    <textarea class="form-control form-control-sm seg-fuel-input" data-field="{{ field }}" data-group-id="{{ eg.id }}" data-saved-value="{{ value if value is not none else '' }}" aria-label="{{ field }}" hidden rows="2">{{ value if value is not none else '' }}</textarea>
+    {% else %}
+    <input type="text" class="form-control form-control-sm seg-fuel-input" data-field="{{ field }}" data-group-id="{{ eg.id }}" data-saved-value="{{ value if value is not none else '' }}" aria-label="{{ field }}" hidden value="{{ value if value is not none else '' }}"{% if field == 'numb' %} inputmode="numeric"{% endif %}>
+    {% endif %}
+{% else %}{{ caller() }}{% endif %}
+{% endmacro %}
+
 {% macro render_equipment_group_rows(group_blocks, duplicate_numb_ids=None) %}
 {% for group_block in (group_blocks or []) %}
     {% set group_entity = group_block.equipment_group %}
@@ -274,22 +318,22 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                         {% set eg = group_entity %}
                         {% set eg_fuel_mismatch = station_entry.fuel_fields_mismatch if station_entry.fuel_fields_mismatch is defined else false %}
                         {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой электростанции (одна запись на несколько регионов). Нужна отдельная группа для этой электростанции: повторный импорт или разделение в БД.">–</span>' %}
-                        <td rowspan="{{ group_rowspan }}">{{ eg.numb if eg and eg.numb else '–' }}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('d', eg.d) if eg else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('r', eg.r) if eg else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{% if eg and eg.vedomstvo %}{% if eg.vedomstvo|string == '1' %}станция<br>отрасли{% elif eg.vedomstvo|string == '2' %}пром.<br>предприятие{% else %}{{ eg.vedomstvo }}{% endif %}{% else %}–{% endif %}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.business_unit_external_mapping.external_name or eg.be) if eg and eg.business_unit_external_mapping else (eg.be if eg and eg.be else '–') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_external_mapping.external_name or eg.gk) if eg and eg.gen_company_external_mapping else (eg.gk if eg and eg.gk else '–') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_branch_external_mapping.external_name or eg.gkf) if eg and eg.gen_company_branch_external_mapping else (eg.gkf if eg and eg.gkf else '–') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.economic_region_external_mapping.external_name or eg.er) if eg and eg.economic_region_external_mapping else (eg.er if eg and eg.er else '–') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n1 if eg and eg.n1 else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n2 if eg and eg.n2 else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p1 if eg and eg.p1 else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p2 if eg and eg.p2 else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.addr if eg and eg.addr else '–' }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.cities_external_mapping.name or eg.codegor) if eg and eg.cities_external_mapping else (eg.codegor if eg and eg.codegor else '–') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.note if eg and eg.note else '–' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "numb") %}{{ eg.numb if eg and eg.numb else '–' }}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "d") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('d', eg.d) if eg else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "r") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ equipment_group_flag_label('r', eg.r) if eg else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "name_ext") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "vedomstvo") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{% if eg and eg.vedomstvo %}{% if eg.vedomstvo|string == '1' %}станция<br>отрасли{% elif eg.vedomstvo|string == '2' %}пром.<br>предприятие{% else %}{{ eg.vedomstvo }}{% endif %}{% else %}–{% endif %}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "be") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.business_unit_external_mapping.external_name or eg.be) if eg and eg.business_unit_external_mapping else (eg.be if eg and eg.be else '–') }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "gk") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_external_mapping.external_name or eg.gk) if eg and eg.gen_company_external_mapping else (eg.gk if eg and eg.gk else '–') }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "gkf") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.gen_company_branch_external_mapping.external_name or eg.gkf) if eg and eg.gen_company_branch_external_mapping else (eg.gkf if eg and eg.gkf else '–') }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "er") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.economic_region_external_mapping.external_name or eg.er) if eg and eg.economic_region_external_mapping else (eg.er if eg and eg.er else '–') }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "n1") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n1 if eg and eg.n1 else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "n2") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.n2 if eg and eg.n2 else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "p1") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p1 if eg and eg.p1 else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "p2") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.p2 if eg and eg.p2 else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "addr") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.addr if eg and eg.addr else '–' }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "codegor") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.cities_external_mapping.name or eg.codegor) if eg and eg.cities_external_mapping else (eg.codegor if eg and eg.codegor else '–') }}{% endif %}{% endcall %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% call fuel_inline_field(eg, "note") %}{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.note if eg and eg.note else '–' }}{% endif %}{% endcall %}</td>
                         {% set group_cell.fields = true %}
                     {% endif %}
                 </tr>
@@ -300,7 +344,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 {% endmacro %}
 
     <!-- Таблица с данными -->
-        <table class="table table-hover table-striped table-bordered table-responsive{% if show_missing_numb|default(false) %} seg-highlight-missing-numb{% endif %}" id="stationsEquipmentGroupsTable">
+        <table class="table table-hover table-striped table-bordered table-responsive{% if show_missing_numb|default(false) %} seg-highlight-missing-numb{% endif %}" id="stationsEquipmentGroupsTable" data-inline-url="{{ url_for('fuel_bp.equipment_group_inline_edit', equipment_group_id=0) }}" data-csrf-token="{{ csrf_token }}">
 
             <!-- Шапка таблицы с фильтрами по коду группы и признакам d/r -->
             <thead class="table-success">
@@ -352,6 +396,15 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                                 <td colspan="{{ column_count }}">Не указано</td>
                             </tr>
                             {{ render_equipment_group_rows(est_block.ues_list[0].res_list[0].equipment_group_blocks, duplicate_numb_ids|default([])) }}
+                        {% elif est_block.is_decentralized_zone %}
+                            <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">Децентрализованная зона</td>
+                            </tr>
+                            {% for ues_block in est_block.ues_list %}
+                                {% for res_block in ues_block.res_list %}
+                                    {{ render_equipment_group_rows(res_block.equipment_group_blocks, duplicate_numb_ids|default([])) }}
+                                {% endfor %}
+                            {% endfor %}
                         {% else %}
                             <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
                                 <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
@@ -381,10 +434,13 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
         </table>
 
         <!-- Пагинация (скрывается при прокрутке вниз) -->
-        <div class="mt-2">
+        <div class="mt-2 d-flex align-items-center flex-wrap gap-3">
+            {% include 'fuel/equipment_groups/_binding_transfer_button.html' %}
             {% if per_page is not none %}
-                {% set pagination_endpoint = 'fuel_bp.stations_equipment_groups' %}
-                {% include 'generation/includes/pagination_station.html' %}
+                <div class="d-flex justify-content-center flex-grow-1">
+                    {% set pagination_endpoint = 'fuel_bp.stations_equipment_groups' %}
+                    {% include 'generation/includes/pagination_station.html' %}
+                </div>
             {% endif %}
         </div>
     </div>
@@ -440,6 +496,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 <!-- Каскадные фильтры ОЭС/ФО/РЭС/субъекты (как на station_list) -->
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/stations_equipment_groups_inline_edit.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {

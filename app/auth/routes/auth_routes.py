@@ -7,15 +7,18 @@ from app.logs.models.log_model import Log
 from app.auth.models.user_model import User
 from app.auth.models.role_model import Role
 from app.auth.models.user_role_model import user_roles
-from app.common.middleware.database_version_middleware import set_session_version
-from app.common.models.database_version_model import DatabaseVersion
+from app.common.middleware.database_version_middleware import (
+    resolve_initial_version_id,
+    set_session_version,
+)
+from config import SCHEMA_LOGS
 
 # Функция логирования действий
 
 def log_to_db(username, action, details=None):
     """Записывает лог действия пользователя в базу данных."""
     try:
-        log_entry = Log(username=username, action=action, details=details)
+        log_entry = Log(username=username, action=action, details=details, module="Авторизация")
         db.session.add(log_entry)
         db.session.commit()
     except Exception as e:
@@ -54,22 +57,9 @@ def login():
                 login_user(user)
                 session['username'] = user.username
 
-                # Восстанавливаем последнюю выбранную пользователем версию БД (если есть)
-                if user.last_database_version_id is not None:
-                    version = DatabaseVersion.query.get(user.last_database_version_id)
-                    if version:
-                        try:
-                            set_session_version(version.id)
-                        except Exception as e:
-                            log_to_db('Система', f'Ошибка установки версии БД для пользователя: {e}')
-                    else:
-                        # Версия удалена – очищаем сохраненное значение
-                        try:
-                            user.last_database_version_id = None
-                            db.session.commit()
-                        except Exception as e:
-                            db.session.rollback()
-                            log_to_db('Система', f'Ошибка очистки сохраненной версии БД: {e}')
+                # Сессия браузера могла остаться от другого пользователя.
+                session.pop('current_db_version', None)
+                set_session_version(resolve_initial_version_id())
                 log_to_db(user.username, 'Успешный вход в систему')
                 flash('Вы успешно вошли.', 'success')
                 return redirect(url_for('start.index'))
@@ -88,9 +78,11 @@ def log_to_db_safe(username, action, details=None):
     try:
         with db.engine.begin() as conn:
             conn.execute(
-                # замените на вашу таблицу логов
-                db.text('INSERT INTO "arm_gs".logs (timestamp, username, action, details) VALUES (now(), :u, :a, :d)'),
-                {"u": username, "a": action, "d": details},
+                db.text(
+                    f'INSERT INTO "{SCHEMA_LOGS}".logs (timestamp, username, action, details, module) '
+                    'VALUES (now(), :u, :a, :d, :m)'
+                ),
+                {"u": username, "a": action, "d": details, "m": "Авторизация"},
             )
     except Exception:
         pass  # не валим основной поток из‑за логов

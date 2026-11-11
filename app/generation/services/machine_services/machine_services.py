@@ -1590,18 +1590,18 @@ def persist_machine_details_from_validated_forms(
             # Логика как для мощности:
             # - если пользователь ввел новое название в каком‑то году, протягиваем его на все
             #   последующие годы отображаемого периода (включая годы за горизонтом версии БД);
-            # - сохранение идёт по тем же годам, что видны в таблице (start_year..end_year).
+            # - сохранение идет по тем же годам, что видны в таблице (start_year..end_year).
             if is_tes_or_ges:
                 if raw_name:
                     last_effective_name = raw_name
                     effective_name = raw_name
                 elif name_shown:
                     # Ячейку года очистили вручную: сохраняем очистку, а не протягиваем
-                    # предыдущее название (протягивание – только для ещё незаполненных годов).
+                    # предыдущее название (протягивание – только для еще незаполненных годов).
                     effective_name = None
                 else:
                     # Ячейка пустая и до правки (например, год без мощности – значение
-                    # в таблице не показывается): уже сохранённое название не затираем.
+                    # в таблице не показывается): уже сохраненное название не затираем.
                     effective_name = last_effective_name or old_name
             else:
                 # Для остальных типов станций – без автоподстановки, по году
@@ -1752,7 +1752,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         if isinstance(value, str):
             if value.strip() in {"\u2013", "\u2014", "-", ""}:
                 normalized[key] = ""
-            # Запятая/пробелы тысяч → каноническое число (format_decimal даёт «1 234,0»)
+            # Запятая/пробелы тысяч → каноническое число (format_decimal дает «1 234,0»)
             elif _is_machine_power_numeric_form_key(key, _numeric_key_suffixes):
                 normalized[key] = _canonical_numeric_form_value(value)
 
@@ -2618,7 +2618,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                         # Ячейку года очистили вручную: сохраняем очистку, а не протягиваем
                         effective_name = None
                     else:
-                        # Ячейка пустая и до правки – уже сохранённое название не затираем
+                        # Ячейка пустая и до правки – уже сохраненное название не затираем
                         effective_name = last_effective_name or pmn_old_name
                 else:
                     effective_name = raw_name
@@ -3223,7 +3223,7 @@ def autofill_tes_and_fuel_chain(
         return bool((entries[idx].year_name.data or "").strip())
 
     def _effective_powers_for_year(year_num: int, mp):
-        """Мощности для autofill: сначала из формы (продлённые на фронте), затем из БД."""
+        """Мощности для autofill: сначала из формы (продленные на фронте), затем из БД."""
         idx = _entry_index(year_num)
         entries = getattr(advanced_form.powers, "entries", None) or []
         if 0 <= idx < len(entries):
@@ -3386,11 +3386,11 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     # Поле `date_exploitation` заполняется пользователем вручную.
 
     # ============================================================
-    # ВАЖНО: авто по мощности – только ОДНО из трёх полей:
+    # ВАЖНО: авто по мощности – только ОДНО из трех полей:
     # - date_exploitation_expected (ожидаемый год ввода)
     # - date_decompressing_expected (ожидаемый год вывода)
     # - date_modernization_power_change_expected (ожидаемый год модернизации с изменением мощности)
-    # date_modernization_no_power_change_expected не вычисляется по мощности; при выборе одного из трёх
+    # date_modernization_no_power_change_expected не вычисляется по мощности; при выборе одного из трех
     # выше очищается вместе с «другой» модернизацией.
     #
     # Выбор делаем по приоритету событий мощности:
@@ -3469,9 +3469,9 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             changes.append(
                 f"Ожидаемый год модернизации с изменением мощности: {machine.date_modernization_power_change_expected} → {selected_year}"
             )
-            # Синее информационное сообщение при автоматическом расчёте года модернизации с изменением мощности
+            # Синее информационное сообщение при автоматическом расчете года модернизации с изменением мощности
             flash(
-                f"Ожидаемый год модернизации с изменением мощности автоматически определён: {selected_year}",
+                f"Ожидаемый год модернизации с изменением мощности автоматически определен: {selected_year}",
                 "primary",
             )
             machine.date_modernization_power_change_expected = selected_year

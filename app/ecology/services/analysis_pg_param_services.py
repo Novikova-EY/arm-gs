@@ -31,7 +31,7 @@ def seed_missing_analysis_pg_params_from_reports(
     station_numbs: set[int] | None = None,
     years: list[int] | None = None,
 ) -> int:
-    """Создаёт отсутствующие строки параметров из отчетных ПГ (без перезаписи правок)."""
+    """Создает отсутствующие строки параметров из отчетных ПГ (без перезаписи правок)."""
     from app.ecology.models.pg_param_calc_model import PGParamCalc
     from app.ecology.models.pg_report_gis_tek_model import PGReportGisTek
 
@@ -53,7 +53,7 @@ def upsert_analysis_pg_param_values(
     year_number: int,
     values: dict[str, Any],
 ) -> Any:
-    """Создаёт или обновляет параметры страницы анализа ПГ."""
+    """Создает или обновляет параметры страницы анализа ПГ."""
     from app.ecology.models.pg_param_calc_model import PGParamCalc
     from app.ecology.models.pg_report_gis_tek_model import PGReportGisTek
 

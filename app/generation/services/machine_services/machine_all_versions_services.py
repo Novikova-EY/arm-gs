@@ -294,7 +294,7 @@ def _sync_station_kto_all_versions(
                         f"Станция id={target.id}, "
                         f"{database_version_log_prefix(version_id, version_numbers)}: "
                         f"код КТО {new_kto!r} уже используется электростанцией "
-                        f"id={conflict_id}, код КТО не изменён."
+                        f"id={conflict_id}, код КТО не изменен."
                     )
                     continue
 
@@ -495,7 +495,7 @@ def _sync_station_year_table_all_versions(
 ) -> int:
     """
     Копирует помесячные/погодовые значения на все станции с тем же external_code.
-    Возвращает число обновлённых строк (записей по год×станция).
+    Возвращает число обновленных строк (записей по год×станция).
     """
     updated_rows = 0
     for version_id in version_ids:
@@ -1065,7 +1065,7 @@ def update_station_machines_all_versions_from_form(
         log_lines.append("Таблицы станции (первые 50 строк):")
         log_lines.extend(f"  - {line}" for line in station_table_log[:50])
         if len(station_table_log) > 50:
-            log_lines.append(f"  ... ещё {len(station_table_log) - 50} строк")
+            log_lines.append(f"  ... еще {len(station_table_log) - 50} строк")
     for label, old_val, new_val in aggregate_field_changes:
         log_lines.append(f"  {label}: было {old_val} → стало {new_val}")
     if warnings:

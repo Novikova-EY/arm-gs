@@ -1,0 +1,66 @@
+[CACHE REFRESH] Запущено фоновое обновление кэша каждые 25 минут
+[SORTED CACHE HIT REDIS] Используется закэшированный список из 1235 станций
+[CACHE WARMUP] Кэш уже существует (1235 станций), пропускаем прогрев
+============================================================
+ВНИМАНИЕ: Приложение запущено в режиме DEBUG![PD SUMMARY WARMUP] done in 0.01s (warmed=0 skipped=6)
+
+============================================================
+ * Serving Flask app 'app'
+ * Debug mode: on
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE MISS] Данные агрегации закэшированы
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[AGG DEBUG] get_filtered_station_ids -> 1227 stations (raw=1227, extra=0) при фильтрах {}
+[CACHE HIT REDIS] Используются кэшированные данные агрегации
+[CACHE CLEARED REDIS] Удалено 2 ключей из Redis
+[CACHE CLEARED] Кэш агрегаций, отсортированных списков и позиций страниц очищен
+[LRU CACHE CLEARED] Очищено LRU кэшей: 11

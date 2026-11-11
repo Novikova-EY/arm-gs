@@ -1221,7 +1221,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
                             # Как на странице: тип агрегата «не указано» не выводим вместе
                             # с вложенной разбивкой по топливу. Постфильтр иначе убирает
-                            # только строку «не указано», а «прочее» под ней остаётся.
+                            # только строку «не указано», а «прочее» под ней остается.
                             mt_name_lower = (machine_type_name or "").strip().lower()
                             if (
                                 not mt_name_lower
@@ -2057,7 +2057,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     (getattr(s, "name", None) or "").lower(),
                     getattr(s, "id", 0) or 0,
                 ))
-                # Добавляем строку с названием энергоузла, если он указан и разрешён для субъекта
+                # Добавляем строку с названием энергоузла, если он указан и разрешен для субъекта
                 if energy_unit_id is not None and stations_group and stations_group[0].energy_unit:
                     eu = stations_group[0].energy_unit
                     energy_unit_name = getattr(eu, "name_full", None) or getattr(eu, "name", None)

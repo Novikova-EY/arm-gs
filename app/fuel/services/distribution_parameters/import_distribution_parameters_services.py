@@ -338,7 +338,7 @@ def _prefer_dp_keep(
 
 
 def _delete_dp_with_dependents(dp: DistributionParameter) -> None:
-    """Удаляет параметр и зависимые результаты расчёта (ORM иначе ставит FK в NULL)."""
+    """Удаляет параметр и зависимые результаты расчета (ORM иначе ставит FK в NULL)."""
     from app.fuel.models.coefficient.distribution_coefficient_summary_model import (
         DistributionCoefficientSummary,
     )
@@ -363,7 +363,7 @@ def _logical_row_key(
     byear_num: int | None,
     e_key: str | None,
 ) -> tuple[str | None, int | None, int | None, str | None]:
-    """Уникальность: ОЭС (ref_uuid) + базовый год + расчётный год + выработка."""
+    """Уникальность: ОЭС (ref_uuid) + базовый год + расчетный год + выработка."""
     return (ues_ref_uuid, year_num, byear_num, e_key)
 
 
@@ -447,8 +447,8 @@ def import_distribution_parameters_from_excel(
     и пишет строки **во все версии БД** (общий ``ref_uuid``).
 
     ОЭС: через ``UnionEnergySystemExternalMapping`` (/fuel/refdata/union_energy_system).
-    Уникальность в файле: ОЭС + базовый год + расчётный год + выработка.
-    Сопоставление в БД: ОЭС (ref_uuid) + базовый год + расчётный год.
+    Уникальность в файле: ОЭС + базовый год + расчетный год + выработка.
+    Сопоставление в БД: ОЭС (ref_uuid) + базовый год + расчетный год.
 
     Returns:
         (добавлено копий по версиям, обновлено копий, список_ошибок/предупреждений)
@@ -491,7 +491,7 @@ def import_distribution_parameters_from_excel(
                 "(name, year, filter, e, …) или экспорт с этой страницы."
             )
 
-        # Резолв Access-имён ОЭС через маппинг + UES текущей версии → ref_uuid
+        # Резолв Access-имен ОЭС через маппинг + UES текущей версии → ref_uuid
         oes_to_ues_id, label_to_ues_id = _build_ues_resolvers(database_version_id)
         ues_uuid_by_id: dict[int, str | None] = {}
         for uid in set(oes_to_ues_id.values()) | set(label_to_ues_id.values()):
@@ -573,7 +573,7 @@ def import_distribution_parameters_from_excel(
                 errors.append(
                     f"Строка {row_no}: в файле уже есть строка с той же комбинацией "
                     f"ОЭС «{oes_label}», базовый год {byear_label}, "
-                    f"расчётный год {year_num}, выработка {e_label}."
+                    f"расчетный год {year_num}, выработка {e_label}."
                 )
                 continue
             seen_keys.add(logical_key)

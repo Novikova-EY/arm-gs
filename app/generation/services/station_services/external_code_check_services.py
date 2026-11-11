@@ -6,10 +6,15 @@ from __future__ import annotations
 from collections import defaultdict
 from contextlib import contextmanager
 import re
+from types import SimpleNamespace
 from typing import Any, Optional
 
 from app.common.models.database_version_model import DatabaseVersion
 from app.extensions import db
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
+from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_model import Station
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
@@ -50,7 +55,7 @@ def _company_sets_compatible(
     """
     Совместимы ли наборы генкомпаний для объединения «семейства».
 
-    Пустой набор не даёт основания развести станции (нет данных) – считаем совместимым.
+    Пустой набор не дает основания развести станции (нет данных) – считаем совместимым.
     Непустые непересекающиеся наборы – разные станции (как две ТЭС-2 в Карелии).
     """
     left_set = set(left or ())
@@ -84,7 +89,7 @@ def _should_apply_company_split(
 
 
 def _station_company_keys_batch(station_ids: list[int]) -> dict[int, set[str]]:
-    """station_id -> набор identity-ключей генкомпаний её агрегатов."""
+    """station_id -> набор identity-ключей генкомпаний ее агрегатов."""
     if not station_ids:
         return {}
 
@@ -177,7 +182,10 @@ def _build_codes_map(
 
     rows = (
         db.session.query(model_class.external_code, model_class.database_version_id)
-        .filter(model_class.external_code.in_(external_codes))
+        .filter(
+            model_class.external_code.in_(external_codes),
+            model_class.database_version_id.isnot(None),
+        )
         .all()
     )
     for ext_code, version_id in rows:
@@ -187,8 +195,12 @@ def _build_codes_map(
     return result
 
 
-def _has_mismatch(anchor_code: str, codes_by_version: dict[int, str]) -> bool:
-    values = list(codes_by_version.values())
+def _has_mismatch(anchor_code: str, codes_by_version: dict[Optional[int], str]) -> bool:
+    # Отсутствие legacy-записи не означает пропуск в именованной версии БД.
+    values = [
+        code for version_id, code in codes_by_version.items()
+        if version_id is not None or code
+    ]
     if not anchor_code:
         return any(values)
 
@@ -201,14 +213,17 @@ def dedupe_station_ids_from_rows(
     rows: list[tuple],
     preferred_version_id: Optional[int] = None,
     machine_counts: Optional[dict[int, int]] = None,
+    identity_code_only: bool = False,
 ) -> list[int]:
     """
     Оставляет по одной станции на логическое семейство (external_code / подпись),
     сохраняя порядок первых вхождений.
 
     Разные генкомпании разводят станции только внутри текущей версии БД
-    (две одноимённые ТЭС-2 с разными владельцами в одной версии остаются обеими).
-    Между версиями смена генкомпании у того же external_code не даёт две строки.
+    (две одноименные ТЭС-2 с разными владельцами в одной версии остаются обеими).
+    Между версиями смена генкомпании у того же external_code не дает две строки.
+    При поиске по UUID объединяем только по коду; неоднозначные дубли одной
+    версии оставляем все, не выбирая произвольного представителя.
     """
     if not rows:
         return []
@@ -216,6 +231,16 @@ def dedupe_station_ids_from_rows(
     machine_counts = machine_counts or {}
     station_ids_in_rows = list({row[0] for row in rows if row and row[0] is not None})
     company_keys_by_station = _station_company_keys_batch(station_ids_in_rows)
+    ambiguous_codes: set[str] = set()
+    if identity_code_only:
+        ids_by_code_version = defaultdict(set)
+        for row in rows:
+            code = (row[1] or "").strip()
+            if code:
+                ids_by_code_version[(code, row[2])].add(row[0])
+        ambiguous_codes = {
+            code for (code, _), ids in ids_by_code_version.items() if len(ids) > 1
+        }
 
     def version_rank(version_id: Optional[int]) -> tuple[int, int]:
         if preferred_version_id is not None and version_id == preferred_version_id:
@@ -261,7 +286,7 @@ def dedupe_station_ids_from_rows(
             version_by_station_id[station_id] = version_id
 
         code = (external_code or "").strip()
-        if not code:
+        if not code or code in ambiguous_codes:
             if station_id not in seen_no_code:
                 no_code_ids.append(station_id)
                 seen_no_code.add(station_id)
@@ -310,7 +335,7 @@ def dedupe_station_ids_from_rows(
             result.append(station_id)
             seen.add(station_id)
 
-    if len(result) < 2:
+    if identity_code_only or len(result) < 2:
         return result
 
     parent = {station_id: station_id for station_id in result}
@@ -852,7 +877,7 @@ def attach_machines_for_external_code_check(
     stations: list[Station],
     external_code_filter: str | None = None,
 ) -> dict[int, dict]:
-    """Лёгкая привязка агрегатов для страницы проверки external_code (все версии БД)."""
+    """Легкая привязка агрегатов для страницы проверки external_code (все версии БД)."""
     from collections import defaultdict
     import re
 
@@ -876,8 +901,14 @@ def attach_machines_for_external_code_check(
             Machine.machine_group,
             Machine.id_station,
             Machine.database_version_id,
+            Machine.id_equipment_group,
+            MachineFuelParam.equipment_group_id,
         )
-        .filter(Machine.id_station.in_(page_station_ids))
+        .outerjoin(MachineFuelParam, MachineFuelParam.machine_id == Machine.id)
+        .filter(
+            Machine.id_station.in_(page_station_ids),
+            Machine.database_version_id.isnot(None),
+        )
         .all()
     )
 
@@ -890,6 +921,8 @@ def attach_machines_for_external_code_check(
             "machine_group": row.machine_group,
             "id_station": row.id_station,
             "database_version_id": row.database_version_id,
+            "id_equipment_group": row.id_equipment_group,
+            "equipment_group_id": row.equipment_group_id,
         }
         for row in machines
     ]
@@ -920,6 +953,8 @@ def attach_machines_for_external_code_check(
         machine_obj.machine_group = row["machine_group"]
         machine_obj.id_station = station_id
         machine_obj.database_version_id = row["database_version_id"]
+        machine_obj.id_equipment_group = row["id_equipment_group"]
+        machine_obj.machine_fuel_param = SimpleNamespace(equipment_group_id=row["equipment_group_id"])
         machine_obj.pgu_machines = []
         machine_obj.total_rows = 1
         machine_obj.base_rows = 1
@@ -981,12 +1016,12 @@ def attach_machines_for_external_code_check(
 
 def _pick_family_member_for_version(
     family: list,
-    version_id: int,
+    version_id: Optional[int],
     *,
     anchor_id: Optional[int] = None,
     anchor_code: str = "",
 ):
-    """В одной версии не подменяет код якорной записи чужим одноимённым объектом."""
+    """В одной версии не подменяет код якорной записи чужим одноименным объектом."""
     candidates = [
         item
         for item in family
@@ -1008,14 +1043,14 @@ def _pick_family_member_for_version(
 
 def _codes_and_ids_by_version(
     family: list,
-    version_ids: list[int],
+    version_ids: list[Optional[int]],
     *,
     anchor_id: Optional[int] = None,
     anchor_code: str = "",
-) -> tuple[dict[int, str], dict[int, Optional[int]]]:
-    """Строит словари external_code и id записи по database_version_id."""
-    codes: dict[int, str] = {}
-    record_ids: dict[int, Optional[int]] = {}
+) -> tuple[dict[Optional[int], str], dict[Optional[int], Optional[int]]]:
+    """Строит словари external_code и id записи по database_version_id, включая NULL."""
+    codes: dict[Optional[int], str] = {}
+    record_ids: dict[Optional[int], Optional[int]] = {}
     for version_id in version_ids:
         matched = _pick_family_member_for_version(
             family,
@@ -1470,13 +1505,225 @@ def _machine_family_for_check(
     ]
 
 
+def _attach_equipment_groups_for_check(
+    station: Station,
+    station_family: list[Station],
+    version_ids: list[Optional[int]],
+    identity_code_only: bool,
+    code_filter: str,
+) -> None:
+    from app.fuel.services.stations.stations_equipment_groups_services import (
+        _equipment_group_sort_key,
+        _machine_belongs_to_fuel_equipment_group,
+    )
+
+    station_ids = [member.id for member in station_family]
+    family_group_ids = (
+        db.session.query(EquipmentGroupSet.equipment_group_id)
+        .join(EquipmentGroupSetStation, EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id)
+        .filter(EquipmentGroupSetStation.station_id.in_(station_ids))
+    )
+    rows = (
+        db.session.query(
+            EquipmentGroup,
+            EquipmentGroupSetStation.station_id,
+            EquipmentGroupSetStation.equipment_group_type_id,
+        )
+        .join(EquipmentGroupSet, EquipmentGroupSet.equipment_group_id == EquipmentGroup.id)
+        .join(
+            EquipmentGroupSetStation,
+            EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id,
+        )
+        .filter(
+            EquipmentGroup.id.in_(family_group_ids),
+            EquipmentGroup.database_version_id.isnot(None),
+            EquipmentGroupSetStation.station_id.isnot(None),
+        )
+        .order_by(EquipmentGroup.id)
+        .all()
+    )
+    groups = {}
+    link_types = defaultdict(set)
+    linked_station_ids = defaultdict(set)
+    for group, station_id, type_id in rows:
+        groups[group.id] = group
+        link_types[(group.id, station_id)].add(type_id)
+        linked_station_ids[group.id].add(station_id)
+    ordered = sorted(groups.values(), key=lambda group: (
+        group.database_version_id != station.database_version_id,
+        group.database_version_id or 0,
+        group.id,
+    ))
+    by_version = defaultdict(list)
+    for group in ordered:
+        by_version[group.database_version_id].append(group)
+
+    seen_ids = set()
+    assigned_machine_ids = set()
+    nodes = []
+    for anchor in ordered:
+        if anchor.id in seen_ids:
+            continue
+        anchor_code = (anchor.external_code or "").strip()
+        anchor_name = _normalize_check_key(anchor.name or anchor.name_ext)
+        family = [anchor]
+        for version_id in version_ids:
+            if version_id == anchor.database_version_id:
+                continue
+            candidates = [
+                group for group in by_version[version_id]
+                if anchor_code and (group.external_code or "").strip() == anchor_code
+            ]
+            if not candidates and not identity_code_only:
+                if anchor.numb:
+                    candidates = [group for group in by_version[version_id] if group.numb == anchor.numb]
+                elif anchor_name:
+                    candidates = [
+                        group for group in by_version[version_id]
+                        if not group.numb and _normalize_check_key(group.name or group.name_ext) == anchor_name
+                    ]
+            # Не выбираем произвольный дубль и не используем запись в нескольких строках.
+            if len(candidates) == 1 and candidates[0].id not in seen_ids:
+                family.append(candidates[0])
+        seen_ids.update(group.id for group in family)
+        codes, record_ids = _codes_and_ids_by_version(
+            family, version_ids, anchor_id=anchor.id, anchor_code=anchor_code,
+        )
+        machines = []
+        for machine in station.machines:
+            group_id = record_ids.get(machine.database_version_id)
+            if group_id is not None and any(
+                _machine_belongs_to_fuel_equipment_group(machine, group_id, type_id)
+                for type_id in link_types[(group_id, machine.id_station)]
+            ):
+                machines.append(machine)
+        if code_filter and not machines and not any(
+            _external_code_matches_filter(group.external_code, code_filter) for group in family
+        ):
+            continue
+        duplicate_code_count = sum(
+            bool(anchor_code) and (group.external_code or "").strip() == anchor_code
+            for group in by_version[anchor.database_version_id]
+        )
+        nodes.append(SimpleNamespace(
+            id=anchor.id, name=anchor.name, name_ext=anchor.name_ext, numb=anchor.numb,
+            external_code=anchor_code,
+            station_ids=tuple(sorted(linked_station_ids[anchor.id])),
+            main=anchor.main, database_version_id=anchor.database_version_id,
+            duplicate_code_count=duplicate_code_count,
+            external_codes_by_version=codes,
+            external_code_record_ids_by_version=record_ids,
+            external_code_mismatch=_has_mismatch(anchor_code, codes),
+            machines=machines,
+        ))
+        assigned_machine_ids.update(machine.id for machine in machines)
+    station.external_code_equipment_groups = sorted(nodes, key=_equipment_group_sort_key)
+    station.external_code_ungrouped_machines = [
+        machine for machine in station.machines if machine.id not in assigned_machine_ids
+    ]
+
+
+def shared_equipment_group_station_ids(stations: list[Station]) -> list[set[int]]:
+    """Связи общих групп в пределах отфильтрованного списка логических станций."""
+    families = _station_families_for_dedupe_batch([station.id for station in stations])
+    owners = defaultdict(set)
+    for station in stations:
+        for member in families.get(station.id, [station]):
+            owners[member.id].add(station.id)
+    if not owners:
+        return []
+    rows = (
+        db.session.query(EquipmentGroup.id, EquipmentGroupSetStation.station_id)
+        .join(EquipmentGroupSet, EquipmentGroupSet.equipment_group_id == EquipmentGroup.id)
+        .join(EquipmentGroupSetStation, EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id)
+        .join(Station, Station.id == EquipmentGroupSetStation.station_id)
+        .filter(
+            EquipmentGroupSetStation.station_id.in_(owners),
+            EquipmentGroup.database_version_id.isnot(None),
+            EquipmentGroup.database_version_id == Station.database_version_id,
+        )
+        .all()
+    )
+    by_group = defaultdict(set)
+    for group_id, station_id in rows:
+        # Не выбираем произвольную станцию при неоднозначном семействе.
+        if len(owners[station_id]) == 1:
+            by_group[group_id].update(owners[station_id])
+    return [members for members in by_group.values() if len(members) > 1]
+
+
+def external_code_check_page_ranges(
+    stations: list[Station], per_page: int, shared_station_ids: list[set[int]],
+) -> list[tuple[int, int]]:
+    """Границы страниц без разрыва субъекта РФ или общей группы оборудования."""
+    if per_page < 1:
+        raise ValueError("Количество станций на странице должно быть положительным")
+    positions = {station.id: index for index, station in enumerate(stations)}
+    required_ends = list(range(1, len(stations) + 1))
+    for members in shared_station_ids:
+        indices = [positions[station_id] for station_id in members if station_id in positions]
+        if indices:
+            required_ends[min(indices)] = max(required_ends[min(indices)], max(indices) + 1)
+    district_ends = [0] * len(stations)
+    district_end = len(stations)
+    next_district = None
+    for index in range(len(stations) - 1, -1, -1):
+        district = stations[index].regional_district
+        name = (district.name or "").lower() if district else ""
+        if name != next_district:
+            district_end = index + 1
+            next_district = name
+        district_ends[index] = district_end
+    ranges = []
+    start = 0
+    while start < len(stations):
+        end = min(start + per_page, len(stations))
+        scanned = start
+        while scanned < end:
+            end = max(end, required_ends[scanned], district_ends[scanned])
+            scanned += 1
+        ranges.append((start, end))
+        start = end
+    return ranges
+
+
+def build_external_code_check_blocks(stations: list[Station]) -> dict[int, list]:
+    """Общие группы выводятся один раз, их станции сохраняют порядок списка."""
+    shared = {}
+    for station in stations:
+        for group in station.external_code_equipment_groups:
+            if len(group.station_ids) > 1:
+                if group.id not in shared:
+                    shared[group.id] = SimpleNamespace(
+                        equipment_group=group, members=[], owner_id=station.id,
+                    )
+                shared[group.id].members.append(SimpleNamespace(station=station, machines=group.machines))
+    blocks = {station.id: [] for station in stations}
+    for station in stations:
+        local_groups = []
+        for group in station.external_code_equipment_groups:
+            if group.id in shared:
+                block = shared[group.id]
+                if block.owner_id == station.id:
+                    blocks[station.id].append(block)
+            else:
+                local_groups.append(group)
+        if local_groups or station.external_code_ungrouped_machines or not station.external_code_equipment_groups:
+            blocks[station.id].append(SimpleNamespace(
+                equipment_group=None, station=station, groups=local_groups,
+                machines=station.external_code_ungrouped_machines,
+            ))
+    return blocks
+
+
 def attach_external_codes_by_version(
     stations: list[Station],
     database_versions: list[dict[str, Any]],
     identity_code_only: bool = False,
+    external_code_filter: str | None = None,
 ) -> tuple[dict[str, dict[Optional[int], str]], dict[str, dict[Optional[int], str]]]:
-    """Заполняет у станций и агрегатов словарь external_code и id записей по версиям БД."""
-    version_ids = [version["id"] for version in database_versions]
+    """Заполняет коды станций, групп оборудования и агрегатов по версиям БД."""
+    version_ids = [version["id"] for version in database_versions if version["id"] is not None]
     station_codes, machine_codes = _collect_anchor_codes(stations)
     station_map = _build_codes_map(Station, station_codes)
     machine_map = _build_codes_map(Machine, machine_codes)
@@ -1518,6 +1765,11 @@ def attach_external_codes_by_version(
                     machine_anchor, machine.external_codes_by_version
                 )
 
+            _attach_equipment_groups_for_check(
+                station, station_family, version_ids, identity_code_only,
+                (external_code_filter or "").strip(),
+            )
+
     return station_map, machine_map
 
 
@@ -1546,8 +1798,8 @@ def _check_external_code_conflict(
 
 def update_external_codes_from_check_page(updates: list[dict[str, Any]]) -> dict[str, Any]:
     """
-    Обновляет external_code по id записи (станция или агрегат).
-    Каждый элемент updates: entity_type ('station'|'machine'), record_id, new_external_code.
+    Обновляет external_code по id станции, группы оборудования или агрегата.
+    Каждый элемент updates: entity_type ('station'|'equipment_group'|'machine'), record_id, new_external_code.
     """
     if not updates:
         return {"ok": True, "updated": 0, "skipped": 0, "errors": []}
@@ -1555,6 +1807,7 @@ def update_external_codes_from_check_page(updates: list[dict[str, Any]]) -> dict
     model_by_type = {
         "station": Station,
         "machine": Machine,
+        "equipment_group": EquipmentGroup,
     }
     updated = 0
     skipped = 0

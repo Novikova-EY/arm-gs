@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Переопределения текстов формул (подсказки «i») расчёта по действующим ТЭС."""
+"""Переопределения текстов формул (подсказки «i») расчета по действующим ТЭС."""
 
 from sqlalchemy.sql import func
 
@@ -9,7 +9,7 @@ from config import SCHEMA_ECOLOGY
 
 
 class OperatingTesFormulaText(db.Model, AuditMixin):
-    """Только текст формулы; расчёт значений ячеек не меняется."""
+    """Только текст формулы; расчет значений ячеек не меняется."""
 
     __tablename__ = "gs_eco_operating_tes_formula_texts"
     __table_args__ = (
@@ -19,9 +19,9 @@ class OperatingTesFormulaText(db.Model, AuditMixin):
 
     # Уникальный идентификатор записи
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    # Ключ формулы (иконка «i» на страницах расчёта)
+    # Ключ формулы (иконка «i» на страницах расчета)
     formula_key = db.Column(db.String(128), nullable=False, index=True)
-    # Текст формулы (подсказка; на расчёт ячеек не влияет)
+    # Текст формулы (подсказка; на расчет ячеек не влияет)
     formula_text = db.Column(db.Text, nullable=False)
 
     # Дата и время создания записи

@@ -82,7 +82,7 @@
     }
 
     /**
-     * Ячейка, покрывающая логический столбец col в строке ri (с учётом rowspan сверху).
+     * Ячейка, покрывающая логический столбец col в строке ri (с учетом rowspan сверху).
      */
     function cellAtColumn(perRow, ri, col) {
         var r, k, cell, startCol, colspan, rowspan, lastRow;

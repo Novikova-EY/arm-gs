@@ -46,6 +46,8 @@ def load_accepted_new_tes_fuel_inputs(years):
     for scope, capacity_class in NEW_TES_SCOPE_CAPACITY.items():
         for year, territories in load_accepted_fuel_inputs(years, scope=scope).items():
             for slug, bucket in territories.items():
+                if "::" in slug:
+                    continue
                 result[year].setdefault(slug, {})[capacity_class] = bucket
     return result
 
@@ -101,7 +103,7 @@ def review_fuel_submission(submission_id, accept):
     ).with_for_update().one()
     db.session.refresh(submission)
     if submission.status != "pending":
-        raise ValueError("Пакет уже рассмотрен или заменён новой отправкой. Обновите страницу.")
+        raise ValueError("Пакет уже рассмотрен или заменен новой отправкой. Обновите страницу.")
     if accept:
         snapshot.payload = submission.payload
         # Прежние ручные переопределения не должны перекрывать принятый пакет.

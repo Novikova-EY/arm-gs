@@ -204,7 +204,7 @@ def _print_plan(
         for w in warnings[:30]:
             print(f"  - {w}")
         if len(warnings) > 30:
-            print(f"  ... и ещё {len(warnings) - 30}")
+            print(f"  ... и еще {len(warnings) - 30}")
 
 
 def _drop_legacy_ees_russia_unique_indexes() -> None:

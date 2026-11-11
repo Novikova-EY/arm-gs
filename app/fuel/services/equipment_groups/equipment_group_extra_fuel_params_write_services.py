@@ -84,7 +84,7 @@ def get_or_create_equipment_group_extra_fuel_param(
     database_version_id: int | None = None,
 ) -> EquipmentGroupExtraFuelParam:
     """
-    Получает или создаёт строку EquipmentGroupExtraFuelParam для пары группа + год.
+    Получает или создает строку EquipmentGroupExtraFuelParam для пары группа + год.
 
     Семантика как у сохранения формы: одна строка на (equipment_group_id, year_number),
     без дополнительного фильтра по database_version_id при поиске.
@@ -159,8 +159,8 @@ def save_equipment_group_extra_fuel_params_for_year(
     rounding_digits: int = 1,
 ) -> tuple[EquipmentGroupExtraFuelParam | None, dict]:
     """
-    Создаёт/обновляет EquipmentGroupExtraFuelParam за один год.
-    Новая строка не создаётся, если в БД нет записи и все значения пустые.
+    Создает/обновляет EquipmentGroupExtraFuelParam за один год.
+    Новая строка не создается, если в БД нет записи и все значения пустые.
     """
     effective_db_version = database_version_id
     if effective_db_version is None:

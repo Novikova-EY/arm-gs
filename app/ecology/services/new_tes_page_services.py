@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница расчёта по новым ТЭС: топливо d≠1, М = В × У, классы мощности."""
+"""Страница расчета по новым ТЭС: топливо d≠1, М = В × У, классы мощности."""
 
 from __future__ import annotations
 
@@ -308,6 +308,7 @@ def build_new_tes_table_context(
                 }
             }
     rows: list[dict[str, Any]] = []
+    norm_tables: list[dict[str, Any]] = []
     value_columns = territory_columns
     if layout == "fuel":
         for spec in TOP_INPUT_ROWS:
@@ -352,43 +353,51 @@ def build_new_tes_table_context(
                     indent=spec.get("indent") or 0,
                     col_values=col_values,
                     col_values_raw=col_raw,
+                    is_fuel=True,
                     italic=bool(spec.get("indent")),
                 )
             )
     elif layout == "chars":
-        for year in years:
-            for spec in FUEL_ROWS:
-                is_group = bool(spec.get("is_header")) and spec["key"] not in DEFAULT_NORMS
-                norms = resolve_norm(spec["key"], capacity_class, year, norm_overrides, char_overrides)
-                char_values: dict[str, str] = {}
-                char_raw: dict[str, str] = {}
-                for field, _label in NORM_COLUMNS:
-                    raw = None if is_group else norms["pg" if field == "k_co2" else field]
-                    char_raw[field] = "" if raw is None else str(raw)
-                    char_values[field] = "" if is_group else format_cell(raw, digits=digits)
-                empty = not any(
-                    char_raw.get(field) not in (None, "") for field, _label in NORM_COLUMNS
-                )
-                rows.append(
-                    {
-                        "key": spec["key"],
-                        "label": spec["label"],
-                        "kind": KIND_TOTAL if spec.get("is_header") else KIND_VALUE,
-                        "indent": spec.get("indent") or 0,
-                        "italic": bool(spec.get("indent")),
-                        "css_class": "table-info" if spec.get("is_header") else "",
-                        "editable_values": not is_group,
-                        "editable_fields": {"k_co2", "ash", "so2", "nox"} if spec["key"] in DEFAULT_NORMS else {"k_co2"},
-                        "char_values": {year: char_values},
-                        "is_empty": False if spec.get("is_header") else empty,
-                        "year": year,
-                        "note": "",
-                        "source_key": "",
-                        "label_bg": None,
-                        "label_fallback_bg": None,
-                        "adopted": False,
-                    }
-                )
+        for norm_capacity, title in NEW_TES_CAPACITY_TABS:
+            capacity_rows: list[dict[str, Any]] = []
+            for year in years:
+                for spec in FUEL_ROWS:
+                    is_group = bool(spec.get("is_header")) and spec["key"] not in DEFAULT_NORMS
+                    norms = resolve_norm(spec["key"], norm_capacity, year, norm_overrides, char_overrides)
+                    char_values: dict[str, str] = {}
+                    char_raw: dict[str, str] = {}
+                    for field, _label in NORM_COLUMNS:
+                        raw = None if is_group else norms["pg" if field == "k_co2" else field]
+                        char_raw[field] = "" if raw is None else str(raw)
+                        char_values[field] = "" if is_group else format_cell(raw, digits=digits)
+                    empty = not any(
+                        char_raw.get(field) not in (None, "") for field, _label in NORM_COLUMNS
+                    )
+                    capacity_rows.append(
+                        {
+                            "key": spec["key"],
+                            "label": spec["label"],
+                            "kind": KIND_TOTAL if spec.get("is_header") else KIND_VALUE,
+                            "indent": spec.get("indent") or 0,
+                            "italic": bool(spec.get("indent")),
+                            "css_class": "table-info fw-bold" if not spec.get("indent") else (
+                                "fw-bold" if spec["indent"] == 1 or spec.get("is_header") else ""
+                            ),
+                            "editable_values": not is_group,
+                            "editable_fields": {"k_co2", "ash", "so2", "nox"} if spec["key"] in DEFAULT_NORMS else {"k_co2"},
+                            "char_values": {year: char_values},
+                            "is_empty": False if spec.get("is_header") else empty,
+                            "year": year,
+                            "note": "",
+                            "source_key": "",
+                            "label_bg": None,
+                            "label_fallback_bg": None,
+                            "adopted": False,
+                        }
+                    )
+            norm_tables.append({"capacity_class": norm_capacity, "title": title, "rows": capacity_rows})
+            if norm_capacity == capacity_class:
+                rows = capacity_rows
     elif layout == "volumes":
         value_columns = [
             {"slug": f"{terr['slug']}:{key}", "territory_slug": terr["slug"], "metric": key}
@@ -420,6 +429,7 @@ def build_new_tes_table_context(
             row = _row_dict(
                 key=spec["key"], label=spec["label"], unit="", kind=spec["kind"],
                 indent=spec.get("indent") or 0,
+                is_fuel=spec["key"] != "total",
                 italic=bool(spec.get("indent")),
                 col_values=col_values,
                 col_values_raw=col_raw,
@@ -441,6 +451,7 @@ def build_new_tes_table_context(
         "value_columns": value_columns,
         "year_columns_mode": False,
         "new_tes_capacity_tabs": NEW_TES_CAPACITY_TABS,
+        "new_tes_norm_tables": norm_tables,
         "capacity_class": capacity_class,
         "new_tes_volume_columns": NEW_TES_VOLUME_COLUMNS if layout == "volumes" else (),
         "start_year": range_years[0] if range_years else None,

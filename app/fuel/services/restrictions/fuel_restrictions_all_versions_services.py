@@ -83,7 +83,7 @@ def upsert_fuel_restriction_in_all_versions(
     match_obl: Decimal | int | None = None,
 ) -> tuple[int, int, list[str]]:
     """
-    Создаёт/обновляет копию ограничения во всех версиях БД.
+    Создает/обновляет копию ограничения во всех версиях БД.
 
     Поиск: (match_year, match_oes, match_obl) если заданы (старый ключ при
     смене year/oes/obl), иначе (year, oes, obl).
@@ -118,7 +118,7 @@ def upsert_fuel_restriction_in_all_versions(
         row = find_restriction_by_key_in_version(
             version_id=vid, year=match_y, oes=match_o, obl=match_b
         )
-        # Если ключ сменился – ищем ещё и по новому ключу (на случай коллизии).
+        # Если ключ сменился – ищем еще и по новому ключу (на случай коллизии).
         if row is None and (match_y, match_o, match_b) != (year_v, oes_v, obl_v):
             row = find_restriction_by_key_in_version(
                 version_id=vid, year=year_v, oes=oes_v, obl=obl_v
@@ -150,7 +150,7 @@ def delete_fuel_restriction_in_all_versions(row_id: int) -> list[int]:
     Удаляет ограничение и все его копии с тем же (year, oes, obl) во всех версиях.
 
     Returns:
-        список удалённых id
+        список удаленных id
     """
     anchor = db.session.get(FuelRestriction, row_id)
     if anchor is None:

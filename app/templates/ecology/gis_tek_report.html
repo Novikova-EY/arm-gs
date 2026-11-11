@@ -349,7 +349,7 @@
 {% include 'ecology/_station_filters_toggle_script.html' %}
 <script>
     // Оверлей «Загрузка отчетных данных...» закрываем, когда страница реально показана:
-    // если переход отменён или страница открыта из кеша, он иначе остался бы поверх таблицы
+    // если переход отменен или страница открыта из кеша, он иначе остался бы поверх таблицы
     // и блокировал бы работу (в том числе после выгрузки в Excel).
     function hideGisTekLoadingOverlay() {
         const overlay = document.getElementById('loading-overlay');

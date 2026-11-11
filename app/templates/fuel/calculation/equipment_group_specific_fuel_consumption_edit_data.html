@@ -82,7 +82,7 @@
 <div class="fuel-calc-edit-pane-content w-100 mt-2 px-0">
     <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-nav bg-body">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
-        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
+        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчету</a>
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
     </div>
@@ -112,7 +112,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.</p>
+                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчет берет последнюю строку year ≤ расчетного.</p>
                     <div class="mb-3">
                         <label class="form-label" for="specificFcAddYearTarget">Год</label>
                         <select name="id_target_year" id="specificFcAddYearTarget" class="form-select form-select-lg" aria-label="Год" required>
@@ -145,7 +145,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.</p>
+                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчет берет последнюю строку year ≤ расчетного.</p>
                     <div class="mb-3">
                         <label class="form-label" for="specificFcAddPeriodFrom">Год с</label>
                         <select name="id_year_from" id="specificFcAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
@@ -465,7 +465,7 @@
     .fuel-calc-edit-shell #specificFcEditTable .text-muted.small {
         font-size: 0.85em;
     }
-    /* ved: та же ширина, что у numb1120 (значение --specific-fc-ved-col-width задаёт JS) */
+    /* ved: та же ширина, что у numb1120 (значение --specific-fc-ved-col-width задает JS) */
     #specificFcEditTable th.specific-fc-col-ved,
     #specificFcEditTable td.specific-fc-col-ved {
         width: var(--specific-fc-ved-col-width, 1%);
@@ -513,7 +513,7 @@
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
         box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
     }
-    /* Руст изменился к предыдущему году: желто-красный фон (отдельно от жёлтых составных групп) */
+    /* Руст изменился к предыдущему году: желто-красный фон (отдельно от желтых составных групп) */
     #specificFcEditTable tbody tr.table-warning:not(.fuel-param-composite-parent-row) > td,
     #specificFcEditTable tbody tr[data-row-yellow="1"]:not(.fuel-param-composite-parent-row) > td {
         --bs-table-bg: #fdd0b0;

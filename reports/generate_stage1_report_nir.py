@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 import generate_stage1_report as src  # noqa: E402
 
 def _resolve_template() -> Path:
-    """Шаблон со стилями 7.32: каталог 2025, иначе локальный/2026 отчёт, иначе 2024."""
+    """Шаблон со стилями 7.32: каталог 2025, иначе локальный/2026 отчет, иначе 2024."""
     folder_2025 = Path(r"Z:\НИО-10\АРМ ГС\Отчеты НИР\2025 год")
     if folder_2025.exists():
         found = sorted(
@@ -47,7 +47,7 @@ def _resolve_template() -> Path:
         if found:
             return found[0]
     raise FileNotFoundError(
-        "Не найден шаблон DOCX со стилями НИР (Z:\\…\\2025 год или локальный отчёт)."
+        "Не найден шаблон DOCX со стилями НИР (Z:\\…\\2025 год или локальный отчет)."
     )
 
 
@@ -1386,7 +1386,7 @@ def sanitize_document_artifacts(doc: Document) -> None:
         if en_toc.match(text) or (
             en_toc_line.search(text)
             and len(text) < 120
-            and not re.search(r"[А-Яа-яЁё]", text)
+            and not re.search(r"[А-Яа-яЕе]", text)
         ):
             to_remove.append(para)
             continue

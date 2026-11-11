@@ -54,13 +54,11 @@ current_user.is_authenticated %}
     </div>
   </section>
 
-  {% if can_edit_ecology %}
   <section class="home-outline__section">
     <div class="home-outline__tiles">
       {{ hub_tile(url_for('ecology_bp.operating_tes_formulas'), 'Текстовое
       описание для подсказок «i» формул', 'is-ghost') }}
     </div>
   </section>
-  {% endif %}
 </div>
 {% endif %} {% endblock %}

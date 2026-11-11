@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 
-"""GET-параметры страницы электроёмкости."""
+"""GET-параметры страницы электроемкости."""
 
 
 
@@ -43,7 +43,7 @@ from app.electrical_intensity.services.electrical_intensity_constants import (
 
 def _parse_period_flag_default_true(param: str) -> bool:
 
-    """Флаг периода на электроёмкости: включён, если параметр отсутствует или равен 1."""
+    """Флаг периода на электроемкости: включен, если параметр отсутствует или равен 1."""
 
     raw = request.args.get(param)
 
@@ -75,7 +75,7 @@ def parse_electrical_intensity_include_long_years() -> bool:
 
 def parse_electrical_intensity_summary_year_range() -> tuple[int, int]:
 
-    """По умолчанию – полный диапазон отчётного + среднесрочного + долгосрочного периода."""
+    """По умолчанию – полный диапазон отчетного + среднесрочного + долгосрочного периода."""
 
     bounds = filter_year_list_for_page()
 
@@ -152,7 +152,9 @@ def parse_electrical_intensity_ved_filters() -> tuple[frozenset[int], bool]:
     return frozenset(ids), include_population
 
 
-def parse_electrical_intensity_page_kwargs(*, rounding_digits: int) -> dict:
+def parse_electrical_intensity_page_kwargs(
+    *, rounding_digits: int, coefficient_rounding_digits: int = 2
+) -> dict:
 
     sy, ey = parse_electrical_intensity_summary_year_range()
 
@@ -189,6 +191,8 @@ def parse_electrical_intensity_page_kwargs(*, rounding_digits: int) -> dict:
     return {
 
         "rounding_digits": rounding_digits,
+
+        "coefficient_rounding_digits": coefficient_rounding_digits,
 
         "start_year": sy,
 

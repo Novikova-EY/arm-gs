@@ -1,0 +1,23 @@
+BEGIN
+SET
+LOCK TABLE
+LOCK TABLE
+SELECT 169
+SELECT 4
+DO
+UPDATE 1
+DO
+           check           | rows 
+---------------------------+------
+ unchanged_other_snapshots |  168
+(1 row)
+
+     name     |               hash               
+--------------+----------------------------------
+ inputs       | d41d8cd98f00b204e9800998ecf8427e
+ submissions  | 57c4bd730a0bb6c4a09e0c17d13b2e60
+ coefficients | 52c6833e1f0f52b71b23601e77dda374
+ fuel_chars   | a19c708a6a8cd2bcaadf07ade201a335
+(4 rows)
+
+COMMIT

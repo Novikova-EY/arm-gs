@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Тексты формул страницы электроёмкости (хранение – сводки потребления ЭЭ)."""
+"""Тексты формул страницы электроемкости (хранение – сводки потребления ЭЭ)."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def ei_formula_text(formula_key: str, default: str | None = None) -> str:
 
 
 def list_formulas_for_admin() -> list[dict[str, Any]]:
-    """Совместимость: отдельная админ-страница электроёмкости перенесена в summary-formulas."""
+    """Совместимость: отдельная админ-страница электроемкости перенесена в summary-formulas."""
     migrate_legacy_electrical_intensity_formula_texts()
     rows: list[dict[str, Any]] = []
     for raw in list_ec_formulas_for_admin(page=PAGE_ELECTRICAL_INTENSITY):

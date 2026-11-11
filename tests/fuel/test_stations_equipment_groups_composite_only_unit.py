@@ -27,7 +27,7 @@ def fuel_session(monkeypatch):
             [
                 # Составная станция: родитель comp=1, main пуст
                 {"id": 1, "external_code": "parent", "numb": 100, "comp": 1, "main": None, "database_version_id": 1},
-                # Её группы
+                # Ее группы
                 {"id": 2, "external_code": "child-1", "numb": 101, "comp": None, "main": 100, "database_version_id": 1},
                 {"id": 3, "external_code": "child-2", "numb": 102, "comp": 0, "main": 100, "database_version_id": 1},
                 # Обычная ТЭС: comp пуст, main пуст
@@ -56,7 +56,7 @@ def test_composite_only_excludes_plain_station_groups(fuel_session):
     ids = service.get_composite_station_equipment_group_ids(version_id=1)
 
     assert 4 not in ids  # обычная ТЭС
-    assert 5 not in ids  # её группа: main указывает на несоставной numb
+    assert 5 not in ids  # ее группа: main указывает на несоставной numb
 
 
 def test_composite_only_ignores_other_versions(fuel_session):

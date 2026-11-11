@@ -3,7 +3,7 @@
 Расчет полей _calc для EquipmentGroupSpecificFuelConsumption.
 param – EquipmentGroupFuelParam (ewtp, qotr, ved и т.д.).
 """
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 D0 = Decimal("0")
 D1 = Decimal("1")
@@ -107,10 +107,10 @@ def calc_sntp_calc(param) -> Decimal:
 
 def calc_snk_calc(param):
     """
-    СН на выработку ЭЭ, % (расчёт).
+    СН на выработку ЭЭ, % (расчет).
 
     Равно SNK на странице топливных параметров: sn_ee / e · 100 при наличии
-    входов, иначе сохранённый FuelParam.snk. None, если значения нет.
+    входов, иначе сохраненный FuelParam.snk. None, если значения нет.
     """
     from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
         displayed_fuel_param_snk,
@@ -145,3 +145,23 @@ def calc_bk_calc(param, btp_calc, sntp_calc) -> Decimal:
             return numerator / denominator * D1000
         return z(btp_calc)
     return z(getattr(param, "eurt", None))
+
+
+def calculate_specific_fuel_consumption_calc(param, coeff_k) -> dict:
+    """Все *_calc одной строки; округление совпадает при чтении и записи в БД."""
+    values = dict.fromkeys(("y_calc", "btp_calc", "sntp_calc", "bk_calc", "snk_calc"))
+    if param is None:
+        return values
+
+    values["y_calc"] = calc_y_calc(param)
+    values["btp_calc"] = calc_btp_calc(param, coeff_k)
+    values["sntp_calc"] = calc_sntp_calc(param)
+    values["bk_calc"] = calc_bk_calc(param, values["btp_calc"], values["sntp_calc"])
+    values["snk_calc"] = calc_snk_calc(param)
+    for attr, value in values.items():
+        if value is not None:
+            try:
+                values[attr] = Decimal(str(value)).quantize(Decimal("0.000001"))
+            except (InvalidOperation, TypeError):
+                pass
+    return values

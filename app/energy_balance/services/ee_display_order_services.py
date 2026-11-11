@@ -8,7 +8,7 @@ def display_order_sort_key(
     name: str | None,
     tie_breaker: int,
 ) -> tuple:
-    """Ключ сортировки: display_order, наименование без учёта регистра, id."""
+    """Ключ сортировки: display_order, наименование без учета регистра, id."""
     return (
         1 if display_order is None else 0,
         display_order if display_order is not None else 10**9,

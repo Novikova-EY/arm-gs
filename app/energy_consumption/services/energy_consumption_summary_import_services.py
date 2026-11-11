@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any, Callable, Optional, Type
 
 from sqlalchemy.exc import IntegrityError
@@ -92,7 +92,7 @@ _YEAR_HEADER_RE = re.compile(
 )
 _YEAR_HEADER_NUMSTR_RE = re.compile(r"^\s*(\d{4})(?:\.0+)?\s*$")
 
-# Для поиска строки с годами в файле – без совпадения со справочником Years (его может ещё не быть).
+# Для поиска строки с годами в файле – без совпадения со справочником Years (его может еще не быть).
 _YEAR_HEADER_PLAUSIBLE = range(1990, 2051)
 
 
@@ -155,10 +155,10 @@ def _normalize_import_label_typos(label: str) -> str:
 
 
 def _norm_entity_label(s: str) -> str:
-    s_norm = _normalize_import_label_typos(s).casefold().replace("ё", "е")
+    s_norm = _normalize_import_label_typos(s).casefold().replace("\u0451", "е")
     s_norm = re.sub(r"\bэнергосистема\b", "эс", s_norm)
     s_norm = re.sub(r"\bобъединенная\s+энергосистема\b", "оэс", s_norm)
-    s_norm = re.sub(r"\bобъединённая\s+энергосистема\b", "оэс", s_norm)
+    s_norm = re.sub(r"\bобъединенная\s+энергосистема\b", "оэс", s_norm)
     s_norm = re.sub(r"\bфедеральный\s+округ\b", "фо", s_norm)
     s_norm = re.sub(r",?\s*в\s+т\.?\s*ч\.?:?\s*$", "", s_norm)
     s_norm = _norm_space(s_norm.replace(".", " "))
@@ -212,6 +212,17 @@ def _parse_numeric_cell(val: Any) -> Optional[Decimal]:
 
 
 
+def _add_import_decimal_values(left: Decimal, right: Decimal) -> Decimal:
+    # Не обрезать длинную дробь стандартным контекстом Decimal (28 значащих цифр).
+    with localcontext() as context:
+        context.prec = max(
+            context.prec,
+            max(left.adjusted(), right.adjusted())
+            - min(left.as_tuple().exponent, right.as_tuple().exponent) + 2,
+        )
+        return left + right
+
+
 def _year_numbers_for_version(version_id: int) -> set[int]:
     rows = Year.query.filter(Year.database_version_id == version_id).all()
     return {int(y.number) for y in rows if y.number is not None}
@@ -233,8 +244,9 @@ def _database_version_ids_ordered() -> list[int]:
 
 
 def _database_version_ids_for_energy_consumption_import() -> list[int]:
-    """Все зарегистрированные версии БД (id > 0) для записи импорта сводки потребления."""
-    return _database_version_ids_ordered()
+    """Импорт сводки разрешен только в текущую выбранную версию БД."""
+    version_id = get_current_version()
+    return [int(version_id)] if version_id is not None and int(version_id) > 0 else []
 
 
 def _find_sheet_title(wb, wanted: str):
@@ -267,6 +279,46 @@ def _sheet_matrix(ws) -> list[tuple[Any, ...]]:
     return [tuple(r) for r in rows]
 
 
+def _restore_excel_decimal_cells(wb, raw: bytes) -> None:
+    """openpyxl читает дроби через float; восстанавливаем точные числа из XML книги."""
+    from io import BytesIO
+    from posixpath import dirname, join, normpath
+    from xml.etree import ElementTree
+    from zipfile import ZipFile
+
+    main_ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    package_ns = "http://schemas.openxmlformats.org/package/2006/relationships"
+    with ZipFile(BytesIO(raw)) as archive:
+        workbook_path = "xl/workbook.xml"
+        workbook = ElementTree.fromstring(archive.read(workbook_path))
+        relationships = ElementTree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+        targets = {
+            rel.attrib["Id"]: rel.attrib["Target"]
+            for rel in relationships.findall(f"{{{package_ns}}}Relationship")
+        }
+        worksheets = {ws.title: ws for ws in wb.worksheets}
+        for sheet in workbook.findall(f"{{{main_ns}}}sheets/{{{main_ns}}}sheet"):
+            ws = worksheets.get(sheet.attrib["name"])
+            if ws is None:
+                continue
+            target = targets[sheet.attrib[f"{{{rel_ns}}}id"]]
+            path = target.lstrip("/") if target.startswith("/") else normpath(
+                join(dirname(workbook_path), target)
+            )
+            with archive.open(path) as source:
+                for _event, cell_xml in ElementTree.iterparse(source, events=("end",)):
+                    if cell_xml.tag != f"{{{main_ns}}}c":
+                        continue
+                    value = cell_xml.findtext(f"{{{main_ns}}}v")
+                    if cell_xml.get("t", "n") == "n" and value:
+                        cell = ws[cell_xml.attrib["r"]]
+                        # Даты и время openpyxl уже преобразовал по формату ячейки.
+                        if cell.data_type == "n":
+                            cell.value = Decimal(value)
+                    cell_xml.clear()
+
+
 def _load_summary_workbook_from_bytes(raw: bytes):
     """Открывает книгу для импорта; ошибки чтения превращает в ValueError с пояснением для пользователя."""
     from io import BytesIO
@@ -276,7 +328,9 @@ def _load_summary_workbook_from_bytes(raw: bytes):
     from openpyxl.utils.exceptions import InvalidFileException
 
     try:
-        return load_workbook(BytesIO(raw), read_only=False, data_only=True)
+        wb = load_workbook(BytesIO(raw), read_only=False, data_only=True)
+        _restore_excel_decimal_cells(wb, raw)
+        return wb
     except (BadZipFile, InvalidFileException) as e:
         raise ValueError(
             "Не удалось открыть файл как книгу Excel. Нужен формат .xlsx или .xlsm "
@@ -285,7 +339,7 @@ def _load_summary_workbook_from_bytes(raw: bytes):
     except Exception as e:
         raise ValueError(
             "Не удалось прочитать файл Excel – книга повреждена, неполная или в неподдерживаемом формате. "
-            "Откройте её в Excel, сохраните заново как .xlsx и повторите импорт."
+            "Откройте ее в Excel, сохраните заново как .xlsx и повторите импорт."
         ) from e
 
 
@@ -311,7 +365,7 @@ def _detect_year_row(matrix: list[tuple[Any, ...]]) -> tuple[int, dict[int, int]
         raise ValueError(
             "Не удалось найти строку с годами в таблице (целые годы или «2016 г.» и т.п.; "
             f"ожидаемый диапазон {_YEAR_HEADER_PLAUSIBLE.start}–{_YEAR_HEADER_PLAUSIBLE.stop - 1}). "
-            "При записи учитываются только годы, заведённые в справочнике Years для данной версии БД."
+            "При записи учитываются только годы, заведенные в справочнике Years для данной версии БД."
         )
     return best_row, best_cols
 
@@ -324,7 +378,7 @@ def _detect_variant_column(
     for ri in range(0, year_row_idx + 1):
         row = matrix[ri] if ri < len(matrix) else ()
         for ci, val in enumerate(row):
-            s = _norm_space(_cell_as_text(val)).casefold().replace("ё", "е")
+            s = _norm_space(_cell_as_text(val)).casefold().replace("\u0451", "е")
             if any(marker in s for marker in _VARIANT_COLUMN_HEADER_MARKERS):
                 return ci
     return None
@@ -506,7 +560,7 @@ def _is_ees_unified_import_label(label: str) -> bool:
 
 
 def _is_calculated_ees_russia_import_label(label: str) -> bool:
-    """«ЭЭС России» (электроэнергетические системы) – расчёт, не пишется в БД."""
+    """«ЭЭС России» (электроэнергетические системы) – расчет, не пишется в БД."""
     base = _strip_import_variant_suffixes_from_label(label)
     return _norm_entity_label(base) == _CALCULATED_EES_RUSSIA_BASE_LABEL_CF
 
@@ -649,7 +703,7 @@ def _import_row_year_numeric_pairs(
                     shifted.append((year_cols[target_ci], val))
             if len(shifted) == len(values):
                 return shifted
-        # Разреженные строки у правого края сетки – последние N лет; иначе год берём
+        # Разреженные строки у правого края сетки – последние N лет; иначе год берем
         # из фактической колонки (шаблон «Для работы в АРМе»: факт 2024–2025, прогноз пуст).
         if len(values) < len(year_col_indices) and last_val_ci >= last_year_ci:
             target_cols = year_col_indices[-len(values) :]
@@ -658,52 +712,14 @@ def _import_row_year_numeric_pairs(
     return [(year_cols[ci], val) for ci, val in parsed]
 
 
-def _import_row_has_leading_empty_year_cells(
-    row: tuple[Any, ...],
-    year_cols: dict[int, int],
-) -> bool:
-    year_col_indices = sorted(year_cols.keys())
-    if not year_col_indices:
-        return False
-    first_year_ci = year_col_indices[0]
-    for ci in year_col_indices:
-        if ci >= len(row):
-            continue
-        if _parse_numeric_cell(row[ci]) is not None:
-            return ci > first_year_ci
-    return False
-
-
-def _ees_russia_gaes_import_perimeter_variant_from_excel(
-    label: str,
-    perimeter_variant_code: str | None,
-    *,
-    row: tuple[Any, ...],
-    year_cols: dict[int, int],
-) -> str | None:
-    """В шаблоне «млн. кВтч» строка «ЕЭС России … с зарядом ГАЭС» иногда помечена ``without_nt`` / ``with_nt``."""
-    if not _is_ees_unified_import_label(
-        _strip_import_variant_suffixes_from_label(label)
-    ):
-        return perimeter_variant_code
-    if not _import_row_has_leading_empty_year_cells(row, year_cols):
-        return perimeter_variant_code
-    code = str(perimeter_variant_code or "").strip()
-    if code == CODE_WITHOUT_NT:
-        return CODE_WITHOUT_NT_WITH_GAES
-    if code == CODE_WITH_NT:
-        return CODE_WITH_NT_WITH_GAES
-    return perimeter_variant_code
-
-
 def _is_kaliningrad_sync_zone_import_label(label: str) -> bool:
-    """«Синхронная зона Калининградской области» – расчётная строка сводки, не из Excel."""
+    """«Синхронная зона Калининградской области» – расчетная строка сводки, не из Excel."""
     label_n = _norm_entity_label(label)
     return label_n.startswith("синхронная зона") and "калин" in label_n
 
 
 def _is_import_skipped_row_label(label: str) -> bool:
-    """Строки, исключённые из импорта (устаревший шаблон Excel)."""
+    """Строки, исключенные из импорта (устаревший шаблон Excel)."""
     if _is_calculated_ees_russia_import_label(label):
         return True
     if _is_kaliningrad_sync_zone_import_label(label):
@@ -776,7 +792,7 @@ def _resolve_aggregate_energy_consumption_binding(
                 perimeter_variant_code is None
                 and _aggregate_model_requires_perimeter_variant(model_cls)
             ):
-                # Пустая ячейка perimeter-variants: расчётные агрегаты (ЭЭС России и т.п.)
+                # Пустая ячейка perimeter-variants: расчетные агрегаты (ЭЭС России и т.п.)
                 # заполняются постобработкой формул после импорта.
                 return None
             return _ImportBind(
@@ -1108,8 +1124,8 @@ _SCREEN_EXPORT_PARAM_HEADER = "наименование параметров"
 
 
 def _classify_screen_export_parameter_label(param_label: str) -> str | None:
-    """«mln» / «sipr» для строк отчётного листа; формулы и приросты пропускаем."""
-    s = _norm_space(param_label).casefold().replace("ё", "е")
+    """«mln» / «sipr» для строк отчетного листа; формулы и приросты пропускаем."""
+    s = _norm_space(param_label).casefold().replace("\u0451", "е")
     if not s or "прирост" in s or "темп" in s:
         return None
     if "(сипр)" in s and "млн" in s:
@@ -1155,7 +1171,8 @@ def _merge_perimeter_variant_duplicate_year_values(
             continue
         if pvc is not None and total == 0:
             continue
-        merged[(label, year_n, pvc)] += total
+        key = (label, year_n, pvc)
+        merged[key] = _add_import_decimal_values(merged[key], total)
     return merged
 
 
@@ -1181,8 +1198,8 @@ def _aggregate_from_screen_export_matrix(
     for ri, row in enumerate(matrix[:8]):
         if len(row) < 2:
             continue
-        c0 = _norm_space(_cell_as_text(row[0])).casefold().replace("ё", "е")
-        c1 = _norm_space(_cell_as_text(row[1])).casefold().replace("ё", "е")
+        c0 = _norm_space(_cell_as_text(row[0])).casefold().replace("\u0451", "е")
+        c1 = _norm_space(_cell_as_text(row[1])).casefold().replace("\u0451", "е")
         if _SCREEN_EXPORT_ENTITY_HEADER in c0 and _SCREEN_EXPORT_PARAM_HEADER in c1:
             header_row_idx = ri
             break
@@ -1221,7 +1238,8 @@ def _aggregate_from_screen_export_matrix(
             row_variant=None,
             variant_column_mode=False,
         ):
-            target[(current_entity, year_n, None)] += num
+            key = (current_entity, year_n, None)
+            target[key] = _add_import_decimal_values(target[key], num)
     return acc_mln, acc_sipr
 
 
@@ -1271,12 +1289,6 @@ def _aggregate_sheet_labels(
                 raw_variant_cell,
                 variant_column_mode=True,
             )
-            row_variant = _ees_russia_gaes_import_perimeter_variant_from_excel(
-                label,
-                row_variant,
-                row=row,
-                year_cols=year_cols,
-            )
             base_label = _strip_import_variant_suffixes_from_label(label)
             if (
                 _AGGREGATE_MODEL_BY_BASE_LABEL.get(_norm_entity_label(base_label))
@@ -1320,7 +1332,8 @@ def _aggregate_sheet_labels(
                 prev = aggregate_seen_values.get(agg_key)
                 if prev is None:
                     aggregate_seen_values[agg_key] = num
-                    acc[(label, year_n, row_variant)] += num
+                    key = (label, year_n, row_variant)
+                    acc[key] = _add_import_decimal_values(acc[key], num)
                     continue
                 if prev == num:
                     continue
@@ -1331,7 +1344,8 @@ def _aggregate_sheet_labels(
                     f"с разными значениями за {year_n} год. Импорт не может однозначно "
                     "выбрать правильное значение."
                 )
-            acc[(label, year_n, row_variant)] += num
+            key = (label, year_n, row_variant)
+            acc[key] = _add_import_decimal_values(acc[key], num)
     if variant_column_mode and acc:
         acc = _merge_perimeter_variant_duplicate_year_values(acc)
     return acc, variant_column_mode
@@ -1438,7 +1452,7 @@ def _mirror_res_accumulator_rows_to_single_district_rd(
         if not _regional_district_accepts_import_perimeter_variant(rd_id, pvc):
             continue
         key_rd = (rd_model, fk_rd, rd_id, year_n, pvc)
-        acc[key_rd] += total
+        acc[key_rd] = _add_import_decimal_values(acc[key_rd], total)
 
 
 def _collapse_labels_to_bind_keys(
@@ -1464,7 +1478,7 @@ def _collapse_labels_to_bind_keys(
     acc: defaultdict[tuple[Type[Any], str, int, int, str | None], Decimal] = defaultdict(
         lambda: Decimal("0")
     )
-    # Ключи, заполненные только после сброса явного PVC → NULL (ещё нет «родной» NULL-строки).
+    # Ключи, заполненные только после сброса явного PVC → NULL (еще нет «родной» NULL-строки).
     cleared_pvc_only_keys: set[
         tuple[Type[Any], str, int, int, str | None]
     ] = set()
@@ -1531,17 +1545,101 @@ def _collapse_labels_to_bind_keys(
             # Явный вариант сброшен в NULL: не суммировать с уже записанной NULL-строкой.
             if key in acc:
                 continue
-            acc[key] += total
+            acc[key] = _add_import_decimal_values(acc[key], total)
             cleared_pvc_only_keys.add(key)
         elif key in cleared_pvc_only_keys:
             # «Родная» NULL-строка важнее сброшенного o1 – подменяем, не складываем.
             acc[key] = total
             cleared_pvc_only_keys.discard(key)
         else:
-            acc[key] += total
+            acc[key] = _add_import_decimal_values(acc[key], total)
         if bind.demand_model is rd_model:
             explicit_rd_subject_years.add((int(bind.parent_id), int(year_n)))
     return acc, frozenset(explicit_rd_subject_years)
+
+
+def _ees_unified_adjacent_import_values(
+    acc: dict[tuple[Type[Any], str, int, int, str | None], Decimal],
+    *,
+    parent_id: int,
+    database_version_id: int,
+    field_name: str,
+) -> dict[tuple[Type[Any], str, int, int, str | None], Decimal]:
+    """Смежные периметры ЕЭС считаются от Excel, а не от старого значения в БД."""
+    from flask import g
+
+    from app.energy_consumption.services import energy_consumption_summary_services as summary
+
+    variants = {
+        CODE_WITHOUT_NT_WITHOUT_GAES: (False, False),
+        CODE_WITHOUT_NT_WITH_GAES: (False, True),
+        CODE_WITH_NT_WITHOUT_GAES: (True, False),
+        CODE_WITH_NT_WITH_GAES: (True, True),
+    }
+    model = EnergySystemTypeEnergyConsumptionParameter
+    fk = _MODEL_FK[model]
+    sources: dict[int, dict[str, Decimal]] = defaultdict(dict)
+    for (row_model, row_fk, row_parent, year, code), value in acc.items():
+        if row_model is model and row_fk == fk and row_parent == parent_id and code in variants:
+            sources[int(year)][code] = value
+    if not sources:
+        return {}
+
+    years = sorted(sources)
+    previous_version = getattr(g, "current_db_version", None)
+    had_version = hasattr(g, "current_db_version")
+    g.current_db_version = database_version_id
+    try:
+        station_values = summary._gaes_charge_raw_station_values_for_entity(
+            database_version_id, model.__name__, fk, parent_id, tuple(years)
+        )
+        nt_values = summary._new_territories_parameter_year_values(years, field_name)
+    finally:
+        if had_version:
+            g.current_db_version = previous_version
+        else:
+            del g.current_db_version
+
+    charge_by_year: dict[int, Decimal] = {}
+    for _station_id, _name, values in station_values:
+        for year, value in values:
+            charge_by_year[year] = _add_import_decimal_values(
+                charge_by_year.get(year, Decimal(0)), Decimal(str(value))
+            )
+
+    related = {}
+    for year, explicit in sources.items():
+        for target, (target_nt, target_gaes) in variants.items():
+            if target in explicit:
+                continue
+            # Сначала используем источник с тем же составом территорий.
+            candidates = sorted(
+                explicit,
+                key=lambda code: (
+                    variants[code][0] != target_nt,
+                    variants[code][1] != target_gaes,
+                ),
+            )
+            for source in candidates:
+                source_nt, source_gaes = variants[source]
+                charge = charge_by_year.get(year)
+                nt = nt_values.get(year)
+                if source_gaes != target_gaes and charge is None:
+                    continue
+                if source_nt != target_nt and nt is None:
+                    continue
+                value = explicit[source]
+                if source_gaes != target_gaes:
+                    value = _add_import_decimal_values(
+                        value, charge if target_gaes else charge.copy_negate()
+                    )
+                if source_nt != target_nt:
+                    value = _add_import_decimal_values(
+                        value, nt if target_nt else nt.copy_negate()
+                    )
+                related[(model, fk, parent_id, year, target)] = value
+                break
+    return related
 
 
 def _dedupe_aggregate_energy_consumption_rows_for_year(
@@ -1707,7 +1805,7 @@ def _apply_accumulator_for_version(
                         validation_parent_id,
                     )
                 except ValueError:
-                    # Расчётная строка сводки для сущности без привязки варианта в каталоге.
+                    # Расчетная строка сводки для сущности без привязки варианта в каталоге.
                     return
                 if perimeter_variant_code is ecps._UNSET:
                     perimeter_variant_code = None
@@ -1758,7 +1856,7 @@ _FORMULA_ROW_PERSIST_PARAMETER_KEYS: tuple[str, ...] = (
 )
 
 
-# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez – только экранный расчёт.
+# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez – только экранный расчет.
 # У OES-стиля perimeter_variant_code=None совпадает с базовой строкой; запись в БД
 # затирала бы ручной ввод (потребление − заряд вместо потребления).
 # См. _is_display_only_without_gaes_injected_summary_row в summary_services.
@@ -1847,7 +1945,7 @@ def persist_all_energy_consumption_summary_computed_rows(
     skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
     user: str | None = None,
 ) -> int:
-    """Синхронизация агрегатов ЭЗ/ФО и запись всех расчётных строк сводки в БД."""
+    """Синхронизация агрегатов ЭЗ/ФО и запись всех расчетных строк сводки в БД."""
     from app.energy_consumption.services.energy_consumption_summary_services import (
         build_all_formula_summary_rows_for_version,
     )
@@ -1888,11 +1986,11 @@ def persist_all_energy_consumption_summary_computed_rows_for_all_versions(
     years: list[int] | None = None,
     user: str | None = None,
 ) -> dict[str, Any]:
-    """Временно: пересчёт и запись формул сводки во все версии БД (как импорт Excel).
+    """Временно: пересчет и запись формул сводки во все версии БД.
 
-    Позже перейдём на пересчёт только в пределах выбранной версии.
+    Позже перейдем на пересчет только в пределах выбранной версии.
     """
-    version_ids = _database_version_ids_for_energy_consumption_import()
+    version_ids = _database_version_ids_ordered()
     if not years:
         years = None
     total = 0
@@ -1974,7 +2072,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(
     «ОЭС Юга без НТ с ГАЭС» / «… с зарядом ГАЭС» → ``UnionEnergySystemEnergyConsumptionParameter`` с ``without_nt_with_gaes``;
     «Первая синхронная зона … с зарядом ГАЭС (с ЭС …)» → ``SynchronousAreaEnergyConsumptionParameter``
     с ``without_nt_with_gaes_with_kaliningrad_es``; далее ОЭС → РЭС → субъект РФ → ФО → энергоузел)
-    и записывает числа в параметры во все зарегистрированные версии БД.
+    и записывает числа и смежные расчетные периметры только в текущую версию БД.
 
     Должен присутствовать хотя бы один из двух листов. Отсутствующий лист пропускается.
 
@@ -1990,7 +2088,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(
     """
     version_ids = _database_version_ids_for_energy_consumption_import()
     if not version_ids:
-        raise ValueError("Не найдено ни одной версии базы данных для записи импорта.")
+        raise ValueError("Для импорта выберите текущую версию базы данных.")
     import_user = _import_username(user)
     with ecps.import_actor(import_user):
         return _import_energy_consumption_summary_from_xlsx_bytes_impl(
@@ -2174,8 +2272,31 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
                 on_version_progress,
                 done_before,
                 versions_total,
-                f"версия {versions_done}/{versions_total}: пересчёт формул",
+                f"версия {versions_done}/{versions_total}: пересчет формул",
             )
+            ees_unified = _pick_exact_match(
+                EES_UNIFIED_REF_NAME, ctx.get("energy_system_type") or []
+            )
+            if ees_unified is not None:
+                for acc, field_name in (
+                    (acc_m, "energy_consumption_mln_kvt_ch"),
+                    (acc_s, "energy_consumption_sipr_mln_kvt_ch"),
+                ):
+                    related = _ees_unified_adjacent_import_values(
+                        acc,
+                        parent_id=int(ees_unified.id),
+                        database_version_id=vid,
+                        field_name=field_name,
+                    )
+                    if related:
+                        n_formula += _apply_accumulator_for_version(
+                            defaultdict(lambda: Decimal(0), related),
+                            field_name=field_name,
+                            version_id=vid,
+                            user=import_user,
+                        )
+                        acc.update(related)
+                db.session.flush()
             n_formula += persist_all_energy_consumption_summary_computed_rows(
                 database_version_id=vid,
                 years=sorted(years_ok),
@@ -2188,6 +2309,11 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
             )
             db.session.flush()
             db.session.commit()
+            from app.energy_consumption.services.ec_display_cache import (
+                invalidate_energy_consumption_display_caches,
+            )
+
+            invalidate_energy_consumption_display_caches(version_id=vid)
             _emit_import_progress(on_version_progress, versions_done, versions_total)
         if db.session.is_active:
             db.session.commit()

@@ -16,6 +16,7 @@ from sqlalchemy import or_, func
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.energy_balance.services.access_services import can_edit_energy_balance
+from app.energy_balance.services.ee_balance_station_group_services import load_group_values
 
 from app.common.services.database_version_filter import (
     filter_by_db_version,
@@ -178,9 +179,10 @@ _VES_SES_TYPE_SORT_RANK = {"ves": 0, "ses": 1}
 def _ves_ses_station_row_sort_key(row: dict[str, Any]) -> tuple:
     type_key = str(row.get("type_key") or "")
     return (
+        0 if row.get("is_group") else 1,
         _VES_SES_TYPE_SORT_RANK.get(type_key, 2),
         str(row.get("name") or "").casefold(),
-        int(row.get("id") or 0),
+        int(row.get("group_id") if row.get("is_group") else (row.get("id") or 0)),
     )
 
 
@@ -319,7 +321,7 @@ def _chiim_hours(energy: Any, capacity: Any) -> Decimal | None:
 
 
 def _raw_title(value: Any) -> str:
-    """Полное значение из БД/расчёта для title ячейки (без округления UI)."""
+    """Полное значение из БД/расчета для title ячейки (без округления UI)."""
     metric = _as_metric_decimal(value)
     if metric is None:
         return ""
@@ -337,7 +339,7 @@ def _chiim_display_map(
     capacity_map: dict[int, Any] | None,
     years: list[int],
 ) -> dict[int, str]:
-    """ЧЧИУМ по сырым выработке и мощности из БД (не по округлённому отображению)."""
+    """ЧЧИУМ по сырым выработке и мощности из БД (не по округленному отображению)."""
     energy_map = energy_map or {}
     capacity_map = capacity_map or {}
     return {
@@ -447,13 +449,19 @@ def _aes_delivery_energy(
 def _hydro_metric_maps(
     coefficient: Any, energy_map: dict[int, Any], years: list[int], digits: int
 ) -> dict[str, Any]:
-    coefficient_value = _as_metric_decimal(coefficient)
+    coefficient_by_year = coefficient if isinstance(coefficient, dict) else None
+    coefficient_value = _as_metric_decimal(coefficient) if coefficient_by_year is None else None
+    coefficients = {
+        year: _as_metric_decimal(coefficient_by_year.get(year))
+        if coefficient_by_year is not None else coefficient_value
+        for year in years
+    }
     energy_values = {
         year: _as_metric_decimal(energy_map.get(year)) for year in years
     }
     own_needs = {
-        year: coefficient_value * energy_values[year]
-        if coefficient_value is not None and energy_values[year] is not None
+        year: coefficients[year] / Decimal(100) * energy_values[year]
+        if coefficients[year] is not None and energy_values[year] is not None
         else None
         for year in years
     }
@@ -477,6 +485,12 @@ def _hydro_metric_maps(
             else ""
         ),
         "own_needs_coefficient_raw": _raw_title(coefficient_value),
+        "own_needs_coefficient_by_year_display": {
+            year: format_decimal_trim_for_display(coefficients[year], digits=0)
+            if coefficients[year] is not None else ""
+            for year in years
+        },
+        "own_needs_coefficient_by_year_raw": _raw_title_map(coefficients, years),
         "coefficient_metrics_enabled": True,
     }
 
@@ -691,12 +705,62 @@ def _finalize_total(
     return row
 
 
+def _station_group_payload(group, members, values, years, digits):
+    total = _blank_total(years)
+    for member in members:
+        _accumulate_station(total, member)
+    stored = {year: values.get((group.id, year)) for year in years}
+    energy = {
+        year: stored[year].energy
+        if stored[year] is not None and stored[year].energy is not None
+        else total["energy"][year]
+        for year in years
+    }
+    own_needs = {year: stored[year].own_needs if stored[year] is not None else None for year in years}
+    percent = {year: stored[year].own_needs_percent if stored[year] is not None else None for year in years}
+    metrics = _aes_metric_maps(own_needs, energy, years, digits, percent)
+    effective_own_needs = {
+        year: own_needs[year] if own_needs[year] is not None else (
+            energy[year] * percent[year] / Decimal(100)
+            if energy[year] is not None and percent[year] is not None else None
+        ) for year in years
+    }
+    return {
+        **members[0], **metrics,
+        "id": f"g{group.id}", "group_id": group.id, "name": group.name,
+        "is_group": True, "members": members, "capacity": total["capacity"],
+        "capacity_display": {year: _format_cell(total["capacity"][year], digits) for year in years},
+        "capacity_raw": _raw_title_map(total["capacity"], years),
+        "energy": energy,
+        "energy_display": {year: _format_cell(energy[year], digits) for year in years},
+        "energy_raw": _raw_title_map(energy, years),
+        "energy_stored": {year: stored[year] is not None and stored[year].energy is not None for year in years},
+        "energy_is_calc": {}, "energy_plan_rule": {},
+        "chiim_display": _chiim_display_map(energy, total["capacity"], years),
+        "chiim_raw": _chiim_raw_title_map(energy, total["capacity"], years),
+        "own_needs": effective_own_needs,
+        "own_needs_energy_display": {
+            year: format_decimal_for_display(effective_own_needs[year], digits=digits)
+            if effective_own_needs[year] is not None else "" for year in years
+        },
+        "own_needs_energy_raw": _raw_title_map(effective_own_needs, years),
+        "delivery": {year: _aes_delivery_energy(own_needs[year], energy[year], percent[year]) for year in years},
+        "coefficient_metrics_enabled": members[0].get("coefficient_metrics_enabled", False),
+        "owner": total["owner"],
+        "owner_display": {year: _format_cell(total["owner"][year], digits) for year in years},
+        "owner_raw": _raw_title_map(total["owner"], years),
+        "min_value": None, "min_display": "", "min_raw": "",
+        "commission_year": None, "exploitation_date_expected": "",
+        "sample_energy": {}, "owner_energy": {}, "plan_years": [],
+    }
+
+
 def _is_unspecified(name: Any) -> bool:
     return str(name or "").strip().casefold() in {"", "не указано", "не указан", "не указана"}
 
 
 def _is_ees_russia_name(name: Any) -> bool:
-    text = str(name or "").strip().casefold().replace("ё", "е")
+    text = str(name or "").strip().casefold().replace("\u0451", "е")
     return text == "еэс россии" or text.startswith("еэс россии")
 
 
@@ -913,6 +977,7 @@ def build_ves_ses_page_rows(
     query = (
         Station.query.options(
             joinedload(Station.station_type),
+            joinedload(Station.group),
             joinedload(Station.energy_unit),
             joinedload(Station.regional_energy_system_obj)
             .joinedload(RegionalEnergySystem.union_energy_system)
@@ -959,7 +1024,9 @@ def build_ves_ses_page_rows(
 
     station_ids = [station.id for station in stations]
     own_needs_coefficients = (
-        load_hydro_own_needs_coefficients(station_ids, coefficient_type_key)
+        load_hydro_own_needs_coefficients(station_ids, coefficient_type_key, years)
+        if coefficient_type_key == "ges"
+        else load_hydro_own_needs_coefficients(station_ids, coefficient_type_key)
         if coefficient_type_key is not None
         else {}
     )
@@ -985,7 +1052,21 @@ def build_ves_ses_page_rows(
     exploitation_date_by_station = load_station_exploitation_dates(station_ids, version_id)
     p_ust_by_station = _load_stations_p_ust(station_ids, years, version_id)
 
-    hierarchy = build_hierarchy_structure(stations, include_names=True)
+    page_key = "ses-ves" if calculate_plan else (
+        "aes" if russia_total_name == AES_RUSSIA_TOTAL_NAME else coefficient_type_key
+    )
+    group_members = defaultdict(list)
+    if page_key in {"aes", "ges", "ses-ves"}:
+        for station in sorted(stations, key=lambda item: (item.name.casefold(), item.id)):
+            if station.id_station_group is not None:
+                group_members[station.id_station_group].append(station)
+    representatives = [
+        station for station in stations
+        if station.id_station_group not in group_members
+        or station.id == group_members[station.id_station_group][0].id
+    ]
+    group_values = load_group_values(list(group_members), page_key, years)
+    hierarchy = build_hierarchy_structure(representatives, include_names=True)
     grouped = hierarchy.get("grouped_stations") or {}
     est_names = hierarchy.get("energy_system_type_name") or {}
     ues_names = hierarchy.get("union_energy_system_name") or {}
@@ -1080,7 +1161,7 @@ def build_ves_ses_page_rows(
                 )
             )
         lights[station.id] = light
-        if int(station.id) not in page_station_ids:
+        if int(station.id) not in page_station_ids and station.id_station_group not in group_members:
             continue
         payload = _station_payload(
             station,
@@ -1125,6 +1206,17 @@ def build_ves_ses_page_rows(
                 )
             )
         payloads[station.id] = payload
+
+    for group_id, members in group_members.items():
+        representative = members[0]
+        member_payloads = [payloads[member.id] for member in members]
+        group_payload = _station_group_payload(
+            representative.group, member_payloads, group_values, years, digits
+        )
+        payloads[representative.id] = group_payload
+        for member in members:
+            lights.pop(member.id)
+        lights[representative.id] = group_payload
 
     def _including_type_rows(
         by_type: dict[str, dict[str, Any]],
@@ -1240,7 +1332,14 @@ def build_ves_ses_page_rows(
                     _accumulate_station(res_total, rd_total)
                     if rd_station_rows:
                         res_has_visible = True
-                        res_child_rows.extend(rd_station_rows)
+                        for station_row in rd_station_rows:
+                            res_child_rows.append(station_row)
+                            for child in station_row.get("members", []):
+                                res_child_rows.append({
+                                    **station_row, **child, "kind": "station",
+                                    "is_group": False, "parent_group": station_row["id"],
+                                    "members": [],
+                                })
                         if len(rd_blocks) > 1:
                             res_child_rows.append(
                                 _finalize_total(
@@ -1567,7 +1666,7 @@ def _build_station_focus_page_context(
         "chiim_digits": CHIIM_ROUNDING_DIGITS,
         "chiim_formula": CHIIM_FORMULA_TOOLTIP,
         "focus_own_needs_formula": (
-            f"СН, млн.кВт·ч = СН, % * {DATA_LABEL_ENERGY}"
+            f"СН, млн.кВт·ч = СН, % / 100 * {DATA_LABEL_ENERGY}"
             if coefficient_type_key is not None
             else (
                 f"СН, % = СН, млн.кВт·ч / {DATA_LABEL_ENERGY} * 100"

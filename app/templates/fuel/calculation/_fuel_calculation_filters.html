@@ -101,7 +101,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
                 <option value="" {% if start_year is none %}selected{% endif %}>
                   не указано
                 </option>
-                {% for year in filter_year_list %}
+                {% for year in get_reference_years() %}
                 <option
                   value="{{ year }}"
                   {% if start_year is not none and start_year == year %}selected{% endif %}
@@ -418,11 +418,11 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           {% endfor %} {% else %}
           <tr>
             <td colspan="14" class="text-center text-muted py-4">
-              {% if _ues_selected is none %} Выберите одну ОЭС – расчёт
-              выполняется только по одной объединённой энергосистеме. {% elif
-              start_year is none %} Задайте расчётный год – здесь появится
+              {% if _ues_selected is none %} Выберите одну ОЭС – расчет
+              выполняется только по одной объединенной энергосистеме. {% elif
+              start_year is none %} Задайте расчетный год – здесь появится
               строка параметра распределения. {% else %} Нет параметра
-              распределения для выбранных ОЭС / базового / расчётного года. {%
+              распределения для выбранных ОЭС / базового / расчетного года. {%
               endif %}
             </td>
           </tr>
@@ -534,9 +534,9 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               class="text-center text-muted py-4"
             >
               {% if _ues_selected is none %} Выберите ОЭС – здесь появятся
-              ограничения для расчёта. {% elif start_year is none %} Задайте
-              расчётный год – здесь появятся ограничения. {% else %} Нет
-              ограничений для выбранных ОЭС / расчётного года. {% endif %}
+              ограничения для расчета. {% elif start_year is none %} Задайте
+              расчетный год – здесь появятся ограничения. {% else %} Нет
+              ограничений для выбранных ОЭС / расчетного года. {% endif %}
             </td>
           </tr>
           {% endif %}
@@ -586,7 +586,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
     {% endif %} {% set fuel_stage_blocked = selected_row and
     fuel_stage_readiness and not fuel_stage_readiness.ready %} {% set
     _equipment_group_fuel_params_edit_qs = calculation_edit_links_qs|default('')
-    %} {# Все три кнопки: Год начала = базовый, Год конца = расчётный; новое окно. #} {%
+    %} {# Все три кнопки: Год начала = базовый, Год конца = расчетный; новое окно. #} {%
     set _tep_edit_qs =
     calculation_tep_edit_links_qs|default(_equipment_group_fuel_params_edit_qs)
     %} {% set _tep_edit_suffix = ('?' ~ _tep_edit_qs) if _tep_edit_qs else '' %}
@@ -739,7 +739,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
         </h3>
         <span class="small text-muted">
           {% if nr_hfix_pending.distribution_name %}{{
-          nr_hfix_pending.distribution_name }} · {% endif %}расчётный год {{
+          nr_hfix_pending.distribution_name }} · {% endif %}расчетный год {{
           nr_hfix_pending.year_number }} · групп оборудования {{
           nr_hfix_pending.candidates|length }}
         </span>
@@ -747,7 +747,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
       <p class="small mb-2">
         У отмеченных станций будет зафиксировано <strong>H=0</strong> и
         <strong>HFIX=1</strong> (как ответ «Да» в Access), затем выполнится
-        Распред. Неотмеченные пойдут в расчёт без фиксации (как «Нет»).
+        Распред. Неотмеченные пойдут в расчет без фиксации (как «Нет»).
       </p>
       <div
         class="table-responsive mb-3"
@@ -924,14 +924,14 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           Составные станции: энергия не на том уровне
         </h3>
         <span class="small text-muted">
-          расчётный год {{ selected_row.year.number if selected_row.year else '–' }}
+          расчетный год {{ selected_row.year.number if selected_row.year else '–' }}
           · станций {{ _composite_issues|length }}
         </span>
       </div>
       <p class="small mb-2">
         Родитель попал в фильтр <code>(ved&gt;0)</code>, а выработка осталась
         на дочерней группе с <code>ved=0</code> (в сумму Распреда не входит)
-        либо ved&gt;0 сразу на двух уровнях (риск двойного счёта).
+        либо ved&gt;0 сразу на двух уровнях (риск двойного счета).
         Исправить ved / E в сведениях о работе ТЭС, затем снова Коэфф → Распред.
       </p>
       <div

@@ -40,6 +40,11 @@
                         <p class="fs-5"><strong>Тип  электростанции:</strong> 
                             {{ form.id_station_type(class="form-select d-inline-block w-auto fs-5") }}
                         </p>
+                        <div class="form-check mb-3">
+                            {{ form.is_generation_only(class="form-check-input") }}
+                            {{ form.is_generation_only.label(class="form-check-label") }}
+                            <div class="form-text">Станция и ее выработка не используются в других разделах и расчетах.</div>
+                        </div>
                         <!-- Кнопка "Сохранить" -->
                         <button type="submit" class="btn btn-outline-primary">Создать станцию</button>
 

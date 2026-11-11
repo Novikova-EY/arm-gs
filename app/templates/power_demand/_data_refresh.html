@@ -1,0 +1,5 @@
+{% if power_demand_refresh %}
+{% with data_refresh=power_demand_refresh %}
+{% include 'common/_data_refresh.html' %}
+{% endwith %}
+{% endif %}

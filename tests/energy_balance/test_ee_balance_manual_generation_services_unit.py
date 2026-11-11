@@ -21,16 +21,20 @@ from app.energy_balance.services.ee_balance_manual_generation_services import (
 )
 
 
-def test_manual_plan_generation_keys_cover_snee_not_ses_ves():
-    assert "generation_snee" in MANUAL_PLAN_GENERATION_KEYS
-    assert "generation_ses_ves" not in MANUAL_PLAN_GENERATION_KEYS
-    assert is_manual_plan_generation_row_key("generation_snee")
-    assert not is_manual_plan_generation_row_key("generation_ses_ves")
-    assert not is_manual_plan_generation_row_key("generation_ses")
-    assert not is_manual_plan_generation_row_key("generation_ves")
-    assert is_manual_plan_generation_row_key("other", "СНЭЭ")
+def test_selected_generation_rows_are_source_driven_and_not_manually_editable():
+    assert not MANUAL_PLAN_GENERATION_KEYS
+    for key in (
+        "generation_aes",
+        "generation_ges",
+        "generation_gaes",
+        "generation_snee",
+        "generation_ses_ves",
+        "generation_ses",
+        "generation_ves",
+    ):
+        assert not is_manual_plan_generation_row_key(key)
+    assert not is_manual_plan_generation_row_key("other", "СНЭЭ")
     assert not is_manual_plan_generation_row_key("other", "СЭС, ВЭС")
-    assert not is_manual_plan_generation_row_key("generation_ges")
     assert not is_manual_plan_generation_row_key("generation_tes")
     assert not is_manual_plan_generation_row_key("installed_ses", "СЭС")
     assert not is_manual_plan_generation_row_key("installed_ves", "ВЭС")
@@ -42,7 +46,7 @@ def test_overlay_manual_generation_keeps_other_years_and_rows():
         "centr": {
             "generation_snee": {2024: Decimal("3"), 2026: Decimal("4")},
             "generation_aes": {2026: Decimal("40")},
-            "generation_tes": {2026: Decimal("80")},
+            "generation_tes": {2025: Decimal("75"), 2026: Decimal("80")},
             "generation_ses": {2026: Decimal("267.6")},
         }
     }
@@ -50,7 +54,7 @@ def test_overlay_manual_generation_keeps_other_years_and_rows():
         "centr": {
             "generation_snee": {2026: Decimal("11")},
             "generation_ses_ves": {2026: Decimal("8")},
-            "generation_tes": {2026: Decimal("90")},
+            "generation_tes": {2025: Decimal("88"), 2026: Decimal("90")},
         },
         "sibir": {"generation_tes": {2026: Decimal("70")}},
     }
@@ -58,19 +62,21 @@ def test_overlay_manual_generation_keeps_other_years_and_rows():
         auto, manual,
         sheets=[{"slug": "centr", "group": "oes"}, {"slug": "sibir", "group": "oes"}],
         plan_years=[2026],
+        current_years=[2025],
     )
     assert merged["centr"]["generation_snee"][2024] == Decimal("3")
-    assert merged["centr"]["generation_snee"][2026] == Decimal("11")
+    assert merged["centr"]["generation_snee"][2026] == Decimal("4")
     assert "generation_ses_ves" not in merged["centr"] or 2026 not in (
         merged["centr"].get("generation_ses_ves") or {}
     )
     assert merged["centr"]["generation_aes"][2026] == Decimal("40")
     assert merged["centr"]["generation_ses"][2026] == Decimal("267.6")
+    assert merged["centr"]["generation_tes"][2025] == Decimal("88")
     assert merged["centr"]["generation_tes"][2026] == Decimal("90")
     assert merged["sibir"]["generation_tes"][2026] == Decimal("70")
 
 
-def test_manual_plan_generation_accepts_tyumen_res_and_ural_without_slug(monkeypatch):
+def test_selected_hydro_generation_is_not_manually_editable(monkeypatch):
     tyumen_sheet = {
         "slug": "res-2827",
         "group": "res",
@@ -84,8 +90,8 @@ def test_manual_plan_generation_accepts_tyumen_res_and_ural_without_slug(monkeyp
         lambda slug: ural_sheet if slug == "oes-413" else tyumen_sheet,
     )
 
-    assert _is_manual_plan_generation_row_for_sheet("res-2827", "generation_ges")
-    assert _is_manual_plan_generation_row_for_sheet(
+    assert not _is_manual_plan_generation_row_for_sheet("res-2827", "generation_ges")
+    assert not _is_manual_plan_generation_row_for_sheet(
         URAL_WITHOUT_TYUMEN_SLUG, "generation_gaes"
     )
 
@@ -100,29 +106,29 @@ def test_update_manual_generation_rejects_other_row():
         update_ee_balance_manual_generation_value("centr", "generation_aes", 2026, "1")
 
 
-def test_update_manual_generation_rejects_non_plan_year():
-    with patch(
-        "app.energy_balance.services.ee_balance_manual_generation_services.classify_ee_balance_generation_years",
-        return_value=([2024], [2026]),
-    ):
-        with pytest.raises(ValueError, match="планов"):
-            update_ee_balance_manual_generation_value(
-                "centr", "generation_snee", 2024, "1"
-            )
+@pytest.mark.parametrize(
+    "row_key",
+    [
+        "generation_aes",
+        "generation_ges",
+        "generation_gaes",
+        "generation_snee",
+        "generation_ses_ves",
+        "generation_ses",
+        "generation_ves",
+    ],
+)
+def test_update_manual_generation_rejects_source_driven_rows(row_key):
+    with pytest.raises(ValueError):
+        update_ee_balance_manual_generation_value("centr", row_key, 2026, "1")
 
 
-def test_update_manual_generation_rejects_bad_number():
-    with patch(
-        "app.energy_balance.services.ee_balance_manual_generation_services.classify_ee_balance_generation_years",
-        return_value=([], [2026]),
-    ):
-        with pytest.raises(ValueError, match="число"):
-            update_ee_balance_manual_generation_value(
-                "centr", "generation_snee", 2026, "abc"
-            )
-
-
-def test_mark_manual_plan_generation_rows_only_plan_years_on_leaf_sheets():
+def test_mark_manual_tes_generation_rows_current_and_plan_years_on_leaf_sheets(monkeypatch):
+    monkeypatch.setattr(
+        manual_services,
+        "current_ee_balance_generation_years",
+        lambda years: [2024],
+    )
     tables = {
         "centr": {
             "sheet": {"slug": "centr", "group": "oes", "layout": "oes_standard"},
@@ -165,27 +171,26 @@ def test_mark_manual_plan_generation_rows_only_plan_years_on_leaf_sheets():
     tes = tables["centr"]["rows"][2]
     ees = tables["ees-rossii"]["rows"][0]
     sibir_tes, sibir_tes_formula = tables["sibir"]["rows"]
-    assert snee["editable_values"] is True
-    assert snee["editable_years"] == [2026, 2027]
-    assert snee["value_save_kind"] == "generation"
+    assert snee.get("editable_values") is not True
+    assert snee.get("value_save_kind") != "generation"
     assert ses.get("editable_values") is not True
     assert tes["editable_values"] is True
-    assert tes["editable_years"] == [2026, 2027]
+    assert tes["editable_years"] == [2024, 2026, 2027]
     assert sibir_tes["editable_values"] is True
-    assert sibir_tes["editable_years"] == [2026, 2027]
+    assert sibir_tes["editable_years"] == [2024, 2026, 2027]
     assert sibir_tes["value_save_kind"] == "generation"
     assert sibir_tes_formula.get("editable_values") is not True
     assert ees.get("editable_values") is not True
 
 
-@pytest.mark.parametrize("row_key", ["generation_tes", "generation_ges", "generation_gaes"])
+@pytest.mark.parametrize("row_key", ["generation_tes"])
 @pytest.mark.parametrize("sheet", [
     {"slug": "centr", "group": "oes"},
     {"slug": "sibir", "group": "oes"},
     {"slug": "oes-999", "group": "oes"},
     {"slug": "2-sz-ees-vostok", "group": "sz", "layout": "oes_vostok"},
 ])
-def test_oes_manual_generation_has_no_plan_auto_fallback(sheet, row_key):
+def test_tes_manual_generation_remains_supported(sheet, row_key):
     slug = sheet["slug"]
     automatic = {slug: {row_key: {
         2024: Decimal("10"), 2026: Decimal("99"), 2027: Decimal("100"),
@@ -225,7 +230,7 @@ def test_non_oes_generation_stays_automatic(sheet, row_key):
     assert not tables[slug]["rows"][0].get("editable_values")
 
 
-@pytest.mark.parametrize("row_key", ["generation_tes", "generation_ges", "generation_gaes"])
+@pytest.mark.parametrize("row_key", ["generation_tes"])
 @pytest.mark.parametrize("sheet", [
     {"slug": "centr", "group": "oes"},
     {"slug": "sibir", "group": "oes"},
@@ -241,6 +246,7 @@ def test_non_oes_generation_stays_automatic(sheet, row_key):
 ])
 def test_save_and_load_oes_manual_generation(monkeypatch, sheet, row_key):
     slug = sheet["slug"]
+    monkeypatch.setattr(manual_services, "current_ee_balance_generation_years", lambda years: [])
     stored = SimpleNamespace(
         sheet_slug=slug, row_key=row_key, year_number=2026,
         value_mln_kvtch=Decimal("55"), database_version_id=7,
@@ -279,14 +285,55 @@ def test_save_and_load_oes_manual_generation(monkeypatch, sheet, row_key):
     saved = update_ee_balance_manual_generation_value(slug, row_key, 2026, "0")
     assert saved["value"] == Decimal("0")
     assert stored.value_mln_kvtch == Decimal("0")
-    with pytest.raises(ValueError, match="планов"):
-        update_ee_balance_manual_generation_value(slug, row_key, 2024, "1")
+    with pytest.raises(ValueError, match="текущего или планового"):
+        update_ee_balance_manual_generation_value(slug, row_key, 2023, "1")
     cleared = update_ee_balance_manual_generation_value(slug, row_key, 2026, "")
     assert cleared == {"year": 2026, "row_key": row_key, "value": None}
     assert manual_services.load_ee_balance_manual_generation_inputs([2026], sheets=[sheet]) == {}
 
 
-@pytest.mark.parametrize("row_key", ["generation_tes", "generation_ges", "generation_gaes"])
+def test_save_current_year_tes_generation(monkeypatch):
+    sheet = {"slug": "centr", "group": "oes", "sheet_name": "Центр"}
+    added = []
+    query = MagicMock()
+
+    class FakeGenerationValue:
+        sheet_slug = object()
+        row_key = object()
+        year_number = object()
+
+        def __init__(self, **values):
+            self.__dict__.update(values)
+    query.filter.return_value.one_or_none.return_value = None
+    monkeypatch.setattr(manual_services, "get_power_balance_sheet", lambda slug: sheet)
+    monkeypatch.setattr(
+        manual_services,
+        "classify_ee_balance_generation_years",
+        lambda years: ([2025], []),
+    )
+    monkeypatch.setattr(
+        manual_services, "current_ee_balance_generation_years", lambda years: [2025]
+    )
+    monkeypatch.setattr(manual_services, "_value_query", lambda: query)
+    monkeypatch.setattr(manual_services, "EeBalanceManualGenerationValue", FakeGenerationValue)
+    monkeypatch.setattr(manual_services, "_ensure_tables", lambda: None)
+    monkeypatch.setattr(manual_services, "_version_id", lambda: 7)
+    monkeypatch.setattr(manual_services, "_commit_with_retry", lambda: None)
+    monkeypatch.setattr(manual_services, "_log_manual_generation_change", lambda *args: None)
+    monkeypatch.setattr(
+        manual_services,
+        "db",
+        SimpleNamespace(session=SimpleNamespace(add=added.append)),
+    )
+
+    saved = update_ee_balance_manual_generation_value("centr", "generation_tes", 2025, "12,5")
+
+    assert saved == {"year": 2025, "row_key": "generation_tes", "value": Decimal("12.5")}
+    assert added[0].year_number == 2025
+    assert added[0].value_mln_kvtch == Decimal("12.5")
+
+
+@pytest.mark.parametrize("row_key", ["generation_tes"])
 @pytest.mark.parametrize("sheet", [
     {"slug": "ees-rossii", "group": "ees", "layout": "ees_rossii"},
     {"slug": "1-sz-ees", "group": "sz", "layout": "sz1"},

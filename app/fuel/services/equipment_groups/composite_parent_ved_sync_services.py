@@ -25,9 +25,9 @@ def sync_composite_parent_ved_zero(
 ) -> int:
     """
     Для каждой пары (родитель COMP=1, дети MAIN=parent.numb):
-    если за год у ребёнка ved>0, у родителя за тот же год ставим ved=0.
+    если за год у ребенка ved>0, у родителя за тот же год ставим ved=0.
 
-    Возвращает число обновлённых строк FuelParam родителя.
+    Возвращает число обновленных строк FuelParam родителя.
     """
     sess = session or db.session
     q = sess.query(EquipmentGroup)

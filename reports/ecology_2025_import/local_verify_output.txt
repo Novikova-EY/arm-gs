@@ -1,0 +1,5 @@
+[CACHE REFRESH] Запущено фоновое обновление кэша каждые 25 минут
+[SORTED CACHE HIT REDIS] Используется закэшированный список из 1235 станций
+[CACHE WARMUP] Кэш уже существует (1235 станций), пропускаем прогрев
+[PD SUMMARY WARMUP] done in 0.02s (warmed=0 skipped=6)
+VERIFICATION_JSON:{"database_version_id": 37, "snapshot_id": 66, "year": 2025, "scope": "operating", "exact_payload_match": true, "stored_numeric_values": 547, "page_cells_verified": 1144, "territories": 13, "total_fuel_display": "300 299,3", "total_generation_display": "730,8", "total_heat_display": "569 864,2", "gtt_display": "0,9", "gtt_stored": "0.9364060000000001"}

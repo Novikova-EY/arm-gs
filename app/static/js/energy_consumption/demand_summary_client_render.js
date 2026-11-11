@@ -371,7 +371,9 @@
                 copy._empty_hidden = hideEmptyBlock;
                 copy.show_entity_cell = idx === firstPaint;
                 copy.entity_rowspan = paintCount;
-                if (idx === firstPaint && noteSource) {
+                if (copy.pd_ec_note_key) {
+                    copy.show_entity_note_cell = true;
+                } else if (idx === firstPaint && noteSource) {
                     copy.show_entity_note_cell = true;
                     if (noteSource.entity_note_text !== undefined) {
                         copy.entity_note_text = noteSource.entity_note_text;
@@ -451,19 +453,7 @@
     }
 
     function canEditNote(row, cfg) {
-        if (!cfg.can_edit_summary_cells) {
-            return false;
-        }
-        if (isReadonlyComposite(row) || row.pd_ec_gaes_injected_row) {
-            return false;
-        }
-        if (row.pd_ec_formula_derived_row && !row.pd_ec_cz_o1_with_nt_manual_row) {
-            return false;
-        }
-        return (
-            !!(row.demand_model_name) &&
-            (row.parent_fk_column == null || row.parent_id != null)
-        );
+        return !!cfg.can_edit_summary_cells;
     }
 
     function yearOutOfRange(row, year) {
@@ -740,7 +730,7 @@
                 );
             }
             sel.title = row.pd_ec_formula_derived_row
-                ? "Расчётная строка: значения на экране по формуле; выбранный вариант – под каким кодом хранить/читать данные в БД"
+                ? "Расчетная строка: значения на экране по формуле; выбранный вариант – под каким кодом хранить/читать данные в БД"
                 : "Вариант периметра для записи и чтения данных этого блока в БД";
             var optEmpty = document.createElement("option");
             optEmpty.value = "";
@@ -776,7 +766,7 @@
             span.className = "text-wrap";
             if (row.pd_ec_formula_derived_row) {
                 span.title =
-                    "Расчётная строка – вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»";
+                    "Расчетная строка – вариант задается в выпадающем списке у блока «без заряда ГАЭС»";
             }
             span.textContent =
                 row.perimeter_variant_label ||
@@ -832,6 +822,12 @@
         return td;
     }
 
+    function formulaInfoHtml(tip) {
+        if (!tip) return "";
+        return '<button type="button" class="ec-formula-info ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
+            escapeAttr(tip) + '" aria-label="Формула расчета">i</button>';
+    }
+
     function buildParameterCellHtml(row, cfg) {
         var label = escapeHtml(row.parameter_label || "");
         var pk = row.parameter_key || "";
@@ -876,51 +872,31 @@
             return (
                 '<span class="text-wrap">Потребление электрической энергии ГАЭС на заряд, млн кВтч (' +
                 inner +
-                ")</span>"
+                ")" + formulaInfoHtml(row.pd_parameter_formula_tooltip) + "</span>"
             );
         }
         var tip = row.pd_parameter_formula_tooltip || "";
         if (tip) {
-            return (
-                '<span class="text-wrap">' +
-                label +
-                '<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
-                escapeAttr(tip) +
-                '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>'
-            );
+            return '<span class="text-wrap">' + label + formulaInfoHtml(tip) + '</span>';
         }
         return label;
     }
 
-    function buildNoteCell(row, cfg, noteRowspan) {
+    function buildNoteCell(row, cfg) {
         var td = document.createElement("td");
-        td.className = "summary-entity-note-cell align-middle text-start";
-        td.rowSpan = noteRowspan > 0 ? noteRowspan : 1;
-        td.setAttribute("data-original-note-rowspan", String(row.entity_rowspan || 1));
+        td.className = "ec-summary-row-note-cell align-middle text-start";
         var noteText = row.entity_note_text != null ? String(row.entity_note_text) : "";
         if (canEditNote(row, cfg)) {
             var ta = document.createElement("textarea");
-            ta.rows = 4;
+            ta.rows = 2;
+            ta.maxLength = 4000;
             ta.autocomplete = "off";
-            ta.className =
-                "form-control form-control-sm fuel-param-input power-demand-summary-note-field";
+            ta.className = "form-control form-control-sm ec-summary-row-note power-demand-summary-note-field";
             ta.value = noteText;
             ta.setAttribute("data-initial", noteText);
-            ta.setAttribute("data-slice", String(cfg.start_year || ""));
-            ta.setAttribute("data-parameter-key", "entity_note");
-            if (row.demand_model_name) {
-                ta.setAttribute("data-model", row.demand_model_name);
-            }
-            if (row.entity_note_row_id != null) {
-                ta.setAttribute("data-row-id", String(row.entity_note_row_id));
-            }
-            if (row.parent_fk_column) {
-                ta.setAttribute("data-parent-fk", row.parent_fk_column);
-            }
-            if (row.parent_id != null) {
-                ta.setAttribute("data-parent-id", String(row.parent_id));
-            }
-            ta.setAttribute("aria-label", (row.entity_label || "") + " – примечание");
+            ta.setAttribute("data-note-key", row.pd_ec_note_key || "");
+            ta.setAttribute("data-note-version", row.pd_ec_note_version_id == null ? "" : String(row.pd_ec_note_version_id));
+            ta.setAttribute("aria-label", (row.entity_label || "") + " – " + (row.parameter_label || "") + ", примечание");
             td.appendChild(ta);
         } else {
             var span = document.createElement("span");
@@ -1038,8 +1014,8 @@
         years.forEach(function (year, ix) {
             tr.appendChild(buildYearCell(row, year, ix, cfg));
         });
-        if (cfg.show_summary_note_col && row.show_entity_note_cell) {
-            tr.appendChild(buildNoteCell(row, cfg, entityRs));
+        if (cfg.show_summary_note_col) {
+            tr.appendChild(buildNoteCell(row, cfg));
         }
         return tr;
     }
@@ -1115,7 +1091,7 @@
             fo: "Все ФО",
             ez: "Все энергозоны",
         };
-        return labels[shellConfig.scope] || "Показать всё";
+        return labels[shellConfig.scope] || "Показать все";
     }
 
     function entityPaginationPageSizeFromUrl() {
@@ -1262,7 +1238,7 @@
             }
             addItem(String(p), p, false, p === page);
         }
-        addItem("Вперёд »", page + 1, !meta.has_next, false);
+        addItem("Вперед »", page + 1, !meta.has_next, false);
 
         var allLi = document.createElement("li");
         allLi.className = "page-item ms-2";

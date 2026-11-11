@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Фоновые задания импорта сводки потребления из Excel (долгий проход по всем версиям БД)."""
+"""Фоновые задания импорта сводки потребления из Excel в текущую версию БД."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ import uuid
 from copy import deepcopy
 from typing import Any, Callable
 
-from flask import Flask, copy_current_request_context
+from flask import Flask, copy_current_request_context, g
+
+from app.common.services.database_version_services import get_current_version
 
 from app.energy_consumption.services.energy_consumption_summary_import_services import (
     import_energy_consumption_summary_from_xlsx_bytes,
@@ -97,7 +99,7 @@ def _progress_updater(job_id: str) -> ProgressCallback:
 
 
 def fail_orphaned_energy_consumption_summary_import_jobs() -> int:
-    """Помечает «running» задания как ошибку после рестарта процесса (daemon-поток уже мёртв)."""
+    """Помечает «running» задания как ошибку после рестарта процесса (daemon-поток уже мертв)."""
     marked = 0
     client = get_redis_client()
     if client is not None:
@@ -151,11 +153,13 @@ def start_energy_consumption_summary_import_job(
     username: str | None = None,
 ) -> str:
     """Запускает импорт в фоновом потоке; возвращает идентификатор задания."""
+    version_id = get_current_version()
     job_id = str(uuid.uuid4())
     _write_job(
         job_id,
         {
             "status": "running",
+            "database_version_id": version_id,
             "versions_done": 0,
             "versions_total": 0,
             "progress_detail": "чтение Excel…",
@@ -168,6 +172,8 @@ def start_energy_consumption_summary_import_job(
     @copy_current_request_context
     def _run() -> None:
         with app.app_context():
+            # copy_current_request_context не переносит g в контекст фонового потока.
+            g.current_db_version = version_id
             try:
                 stats = import_energy_consumption_summary_from_xlsx_bytes(
                     raw,

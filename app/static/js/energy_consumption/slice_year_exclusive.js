@@ -68,9 +68,10 @@
             });
         }
 
-        getSelects().forEach(function (sel) {
-            sel.addEventListener("change", rebuildAll);
+        container.addEventListener("change", function (event) {
+            if (event.target.matches('select[name="slice_year[]"]')) rebuildAll();
         });
+        new MutationObserver(rebuildAll).observe(container, { childList: true });
 
         rebuildAll();
     }

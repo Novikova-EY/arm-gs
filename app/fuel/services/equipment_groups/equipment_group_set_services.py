@@ -91,7 +91,7 @@ def _create_equipment_group_set_with_retry(
     equipment_group_set_station_id: int,
 ) -> EquipmentGroupSet:
     """
-    Возвращает существующую или создаёт новую связку EquipmentGroupSet.
+    Возвращает существующую или создает новую связку EquipmentGroupSet.
     При рассинхронизации sequence (UniqueViolation по PK) повторяет insert
     после выравнивания sequence; при дубликате бизнес-ключа возвращает запись.
     """
@@ -222,7 +222,7 @@ def get_single_station_and_type_for_equipment_group(
     """
     Если у группы ровно одна уникальная станция в связях EquipmentGroupSet
     и единый тип группы – возвращает (station, type), иначе (None, None) для типа
-    при неоднозначности (станцию всё же вернёт только при одной станции и одном типе).
+    при неоднозначности (станцию все же вернет только при одной станции и одном типе).
     """
     if not equipment_group_id:
         return None, None
@@ -480,7 +480,7 @@ def find_or_create_versioned_equipment_group_set_station(
     version_id: int | None,
 ) -> EquipmentGroupSetStation | None:
     """
-    Находит или создаёт EquipmentGroupSetStation с FK уже в version_id.
+    Находит или создает EquipmentGroupSetStation с FK уже в version_id.
     Не проставляет «текущую» версию поверх явного None (legacy).
     equipment_group_type_id=None – связь без типа (прочерк / составная станция).
     """
@@ -662,8 +662,8 @@ def select_equipment_group_on_type_link(
     Группа на связи станция+тип для автопривязки агрегата.
 
     Если на одной связи и оболочка составной станции, и дочерняя группа –
-    берём ребёнка (у головы тип должен быть прочерком, но исторически мог совпасть).
-    Уже выбранная fuel-группа агрегата сохраняется, если она всё ещё на этой связи.
+    берем ребенка (у головы тип должен быть прочерком, но исторически мог совпасть).
+    Уже выбранная fuel-группа агрегата сохраняется, если она все еще на этой связи.
     """
     from app.fuel.services.equipment_groups.composite_station_semantics import (
         is_composite_child_group,

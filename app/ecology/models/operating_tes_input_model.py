@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Сохранённые значения ввода расчёта по действующим ТЭС (топливо, выработка, тепло)."""
+"""Сохраненные значения ввода расчета по действующим ТЭС (топливо, выработка, тепло)."""
 from sqlalchemy import ForeignKeyConstraint, Numeric, UniqueConstraint
 from sqlalchemy.sql import func
 

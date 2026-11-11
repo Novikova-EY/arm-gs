@@ -8,7 +8,7 @@
     {% for col in territory_columns %}
     <label class="d-flex align-items-center gap-2">
       <input type="checkbox" value="{{ col.slug }}" data-territory-option checked>
-      {{ col.sheet_name }}
+      {{ 'Россия' if col.slug == 'vsego' else col.sheet_name }}
     </label>
     {% endfor %}
   </div>

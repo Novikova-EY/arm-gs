@@ -3,7 +3,7 @@
 """
 Витрина и чтение основных топливных параметров (EquipmentGroupFuelParam) для UI.
 
-Запись форм, пересчёт удельных _calc и нормализация FK – см.
+Запись форм, пересчет удельных _calc и нормализация FK – см.
 equipment_group_fuel_params_write_services и equipment_group_specific_fuel_consumption_recalc_services.
 """
 
@@ -54,7 +54,7 @@ from app.fuel.services.equipment_groups.composite_station_semantics import (
 # Обратная совместимость имени для UI / title на карточке EG.
 FUEL_PARAM_VED_DISPLAY = FUEL_PARAM_VED_LABELS
 
-# Составность UI/сумм – только comp/main (суррогат «несколько EG на Station» отключён).
+# Составность UI/сумм – только comp/main (суррогат «несколько EG на Station» отключен).
 ALLOW_STATION_COMPOSITE_FALLBACK = False
 
 # Названия параметров для страницы equipment_group_details (как на stations_equipment_group_fuel_params)
@@ -104,7 +104,7 @@ MAIN_PARAM_LABELS = {
 }
 
 # Суммы по РЭС/станции на страницах топливных параметров и пагинация иерархии
-# Объёмные показатели (удельные вроде eurt/snk суммируются наивно – см. TODO взвешивания).
+# Объемные показатели (удельные вроде eurt/snk суммируются наивно – см. TODO взвешивания).
 FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS = [
     "nust", "nr", "e", "ewtp", "eotp", "eurt", "eust", "sn_ee", "snk",
     "q", "qotr", "turt", "tust", "sn_te", "sn_t", "b",
@@ -115,7 +115,7 @@ FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS = [
     "nt", "nt_sum",
 ]
 
-# Удельные / доли – не складывать как объёмы в «станция, всего».
+# Удельные / доли – не складывать как объемы в «станция, всего».
 FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS = frozenset({
     "eurt", "snk", "turt", "sn_t", "h",
 })
@@ -128,7 +128,7 @@ FUEL_PARAMS_AGGREGATE_ROW_CLASS = (
 # На страницах ТЭП: считать по формуле, если есть входы; иначе – ручной ввод.
 # h: при hfix=1 формула не применяется (фиксация ЧЧИУМ).
 _FUEL_PARAM_DERIVED_FILL_RULE = (
-    "Правило заполнения: если есть данные для расчёта – значение по формуле "
+    "Правило заполнения: если есть данные для расчета – значение по формуле "
     "(ячейка не редактируется); если нет – ручной ввод."
 )
 FUEL_PARAM_DERIVED_FORMULAS = {
@@ -237,7 +237,7 @@ def compute_fuel_param_derived_value(src, attr):
     """
     Считает h / eurt / turt / snk / sn_t по формуле, если все входы заданы
     и знаменатель ≠ 0. Для h при hfix=1 – None (ручной ввод / фиксация).
-    Иначе None (ячейка остаётся для ручного ввода).
+    Иначе None (ячейка остается для ручного ввода).
     """
     from decimal import Decimal
 
@@ -284,7 +284,7 @@ def compute_fuel_param_derived_value(src, attr):
 def displayed_fuel_param_snk(src):
     """
     SNK как на stations_equipment_group_fuel_params:
-    sn_ee / e · 100, если есть входы; иначе сохранённый FuelParam.snk.
+    sn_ee / e · 100, если есть входы; иначе сохраненный FuelParam.snk.
     """
     derived = compute_fuel_param_derived_value(src, "snk")
     if derived is not None:
@@ -295,7 +295,7 @@ def displayed_fuel_param_snk(src):
 def displayed_fuel_param_snt(src):
     """
     SNT как на stations_equipment_group_fuel_params:
-    sn_te / q · 1000, если есть входы; иначе сохранённый FuelParam.sn_t.
+    sn_te / q · 1000, если есть входы; иначе сохраненный FuelParam.sn_t.
     """
     derived = compute_fuel_param_derived_value(src, "sn_t")
     if derived is not None:
@@ -327,7 +327,7 @@ def should_suppress_fuel_params_station_summary_row(
     standalone_equipment_group_ids: set[int],
 ) -> bool:
     """
-    Жёлтая строка «станция, всего» не показывается для котельных:
+    Желтая строка «станция, всего» не показывается для котельных:
     у standalone-групп нет привязки к электростанции – в таблице подпись «–», а не «котельная».
     Если в одном блоке РЭС несколько таких групп, сумма по столбцам не нужна.
     """
@@ -784,7 +784,7 @@ def get_equipment_groups_with_fuel_params_data(
     Выбирает позиции из gs_fue_equipment_groups с присоединением параметров
     gs_fue_equipment_group_fuel_param. Без постанционной логики.
     Отображаются группы текущей database_version_id; явный equipment_group_ids
-    (ссылки контроля расчёта) показывается независимо от версии.
+    (ссылки контроля расчета) показывается независимо от версии.
 
     Возвращает:
         rows: list[(EquipmentGroup, EquipmentGroupFuelParam)]
@@ -825,6 +825,7 @@ def get_equipment_groups_with_fuel_params_data(
     base_query = (
         db.session.query(EquipmentGroup, EquipmentGroupFuelParam)
         .outerjoin(EquipmentGroupFuelParam, join_cond)
+        .filter(or_(EquipmentGroup.d.is_(None), EquipmentGroup.d != 9))
     )
 
     # Территориальные фильтры и поиск по группе оборудования (как на stations_equipment_groups)
@@ -1206,7 +1207,7 @@ def _rows_for_fuel_params_summary(rows):
 def compute_fuel_params_summary(rows):
     """
     Суммы по атрибутам для строк (eg, param) – те же правила, что в итогах РЭС:
-    объёмные складываются, удельные (SKIP_ATTRS) – пусто, затем производные отношения.
+    объемные складываются, удельные (SKIP_ATTRS) – пусто, затем производные отношения.
     """
     from decimal import Decimal
 
@@ -1238,7 +1239,7 @@ def build_equipment_group_fuel_params_hierarchy(
     """
     Строит иерархию по группам оборудования: energy_system_type → UES → РЭС → станция → группа оборудования.
 
-    Составные станции группируются по comp/main (родитель numb); жёлтая «всего» –
+    Составные станции группируются по comp/main (родитель numb); желтая «всего» –
     сумма детей с ved>0. Generation Station – только привязка/машины.
 
     :param use_equipment_group_hierarchy_only: если True – без подуровня «станция» (одна виртуальная
@@ -1279,6 +1280,10 @@ def build_equipment_group_fuel_params_hierarchy(
         if suppress_aggregate_rows
         else resolve_composite_parents_by_numb(rows, database_version_id=_vid)
     )
+    # Демонтированный родитель не должен возвращаться как строка «всего».
+    parent_by_numb = {
+        numb: parent for numb, parent in parent_by_numb.items() if parent.d != 9
+    }
     _standalone_eg_ids = get_standalone_equipment_group_ids(
         version_id=_vid,
         strict_version=_vid is not None,

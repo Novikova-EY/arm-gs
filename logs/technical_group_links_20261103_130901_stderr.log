@@ -1,0 +1,742 @@
+[2026-11-03 10:09:03,073] INFO in __init__: Redis connection established successfully
+[2026-11-03 10:09:03,137] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-03 10:09:03,798] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-03 10:09:03,804] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-03 10:09:03,807] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-03 10:09:04,438] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+[2026-11-03 10:09:04,456] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 0.02s (warmed=0 skipped=6)
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+[2026-11-03 10:09:10,342] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:09:10,351] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:09:16,037] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.energy_boiler_technical_characteristics, URL: http://127.0.0.1:5000/rational_structure/technical_characteristics/boilers/energy?year=2024&station=Абаканская
+[2026-11-03 10:09:16,041] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /rational_structure/technical_characteristics/boilers/energy?year=2024&station=Абаканская HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/rational_structure/technical_characteristics.js?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:16] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:09:20,062] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:09:20,064] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:09:28,331] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_details, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_details/29285?year=2024
+[2026-11-03 10:09:28,334] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:28] "GET /fuel/stations_equipment_groups/equipment_group_details/29285?year=2024 HTTP/1.1" 302 -
+[2026-11-03 10:09:28,367] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_edit, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group/29285?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1
+[2026-11-03 10:09:28,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /fuel/stations_equipment_groups/equipment_group/29285?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:09:29,444] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_logs, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_logs/29285?offset=0&limit=0
+[2026-11-03 10:09:29,447] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:29] "GET /fuel/stations_equipment_groups/equipment_group_logs/29285?offset=0&limit=0 HTTP/1.1" 200 -
+[2026-11-03 10:09:30,333] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:09:30,339] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:09:40,054] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:09:40,057] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:09:50,335] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:09:50,341] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:09:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:00,049] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:00,101] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:10,337] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:10,340] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:20,056] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:20,059] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:30,331] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:30,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:40,054] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:40,059] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:50,340] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:10:50,346] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:10:56,632] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.water_boiler_technical_characteristics, URL: http://127.0.0.1:5000/rational_structure/technical_characteristics/boilers/water
+[2026-11-03 10:10:56,637] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /rational_structure/technical_characteristics/boilers/water HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:56] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/rational_structure/technical_characteristics.js?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:10:57] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-03 10:10:59,388] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_details, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_details/28302?year=2024
+[2026-11-03 10:10:59,392] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:59] "GET /fuel/stations_equipment_groups/equipment_group_details/28302?year=2024 HTTP/1.1" 302 -
+[2026-11-03 10:10:59,461] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_edit, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1
+[2026-11-03 10:10:59,464] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:10:59] "GET /fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+[2026-11-03 10:11:00,196] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:00,200] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+[2026-11-03 10:11:00,392] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_logs, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0
+[2026-11-03 10:11:00,396] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:00] "GET /fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0 HTTP/1.1" 200 -
+[2026-11-03 10:11:10,334] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:10,336] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:11:12,269] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.energy_boiler_technical_characteristics, URL: http://127.0.0.1:5000/rational_structure/technical_characteristics/boilers/energy?year=2024
+[2026-11-03 10:11:12,276] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /rational_structure/technical_characteristics/boilers/energy?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:12] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/js/rational_structure/technical_characteristics.js?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:13] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:11:16,449] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_details, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_details/28302?year=2024
+[2026-11-03 10:11:16,456] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:16] "GET /fuel/stations_equipment_groups/equipment_group_details/28302?year=2024 HTTP/1.1" 302 -
+[2026-11-03 10:11:16,523] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_edit, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1
+[2026-11-03 10:11:16,526] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:16] "GET /fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:11:17,407] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_logs, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0
+[2026-11-03 10:11:17,411] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:17] "GET /fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0 HTTP/1.1" 200 -
+[2026-11-03 10:11:20,063] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:20,066] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:11:27,132] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.technical_characteristics, URL: http://127.0.0.1:5000/rational_structure/technical_characteristics?year=2024
+[2026-11-03 10:11:27,139] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /rational_structure/technical_characteristics?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:27] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/rational_structure/technical_characteristics.js?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/rational_structure/sticky_table_toolbar.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:28] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:11:30,335] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:30,338] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:11:32,881] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_details, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_details/28302?year=2024
+[2026-11-03 10:11:32,885] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:32] "GET /fuel/stations_equipment_groups/equipment_group_details/28302?year=2024 HTTP/1.1" 302 -
+[2026-11-03 10:11:32,950] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_edit, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1
+[2026-11-03 10:11:32,954] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /fuel/stations_equipment_groups/equipment_group/28302?year=2024&start_year=2024&end_year=2031&rounding_digits_table1=1&rounding_digits_table2=1&rounding_digits_table3=1&rounding_digits_table4=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:11:33,810] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_logs, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0
+[2026-11-03 10:11:33,813] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:33] "GET /fuel/stations_equipment_groups/equipment_group_logs/28302?offset=0&limit=0 HTTP/1.1" 200 -
+[2026-11-03 10:11:40,054] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:40,057] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:11:50,338] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:11:50,341] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:11:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:00,051] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:00,054] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:10,327] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:10,330] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:20,064] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:20,068] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:28,879] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.equipment_runtime, URL: http://127.0.0.1:5000/rational_structure/equipment_runtime
+[2026-11-03 10:12:28,883] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:29] "GET /rational_structure/equipment_runtime HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/css/rational_structure/pages.css?v=7 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/rational_structure/sticky_table_toolbar.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/rational_structure/equipment_runtime.js?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:12:30,330] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:30,333] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:40,054] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:40,057] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:12:50,328] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:12:50,331] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:12:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:00,057] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:00,060] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:10,337] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:10,342] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:20,067] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:20,069] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:30,351] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:30,357] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:40,064] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:40,070] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:13:50,345] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:13:50,351] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:13:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:00,098] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:00,100] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:10,351] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:10,354] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:20,113] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:20,116] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:30,379] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:30,385] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:40,100] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:40,103] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:14:50,488] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:14:50,491] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:14:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:00,108] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:00,110] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:10,355] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:10,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:20,068] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:20,074] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:30,358] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:30,364] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:40,172] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:40,178] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:15:50,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:15:50,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:15:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:00,070] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:00,075] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:10,336] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:10,341] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:20,079] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:20,082] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:30,379] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:30,382] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:40,079] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:40,084] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:16:50,348] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:16:50,350] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:16:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:00,065] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:00,067] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:10,348] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:10,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:20,076] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:20,079] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:30,360] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:30,367] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:40,082] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:40,084] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:17:50,349] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:17:50,353] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:17:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:00,072] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:00,076] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:10,346] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:10,354] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:20,072] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:20,075] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:30,357] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:30,382] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:40,114] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:40,118] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:18:50,349] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:18:50,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:18:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:00,074] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:03,790] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:03] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:10,392] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:10,396] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:20,126] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:20,135] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:30,388] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:30,394] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:40,117] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:40,120] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:19:50,354] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:19:50,433] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:19:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:00,096] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:00,126] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:10,388] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:10,391] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:20,080] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:20,085] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:30,347] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:30,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:40,070] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:40,077] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:20:50,347] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:20:50,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:20:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:00,071] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:00,074] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:10,387] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:10,397] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:20,076] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:20,082] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:30,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:30,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:40,073] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:40,075] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:21:50,357] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:21:50,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:21:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:00,083] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:00,089] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:10,354] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:10,356] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:20,083] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:20,378] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:30,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:30,567] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:40,079] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:40,084] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:22:50,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:22:50,362] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:22:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:00,093] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:00,099] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:10,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:12,787] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:12] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:20,233] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:20,239] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:30,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:30,362] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:40,080] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:40,083] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:23:50,399] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:23:50,405] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:23:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:00,122] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:00,128] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:10,508] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:10,515] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:20,137] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:20,143] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:30,364] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:30,628] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:40,080] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:40,083] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:24:50,405] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:24:50,589] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:24:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:00,085] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:00,378] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:10,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:10,775] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:10,907] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.index, URL: http://127.0.0.1:5000/
+[2026-11-03 10:25:10,910] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:10] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:25:11] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+[2026-11-03 10:25:20,098] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:20,812] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:30,378] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:30,946] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:40,082] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:41,025] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:41] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:25:50,371] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:25:50,377] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:25:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:00,089] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:00,095] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:10,366] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:10,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:20,094] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:20,100] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:30,378] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:30,381] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:40,097] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:40,104] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:26:50,397] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:26:50,400] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:26:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:00,085] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:00,088] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:10,362] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:10,365] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:20,089] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:20,092] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:30,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:30,373] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:40,091] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:40,098] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:50,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:27:50,373] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:27:55,132] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.equipment_runtime, URL: http://127.0.0.1:5000/rational_structure/equipment_runtime
+[2026-11-03 10:27:55,135] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:27:55] "GET /rational_structure/equipment_runtime HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/rational_structure/pages.css?v=7 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/rational_structure/sticky_table_toolbar.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/rational_structure/equipment_runtime.js?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:27:56] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-03 10:28:00,098] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:00,101] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:28:10,368] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:10,371] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:28:20,135] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:20,139] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:28:30,403] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:30,410] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:28:40,132] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:40,135] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:28:50,402] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:28:50,405] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:28:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:00,089] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:00,092] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:10,367] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:10,370] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:20,138] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:20,140] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:30,366] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:30,370] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:40,092] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:40,095] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:29:50,373] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:29:50,376] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:29:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:00,103] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:00,106] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:03,049] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.equipment_runtime, URL: http://127.0.0.1:5000/rational_structure/equipment_runtime
+[2026-11-03 10:30:03,055] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:03] "GET /rational_structure/equipment_runtime HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/rational_structure/technical_characteristics.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/css/rational_structure/pages.css?v=7 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/rational_structure/sticky_table_toolbar.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/rational_structure/equipment_runtime.js?v=4 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:30:04] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-03 10:30:10,367] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:10,370] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:20,103] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:20,107] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:30,374] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:30,377] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:40,099] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:40,102] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:30:50,369] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:30:50,372] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:30:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:00,102] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:00,106] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:10,387] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:10,389] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:20,109] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:20,111] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:20] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:30,422] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:30,425] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:30] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:40,094] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:40,097] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:40] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:50,380] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:31:50,383] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:50] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:31:59,143] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.index, URL: http://127.0.0.1:5000/
+[2026-11-03 10:31:59,151] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:31:59] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+[2026-11-03 10:32:00,098] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:32:00,101] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:32:00] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -
+[2026-11-03 10:32:02,857] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.index, URL: http://127.0.0.1:5000/
+[2026-11-03 10:32:02,860] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:32:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:03] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-03 10:32:05,269] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: generation_bp.generation_start, URL: http://127.0.0.1:5000/generation
+[2026-11-03 10:32:05,277] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /generation HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 10:32:05] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-03 10:32:10,387] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.data_revision, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 10:32:10,389] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 10:32:10] "GET /energy_consumption/data-revision/ HTTP/1.1" 200 -

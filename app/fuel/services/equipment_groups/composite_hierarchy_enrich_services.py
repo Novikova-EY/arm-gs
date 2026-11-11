@@ -3,9 +3,9 @@
 Общий enrich station_blocks для витрин модуля «Топливо».
 
 Эталон UX (stations_equipment_group_fuel_params):
-  - родитель сверху, имя «…, всего», жёлтый фон;
+  - родитель сверху, имя «…, всего», желтый фон;
   - дети ниже обычными строками;
-  - отдельная жёлтая «станция, всего» не рисуется;
+  - отдельная желтая «станция, всего» не рисуется;
   - значения родителя = сумма детей (station_summary).
 
 Составность только при наличии детей (main>0). Одиночный comp=1 без детей –
@@ -81,8 +81,8 @@ def territorial_ids_for_equipment_group(
     1) РЭС самой группы (FK);
     2) obl-маппинг / субъект группы (standalone без FK, Калининград и др.);
     3) у дочерней составной без своего РЭС – территория родителя (main),
-       иначе кластер рвётся: родитель в настоящей РЭС, а вторая копия имени –
-       в «Не указано». Свою РЭС ребёнка не подменяем.
+       иначе кластер рвется: родитель в настоящей РЭС, а вторая копия имени –
+       в «Не указано». Свою РЭС ребенка не подменяем.
     """
     res = _res_for_equipment_group_territory(eg)
     if not _res_has_id(res) and is_composite_child_group(eg):
@@ -200,11 +200,11 @@ def enrich_station_blocks_composite_display(
     fuel_params_detail_mode: bool = False,
 ) -> list[dict]:
     """
-    Проставляет флаги составности и кладёт итог на строку родителя.
+    Проставляет флаги составности и кладет итог на строку родителя.
 
     fuel_params_detail_mode=True – режим ved / by_groups / edit_allowed
     (как на stations_equipment_group_fuel_params).
-    Иначе «всего» на родителе, если в кластере есть хотя бы один ребёнок.
+    Иначе «всего» на родителе, если в кластере есть хотя бы один ребенок.
     """
     parent_by_numb = parent_by_numb or {}
     rows_for_summary = rows_for_summary or (
@@ -398,7 +398,7 @@ def enrich_station_blocks_composite_display(
         elif show_summary is False:
             sb["suppress_station_summary"] = True
 
-        # Полоска/└ как на stations_equipment_groups – только если в блоке есть и родитель, и ребёнок.
+        # Полоска/└ как на stations_equipment_groups – только если в блоке есть и родитель, и ребенок.
         show_composite_cluster = bool(has_composite_structure and has_children)
         for gb in gbs:
             eg = gb.get("equipment_group")

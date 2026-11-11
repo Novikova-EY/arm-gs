@@ -125,6 +125,7 @@
                                 </td>
                                 <td>
                                     <select name="year_features[]" class="form-select" {% if not version_id %}disabled{% endif %}>
+                                        <option value="" {% if not y.id_year_feature %}selected{% endif %}>Не указан</option>
                                         {% for fid, fname in year_features %}
                                             <option value="{{ fid }}" {% if fid == y.id_year_feature %}selected{% endif %}>
                                                 {{ fname }}

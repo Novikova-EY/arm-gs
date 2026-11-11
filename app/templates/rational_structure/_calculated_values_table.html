@@ -1,0 +1,24 @@
+{% set columns = result.columns if result is not none else definition.columns %}
+{% if result is not none %}
+<dl class="row mb-2">
+    <dt class="col-sm-3">Набор данных</dt><dd class="col-sm-9 text-break">{{ result.dataset }}</dd>
+    <dt class="col-sm-3">Версия выгрузки</dt><dd class="col-sm-9">{{ result.version or '–' }}</dd>
+    <dt class="col-sm-3">Количество строк</dt><dd class="col-sm-9">{{ result.rows|length }}</dd>
+    {% if result.comment %}<dt class="col-sm-3">Комментарий</dt><dd class="col-sm-9">{{ result.comment }}</dd>{% endif %}
+</dl>
+{% endif %}
+<div class="table-responsive" tabindex="0" role="region" aria-label="Таблица: {{ definition.title }}">
+    <table class="table table-bordered table-striped table-sm align-middle mb-0" id="rs-result-table-{{ dataset_key }}">
+        <caption>{{ definition.title }} – последние принятые решения по всем расчетам</caption>
+        <thead><tr>{% for column in columns %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% if result is not none and result.rows %}
+            {% for row in result.rows %}
+            <tr>{% for column in columns %}<td class="text-nowrap">{{ row[column] if row[column] is defined and row[column] is not none else '–' }}</td>{% endfor %}</tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="{{ columns|length }}" class="text-center text-muted py-3">{% if result is none %}Данные еще не загружены. Нажмите «Получить данные из API».{% else %}API не вернул принятых результатов расчета.{% endif %}</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

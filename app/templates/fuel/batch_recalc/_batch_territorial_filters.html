@@ -91,7 +91,7 @@
                 style="width: 10rem; min-width: 10rem; max-width: 10rem;"
                 title="Диапазон для отбора станций; пусто – как год расчета. По умолчанию – год начала СиПР из версии БД.">
             <option value="">По умолчанию</option>
-            {% for y in filter_year_list|default([]) %}
+            {% for y in get_reference_years() %}
             <option value="{{ y }}" {% if y == default_batch_filter_start_year %}selected{% endif %}>{{ y }}</option>
             {% endfor %}
         </select>
@@ -102,7 +102,7 @@
                 style="width: 10rem; min-width: 10rem; max-width: 10rem;"
                 title="По умолчанию – год конца СиПР из версии БД.">
             <option value="">По умолчанию</option>
-            {% for y in filter_year_list|default([]) %}
+            {% for y in get_reference_years() %}
             <option value="{{ y }}" {% if y == default_batch_filter_end_year %}selected{% endif %}>{{ y }}</option>
             {% endfor %}
         </select>

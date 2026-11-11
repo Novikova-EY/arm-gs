@@ -215,7 +215,7 @@
         }
     });
     table.addEventListener("blur", function (e) {
-        if (e.target && e.target.matches('input.fuel-param-input[data-parameter-key="peak_datetime"]')) {
+        if (e.target && e.target.matches('.fuel-param-input[data-parameter-key="peak_datetime"]')) {
             formatOzpPeakDatetimeInput(e.target);
         }
     }, true);
@@ -226,69 +226,43 @@
         return;
     }
 
-    function runOzpMaximaSave() {
-        if (saveBtn.disabled) {
-            return;
+    const selector = ".fuel-param-input[data-parameter-key][data-slice]";
+    table.querySelectorAll(selector).forEach(function (field) {
+        field.dataset.initial = field.value;
+    });
+    const live = window.bindConsumptionLiveSave(table, selector, async function (field) {
+        formatOzpPeakDatetimeInput(field);
+        const value = field.value;
+        if (value === field.dataset.initial) return;
+        const response = await window.powerDemandSaveFetch(saveUrl, {
+            method: "POST", credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": window.__ozpMaximaCsrfToken || ""
+            },
+            body: JSON.stringify({cells: [{
+                ozp_end_year: field.dataset.slice,
+                parameter_key: field.dataset.parameterKey,
+                value: value
+            }]})
+        });
+        const data = await response.json().catch(function () { return null; });
+        if (!response.ok || !data || !data.ok) {
+            throw new Error(data && data.error || "Не удалось сохранить данные.");
         }
-        var cells = [];
-        table.querySelectorAll("input.fuel-param-input[data-parameter-key][data-slice]").forEach(
-            function (inp) {
-                cells.push({
-                    ozp_end_year: inp.getAttribute("data-slice"),
-                    parameter_key: inp.getAttribute("data-parameter-key"),
-                    value: inp.value,
-                });
-            }
-        );
-        var headers = {
-            "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": window.__ozpMaximaCsrfToken || "",
-        };
+        field.dataset.initial = value;
+    });
+
+    saveBtn.addEventListener("click", async function () {
+        table.querySelectorAll(selector).forEach(function (field) {
+            if (field.value !== field.dataset.initial) live.enqueue(field);
+        });
         saveBtn.disabled = true;
-        fetch(saveUrl, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: headers,
-            body: JSON.stringify({ cells: cells }),
-        })
-            .then(function (resp) {
-                return resp.json().then(function (data) {
-                    return { ok: resp.ok && data && data.ok, data: data };
-                });
-            })
-            .then(function (payload) {
-                if (!payload.ok) {
-                    window.alert((payload.data && payload.data.error) || "Не удалось сохранить.");
-                    return;
-                }
-                saveBtn.classList.remove("btn-primary");
-                saveBtn.classList.add("btn-success");
-                saveBtn.textContent = "Сохранено";
-                setTimeout(function () {
-                    saveBtn.classList.add("btn-primary");
-                    saveBtn.classList.remove("btn-success");
-                    saveBtn.textContent = "Сохранить";
-                }, 1200);
-            })
-            .catch(function () {
-                window.alert("Не удалось сохранить.");
-            })
-            .finally(function () {
-                saveBtn.disabled = false;
-            });
-    }
-
-    saveBtn.addEventListener("click", runOzpMaximaSave);
-
-    table.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter" || e.repeat) {
-            return;
+        try {
+            await live.whenIdle();
+        } finally {
+            saveBtn.disabled = false;
         }
-        if (!e.target || !e.target.matches("input.fuel-param-input")) {
-            return;
-        }
-        e.preventDefault();
-        runOzpMaximaSave();
     });
 })();

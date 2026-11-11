@@ -70,6 +70,8 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     # 1) электростанции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
     # 2) Остальные электростанции – через субъект РФ, как в старой логике
 
+    # Связываем годовые данные непосредственно с MachinePower по агрегату и году:
+    # через Machine.id PostgreSQL может выбрать повторный перебор всего года.
     # 1) Прямая связь электростанции с РЭС
     query_direct = (
         db.session.query(
@@ -99,7 +101,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(
             MachineTesType,
             and_(
-                MachineTesType.id_machine == Machine.id,
+                MachineTesType.id_machine == MachinePower.id_machine,
                 MachineTesType.year_number == MachinePower.year_number,
                 _version_cond(MachineTesType),
             ),
@@ -109,7 +111,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(
             MachineFuel,
             and_(
-                MachineFuel.id_machine == Machine.id,
+                MachineFuel.id_machine == MachinePower.id_machine,
                 MachineFuel.year_number == MachinePower.year_number,
                 _version_cond(MachineFuel),
             ),
@@ -166,7 +168,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(
             MachineTesType,
             and_(
-                MachineTesType.id_machine == Machine.id,
+                MachineTesType.id_machine == MachinePower.id_machine,
                 MachineTesType.year_number == MachinePower.year_number,
                 _version_cond(MachineTesType),
             ),
@@ -176,7 +178,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(
             MachineFuel,
             and_(
-                MachineFuel.id_machine == Machine.id,
+                MachineFuel.id_machine == MachinePower.id_machine,
                 MachineFuel.year_number == MachinePower.year_number,
                 _version_cond(MachineFuel),
             ),

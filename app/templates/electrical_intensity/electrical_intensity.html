@@ -18,23 +18,27 @@
     <input type="hidden" name="coef_territory_kind[]" value="{{ territory_kind }}">
     <input type="hidden" name="coef_territory_id[]" value="{{ territory_id if territory_id is not none else '' }}">
     <input type="hidden" name="coef_ved_id[]" value="{{ ved_id if ved_id is not none else '' }}">
-    <input type="text" name="coef_a[]" class="text-center fuel-param-input lt-ei-coef-input"
+    <input type="text" name="coef_a[]" class="text-center fuel-param-input lt-ei-coef-input lt-ei-rounding-coefficient"
            inputmode="decimal" autocomplete="off"
+           data-rounding-value="{{ coef_a_manual_tooltip|e }}"
            value="{% if coef_a_manual_display != '–' %}{{ coef_a_manual_display }}{% endif %}"
            {% if coef_a_manual_tooltip %}title="{{ coef_a_manual_tooltip|e }}" data-db-full="{{ coef_a_manual_tooltip|e }}"{% endif %}>
     <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч') }}
-    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed lt-ei-rounding-coefficient"
+          data-rounding-value="{{ coef_a_computed_tooltip|e }}"
           {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
     <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
-    <span class="lt-ei-coef-readonly-val lt-ei-coef-x-computed"
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-x-computed lt-ei-rounding-coefficient"
+          data-rounding-value="{{ coef_x_tooltip|e }}"
           {% if coef_x_tooltip %}title="{{ coef_x_tooltip|e }}"{% endif %}>{{ coef_x_display }}</span>
     {% else %}
-    <span class="lt-ei-coef-readonly-val">{{ coef_a_manual_display }}</span>
+    <span class="lt-ei-coef-readonly-val lt-ei-rounding-coefficient" data-rounding-value="{{ coef_a_manual_tooltip|e }}">{{ coef_a_manual_display }}</span>
     <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч') }}
-    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed lt-ei-rounding-coefficient"
+          data-rounding-value="{{ coef_a_computed_tooltip|e }}"
           {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
     <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
-    <span class="lt-ei-coef-readonly-val">{{ coef_x_display }}</span>
+    <span class="lt-ei-coef-readonly-val lt-ei-rounding-coefficient" data-rounding-value="{{ coef_x_tooltip|e }}">{{ coef_x_display }}</span>
     {% endif %}
 </div>
 {%- endmacro %}
@@ -45,16 +49,21 @@
 <input type="hidden" name="fd_total_k_territory_kind[]" value="{{ territory_kind }}">
 <input type="hidden" name="fd_total_k_territory_id[]" value="{{ territory_id if territory_id is not none else '' }}">
 <input type="hidden" name="fd_total_k_row_kind[]" value="{{ row_kind }}">
-<input type="text" name="fd_total_k_value[]" class="text-center fuel-param-input lt-ei-coef-input lt-ei-fd-total-k-input"
+<input type="text" name="fd_total_k_value[]" class="text-center fuel-param-input lt-ei-coef-input lt-ei-fd-total-k-input lt-ei-rounding-coefficient"
        inputmode="decimal" autocomplete="off"
+       data-rounding-value="{{ k_tooltip|e }}"
        value="{% if k_display != '–' %}{{ k_display }}{% endif %}"
        {% if k_tooltip %}title="{{ k_tooltip|e }}" data-db-full="{{ k_tooltip|e }}"{% endif %}>
 {% else %}
-<span class="lt-ei-coef-readonly-val">{{ k_display }}</span>
+<span class="lt-ei-coef-readonly-val lt-ei-rounding-coefficient" data-rounding-value="{{ k_tooltip|e }}" title="{{ k_tooltip|e }}">{{ k_display }}</span>
 {% endif %}
 {%- endmacro %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/energy_consumption_live_save.css') }}?v=12">
+<script src="{{ url_for('static', filename='js/energy_consumption/consumption_live_save.js') }}?v=3" defer></script>
+{% if can_edit %}<script src="{{ url_for('static', filename='js/electrical_intensity/live_save.js') }}?v=4" defer></script>{% endif %}
+<script src="{{ url_for('static', filename='js/electrical_intensity/rounding.js') }}?v=3" defer></script>
 <style>
     .page-table-scroll #electrical-intensity-logs-table thead th {
         position: static;
@@ -625,21 +634,44 @@
         padding: 0;
         border-top-width: 0;
     }
-    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input {
+    #powerDemandSummaryTable.fuel-params-edit-table td.summary-year-cell > .fuel-param-input {
         display: block;
         width: 100%;
         max-width: 100%;
         min-height: 2.5rem;
         box-sizing: border-box;
         margin: 0;
-        border: 0;
-        border-radius: 0;
+        border: 1px solid var(--bs-border-color, #dee2e6) !important;
+        border-radius: 0.2rem;
         box-shadow: none;
         padding: 0.2rem 0.35rem;
         font-size: 1.1rem;
         line-height: 1.3;
-        background-color: transparent;
+        color: var(--bs-body-color, #212529);
+        background-color: var(--bs-body-bg, #fff);
         background-clip: padding-box;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table td.summary-year-cell > .fuel-param-input[readonly] {
+        color: var(--bs-secondary-color, #6c757d);
+        -webkit-text-fill-color: var(--bs-secondary-color, #6c757d);
+        background-color: #e9ecef;
+        cursor: not-allowed;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input:not([readonly]):focus {
+        outline: 2px solid var(--bs-primary, #0d6efd);
+        outline-offset: -2px;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input.is-save-success:not([readonly]),
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input.is-save-success:not([readonly]):focus {
+        background-color: #d1e7dd;
+        outline: 2px solid var(--bs-success, #198754);
+        outline-offset: -2px;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input.is-save-error:not([readonly]),
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input.is-save-error:not([readonly]):focus {
+        background-color: #f8d7da;
+        outline: 2px solid var(--bs-danger, #dc3545);
+        outline-offset: -2px;
     }
     /* Группировка строк (сворачивание блоков РФ / ФО / ВЭД) */
     #powerDemandSummaryTable tbody tr.lt-ei-territory-collapsed-hidden,
@@ -679,6 +711,16 @@
         background-color: rgba(255, 255, 255, 0.3);
         color: #fff;
     }
+    .lt-ei-graph-point-exclude {
+        display: block;
+        margin-top: 0.15rem;
+        white-space: nowrap;
+        font-size: 0.72rem;
+    }
+    .lt-ei-graph-point-exclude-toggle {
+        margin-right: 0.15rem;
+        vertical-align: middle;
+    }
     .power-demand-summary-loader-shell {
         position: relative;
     }
@@ -704,6 +746,7 @@ window.__ltEiYearSegBoot = {
 {% block content %}
 {% if current_user.is_authenticated %}
 {% set rd = rounding_digits if rounding_digits is defined else 1 %}
+{% set coefficient_rd = coefficient_rounding_digits if coefficient_rounding_digits is defined else 2 %}
 <div class="container-fluid mt-2">
     <div class="lt-ei-page-fixed-header">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
@@ -838,13 +881,13 @@ window.__ltEiYearSegBoot = {
                     {% endfor %}
                     <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                     <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                     <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                     <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
@@ -869,6 +912,7 @@ window.__ltEiYearSegBoot = {
                         {{ form.hidden_tag() }}
                         <input type="hidden" name="preserve_qs" value="{{ request.query_string.decode() }}">
                         <input type="hidden" name="rounding_digits" value="{{ rd }}">
+                        <input type="hidden" name="coefficient_rounding_digits" value="{{ coefficient_rd }}">
                         <button type="submit"
                                 class="btn btn-outline-primary text-nowrap"
                                 id="ltEiCalculateGraphPointsBtn"
@@ -881,6 +925,19 @@ window.__ltEiYearSegBoot = {
                          data-page-query="{{ request.query_string.decode() }}"
                          data-csrf-token="{{ csrf_token }}"></div>
                     {% endif %}
+                    {% if electrical_intensity_refresh %}
+                    {% with data_refresh=electrical_intensity_refresh %}
+                    {% include 'common/_data_refresh.html' %}
+                    {% endwith %}
+                    {% endif %}
+                    <label for="coefficient_rounding_digits" class="mb-0 text-nowrap">Округл. (X):</label>
+                    <select id="coefficient_rounding_digits" class="form-select" style="min-width: 150px; width: auto;">
+                        <option value="0" {% if coefficient_rd == 0 %}selected{% endif %}>Не округлять</option>
+                        {% for digits in range(1, 11) %}
+                        <option value="{{ digits }}" {% if coefficient_rd == digits %}selected{% endif %}>{{ digits }} {% if digits == 1 %}знак{% elif digits in (2, 3, 4) %}знака{% else %}знаков{% endif %}</option>
+                        {% endfor %}
+                        <option value="-1" {% if coefficient_rd == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
                     <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
                     <select id="rounding_digits" class="form-select" style="min-width: 150px; width: auto;">
                         <option value="0" {% if rd == 0 %}selected{% endif %}>Не округлять</option>
@@ -899,6 +956,7 @@ window.__ltEiYearSegBoot = {
         {{ form.hidden_tag() }}
         <input type="hidden" name="preserve_qs" value="{{ request.query_string.decode() }}">
         <input type="hidden" name="rounding_digits" id="rounding_digits_hidden" value="{{ rd }}">
+        <input type="hidden" name="coefficient_rounding_digits" value="{{ coefficient_rd }}">
     {% endif %}
 
     {% set lt_ei_label_col_w = "24rem" %}
@@ -915,8 +973,9 @@ window.__ltEiYearSegBoot = {
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll" style="visibility: hidden;">
         <table id="powerDemandSummaryTable"
                class="table table-bordered table-striped align-middle power-demand-summary-table lt-ei-sticky-lead-cols{% if can_edit %} table-hover fuel-params-edit-table{% endif %}{% if lt_ei_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
-               data-rounding-digits="{{ rd }}"
-               data-lt-ei-preformatted="1"
+                data-rounding-digits="{{ rd }}"
+                {% if can_edit %}data-save-cell-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_save_cell') }}" data-csrf-token="{{ csrf_token }}"{% endif %}
+                data-lt-ei-preformatted="1"
                {% if lt_ei_year_segments %}
                data-ec-max-year-segments="1"
                data-coeff-base-year="{{ coeff_base_year }}"
@@ -974,6 +1033,7 @@ window.__ltEiYearSegBoot = {
                     {% set disp = ref_row.cells_display.get(y, '–') if ref_row.cells_display is defined else '–' %}
                     {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if ref_row.cells.get(y) is not none %}data-rounding-value="{{ ref_row.cells.get(y) }}"{% endif %}
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
                     {% endfor %}
                 </tr>
@@ -995,6 +1055,7 @@ window.__ltEiYearSegBoot = {
                     {% set disp = row.cells_display.get(y, '–') if row.cells_display is defined else '–' %}
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if row.cells.get(y) is not none %}data-rounding-value="{{ row.cells.get(y) }}" data-rounding-kind="{{ row.row_kind }}"{% endif %}
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
                     {% endfor %}
                 </tr>
@@ -1010,7 +1071,7 @@ window.__ltEiYearSegBoot = {
                                 <div class="lt-ei-chart-caption">{{ block.abbr }} – {{ block.label }}</div>
                                 <div class="lt-ei-chart-plot">
                                     <script type="application/json" class="lt-ei-chart-data">{{ block.fd_summary.scatter_chart | tojson }}</script>
-                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроёмкости: {{ block.label|e }}"></canvas>
+                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроемкости: {{ block.label|e }}"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -1057,6 +1118,7 @@ window.__ltEiYearSegBoot = {
                     {% set disp = ref_row.cells_display.get(y, '–') if ref_row.cells_display is defined else '–' %}
                     {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if ref_row.cells.get(y) is not none %}data-rounding-value="{{ ref_row.cells.get(y) }}"{% endif %}
                         {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
                     {% endfor %}
                 </tr>
@@ -1089,6 +1151,7 @@ window.__ltEiYearSegBoot = {
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
+                        {% if row.cells.get(y) is not none %}data-rounding-value="{{ row.cells.get(y) }}" data-rounding-kind="{{ row.row_kind }}"{% endif %}
                         {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
                         {% if row.is_computed or (row.computed_years is defined and y in row.computed_years and not row.allows_manual_edit) %}
                         {{ disp }}
@@ -1100,11 +1163,20 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
                         <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}{{ disp }}{% endif %}">
                         <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}1{% endif %}">
+                        <input type="hidden" name="cell_exclude[]" value="{% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none and y in row.get('excluded_years', ()) %}1{% else %}0{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
                                value="{% if disp != '–' %}{{ disp }}{% endif %}"
                                {% if row.row_kind == 'graph_point' and disp != '–' %}data-initial-display="{{ disp }}"{% endif %}
+                               {% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none and y in row.get('excluded_years', ()) %}readonly{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
+                        {% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none %}
+                        <label class="lt-ei-graph-point-exclude small text-muted">
+                            <input type="checkbox" class="lt-ei-graph-point-exclude-toggle" aria-label="Исключить коэффициент за {{ y }} год из расчета" title="Исключить коэффициент за {{ y }} год из расчета"
+                                   {% if y in row.get('excluded_years', ()) %}checked{% endif %}>
+                            исключить
+                        </label>
+                        {% endif %}
                         {% else %}
                         {{ disp }}
                         {% endif %}
@@ -1122,7 +1194,7 @@ window.__ltEiYearSegBoot = {
                                 <div class="lt-ei-chart-caption">{{ section.ved_name }}</div>
                                 <div class="lt-ei-chart-plot">
                                     <script type="application/json" class="lt-ei-chart-data">{{ section.scatter_chart | tojson }}</script>
-                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроёмкости: {{ section.ved_name|e }}"></canvas>
+                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроемкости: {{ section.ved_name|e }}"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -1162,6 +1234,7 @@ window.__ltEiYearSegBoot = {
                     {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
                     {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
                     <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
+                        {% if row.cells.get(y) is not none %}data-rounding-value="{{ row.cells.get(y) }}" data-rounding-kind="{{ row.row_kind }}"{% endif %}
                         {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
                         {% if row.is_computed or (row.computed_years is defined and y in row.computed_years and not row.allows_manual_edit) %}
                         {{ disp }}
@@ -1173,11 +1246,20 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
                         <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}{{ disp }}{% endif %}">
                         <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '–' %}1{% endif %}">
+                        <input type="hidden" name="cell_exclude[]" value="{% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none and y in row.get('excluded_years', ()) %}1{% else %}0{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
                                value="{% if disp != '–' %}{{ disp }}{% endif %}"
                                {% if row.row_kind == 'graph_point' and disp != '–' %}data-initial-display="{{ disp }}"{% endif %}
+                               {% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none and y in row.get('excluded_years', ()) %}readonly{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
+                        {% if row.row_kind == 'graph_point' and row.get('excluded_years') is not none %}
+                        <label class="lt-ei-graph-point-exclude small text-muted">
+                            <input type="checkbox" class="lt-ei-graph-point-exclude-toggle" aria-label="Исключить коэффициент за {{ y }} год из расчета" title="Исключить коэффициент за {{ y }} год из расчета"
+                                   {% if y in row.get('excluded_years', ()) %}checked{% endif %}>
+                            исключить
+                        </label>
+                        {% endif %}
                         {% else %}
                         {{ disp }}
                         {% endif %}
@@ -1328,7 +1410,6 @@ window.__ltEiYearSegBoot = {
 <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/electrical_intensity_charts.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/electrical_intensity_row_groups.js') }}" defer></script>
-
 <script>
 const powerDemandSummaryLoaderShell = document.getElementById("powerDemandSummaryLoaderShell");
 const powerDemandSummaryLoadingOverlay = document.getElementById("powerDemandSummaryLoadingOverlay");
@@ -1443,7 +1524,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         eiForm.addEventListener("keydown", function (e) {
-            if (e.key !== "Enter" || e.isComposing) return;
+            if (e.key !== "Enter" || e.isComposing || e.defaultPrevented) return;
             var t = e.target;
             if (!t || !t.classList || !t.classList.contains("fuel-param-input")) return;
             e.preventDefault();
@@ -1463,15 +1544,18 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             /*
-             * Полная таблица даёт POST ~1.2+ MiB / 30k+ полей – на nginx с
+             * Полная таблица дает POST ~1.2+ MiB / 30k+ полей – на nginx с
              * client_max_body_size 1m сохранение падает «через раз».
-             * В POST уходят только изменённые ячейки/коэффициенты.
+             * В POST уходят только измененные ячейки/коэффициенты.
              */
             var dirtyCount = 0;
             eiForm.querySelectorAll("td.summary-year-cell").forEach(function (td) {
                 var inp = td.querySelector('input.fuel-param-input[name="cell_value[]"]');
                 if (!inp) return;
-                if (ltEiIsDirty(inp)) {
+                var excludeToggle = td.querySelector(".lt-ei-graph-point-exclude-toggle");
+                var exclusionChanged = excludeToggle
+                    && excludeToggle.checked !== excludeToggle.defaultChecked;
+                if (ltEiIsDirty(inp) || exclusionChanged) {
                     dirtyCount += 1;
                     return;
                 }
@@ -1515,18 +1599,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    var roundingSel = document.getElementById("rounding_digits");
-    var roundingHidden = document.getElementById("rounding_digits_hidden");
-    if (roundingSel) {
-        roundingSel.addEventListener("change", function () {
-            var rd = roundingSel.value;
-            if (roundingHidden) roundingHidden.value = rd;
-            var url = new URL(window.location.href);
-            url.searchParams.set("rounding_digits", rd);
-            window.location.href = url.toString();
-        });
-    }
-
     function ltEiCsrfToken() {
         var meta = document.getElementById("ltEiGraphPointCalcMeta");
         if (meta) {
@@ -1540,15 +1612,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var gpCalcMeta = document.getElementById("ltEiGraphPointCalcMeta");
     if (gpCalcMeta) {
         var rowCalcUrl = gpCalcMeta.getAttribute("data-row-calc-url") || "";
-        var pageQuery = (gpCalcMeta.getAttribute("data-page-query") || "").trim();
-        if (!pageQuery && window.location.search) {
-            pageQuery = window.location.search.charAt(0) === "?"
-                ? window.location.search.slice(1)
-                : window.location.search;
-        }
-        if (pageQuery && rowCalcUrl.indexOf("?") < 0) {
-            rowCalcUrl += "?" + pageQuery;
-        }
         document.querySelectorAll(".lt-ei-graph-point-row-calc").forEach(function (btn) {
             btn.addEventListener("click", function () {
                 if (!rowCalcUrl) return;
@@ -1560,7 +1623,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 fd.append("territory_kind", btn.getAttribute("data-territory-kind") || "");
                 fd.append("territory_id", btn.getAttribute("data-territory-id") || "");
                 fd.append("ved_id", btn.getAttribute("data-ved-id") || "");
+                var pageQuery = window.location.search ? window.location.search.slice(1) : "";
                 if (pageQuery) fd.append("preserve_qs", pageQuery);
+                var requestUrl = new URL(rowCalcUrl, window.location.href);
+                requestUrl.search = window.location.search;
                 var rdSel = document.getElementById("rounding_digits");
                 if (rdSel) fd.append("rounding_digits", rdSel.value);
                 var prevHtml = btn.innerHTML;
@@ -1571,7 +1637,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     fetchHeaders["X-CSRF-Token"] = gpCsrf;
                     fetchHeaders["X-CSRFToken"] = gpCsrf;
                 }
-                fetch(rowCalcUrl, {
+                fetch(requestUrl.toString(), {
                     method: "POST",
                     body: fd,
                     credentials: "same-origin",
@@ -1610,9 +1676,21 @@ document.addEventListener("DOMContentLoaded", function () {
                             var tt = tooltips[yearKey] || "";
                             var titleText = diag || tt || "";
                             var inp = td.querySelector('input[name="cell_value[]"]');
+                            var rawValue = data.cells && Object.prototype.hasOwnProperty.call(data.cells, yearKey)
+                                ? data.cells[yearKey] : null;
+                            if (rawValue !== null && rawValue !== undefined) {
+                                td.dataset.roundingValue = rawValue;
+                                td.dataset.roundingKind = "graph_point";
+                            } else {
+                                delete td.dataset.roundingValue;
+                            }
                             var origInp = td.querySelector('input[name="cell_orig_value[]"]');
                             if (inp) {
                                 inp.value = (disp && disp !== "–") ? disp : "";
+                                if (rawValue !== null && rawValue !== undefined) {
+                                    inp.dataset.roundingValue = rawValue;
+                                }
+                                inp.dataset.roundingRenderedValue = inp.value;
                                 if (origInp) {
                                     origInp.value = (disp && disp !== "–") ? disp : "";
                                 }
@@ -1626,6 +1704,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 }
                             } else if (disp !== undefined) {
                                 td.textContent = disp || "–";
+                                td.dataset.roundingRenderedValue = td.textContent;
                             }
                             if (titleText) {
                                 td.title = titleText;
@@ -1633,11 +1712,12 @@ document.addEventListener("DOMContentLoaded", function () {
                                 td.removeAttribute("title");
                             }
                         });
+                        document.dispatchEvent(new Event("lt-ei-graph-points-rendered"));
                     })
                     .catch(function () {
                         btn.disabled = false;
                         btn.innerHTML = prevHtml;
-                        alert("Не удалось получить ответ сервера при расчёте строки.");
+                        alert("Не удалось получить ответ сервера при расчете строки.");
                     });
             });
         });

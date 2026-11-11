@@ -5,7 +5,7 @@
 Нужен для составных станций: агрегат часто висит на родителе (comp=1),
 а топливные параметры живут на дочерней группе (main=parent.numb).
 Список выбора на machine_details дополняется кластером parent+children,
-даже если у дочерней группы ещё нет EquipmentGroupSet.
+даже если у дочерней группы еще нет EquipmentGroupSet.
 """
 from __future__ import annotations
 
@@ -360,7 +360,7 @@ def ensure_equipment_group_linked_to_station(
     Гарантирует EquipmentGroupSet группы на станции указанной версии БД.
 
     Станция и тип группы приводятся к version_id (external_code / ref_uuid).
-    Если связки нет – создаёт EquipmentGroupSetStation в этой версии.
+    Если связки нет – создает EquipmentGroupSetStation в этой версии.
     Смешанные связи (клон станции другой версии при database_version_id=version_id)
     переносятся на каноническую строку.
     """
@@ -527,9 +527,9 @@ def rebind_machine_to_equipment_group(
     version_id: int | None = None,
 ) -> dict:
     """
-    Привязывает агрегат к итоговой группе: создаёт связку со станцией при необходимости,
+    Привязывает агрегат к итоговой группе: создает связку со станцией при необходимости,
     пишет MachineFuelParam.equipment_group_id и numb1120.
-    Если у агрегата не заполнен тип группы, берёт его из связки станции.
+    Если у агрегата не заполнен тип группы, берет его из связки станции.
     """
     if machine is None or not getattr(machine, "id", None):
         return {"error": "Агрегат не найден.", "changed": False}
@@ -584,13 +584,138 @@ def rebind_machine_to_equipment_group(
     }
 
 
+def _move_group_parameters(
+    source: EquipmentGroup,
+    target: EquipmentGroup,
+    version_id: int | None,
+) -> int | None:
+    """Переносит параметры между головой и ГО, не затирая цель пустой оболочкой."""
+    from app.common.services.get_services.years.years_get_services import get_reference_years
+    from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+    from app.fuel.models.fue_equipment_group_extra_fuel_param_model import EquipmentGroupExtraFuelParam
+    from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import EquipmentGroupSpecificFuelConsumption
+    from app.fuel.models.fue_equipment_group_specific_fuel_cost_model import EquipmentGroupSpecificFuelCost
+    from app.fuel.models.fue_equipment_group_specific_fuel_price_model import EquipmentGroupSpecificFuelPrice
+    from app.fuel.models.fue_equipment_group_natural_fuel_model import EquipmentGroupNaturalFuel
+    from app.fuel.models.fue_equipment_group_fuel_formula_model import EquipmentGroupFuelFormula
+    from app.fuel.models.fue_equipment_group_electricity_production_cost_model import EquipmentGroupElectricityProductionCost
+    from app.fuel.models.fue_equipment_group_heat_and_tariffs_model import EquipmentGroupHeatAndTariffs
+    from app.fuel.models.coefficient.equipment_group_coefficient_result_model import EquipmentGroupCoefficientResult
+    from app.fuel.services.equipment_groups.equipment_group_merge_services import (
+        _reassign_model_rows_to_primary,
+    )
+    from app.fuel.services.equipment_groups.equipment_group_edit_services import (
+        _apply_equipment_group_type_change_from_form,
+    )
+
+    source_sets = EquipmentGroupSet.query.filter_by(equipment_group_id=source.id).all()
+    source_type_ids = {
+        row.equipment_group_set_station.equipment_group_type_id
+        for row in source_sets
+        if row.equipment_group_set_station is not None
+        and row.equipment_group_set_station.equipment_group_type_id is not None
+    }
+    specs = [
+        (EquipmentGroupFuelParam, ["year_number"]),
+        (EquipmentGroupExtraFuelParam, ["year_number"]),
+        (EquipmentGroupSpecificFuelConsumption, ["year_number"]),
+        (EquipmentGroupSpecificFuelCost, ["year_number"]),
+        (EquipmentGroupSpecificFuelPrice, ["year_number"]),
+        (EquipmentGroupNaturalFuel, ["year_number"]),
+        (EquipmentGroupFuelFormula, ["year_number", "variant_number", "database_version_id"]),
+        (EquipmentGroupElectricityProductionCost, ["year_number", "cost_code"]),
+        (EquipmentGroupHeatAndTariffs, ["kod_goroda", "name_eto", "var_razv", "year_number", "database_version_id"]),
+        (EquipmentGroupCoefficientResult, ["distribution_parameter_id", "year_number", "database_version_id"]),
+    ]
+    rows_by_model = {
+        model: model.query.filter_by(equipment_group_id=source.id).all()
+        for model, _ in specs
+    }
+    shell_fields = {
+        "id", "equipment_group_id", "name", "year_number", "database_version_id",
+        "numb1120", "numb1", "created_at", "updated_at",
+    }
+    has_parameters = any(
+        getattr(row, attr.key) is not None
+        and not (attr.key == "ved" and row.ved == 0)
+        for row in rows_by_model[EquipmentGroupFuelParam]
+        for attr in EquipmentGroupFuelParam.__mapper__.column_attrs
+        if attr.key not in shell_fields
+    )
+    if not (
+        has_parameters or source_type_ids
+        or any(rows for model, rows in rows_by_model.items() if model != EquipmentGroupFuelParam)
+        or any(getattr(source, field) is not None for field in ("tm", "n1", "n2", "p1", "p2", "note"))
+    ):
+        return None
+
+    for set_row in source_sets:
+        link = set_row.equipment_group_set_station
+        if link is not None and link.station_id is not None:
+            ensured = ensure_equipment_group_linked_to_station(
+                equipment_group_id=target.id,
+                station_id=link.station_id,
+                version_id=version_id,
+                equipment_group_type_id=link.equipment_group_type_id,
+            )
+            if ensured is None:
+                raise ValueError("Не удалось связать целевую группу со станцией исходной группы.")
+
+    if len(source_type_ids) == 1:
+        error = _apply_equipment_group_type_change_from_form(
+            target.id, next(iter(source_type_ids)), version_id
+        )
+        if error:
+            raise ValueError(error)
+
+    years = set(get_reference_years())
+    moved_rows = 0
+    for model, identity_fields in specs:
+        rows = rows_by_model[model]
+        moved_rows += len(rows)
+        years.update(row.year_number for row in rows if row.year_number is not None)
+        _reassign_model_rows_to_primary(
+            model, [source.id], target.id, identity_fields, overwrite_existing=True
+        )
+        # NUMB1120 is also used for lookups outside the FK relationship.
+        for row in model.query.filter_by(equipment_group_id=target.id).all():
+            if "numb1120" in model.__mapper__.attrs:
+                row.numb1120 = target.numb
+            if "name" in model.__mapper__.attrs:
+                row.name = target.name or target.name_ext
+
+    for field in ("tm", "n1", "n2", "p1", "p2", "note"):
+        value = getattr(source, field)
+        if value is not None:
+            setattr(target, field, value)
+        setattr(source, field, None)
+    if source.niv is not None:
+        target.niv = source.niv
+    if is_composite_parent_group(source):
+        source.niv = None
+    for year in sorted(years):
+        db.session.add(EquipmentGroupFuelParam(
+            equipment_group_id=source.id,
+            year_number=year,
+            database_version_id=version_id,
+            numb1120=source.numb,
+            ved=0,
+        ))
+
+    # A station/type link can be shared with the target; detach only the source.
+    error = _apply_equipment_group_type_change_from_form(source.id, None, version_id)
+    if error:
+        raise ValueError(error)
+    return moved_rows
+
+
 def rebind_source_group_machines(
     *,
     source_group_id: int,
     target_group_id: int,
     version_id: int | None = None,
 ) -> dict:
-    """Переносит все агрегаты исходной группы (текущая версия БД) на целевую."""
+    """Переносит агрегаты; между головой и ГО также переносит все параметры."""
     source = EquipmentGroup.query.get(int(source_group_id))
     target = EquipmentGroup.query.get(int(target_group_id))
     if source is None:
@@ -616,6 +741,10 @@ def rebind_source_group_machines(
         if version_id is None:
             version_id = get_current_db_version_id()
 
+    if any(group.database_version_id not in (None, version_id) for group in (source, target)):
+        return {"error": "Группы оборудования должны принадлежать текущей версии БД."}
+
+    move_parameters = is_composite_parent_group(source) or is_composite_parent_group(target)
     mfp_q = MachineFuelParam.query.filter(
         MachineFuelParam.equipment_group_id == int(source.id),
         MachineFuelParam.machine_id.isnot(None),
@@ -635,7 +764,7 @@ def rebind_source_group_machines(
             version_id=version_id,
         )
         if result.get("error"):
-            continue
+            raise ValueError(result["error"])
         rebound += 1
         if result.get("machine_id"):
             machine_ids.append(int(result["machine_id"]))
@@ -658,7 +787,12 @@ def rebind_source_group_machines(
             if ensured is not None:
                 linked_stations += 1
         if linked_stations:
+            moved_rows = (
+                _move_group_parameters(source, target, version_id)
+                if move_parameters else None
+            )
             return {
+                "moved_parameter_rows": moved_rows,
                 "rebound_machines": 0,
                 "linked_stations": linked_stations,
                 "target_id": int(target.id),
@@ -667,7 +801,15 @@ def rebind_source_group_machines(
             }
         return {"error": "Нет агрегатов для переноса и нет связи исходной группы со станцией."}
 
+    remaining = mfp_q.count()
+    if remaining:
+        raise ValueError("Не все агрегаты исходной группы удалось перенести.")
+    moved_rows = (
+        _move_group_parameters(source, target, version_id)
+        if move_parameters else None
+    )
     return {
+        "moved_parameter_rows": moved_rows,
         "rebound_machines": rebound,
         "machine_ids": machine_ids,
         "target_id": int(target.id),

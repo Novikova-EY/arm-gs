@@ -60,7 +60,7 @@ def _has_balanced_angle_quotes(text: str) -> bool:
 
 
 def _replace_quotes_sequentially(text: str) -> str:
-    # Already-correct ёлочки (incl. nested «…«…»…») must not be re-normalized.
+    # Already-correct елочки (incl. nested «…«…»…») must not be re-normalized.
     if _has_balanced_angle_quotes(text) and '"' not in text:
         return text
 
@@ -98,7 +98,7 @@ def _clean_name(value: Any) -> Optional[str]:
     # Заменяем пробел-тире-пробел на пробел-длинное тире-пробел
     name = re.sub(r'\s-\s', ' – ', name)
 
-    # Уже корректные «ёлочки» (в т.ч. вложенные) не трогаем – иначе ломается
+    # Уже корректные «елочки» (в т.ч. вложенные) не трогаем – иначе ломается
     # «Группа «Илим»».
     if _has_balanced_angle_quotes(name) and '"' not in name:
         return name
@@ -146,7 +146,7 @@ NBSP = "\u00A0"
 
 # Точечные шаблоны для СиПР/Excel: «г. Москва», «2025 г.», «№ 1», «110 кВ», «4,9 МВт»
 _EXCEL_NBSP_PATTERNS = (
-    # сокращения населённых пунктов: г./с./п./д./пос. + пробел + буква
+    # сокращения населенных пунктов: г./с./п./д./пос. + пробел + буква
     (re.compile(r"\b([гспд]|пос)\.\s+(?=\S)", re.IGNORECASE), rf"\1.{NBSP}"),
     # год: 2025 г. / 2025г.
     (re.compile(r"(?<=\d)\s+г\."), f"{NBSP}г."),
@@ -334,9 +334,9 @@ def values_equal_by_display_precision(old_val, new_val, display_digits=6):
 
     «Округл» в шапке таблицы – только отображение. Нельзя сравнивать old и new
     допуском «полразряда»: при 1 знаке |1.045−1.0296|<0.05, и эталонный k
-    молча не сохраняется. Сравниваем posted с округлённым текстом ячейки.
+    молча не сохраняется. Сравниваем posted с округленным текстом ячейки.
     Не трогали поле (в POST пришло «1» из ячейки) – считаем равным, полный
-    хвост в БД остаётся. Ввели другое число – это правка, даже если оно
+    хвост в БД остается. Ввели другое число – это правка, даже если оно
     округляется так же.
 
     display_digits: знаки после запятой (1, 2, 3); -1 целые; 0 – без округления,

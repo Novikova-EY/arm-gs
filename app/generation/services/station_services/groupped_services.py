@@ -36,7 +36,7 @@ _YEAR_IN_TEXT_RE = re.compile(r"(?:19|20)\d{2}")
 
 
 def parse_machine_commission_year(value) -> int | None:
-    """Достаёт календарный год из int/str/«01.01.2031»."""
+    """Достает календарный год из int/str/«01.01.2031»."""
     if value is None or value == "":
         return None
     if isinstance(value, bool):
@@ -154,7 +154,7 @@ def _group_min_number_key(machines):
 
 
 def _fuel_groups_sort_key(group):
-    # Пустое топливо даёт отдельный блок на каждый id – без года снова «чет/нечет».
+    # Пустое топливо дает отдельный блок на каждый id – без года снова «чет/нечет».
     return (
         _group_min_number_key(group) if _machines_block_has_station_number(group) else (1, float("inf"), ""),
         _machines_block_year_key(group),

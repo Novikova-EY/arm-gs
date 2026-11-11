@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Нормативы удельных выбросов расчёта по новым ТЭС (кг/т у.т., т/т у.т.)."""
+"""Нормативы удельных выбросов расчета по новым ТЭС (кг/т у.т., т/т у.т.)."""
 from sqlalchemy import ForeignKeyConstraint, Numeric, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -34,7 +34,7 @@ class NewTesNorm(db.Model, AuditMixin):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # Ключ вида топлива (как в расчёте по действующим ТЭС)
+    # Ключ вида топлива (как в расчете по действующим ТЭС)
     fuel_key = db.Column(db.String(80), nullable=False, index=True)
 
     # le100 – агрегаты до 100 МВт включительно; gt100 – более 100 МВт

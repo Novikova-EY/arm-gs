@@ -1,7 +1,9 @@
 ﻿# -*- coding: utf-8 -*-
-"""Страница электроёмкости по ФО: /electrical_intensity/electrical_intensity_fo/."""
+"""Страница электроемкости по ФО: /electrical_intensity/electrical_intensity_fo/."""
 
 from __future__ import annotations
+
+import re
 
 from flask import current_app, flash, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
@@ -14,6 +16,7 @@ from app.electrical_intensity.routes.electrical_intensity_root_bp import (
 from app.electrical_intensity.routes.electrical_intensity_route_helpers import (
     csrf,
     csrf_ok,
+    parse_coefficient_rounding_digits,
     parse_ei_export_years_list,
     parse_rounding_digits,
     redirect_preserving_query,
@@ -51,14 +54,19 @@ _EI_CACHE_DATASETS = ("ei_year", "ei_coef", "pop_ei_year", "pop_ei_coef")
 def electrical_intensity():
     form = csrf()
     rd = parse_rounding_digits()
+    coefficient_rd = parse_coefficient_rounding_digits()
 
     if request.method == "POST":
         if not getattr(current_user, "has_admin", False):
             flash("Недостаточно прав для изменения данных.", "danger")
-            return redirect_preserving_query(rounding_digits=rd)
+            return redirect_preserving_query(
+                rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+            )
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
-            return redirect_preserving_query(rounding_digits=rd)
+            return redirect_preserving_query(
+                rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+            )
         try:
             updated, skipped = save_electrical_intensity_from_post(request.form)
             db.session.commit()
@@ -70,9 +78,14 @@ def electrical_intensity():
         except Exception as exc:
             db.session.rollback()
             flash(f"Ошибка сохранения: {exc}", "danger")
-        return redirect_preserving_query(rounding_digits=rd)
+        return redirect_preserving_query(
+            rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+        )
 
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
+    page_kw = parse_electrical_intensity_page_kwargs(
+        rounding_digits=rd,
+        coefficient_rounding_digits=coefficient_rd,
+    )
     page_kw.pop("data_start_year", None)
     page_kw.pop("data_end_year", None)
     lt_ei_initial_visible_years = page_kw.pop("lt_ei_initial_visible_years", None)
@@ -92,6 +105,76 @@ def electrical_intensity():
 
 
 @electrical_intensity_root_bp.route(
+    "/electrical_intensity_fo/save_cell", methods=["POST"]
+)
+@login_required
+def electrical_intensity_save_cell():
+    """Сохранить одну отредактированную ячейку электроемкости."""
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав для изменения данных."), 403
+    if not csrf_ok():
+        return jsonify(ok=False, error="Ошибка CSRF."), 400
+
+    fields_by_kind = {
+        "cell_value[]": (
+            "territory_kind[]",
+            "territory_id[]",
+            "cell_ved_id[]",
+            "row_kind[]",
+            "cell_year[]",
+        ),
+        "coef_a[]": (
+            "coef_territory_kind[]",
+            "coef_territory_id[]",
+            "coef_ved_id[]",
+        ),
+        "fd_total_k_value[]": (
+            "fd_total_k_territory_kind[]",
+            "fd_total_k_territory_id[]",
+            "fd_total_k_row_kind[]",
+        ),
+    }
+    selected = [
+        value_name
+        for value_name in fields_by_kind
+        if request.form.getlist(value_name)
+    ]
+    if len(selected) != 1 or len(request.form.getlist(selected[0])) != 1:
+        return jsonify(ok=False, error="Ожидается одна ячейка для сохранения."), 400
+
+    value_name = selected[0]
+    if any(
+        len(request.form.getlist(name)) != 1
+        for name in fields_by_kind[value_name]
+    ):
+        return jsonify(ok=False, error="Не переданы параметры сохраняемой ячейки."), 400
+
+    raw_value = str(request.form.get(value_name) or "").strip()
+    normalized_value = raw_value.replace("\u00a0", "").replace(" ", "")
+    if normalized_value and not re.fullmatch(
+        r"[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)", normalized_value
+    ):
+        return jsonify(ok=False, error="Введите числовое значение."), 400
+
+    try:
+        updated, skipped = save_electrical_intensity_from_post(request.form)
+        if skipped:
+            db.session.rollback()
+            return jsonify(ok=False, error="Ячейка не прошла проверку и не сохранена."), 422
+        db.session.commit()
+        if updated:
+            invalidate_economics_fd_data_cache(
+                get_current_version(), *_EI_CACHE_DATASETS
+            )
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Сохранение ячейки электроемкости")
+        return jsonify(ok=False, error="Не удалось сохранить ячейку."), 500
+
+    return jsonify(ok=True, updated=updated)
+
+
+@electrical_intensity_root_bp.route(
     "/electrical_intensity_fo/calculate_graph_points", methods=["POST"]
 )
 @login_required
@@ -99,13 +182,21 @@ def electrical_intensity_calculate_graph_points():
     """Рассчитать все характерные точки графика (≤ текущего года) и сохранить в БД."""
     form = csrf()
     rd = parse_rounding_digits()
+    coefficient_rd = parse_coefficient_rounding_digits()
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для изменения данных.", "danger")
-        return redirect_preserving_query(rounding_digits=rd)
+        return redirect_preserving_query(
+            rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+        )
     if not form.validate_on_submit():
         flash("Ошибка CSRF.", "danger")
-        return redirect_preserving_query(rounding_digits=rd)
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
+        return redirect_preserving_query(
+            rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+        )
+    page_kw = parse_electrical_intensity_page_kwargs(
+        rounding_digits=rd,
+        coefficient_rounding_digits=coefficient_rd,
+    )
     page_kw.pop("data_start_year", None)
     page_kw.pop("data_end_year", None)
     page_kw.pop("lt_ei_initial_visible_years", None)
@@ -129,8 +220,10 @@ def electrical_intensity_calculate_graph_points():
         )
     except Exception as exc:
         db.session.rollback()
-        flash(f"Ошибка расчёта точек графика: {exc}", "danger")
-    return redirect_preserving_query(rounding_digits=rd)
+        flash(f"Ошибка расчета точек графика: {exc}", "danger")
+    return redirect_preserving_query(
+        rounding_digits=rd, coefficient_rounding_digits=coefficient_rd
+    )
 
 
 @electrical_intensity_root_bp.route(
@@ -144,7 +237,10 @@ def electrical_intensity_calculate_graph_points_row():
     if not csrf_ok():
         return jsonify(ok=False, error="Ошибка CSRF."), 400
     rd = parse_rounding_digits()
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
+    page_kw = parse_electrical_intensity_page_kwargs(
+        rounding_digits=rd,
+        coefficient_rounding_digits=parse_coefficient_rounding_digits(),
+    )
     page_kw.pop("data_start_year", None)
     page_kw.pop("data_end_year", None)
     page_kw.pop("lt_ei_initial_visible_years", None)
@@ -167,14 +263,14 @@ def electrical_intensity_calculate_graph_points_row():
             ved_id=ved_raw or None,
         )
     except Exception as exc:
-        current_app.logger.exception("Расчёт точек графика для строки")
+        current_app.logger.exception("Расчет точек графика для строки")
         return jsonify(ok=False, error=str(exc)), 500
     if not (result.get("cells_display") or {}):
         return (
             jsonify(
                 ok=False,
                 error=(
-                    "Недостаточно исходных данных для расчёта "
+                    "Недостаточно исходных данных для расчета "
                     "(выпуск продукции, потребление и инвестиции по выбранной территории и ВЭД)."
                 ),
             ),
@@ -186,7 +282,7 @@ def electrical_intensity_calculate_graph_points_row():
 @electrical_intensity_root_bp.route("/electrical_intensity_fo/logs", methods=["GET"])
 @login_required
 def electrical_intensity_logs():
-    """AJAX: журнал изменений электроёмкости для текущей версии БД."""
+    """AJAX: журнал изменений электроемкости для текущей версии БД."""
     offset = request.args.get("offset", 0, type=int) or 0
     limit = request.args.get("limit", 150, type=int)
     vid = get_current_version()
@@ -221,7 +317,10 @@ def electrical_intensity_logs():
 @login_required
 def electrical_intensity_export_xlsx():
     rd = parse_rounding_digits()
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
+    page_kw = parse_electrical_intensity_page_kwargs(
+        rounding_digits=rd,
+        coefficient_rounding_digits=parse_coefficient_rounding_digits(),
+    )
     page_kw.pop("data_start_year", None)
     page_kw.pop("data_end_year", None)
     lt_ei_initial_visible_years = page_kw.pop("lt_ei_initial_visible_years", None)
@@ -271,7 +370,7 @@ def electrical_intensity_import_xlsx():
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
         db.session.rollback()
-        current_app.logger.exception("Импорт электроёмкости из Excel")
+        current_app.logger.exception("Импорт электроемкости из Excel")
         return (
             jsonify(
                 ok=False,
@@ -284,7 +383,7 @@ def electrical_intensity_import_xlsx():
         )
 
     msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
+        f"Импорт завершен: территорий {stats.get('territories', 0)}, "
         f"строк {stats.get('rows_processed', 0)}, "
         f"записано ячеек {stats.get('cells_written', 0)}."
     )

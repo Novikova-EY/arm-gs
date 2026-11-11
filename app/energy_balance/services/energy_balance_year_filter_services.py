@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Годы фильтров страниц энергобаланса: отчётное окно N−9…N (текущий год)."""
+"""Годы фильтров страниц энергобаланса: отчетное окно N−9…N (текущий год)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from app.generation.services.station_services.generation_year_filter_services im
 
 
 def get_ee_period_base_year() -> int:
-    """Текущий год N для отчётного окна N−9…N (как на сводке потребления)."""
+    """Текущий год N для отчетного окна N−9…N (как на сводке потребления)."""
     n = get_ges_tep_current_price_year_number()
     if n is not None:
         return int(n)
@@ -36,7 +36,7 @@ def get_ee_default_end_year() -> int:
 
 
 def get_ee_filter_year_list() -> list[int]:
-    """Годы для выпадающих списков на страницах энергобаланса (отчётное окно N−9…N)."""
+    """Годы для выпадающих списков на страницах энергобаланса (отчетное окно N−9…N)."""
     start = get_ee_default_start_year()
     end = get_ee_default_end_year()
     years = sorted(
@@ -59,7 +59,7 @@ def resolve_ee_year_filters_for_request():
     """
     Возвращает (start_year, end_year, redirect_response).
 
-    По умолчанию – отчётное окно N−9…N (текущий год), а не период планирования СиПР.
+    По умолчанию – отчетное окно N−9…N (текущий год), а не период планирования СиПР.
     """
     default_start = get_ee_default_start_year()
     default_end = get_ee_default_end_year()
@@ -87,7 +87,7 @@ def resolve_ee_transfers_year_filters_for_request():
     Годы для страницы «Перетоки ЭЭ».
 
     Не подхватывает из URL период планирования СиПР (2024–2031 и т.п.) –
-    для отчётных данных используется окно N−9…N.
+    для отчетных данных используется окно N−9…N.
     """
     start_year, end_year, redirect_response = resolve_ee_year_filters_for_request()
     if redirect_response is not None:

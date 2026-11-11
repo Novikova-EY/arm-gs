@@ -160,7 +160,7 @@ def _build_summary_data_json_response(
             include_pagination=build_only_requested_page,
         )
         # build_summary_data_json_response копирует только строки текущей страницы
-        # перед применением формульных overrides; копировать всё дерево не нужно.
+        # перед применением формульных overrides; копировать все дерево не нужно.
         context = dict(bundle["context"])
         boundary_rows = bundle.get("boundary_rows")
         payload = build_summary_data_json_response(
@@ -564,7 +564,7 @@ def _coeff_base_year_n() -> int:
 
 
 def _summary_period_base_year_n() -> int:
-    """N для колонок «отчётный N−9…N», «среднесрочный N+1…N+6» (как на сводке потребления и коэффициентах)."""
+    """N для колонок «отчетный N−9…N», «среднесрочный N+1…N+6» (как на сводке потребления и коэффициентах)."""
     return _coeff_base_year_n()
 
 
@@ -581,7 +581,7 @@ def _parse_summary_include_medium_years() -> bool:
 def _expand_summary_years_for_period_segments(
     sy: int, ey: int, n: int, *, include_medium_years: bool
 ) -> tuple[int, int]:
-    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years – ещё с N+1…N+6."""
+    """Объединить выбранный диапазон с отчетным окном N−9…N; при include_medium_years – еще с N+1…N+6."""
     bounds = _filter_year_list_for_summary()
     if not bounds:
         lo, hi = sy, ey
@@ -596,7 +596,7 @@ def _expand_summary_years_for_period_segments(
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
-    """По умолчанию – отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
+    """По умолчанию – отчетное окно N−9…N (как кнопка «Отчетный период»), в границах справочника Year."""
     bounds = _filter_year_list_for_summary()
     n = _summary_period_base_year_n()
     default_sy = n - 9
@@ -650,7 +650,7 @@ def _parse_coeff_page_data_year_range() -> tuple[int, int, int, bool, bool]:
     """
     (N, start_year, end_year, include_medium, include_long) для HTML/JSON «Коэффициенты…».
 
-    Как «Максимумы…»: первая отрисовка – только отчётное окно N−9…N.
+    Как «Максимумы…»: первая отрисовка – только отчетное окно N−9…N.
     Среднесрок (N+1…N+6) – при pd_medium=1 или если форма годов заходит за N.
     Долгосрок (N+7…N+18) – при coeff_include_long=1 или если выбранный год конца периода позже N+6.
     """
@@ -673,8 +673,8 @@ def _parse_coeff_ui_year_form_range(coeff_n: int) -> tuple[int, int, bool]:
     Диапазон для формы «Год начала/конца» на страницах «Коэффициенты…».
 
     Колонки таблицы – отдельно: сначала N−9…N, среднесрок/долгосрок подгружаются лениво.
-    Если в URL есть start_year/end_year – считаем диапазон применённым (ручной режим отображения).
-    Без параметров в URL – по умолчанию отчётное окно N−9…N (как на «Максимумы…»).
+    Если в URL есть start_year/end_year – считаем диапазон примененным (ручной режим отображения).
+    Без параметров в URL – по умолчанию отчетное окно N−9…N (как на «Максимумы…»).
     """
     bounds = _filter_year_list_for_summary()
     default_sy = int(coeff_n) - 9

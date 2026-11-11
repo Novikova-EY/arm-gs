@@ -32,7 +32,7 @@ def test_coefficient_slices_are_independent(operating_tes_db, monkeypatch):
     ("centr", "centr", "all"),
     ("norilsk", "tites-sibir", "all"),
     ("isolated-dv", "tites-vostok", "all"),
-    ("nikolaevsky", "decentralized-zone", "all"),
+    ("decentralized-zone", "decentralized-zone", "all"),
     ("severo-zapad", "severo-zapad", "all"),
     ("srednyaya-volga", "srednyaya-volga", "all"),
     ("yug", "yug", "all"),
@@ -105,12 +105,12 @@ def test_invalid_coefficient_scope_is_rejected(territory, affiliation, kind):
 
 @pytest.mark.parametrize("column,territory,affiliation", [
     ("vsego", "vsego", "all"),
-    ("minen", "vsego", "minen"),
-    ("prompred", "vsego", "prompred"),
+    ("vsego", "vsego", "minen"),
+    ("vsego", "vsego", "prompred"),
     ("centr", "centr", "all"),
     ("norilsk", "tites-sibir", "all"),
     ("isolated-dv", "tites-vostok", "all"),
-    ("nikolaevsky", "decentralized-zone", "all"),
+    ("decentralized-zone", "decentralized-zone", "all"),
 ])
 @pytest.mark.parametrize("sheet,prefix,kind", [
     ("zola", "ash", "ash_eta"), ("sera", "so2", "sulfur_eta"),
@@ -136,18 +136,21 @@ def test_emission_edit_is_shared_with_coefficient_page_and_survives_reload(
             "q_mech": Decimal("2"), "bj": Decimal("5"),
         },
     })
+    fuel_bucket_key = column if affiliation == "all" else f"{column}::{affiliation}"
     monkeypatch.setattr(exchange, "load_accepted_fuel_inputs", lambda years: {
-        2026: {column: {"gaz_prir": Decimal("100")}},
+        2026: {fuel_bucket_key: {"gaz_prir": Decimal("100")}},
     })
     monkeypatch.setattr(routes, "can_edit_ecology", lambda user: True)
     monkeypatch.setattr(routes, "current_user", SimpleNamespace())
-    context = services.build_operating_tes_table_context("vsego", sheet, view_year=2026)
+    context = services.build_operating_tes_table_context(
+        "vsego", sheet, view_year=2026, affiliation=affiliation,
+    )
     coefficient_row = next(row for row in context["rows"] if row["key"] == kind)
     value_column = next(col for col in context["value_columns"] if col["territory_slug"] == column)
     target_territory = value_column["coefficient_territory_slug"]
     app = Flask(__name__)
     with app.test_request_context(json={
-        "year": value_column["year"], "territory": target_territory, "affiliation": "all",
+        "year": value_column["year"], "territory": target_territory, "affiliation": affiliation,
         "row_key": coefficient_row["key"], "field": coefficient_row["editable_field"], "value": "0,85",
     }, method="PATCH"):
         response = routes.operating_tes_update_value.__wrapped__(target_territory, "koeff")
@@ -158,7 +161,9 @@ def test_emission_edit_is_shared_with_coefficient_page_and_survives_reload(
     )
     saved_row = next(row for row in saved_context["rows"] if row["key"] == kind)
     assert Decimal(saved_row["col_values_raw"][f"{territory}:2026"]) == Decimal("0.85")
-    reloaded = services.build_operating_tes_table_context("vsego", sheet, view_year=2026)
+    reloaded = services.build_operating_tes_table_context(
+        "vsego", sheet, view_year=2026, affiliation=affiliation,
+    )
     rows = {row["key"]: row for row in reloaded["rows"]}
     column_key = f"{column}:2026"
     total = Decimal(rows[f"{prefix}_motkh_total"]["col_values_raw"][column_key])

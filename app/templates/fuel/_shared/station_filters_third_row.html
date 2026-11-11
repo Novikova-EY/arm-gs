@@ -1,9 +1,12 @@
-<!-- Третья строка фильтров: слева годы; при center_top_pagination – пагинация в той же строке по центру; справа «Показать: …»; копирование по годам – в панели «Импорт/Экспорт» (station_filters_second_row); опционально пересчёт удельных по центру -->
+<!-- Третья строка фильтров: слева годы; при center_top_pagination – пагинация в той же строке по центру; справа «Показать: …»; копирование по годам – в панели «Импорт/Экспорт» (station_filters_second_row); опционально пересчет удельных по центру -->
 <div class="col-12 mb-2">
     <div class="d-flex align-items-center w-100 flex-wrap gap-3 mb-2">
 
         <!-- Слева: переключатель режима (опц.), интервал лет (и сброс) -->
         <div class="d-flex align-items-center gap-2 station-filters-third-left" style="{% if center_top_pagination|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
+            {% if show_binding_transfer_button|default(false) %}
+                {% include 'fuel/equipment_groups/_binding_transfer_button.html' %}
+            {% endif %}
             {% if show_ee_period_mode_toggle|default(false) %}
             <div class="btn-group flex-shrink-0 align-items-center" role="group" aria-label="Режим отображения периода">
                 <button type="button"
@@ -40,7 +43,7 @@
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
                     <label for="start_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год начала:</label>
                     <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
-                        {% for year in (filter_year_list|default([])) %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
@@ -49,7 +52,7 @@
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
                     <label for="end_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год конца:</label>
                     <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
-                        {% for year in (filter_year_list|default([])) %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
@@ -68,7 +71,7 @@
         </div>
 
         {% if show_recalculate_specific_fuel_consumption|default(false) or show_recalculate_specific_fuel_price|default(false) or show_calc_mismatch_toggle|default(false) %}
-        <!-- По центру строки: (опционально) пересчёт удельных/цен; копирование по годам – в строке «Импорт/Экспорт» (station_filters_second_row) -->
+        <!-- По центру строки: (опционально) пересчет удельных/цен; копирование по годам – в строке «Импорт/Экспорт» (station_filters_second_row) -->
         <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap station-filters-third-center flex-shrink-0">
                 {% if show_recalculate_specific_fuel_consumption|default(false) %}
                 <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_consumption') }}" class="d-inline" id="recalculateSpecificFuelConsumptionForm">
@@ -218,11 +221,23 @@
                 Проверка
             </a>
             {% endif %}
+            {% if show_fuel_detail_panels_toggle|default(false) %}
+            <button type="button"
+                    id="fuelDetailPanelsToggle"
+                    class="btn btn-success flex-shrink-0 text-nowrap"
+                    aria-pressed="true"
+                    title="Показать/скрыть таблицы детализации топлива">
+                Детализация топлива
+            </button>
+            {% if show_regional_totals_toggle|default(false) %}
+            {% include 'fuel/_shared/regional_totals_toggle.html' %}
+            {% endif %}
+            {% endif %}
             {% if show_fuel_calc_edit_hide_empty_toggle|default(false) %}
             {% set _empty_default_on = fuel_empty_rows_toggle_default_on|default(true) %}
             {% set _empty_style = fuel_empty_rows_toggle_style|default('secondary') %}
-            {% set _empty_title_off = fuel_empty_rows_toggle_title_off|default('Показать строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)') %}
-            {% set _empty_title_on = fuel_empty_rows_toggle_title_on|default('Скрыть строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)') %}
+            {% set _empty_title_off = fuel_empty_rows_toggle_title_off|default('Показать строки, у которых показатели не заполнены (желтые строки изменения Nуст всегда видны)') %}
+            {% set _empty_title_on = fuel_empty_rows_toggle_title_on|default('Скрыть строки, у которых показатели не заполнены (желтые строки изменения Nуст всегда видны)') %}
             <button type="button"
                     id="fuelEditHideEmptyToggle"
                     class="btn text-wrap flex-shrink-0 {% if _empty_style == 'primary' %}{% if _empty_default_on %}btn-primary{% else %}btn-outline-primary{% endif %}{% else %}{% if _empty_default_on %}btn-secondary{% else %}btn-outline-secondary{% endif %}{% endif %}"
@@ -247,34 +262,18 @@
                 Проверка
             </a>
             {% endif %}
-            {% if show_fuel_detail_panels_toggle|default(false) %}
-            <button type="button"
-                    id="fuelDetailPanelsToggle"
-                    class="btn btn-success flex-shrink-0 text-nowrap"
-                    aria-pressed="true"
-                    title="Показать/скрыть таблицы детализации топлива">
-                Детализация топлива
-            </button>
-            {% endif %}
             {% if not hide_pagination_and_per_page|default(false) %}
             <form id="perPageForm" method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}">
                 {% for key, value in request.args.items(multi=True) %}
                     {% if key != "per_page"
+                          and (not show_energy_balance_refresh|default(false) or key != "rounding_digits")
                           and key not in _fuel_transient_query_keys|default(['equipment_group_ids', 'show_empty_rows']) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
-                <div class="d-flex align-items-center flex-wrap gap-4">
-                    {% if show_regional_totals_toggle|default(false) %}
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
-                            {% if request.args.get('show_totals') == '1' %}checked{% endif %}>
-                        <label for="show_totals_switch"
-                            class="btn {% if request.args.get('show_totals') == '1' %}btn-primary{% else %}btn-outline-secondary text-dark{% endif %} px-3 text-center"
-                            style="min-width: 260px;">
-                            {{ regional_totals_toggle_label|default('Показать суммы по регионам') }}
-                        </label>
-                    </div>
+                <div class="d-flex align-items-center {% if show_energy_balance_refresh|default(false) %}flex-nowrap gap-2{% else %}flex-wrap gap-4{% endif %}">
+                    {% if show_regional_totals_toggle|default(false) and not show_fuel_detail_panels_toggle|default(false) %}
+                    {% include 'fuel/_shared/regional_totals_toggle.html' %}
                     {% endif %}
                     {% if show_ee_verification_toggle|default(false) %}
                     <button type="button"
@@ -286,7 +285,8 @@
                         Проверка
                     </button>
                     {% endif %}
-                    <div id="per_page_select_block" class="ms-2">
+                    {% if not hide_pagination_and_per_page|default(false) %}
+                    <div id="per_page_select_block" class="ms-2{% if show_energy_balance_refresh|default(false) %} order-first{% endif %}">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
                             <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>
                             <select id="per_page_select" name="per_page" class="form-select" style="min-width: 150px;" onchange="this.form.submit()">
@@ -299,6 +299,20 @@
                             </select>
                         </div>
                     </div>
+                    {% endif %}
+                    {% if show_energy_balance_refresh|default(false) and energy_balance_refresh %}
+                    {% include 'energy_balance/_data_refresh.html' %}
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                        <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>
+                        <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;">
+                            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                        </select>
+                    </div>
+                    {% endif %}
                 </div>
             </form>
             {% endif %}

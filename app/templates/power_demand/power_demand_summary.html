@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set data_refresh_inline = true %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -271,13 +272,13 @@
                 {% endfor %}
                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                 <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                    {% for year in filter_year_list %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                 <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                    {% for year in filter_year_list %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
@@ -293,7 +294,7 @@
                 {% endif %}
             </div>
             {% endif %}
-            <div id="pdPdSummaryViewToggles" class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto flex-wrap justify-content-end">
+            <div id="pdPdSummaryViewToggles" class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto flex-wrap justify-content-end mw-100">
             {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdPdSummaryTerritoryCompactToggle"
@@ -354,7 +355,7 @@
                     id="pdPdSummaryCalcMaxToggle"
                     class="btn btn-outline-success text-wrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Расчетный максимум …» (зелёный фон)">
+                    title="Показать строки «Расчетный максимум …» (зеленый фон)">
                 Расчетные максимумы
             </button>
             {% if can_edit_summary_cells %}
@@ -382,30 +383,35 @@
                     title="Показать или скрыть строки коэффициентов k под значениями МВт по годам">
                 Коэффициенты
             </button>
-            <div id="pdCoeffKRoundingWrap"
-                 class="d-flex align-items-center gap-1 flex-shrink-0"
-                 style="min-width: 11rem;"
-                 aria-hidden="false">
-                <label for="rounding_digits_k" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл (k):</label>
-                <select id="rounding_digits_k" name="rounding_digits_k_ui" class="form-select" style="min-width: 140px;">
-                    {% set _rd_k = rounding_digits_k if rounding_digits_k is defined else 3 %}
-                    <option value="0" {% if _rd_k == 0 %}selected{% endif %}>Не округлять</option>
-                    <option value="1" {% if _rd_k == 1 %}selected{% endif %}>1 знак</option>
-                    <option value="2" {% if _rd_k == 2 %}selected{% endif %}>2 знака</option>
-                    <option value="3" {% if _rd_k == 3 %}selected{% endif %}>3 знака</option>
-                    <option value="-1" {% if _rd_k == -1 %}selected{% endif %}>Целое число</option>
-                </select>
-            </div>
             {% endif %}
-            <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 16rem;">
-                <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл (МВт):</label>
-                <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
-                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
-                </select>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                {% include 'power_demand/_data_refresh.html' %}
+                {% if summary_route_variant == 'coeff' %}
+                <div id="pdCoeffKRoundingWrap"
+                     class="d-flex align-items-center gap-1 flex-shrink-0"
+                     style="min-width: 11rem;"
+                     aria-hidden="false">
+                    <label for="rounding_digits_k" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл (k):</label>
+                    <select id="rounding_digits_k" name="rounding_digits_k_ui" class="form-select" style="min-width: 140px;">
+                        {% set _rd_k = rounding_digits_k if rounding_digits_k is defined else 3 %}
+                        <option value="0" {% if _rd_k == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if _rd_k == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if _rd_k == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if _rd_k == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if _rd_k == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 16rem;">
+                    <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл (МВт):</label>
+                    <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
             </div>
             </div>
         </div>
@@ -456,7 +462,7 @@
         /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important – против Popper/Bootstrap */
         z-index: 1054 !important;
     }
-    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body – задаём класс в JS */
+    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребенком body – задаем класс в JS */
     body .select2-dropdown.pd-summary-filter-select2-dd {
         z-index: 1054 !important;
     }
@@ -671,8 +677,8 @@
     {% set _coeff_mixin_num_col_w = "6.5rem" %}
     {% set _coeff_mixin_sample_col_w = "7rem" %}
     {% set _coeff_mixin_source_col_w = "7.5rem" %}
-    {# Для coeff ширины числовых колонок не задаём в % – см. комментарий выше. #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/power_demand_summary_page.css') }}?v=6">
+    {# Для coeff ширины числовых колонок не задаем в % – см. комментарий выше. #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/power_demand_summary_page.css') }}?v=7">
     <style id="pd-summary-col-vars">
     .power-demand-summary-table {
         --pd-summary-entity-col-w: {{ summary_entity_col_w }};
@@ -928,13 +934,13 @@
                     <th class="summary-entity-col pd-coeff-sticky-head-cont" aria-hidden="true"></th>
                     <th class="summary-parameter-col pd-coeff-sticky-head-cont" aria-hidden="true"></th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет без<br>min и max)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10trim|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет без<br>min и max)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10trim|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для СиПР<br><span class="power-demand-coeff-mixin-th-paren">(5 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs5|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для СиПР<br><span class="power-demand-coeff-mixin-th-paren">(5 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs5|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-sample">
                         <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
@@ -958,7 +964,7 @@
                                     {% endfor %}
                                 </ul>
                             </div>
-                            <i class="bi bi-info-circle text-primary align-self-center ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_sample|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                            <i class="bi bi-info-circle text-primary align-self-center ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_sample|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                             <button class="btn btn-sm btn-outline-danger filter-clear-btn{% if not request.args.getlist('coeff_sample_years') %} d-none{% endif %}" type="button" data-filter-name="coeff_sample_years" title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;">
                                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                             </button>
@@ -1173,105 +1179,105 @@
                         {% if _pd_coeff_combined_res %}
                         <span class="text-wrap">{{ row.parameter_label }}</span>
                         {% elif row.get('pd_parameter_formula_tooltip') %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_parameter_formula_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_parameter_formula_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта столбца"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета столбца"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта столбца"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета столбца"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_russia_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_ez_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_cz_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif 'калининград' in _pd_sa_lbl_cf %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% else %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% endif %}
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_sa_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif 'калининград' in _pd_sa_lbl_cf %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% else %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% endif %}
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.entity_kind == 'synchronous_area' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif 'калининград' in _pd_sa_lbl_cf %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% else %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% endif %}
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_cz_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_sa_mw' %}
                         {% if row.entity_kind == 'synchronous_area' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif 'калининград' in _pd_sa_lbl_cf %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_kaliningrad_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% else %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% endif %}
                         {% else %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% endif %}
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_russia_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_via_oes_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_via_es_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_max_ees_via_ez_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.entity_kind == 'centralized_zone' and row.parameter_key == 'cz_calculated_max_cz_russia_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_cz_calc_max_tooltip|default('')|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_cz_calc_max_tooltip|default('')|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'calculated_max_power_mw' and row.get('pd_formula_text_key') == 'chukotka_rd_calc_max_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_chukotka_rd_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_chukotka_rd_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'calculated_max_power_mw' and row.get('pd_formula_text_key') == 'chukotka_rd_territorial_calc_max_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_chukotka_rd_territorial_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_chukotka_rd_territorial_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'fo' and _cz_fo_tot %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_coeff_cz_total_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Пояснение расчёта строки"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_coeff_cz_total_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Пояснение расчета строки"></i></span>
                         {% else %}
                         {{ row.parameter_label }}
                         {% endif %}
@@ -1321,10 +1327,9 @@
                         {% if _can_edit_hist_cell %}
                         {% set _hv = row.hist_value if row.hist_value != '–' else '' %}
                         {% if row.parameter_key == 'peak_datetime' %}
-                        <input type="text"
+                        <textarea rows="2"
                                autocomplete="off"
-                               class="form-control form-control-lg text-center fuel-param-input"
-                               value="{{ _hv }}"
+                               class="form-control form-control-lg text-center fuel-param-input power-demand-summary-datetime-field"
                                data-initial="{{ _hv|e }}"
                                data-slice="hist"
                                data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
@@ -1335,7 +1340,7 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-parameter-key="{{ row.parameter_key }}"
                                data-model="{{ row.demand_model_name }}"
-                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум" />
+                               aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, исторический максимум">{{ _hv }}</textarea>
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
@@ -1540,7 +1545,7 @@
                             {% set _pd_param_for_k = row.parameter_label|replace(', МВт', '')|replace(', °C', '')|trim %}
                             {% set _pd_coeff_k_tooltip = 'k = «' ~ _pd_param_for_k ~ '»' ~ _pd_coeff_k_formula_default_suffix %}
                         {% endif %}
-                        <span class="pd-coeff-k-label-text">k</span>{% if _pd_coeff_k_tooltip %}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_k_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта коэффициента k"></i>{% endif %}
+                        <span class="pd-coeff-k-label-text">k</span>{% if _pd_coeff_k_tooltip %}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_k_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета коэффициента k"></i>{% endif %}
                     </td>
                     {% if _pd_coeff_mixin_ui %}
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell"></td>
@@ -1730,7 +1735,7 @@
                             data-offset="{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}"
                             style="display: none;">
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
-                        Показать ещё
+                        Показать еще
                     </button>
                 </div>
                 {% endif %}
@@ -1882,7 +1887,7 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=34"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=35"></script>
 {% endif %}
 
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=6"></script>
@@ -1892,7 +1897,7 @@
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_year_period_mode.js') }}"></script>
 {% endif %}
 <script type="application/json" id="pd-summary-page-config">{"hist_editable_keys": {{ (pd_summary_hist_editable_keys | default([])) | tojson }}, "hist_restricted": {{ (pd_summary_hist_restricted | default(false)) | tojson }}, "csrf_token": {{ csrf_token | tojson }}}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=6"></script>
 {% if active_summary in ('oes', 'fo', 'ez') %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_cascade_common.js') }}"></script>
 {% endif %}

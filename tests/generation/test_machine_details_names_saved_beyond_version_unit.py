@@ -3,7 +3,7 @@
 
 Раньше названия для годов позже последнего года версии БД принудительно
 обнулялись при сохранении (в то время как мощности, тип ТЭС и топливо
-сохранялись по всему периоду) – из-за этого введённое название терялось
+сохранялись по всему периоду) – из-за этого введенное название терялось
 после перезагрузки карточки.
 """
 from __future__ import annotations
@@ -44,7 +44,7 @@ def test_machine_names_are_saved_for_years_beyond_db_version() -> None:
 
 def test_machine_names_are_still_propagated_across_the_row() -> None:
     block = _machine_names_persist_block()
-    # последнее введённое название протягивается на все последующие годы
+    # последнее введенное название протягивается на все последующие годы
     assert "last_effective_name = raw_name" in block
     assert "effective_name = last_effective_name" in block
     # но не заполняет год, ячейку которого очистили вручную

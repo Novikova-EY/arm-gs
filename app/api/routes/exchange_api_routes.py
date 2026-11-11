@@ -2,7 +2,7 @@
 """JSON-API наборов datasets: отдельный набор – отдельный URL.
 
 GET /api/config – discovery (первый запрос внешнего клиента)
-GET /api/datasets – список имён наборов (справка)
+GET /api/datasets – список имен наборов (справка)
 GET /api/datasets/<database_version> – каталог наборов выбранной версии
 GET /api/datasets/<database_version>/<dataset> – один JSON-набор
 GET /api/duplicate_identity_uuids – план разведения дублирующих UUID
@@ -87,7 +87,7 @@ def get_exchange_config():
 def get_datasets_catalog():
     """
     Справка: какие наборы можно запросить по id версии.
-    Лёгкий ответ – открывается в браузере.
+    Легкий ответ – открывается в браузере.
 
     GET /api/datasets
     """

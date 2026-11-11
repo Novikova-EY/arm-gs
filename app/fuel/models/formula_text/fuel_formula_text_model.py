@@ -9,7 +9,7 @@ from config import SCHEMA_FUEL
 
 
 class FuelFormulaText(db.Model, AuditMixin):
-    """Только текст подсказки; расчёт значений не меняется."""
+    """Только текст подсказки; расчет значений не меняется."""
 
     __tablename__ = "gs_fue_formula_texts"
     __table_args__ = (

@@ -17,14 +17,14 @@
 
                 <label for="start_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год начала:</label>
                 <select name="start_year" id="start_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
-                    {% for year in (filter_year_list|default([])) %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
 
                 <label for="end_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год конца:</label>
                 <select name="end_year" id="end_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
-                    {% for year in (filter_year_list|default([])) %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>

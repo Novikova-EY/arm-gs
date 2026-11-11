@@ -22,13 +22,13 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_serv
 )
 from app.fuel.services.formula_text.fuel_formula_text_registry import iter_formula_defs
 
-# Дефолтные тексты (без учёта переопределений в БД). Эффективные – get_consumption_formulas().
+# Дефолтные тексты (без учета переопределений в БД). Эффективные – get_consumption_formulas().
 CONSUMPTION_FORMULAS = {
     item.map_key: item.default_text
     for item in iter_formula_defs(map_name="consumption")
 }
 
-# Consumption: сначала вводимые k, y, btp, sntp, bk, snk; затем расчётные *_calc (только просмотр в UI)
+# Consumption: сначала вводимые k, y, btp, sntp, bk, snk; затем расчетные *_calc (только просмотр в UI)
 _INPUT_ATTR_SET = frozenset(CONSUMPTION_FORM_INPUT_ATTRS)
 CONSUMPTION_INPUT_SPEC = [
     (attr, label)

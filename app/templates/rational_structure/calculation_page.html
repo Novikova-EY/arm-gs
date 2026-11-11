@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/pages.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/calculation_pages.css') }}?v=4">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2 rs-data-page rs-calculation-page">
+    <div class="page-table-scroll rs-calculation-scroll">
+        <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm rs-calculation-stack">
+            <div class="d-flex align-items-center gap-2 w-100 mb-2">
+                {% block calculation_navigation %}{% endblock %}
+                <a class="btn btn-secondary fs-5 text-nowrap flex-shrink-0" href="{{ url_for('rational_structure_module_bp.hub') }}">Модуль «Рациональная структура»</a>
+            </div>
+            <h1 class="text-center mb-2">{{ page_title }}</h1>
+            {% block calculation_version %}{% if version %}<p class="mb-2"><strong>Версия БД:</strong> {{ version.version_number }}</p>{% endif %}{% endblock %}
+            {% block calculation_import %}{% endblock %}
+            {% if workbook %}
+            {% block calculation_filters %}{% endblock %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                {% block calculation_period %}{% endblock %}
+                <p class="mb-0">Найдено строк: <strong>{{ total }}</strong></p>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% block calculation_extra_rounding %}{% endblock %}
+                    <label for="calculation-rounding">Округл.:</label>
+                    <select class="form-select w-auto" id="calculation-rounding" name="rounding_digits" form="calculation-filter-form" onchange="this.form.requestSubmit()">
+                        {% for digits, label in ((0, 'Не округлять'), (-1, 'Целое число'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (6, '6 знаков')) %}
+                        <option value="{{ digits }}" {% if rounding_digits == digits %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if version_id is none %}
+        <div class="alert alert-warning mt-3">Выберите версию базы данных.</div>
+        {% elif not workbook %}
+        <div class="alert alert-info mt-3">В выбранной версии БД расчетная книга пока не загружена.</div>
+        {% else %}
+        {% block calculation_source %}
+        <details class="my-2">
+            <summary>Источник и особенности расчета</summary>
+            <p class="mb-1">{{ workbook.source_filename }}. Показаны результаты, сохраненные в Excel. Автоматический пересчет по данным АРМ не выполняется. Формулы доступны при наведении на расчетные ячейки; внешние ссылки не исполняются.</p>
+            <p class="mb-1">Пустая ячейка обозначена «–», нули сохранены. Округление влияет только на отображение.</p>
+        </details>
+        {% endblock %}
+        {% if table.error_count %}
+        <div class="alert alert-warning" role="alert">В исходном листе {{ table.error_count }} ячеек с ошибками Excel или без сохраненного результата формулы. Они выделены в таблице и не заменяются нулями.</div>
+        {% endif %}
+        {% block calculation_summary %}{% endblock %}
+        {% include 'rational_structure/_calculation_table.html' %}
+        {% block calculation_pagination %}{% endblock %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

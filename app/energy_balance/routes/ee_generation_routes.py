@@ -22,6 +22,7 @@ from app.energy_balance.services.station_ee_generation_page_services import (
     update_res_control_generation_value,
 )
 from app.generation.forms.station_forms import StationFilterForm
+from app.generation.services.station_services.generation_only_visibility import generation_page_data
 from app.generation.services.station_services.filters_services import (
     extract_filters_from_args,
     extract_filters_from_form,
@@ -52,13 +53,14 @@ def _parse_ee_period_mode() -> str:
 
 
 def _parse_rounding_digits(default: int = 1) -> int:
-    """Берёт последний rounding_digits (select после hidden-дубликата в форме)."""
+    """Берет последний rounding_digits (select после hidden-дубликата в форме)."""
     values = request.args.getlist("rounding_digits")
     return resolve_rounding_digits(values[-1] if values else None, default=default)
 
 
 @energy_balance_bp.route("/ee_generation/", methods=["GET", "POST"])
 @login_required
+@generation_page_data
 def ee_generation():
     form = StationFilterForm()
     ee_period_mode = _parse_ee_period_mode()
@@ -168,6 +170,15 @@ def ee_generation():
     context["res_control_by_res"] = page_data.get("res_control_by_res", {})
     context["res_stations_left_by_res"] = page_data.get("res_stations_left_by_res", {})
     context["res_verification_by_res"] = page_data.get("res_verification_by_res", {})
+    context["decentralized_zone_control_by_period"] = page_data.get(
+        "decentralized_zone_control_by_period", {}
+    )
+    context["decentralized_zone_station_sum_by_period"] = page_data.get(
+        "decentralized_zone_station_sum_by_period", {}
+    )
+    context["decentralized_zone_verification_by_period"] = page_data.get(
+        "decentralized_zone_verification_by_period", {}
+    )
     context["is_verification_nonzero"] = is_verification_nonzero
     context["format_generation_input_value"] = format_generation_input_value
     context["total_tooltip_energy_unit"] = TOTAL_TOOLTIP_ENERGY_UNIT
@@ -186,6 +197,34 @@ def ee_generation():
         has_active_filters=has_active_filters,
         **context,
     )
+
+
+@energy_balance_bp.route("/ee_generation/station_value/", methods=["PATCH"])
+@login_required
+def ee_generation_station_value():
+    from app.extensions import db
+    from app.energy_balance.services.generation_only_value_services import update_generation_only_value
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    mode = data.get("ee_period_mode", EE_PERIOD_MODE_YEARS)
+    if mode not in (EE_PERIOD_MODE_YEARS, EE_PERIOD_MODE_MONTHS):
+        return jsonify(ok=False, error="Неверный режим периода"), 400
+    try:
+        value = update_generation_only_value(
+            data.get("station_id"), data.get("period"), data.get("value"),
+            period_mode=mode, selected_year=data.get("selected_year"),
+            user=session.get("username", "Неизвестный пользователь"),
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Не удалось сохранить выработку станции для агрегации")
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+    return jsonify(ok=True, value=None if value is None else str(value))
 
 
 @energy_balance_bp.route("/ee_generation/control_value/", methods=["PATCH"])
@@ -264,7 +303,7 @@ def ee_generation_control_value():
 @energy_balance_bp.route("/ee_generation/export", methods=["GET"])
 @login_required
 def export_ee_generation():
-    """Экспорт выработки ЭЭ в Excel с учётом фильтров и настроек отображения."""
+    """Экспорт выработки ЭЭ в Excel с учетом фильтров и настроек отображения."""
     try:
         ee_period_mode = _parse_ee_period_mode()
         selected_year = None

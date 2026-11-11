@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Сравнение scatter-графиков электроёмкости: Excel vs страница."""
+"""Сравнение scatter-графиков электроемкости: Excel vs страница."""
 from __future__ import annotations
 
 import math

@@ -1,7 +1,7 @@
 /**
  * Режимы годов на сводках «максимумы» потребления (ОЭС/ФО/ЭЗ):
  * – manual: только диапазон «Год начала» / «Год конца» (кнопки периодов неактивны);
- * – segments: отчётный N−9…N и/или среднесрочный N+1…N+6.
+ * – segments: отчетный N−9…N и/или среднесрочный N+1…N+6.
  */
 (function (global) {
     var STORAGE_KEY = "powerDemandSummaryMaxYearSegVisibleV3";
@@ -196,7 +196,7 @@
                 btn.classList.add("btn-outline-warning");
                 btn.setAttribute("aria-pressed", "false");
                 if (seg === "reporting") {
-                    btn.title = "Включить отчётный период (сбросить ручной выбор годов)";
+                    btn.title = "Включить отчетный период (сбросить ручной выбор годов)";
                 } else {
                     btn.title = "Включить среднесрочный период (сбросить ручной выбор годов)";
                 }

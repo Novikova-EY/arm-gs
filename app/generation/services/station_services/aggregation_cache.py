@@ -10,6 +10,7 @@ from flask import current_app
 # Fallback in-memory кэш (если Redis недоступен)
 _cache = {}
 _cache_timeout = timedelta(minutes=30)  # Кэш на 30 минут
+_AGGREGATION_CACHE_REDIS_PREFIX = "stations:aggregation:"
 
 # Версия ключей кэша агрегаций.
 # Инкрементируйте при изменении структуры строк/запросов агрегации, чтобы избежать
@@ -38,7 +39,8 @@ AGGREGATION_CACHE_KEY_VERSION = 14
 # v6: корреляция station_id через MFP.machine_id
 # v7: общая группа явна только для станции-владельца
 # v8: общая группа – явная привязка для всех связанных станций
-STATIONS_SORT_CACHE_KEY_VERSION = 8
+# v9: станции без прямой РЭС отбираются по связям субъекта РФ
+STATIONS_SORT_CACHE_KEY_VERSION = 9
 
 # Отдельный Redis‑клиент для кэша (не тот, что используется Flask‑Session)
 _redis_client = None
@@ -93,7 +95,7 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
                 "station_type_filter", "station_name_filter", "external_code_filter", "gen_company_filter",
                 "tes_type_filter", "tes_machine_type_filter",
                 "fuel_type_filter", "condition_type_filter",
-                "machines_without_equipment_group",
+                "machines_without_equipment_group", "_energy_balance_revision",
                 "date_commission_filter", "date_exploitation_filter",
                 "date_decompressing_expected_filter", "date_modernization_expected_filter",
                 "date_modernization_no_power_expected_filter", "relabing_outcome_filter",
@@ -109,31 +111,51 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
 
 
 def cache_aggregation(func):
-    """Декоратор для кэширования результатов агрегации."""
+    """Кэширует результаты агрегации в Redis между worker-процессами."""
     @wraps(func)
     def wrapper(start_year, end_year, station_ids, filters=None):
-        # Генерируем ключ кэша
         cache_key = get_cache_key(start_year, end_year, station_ids, filters)
-        
-        # Проверяем, есть ли данные в кэше и не устарели ли они
-        if cache_key in _cache:
+        redis_key = f"{_AGGREGATION_CACHE_REDIS_PREFIX}{cache_key}"
+        redis_client = get_redis_client()
+        redis_checked = False
+
+        if redis_client:
+            try:
+                serialized = redis_client.get(redis_key)
+                redis_checked = True
+                if serialized:
+                    result = pickle.loads(serialized)
+                    _cache[cache_key] = (result, datetime.now())
+                    print("[CACHE HIT REDIS] Используются кэшированные данные агрегации")
+                    return result
+            except Exception:
+                # Поврежденный/недоступный Redis-кэш не должен блокировать расчет.
+                pass
+
+        # Используем локальный кэш, только если Redis недоступен. Когда Redis
+        # отвечает, он является общей точкой истины после очистки из другого worker.
+        if not redis_checked and cache_key in _cache:
             cached_data, cached_time = _cache[cache_key]
             if datetime.now() - cached_time < _cache_timeout:
-                print(f"[CACHE HIT] Используются кэшированные данные агрегации")
+                print("[CACHE HIT] Используются кэшированные данные агрегации")
                 return cached_data
-            else:
-                # Удаляем устаревшие данные
-                del _cache[cache_key]
-        
-        # Вызываем оригинальную функцию
+            del _cache[cache_key]
+
         result = func(start_year, end_year, station_ids, filters)
-        
-        # Сохраняем в кэш
-        _cache[cache_key] = (result, datetime.now())
-        print(f"[CACHE MISS] Данные агрегации закэшированы")
-        
+        cached_at = datetime.now()
+        _cache[cache_key] = (result, cached_at)
+        if redis_client:
+            try:
+                redis_client.setex(
+                    redis_key,
+                    int(_cache_timeout.total_seconds()),
+                    pickle.dumps(result),
+                )
+            except Exception:
+                pass
+        print("[CACHE MISS] Данные агрегации закэшированы")
         return result
-    
+
     return wrapper
 
 
@@ -146,7 +168,11 @@ def clear_aggregation_cache():
         try:
             # ИСПРАВЛЕНО: Используем более широкий паттерн для очистки ВСЕХ версий кэша
             keys_to_delete = []
-            for pattern in ['stations:sorted:*', 'stations:page:*']:
+            for pattern in [
+                'stations:aggregation:*',
+                'stations:sorted:*',
+                'stations:page:*',
+            ]:
                 cursor = 0
                 while True:
                     cursor, keys = redis_client.scan(cursor, match=pattern, count=100)
@@ -450,6 +476,8 @@ def get_sorted_stations_cache_key(filters):
     current_version = get_current_db_version_id()
     relevant_filters['_db_version'] = current_version
     relevant_filters['_sort_v'] = STATIONS_SORT_CACHE_KEY_VERSION
+    from app.generation.services.station_services.generation_only_visibility import generation_visibility_cache_key
+    relevant_filters["_generation_only"] = generation_visibility_cache_key()
     
     filter_items = sorted(relevant_filters.items())
     key_data = str(filter_items)

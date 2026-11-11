@@ -6,7 +6,7 @@
 
 /*
  * Граница между блоками: border-top на первой видимой строке следующего блока.
- * Так линия идёт через все столбцы, включая rowspan «Энергосистема»/«Примечание».
+ * Так линия идет через все столбцы, включая rowspan «Энергосистема»/«Примечание».
  */
 #powerDemandSummaryTable.power-demand-summary-table > tbody > tr.pd-summary-entity-block-first > td {
     border-top-width: 2px !important;

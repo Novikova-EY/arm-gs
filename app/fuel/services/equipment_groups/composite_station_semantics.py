@@ -12,7 +12,7 @@
   ved   – операционный код строки за год (не путать с EquipmentGroup.vedomstvo);
           подписи – FUEL_PARAM_VED_LABELS.
 
-Антидубль в расчёте Access: фильтры вида (ved>0) на рабочей таблице.
+Антидубль в расчете Access: фильтры вида (ved>0) на рабочей таблице.
 Родитель после появления детей получает ved=0 и выпадает из Коэфф/Распред/Топливо.
 
 Режим детализации параметров за год (без отдельной таблицы на первом этапе):
@@ -104,7 +104,7 @@ def fuel_param_ved_participates(ved: Any) -> bool:
 
 
 def fuel_param_row_participates(param: Any) -> bool:
-    """Строка FuelParam участвует в расчётных суммах / отборе ved>0."""
+    """Строка FuelParam участвует в расчетных суммах / отборе ved>0."""
     if param is None:
         return False
     return fuel_param_ved_participates(getattr(param, "ved", None))
@@ -185,7 +185,7 @@ def should_show_station_summary_for_detail_level(
     *,
     participating_group_count: int,
 ) -> bool:
-    """Жёлтая «станция, всего» – только когда за год учёт по группам и ≥2 участников."""
+    """Желтая «станция, всего» – только когда за год учет по группам и ≥2 участников."""
     if detail_level != "by_groups":
         return False
     return participating_group_count > 1

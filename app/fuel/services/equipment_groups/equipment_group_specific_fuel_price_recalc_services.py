@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Пересчёт полей xxx_c в EquipmentGroupSpecificFuelPrice по данным:
+Пересчет полей xxx_c в EquipmentGroupSpecificFuelPrice по данным:
 EquipmentGroupFuelParam, EquipmentGroupExtraFuelParam, EquipmentGroupSpecificFuelCost.
 
 Формулы – в equipment_group_specific_fuel_price_calc_services (fill_specific_fuel_price_from_calc).
@@ -36,7 +36,7 @@ def recalculate_specific_fuel_prices_for_equipment_group(
 ) -> int:
     """
     Пересчитывает удельную цену (поля xxx_c) для одной группы оборудования
-    за годы [start_year, end_year]. При отсутствии строки цены создаёт её.
+    за годы [start_year, end_year]. При отсутствии строки цены создает ее.
 
     Возвращает число обработанных годов (строк price).
     """
@@ -134,7 +134,7 @@ def recalculate_all_specific_fuel_prices(
 ) -> int:
     """
     Пересчитывает поля xxx_c в EquipmentGroupSpecificFuelPrice
-    по cost / объёмам топлива.
+    по cost / объемам топлива.
 
     Использование:
     - кнопка «Рассчитать цены топлива» на странице цены;

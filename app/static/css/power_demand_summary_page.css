@@ -35,6 +35,36 @@
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
     background-color: #f0dede !important;
 }
+
+/* Иерархические уровни: палитра как в модуле «Спрос». */
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]) tbody tr.summary-kind-group > td:not(.summary-plan-empty),
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]) tbody tr.summary-kind-group-root > td:not(.summary-plan-empty) {
+    background-color: #eef5ff;
+}
+
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]) tbody tr.summary-kind-child > td:not(.summary-plan-empty),
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]) tbody tr.summary-kind-res_subject_sum_check > td:not(.summary-plan-empty) {
+    background-color: #fbfcff;
+}
+
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]).table-hover > tbody > tr:is(.summary-kind-group, .summary-kind-group-root):hover > td:not(.summary-plan-empty) {
+    background-color: #dde8fc;
+}
+
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]).table-hover > tbody > tr:is(.summary-kind-child, .summary-kind-res_subject_sum_check):hover > td:not(.summary-plan-empty) {
+    background-color: #eef2fc;
+}
+
+#powerDemandSummaryTable[data-active-summary] tbody tr:is(.summary-kind-group, .summary-kind-group-root, .summary-kind-child, .summary-kind-res_subject_sum_check, .pd-pd-verify-for-row, .pd-pd-calc-max-row, .pd-pd-chi-row, .pd-pd-ee-row) > td:not(.summary-plan-empty):not(.pd-ec-variant-year-out):not(.summary-hist-cell-disabled) {
+    background-image: none !important;
+}
+
+#powerDemandSummaryTable:not([data-ec-unify-block-bg="1"]) tbody tr:is(.summary-kind-group, .summary-kind-group-root, .summary-kind-child, .summary-kind-res_subject_sum_check) > td:not(.summary-plan-empty) {
+    --bs-table-bg-type: transparent;
+    --bs-table-bg-state: transparent;
+    --bs-table-accent-bg: transparent;
+}
+
 .power-demand-summary-loader-shell {
         position: relative;
     }
@@ -396,7 +426,7 @@
         min-width: var(--pd-summary-entity-col-w);
         max-width: var(--pd-summary-entity-col-w);
         background-color: #f8f9fa;
-        /* Не transform: в одном scroll-wrap (X+Y) left-sticky ещё и липнет вверх и рисуется поверх шапки. */
+        /* Не transform: в одном scroll-wrap (X+Y) left-sticky еще и липнет вверх и рисуется поверх шапки. */
         top: auto;
         bottom: auto;
     }
@@ -487,7 +517,7 @@
         min-width: 100%;
         max-width: none;
     }
-    /* Как /summary/oes/: в теле без вертикальных линий столбцов (separate даёт «двойные» L+R).
+    /* Как /summary/oes/: в теле без вертикальных линий столбцов (separate дает «двойные» L+R).
        Горизонтальные границы строк и сетка шапки сохраняются. */
     .power-demand-summary-table.pd-coeff-year-seg-table.table-bordered > tbody > tr > td {
         border-left-width: 0;
@@ -502,7 +532,7 @@
     }
     /*
      * Граница между блоками: border-top на первой строке следующего блока.
-     * Специфичность = правилу обнуления выше. Так линия идёт через все столбцы,
+     * Специфичность = правилу обнуления выше. Так линия идет через все столбцы,
      * включая rowspan «Энергосистема»/«Примечание», и не прячется под sticky.
      */
     #powerDemandSummaryTable.power-demand-summary-table > tbody > tr.pd-summary-entity-block-first > td {
@@ -785,7 +815,7 @@
         background-clip: padding-box;
     }
     /*
-     * Синий контур фокуса должен совпадать по размеру с зелёным контуром сохранённой ячейки
+     * Синий контур фокуса должен совпадать по размеру с зеленым контуром сохраненной ячейки
      * (td.pd-summary-cell-save-success). Оба рисуются на <td>, поэтому рамка обводит всю ячейку,
      * а не только поле ввода (в высоких ячейках input ниже td и рамка выглядела меньше).
      */
@@ -917,7 +947,7 @@
         min-width: 5.5rem;
         max-width: none;
     }
-    /* Неактивные переключатели периодов: чёрный текст (outline-warning по умолчанию слабо читается) */
+    /* Неактивные переключатели периодов: черный текст (outline-warning по умолчанию слабо читается) */
     #powerDemandCoeffSegToggles .btn-outline-warning {
         color: #000;
     }

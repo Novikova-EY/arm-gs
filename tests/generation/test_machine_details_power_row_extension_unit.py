@@ -22,7 +22,7 @@ def _extend_power_value_body() -> str:
 
 
 def _function_body(path: Path, name: str) -> str:
-    """Тело JS-функции по имени (с учётом вложенных фигурных скобок)."""
+    """Тело JS-функции по имени (с учетом вложенных фигурных скобок)."""
     text = path.read_text(encoding="utf-8")
     start = text.index("function {}(".format(name))
     depth = 0

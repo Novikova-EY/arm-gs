@@ -195,7 +195,7 @@ def _get_or_create_equipment_group_fuel_formula_row(
     """
     Одна строка на uq_eq_group_fuel_formula_group_year_variant_version.
 
-    Ищем по той же database_version_id, которая уйдёт в INSERT (текущая версия,
+    Ищем по той же database_version_id, которая уйдет в INSERT (текущая версия,
     если у группы NULL). Иначе строка с version=20 не находится, а INSERT
     падает с UniqueViolation. Savepoint – на случай дублей в Excel / гонки.
     """

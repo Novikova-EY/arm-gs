@@ -50,7 +50,7 @@ def _sync_energy_zone_aggregates_for_ids(
     *,
     database_version_id=None,
 ):
-    """Пересчёт агрегатов потребления ЭЗ после смены привязки субъектов."""
+    """Пересчет агрегатов потребления ЭЗ после смены привязки субъектов."""
     ids = {int(ez_id) for ez_id in energy_zone_ids if ez_id is not None}
     if not ids:
         return

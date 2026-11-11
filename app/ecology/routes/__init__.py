@@ -6,3 +6,4 @@ from app.ecology.routes import new_tes_routes  # noqa: F401
 from app.ecology.routes import gis_tes_fuel_comparison_routes  # noqa: F401
 from app.ecology.routes import ecology_totals_summary_routes  # noqa: F401
 from app.ecology.routes import calculation_summary_routes  # noqa: F401
+from app.ecology.routes import data_refresh_routes  # noqa: F401

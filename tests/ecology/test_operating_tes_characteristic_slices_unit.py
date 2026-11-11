@@ -4,7 +4,11 @@ from decimal import Decimal
 import pytest
 
 from app.ecology.services import operating_tes_page_services as services
-from app.ecology.services.operating_tes_constants import DEFAULT_CHARACTERISTICS, TERRITORIES
+from app.ecology.services.operating_tes_constants import (
+    COEFFICIENT_TERRITORIES,
+    DEFAULT_CHARACTERISTICS,
+    TERRITORIES,
+)
 
 
 @pytest.fixture
@@ -21,37 +25,40 @@ def fuel_row_specs(monkeypatch):
     return specs
 
 
-def test_saved_characteristics_are_shared_by_levels_but_not_year_or_version(operating_tes_db, monkeypatch):
-    for index, territory in enumerate(TERRITORIES, start=1):
+def test_saved_characteristics_are_independent_by_level_year_and_version(operating_tes_db, monkeypatch):
+    level_territories = [
+        item for item in TERRITORIES if item["slug"] not in {"minen", "prompred"}
+    ]
+    for index, territory in enumerate(level_territories, start=1):
         services.upsert_characteristic(territory["slug"], "gas_natural", 2031, "k_co2", index)
-        assert operating_tes_db.query(services.OperatingTesFuelCharacteristic).count() == 1
+        assert operating_tes_db.query(services.OperatingTesFuelCharacteristic).count() == index
     services.upsert_characteristic("vsego", "gas_natural", 2030, "k_co2", 20)
     monkeypatch.setattr(services, "get_current_db_version_id", lambda: 2)
     services.upsert_characteristic("prompred", "gas_natural", 2031, "k_co2", 30)
-    assert services.load_characteristic_overrides([2031])[("vsego", "gas_natural", 2031)]["k_co2"] == 30
+    assert services.load_characteristic_overrides([2031])[("prompred", "all", "gas_natural", 2031)]["k_co2"] == 30
     monkeypatch.setattr(services, "get_current_db_version_id", lambda: 1)
     overrides = services.load_characteristic_overrides([2030, 2031])
-    assert len(overrides) == 2
-    for territory in TERRITORIES:
+    assert len(overrides) == len(level_territories) + 1
+    for index, territory in enumerate(level_territories, start=1):
         bundle = services.compute_year_bundle(
             territory["slug"], 2031, {"gaz_prir": Decimal("10")}, overrides, {},
         )
-        assert bundle["volumes"]["co2"] == Decimal(10 * len(TERRITORIES))
+        assert bundle["volumes"]["co2"] == Decimal(10 * index)
     assert services.resolve_chars("gas_natural", 2030, overrides)["k_co2"] == 20
     assert services.resolve_chars("gas_natural", 2029, overrides)["k_co2"] == DEFAULT_CHARACTERISTICS["gas_natural"]["k_co2"]
 
 
-def test_updating_and_clearing_characteristic_from_any_level_updates_shared_value(operating_tes_db):
+def test_updating_and_clearing_characteristics_is_scoped_to_territory(operating_tes_db):
     services.upsert_characteristic("vsego", "gas_natural", 2031, "tut_per_t", 2)
     services.upsert_characteristic("centr", "gas_natural", 2031, "tut_per_t", 5)
     overrides = services.load_characteristic_overrides([2031])
-    for territory in TERRITORIES:
-        assert services.resolve_chars("gas_natural", 2031, overrides, territory["slug"])["tut_per_t"] == 5
-    services.upsert_characteristic("prompred", "gas_natural", 2031, "tut_per_t", None)
+    assert services.resolve_chars("gas_natural", 2031, overrides, "centr")["tut_per_t"] == 5
+    assert services.resolve_chars("gas_natural", 2031, overrides, "vsego")["tut_per_t"] == 2
+    services.upsert_characteristic("centr", "gas_natural", 2031, "tut_per_t", None)
     overrides = services.load_characteristic_overrides([2031])
-    for territory in TERRITORIES:
-        assert services.resolve_chars("gas_natural", 2031, overrides, territory["slug"])["tut_per_t"] == DEFAULT_CHARACTERISTICS["gas_natural"]["tut_per_t"]
-    assert operating_tes_db.query(services.OperatingTesFuelCharacteristic).count() == 1
+    assert services.resolve_chars("gas_natural", 2031, overrides, "centr")["tut_per_t"] == 2
+    assert services.resolve_chars("gas_natural", 2031, overrides, "vsego")["tut_per_t"] == 2
+    assert operating_tes_db.query(services.OperatingTesFuelCharacteristic).count() == 2
 
 
 @pytest.mark.parametrize("slug,fuel", [("unknown", "gas_natural"), ("centr", "unknown")])
@@ -60,7 +67,7 @@ def test_invalid_slice_or_fuel_is_rejected(fuel_row_specs, slug, fuel):
         services.upsert_characteristic(slug, fuel, 2031, "tut_per_t", 1)
 
 
-def test_legacy_slice_rows_are_preserved_but_not_used(operating_tes_db):
+def test_territory_characteristic_rows_are_loaded_and_used(operating_tes_db):
     services.upsert_characteristic("vsego", "gas_natural", 2031, "k_co2", 2)
     operating_tes_db.add(services.OperatingTesFuelCharacteristic(
         territory_slug="centr", fuel_key="gas_natural", year_number=2031,
@@ -68,8 +75,11 @@ def test_legacy_slice_rows_are_preserved_but_not_used(operating_tes_db):
     ))
     operating_tes_db.commit()
     overrides = services.load_characteristic_overrides([2031])
-    assert set(overrides) == {("vsego", "gas_natural", 2031)}
-    assert services.resolve_chars("gas_natural", 2031, overrides, "centr")["k_co2"] == 2
+    assert set(overrides) == {
+        ("vsego", "all", "gas_natural", 2031),
+        ("centr", "all", "gas_natural", 2031),
+    }
+    assert services.resolve_chars("gas_natural", 2031, overrides, "centr")["k_co2"] == 5
     assert operating_tes_db.query(services.OperatingTesFuelCharacteristic).count() == 2
 
 
@@ -83,38 +93,44 @@ def test_basin_fallback_uses_shared_characteristics():
         assert bundle["volumes"]["co2"] == 20
 
 
-def test_default_rows_seed_shared_characteristics_only_once(operating_tes_db):
+def test_default_characteristics_seed_each_level_only_once(operating_tes_db):
     services.ensure_default_persisted_rows([2030, 2031])
     services.ensure_default_persisted_rows([2030, 2031])
     rows = operating_tes_db.query(services.OperatingTesFuelCharacteristic).all()
-    assert len(rows) == 2 * len(DEFAULT_CHARACTERISTICS)
-    assert {row.territory_slug for row in rows} == {"vsego"}
+    expected_rows = 2 * len(DEFAULT_CHARACTERISTICS) * len(COEFFICIENT_TERRITORIES) * 3
+    assert len(rows) == expected_rows
+    assert {row.territory_slug for row in rows} == {
+        territory["slug"] for territory in COEFFICIENT_TERRITORIES
+    }
+    assert {row.affiliation for row in rows} == {"all", "minen", "prompred"}
     coefficients = operating_tes_db.query(services.OperatingTesCoefficient).all()
     assert {row.territory_slug for row in coefficients} == {territory["slug"] for territory in TERRITORIES}
 
 
-def test_characteristic_table_displays_only_selected_year_with_shared_data(monkeypatch, fuel_row_specs):
+def test_characteristic_table_shows_selected_level_and_year(monkeypatch, fuel_row_specs):
     monkeypatch.setattr(services, "get_year_columns", lambda *args: [2030, 2031])
     monkeypatch.setattr(services, "get_filter_year_list", lambda: [2030, 2031])
     monkeypatch.setattr(services, "get_year_feature_dict", lambda: {})
     monkeypatch.setattr(services, "ensure_default_persisted_rows", lambda years: None)
     monkeypatch.setattr(services, "load_characteristic_overrides", lambda years: {
-        ("centr", "gas_natural", 2031): {"k_co2": Decimal("5")},
-        ("vsego", "gas_natural", 2030): {"k_co2": Decimal("3")},
-        ("vsego", "gas_natural", 2031): {"k_co2": Decimal("2")},
+        ("centr", "all", "gas_natural", 2031): {"k_co2": Decimal("5")},
+        ("vsego", "all", "gas_natural", 2030): {"k_co2": Decimal("3")},
+        ("vsego", "all", "gas_natural", 2031): {"k_co2": Decimal("2")},
     })
     for territory in TERRITORIES:
-        for year, expected in [(2030, "3"), (2031, "2")]:
-            context = services.build_operating_tes_table_context(territory["slug"], "khar-topl", view_year=year)
-            row = next(row for row in context["rows"] if row["key"] == "gas_natural")
-            assert set(row["char_values"]) == {year}
-            assert row["char_values"][year]["k_co2"] == expected
-            assert "k_natural" not in row["char_values"][year]
-            assert "k_natural" not in {column["key"] for column in context["char_columns"]}
-            assert context["years"] == [year]
-            assert context["range_years"] == [2030, 2031]
-            assert context["year_columns_mode"] is False
-            assert len([row for row in context["rows"] if row["key"] == "gas_natural"]) == 1
+        context = services.build_operating_tes_table_context(
+            territory["slug"], "khar-topl", view_year=2031,
+        )
+        row = next(row for row in context["rows"] if row["key"] == "gas_natural")
+        expected_2031 = "5" if territory["slug"] == "centr" else "2"
+        assert set(row["char_values"]) == {2031}
+        assert row["char_values"][2031]["k_co2"] == expected_2031
+        assert "k_natural" not in row["char_values"][2031]
+        assert "k_natural" not in {column["key"] for column in context["char_columns"]}
+        assert context["years"] == [2031]
+        assert context["range_years"] == [2030, 2031]
+        assert context["year_columns_mode"] is False
+        assert len([row for row in context["rows"] if row["key"] == "gas_natural"]) == 1
 
 
 def test_characteristic_rows_follow_fuel_page_and_keep_saved_values(
@@ -133,7 +149,7 @@ def test_characteristic_rows_follow_fuel_page_and_keep_saved_values(
 
     def check_rows():
         fuel = services.build_operating_tes_table_context("vsego", "toplivo", view_year=2026)
-        chars = services.build_operating_tes_table_context("vsego", "khar-topl", view_year=2026)
+        chars = services.build_operating_tes_table_context("centr", "khar-topl", view_year=2026)
         fuel_rows = fuel["rows"][len(TOP_INPUT_ROWS) + 1:]
         assert [(row["label"], row["indent"], row["kind"]) for row in chars["rows"]] == [
             (row["label"], row["indent"], row["kind"]) for row in fuel_rows
@@ -149,7 +165,7 @@ def test_characteristic_rows_follow_fuel_page_and_keep_saved_values(
         assert rows["slan"]["editable_values"] is True
         assert rows["coal"]["editable_values"] is False
         assert rows["coal"]["is_empty"] is False
-        assert rows["coal"]["css_class"] == "table-info"
+        assert rows["coal"]["css_class"] == "table-info fw-bold"
 
     check_rows()
     # Изменение подписи, порядка и родителя справочника отражается на обеих вкладках.

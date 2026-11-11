@@ -225,7 +225,7 @@ function initializeStationFilters() {
         if (n && n.multiple) ensureDropdownMultiSelect(sel, ph);
     };
 
-    // Без Select2 сворачиваем мультиселекты сразу – иначе развёрнутый список наезжает на строку годов.
+    // Без Select2 сворачиваем мультиселекты сразу – иначе развернутый список наезжает на строку годов.
     if (!hasSelect2) {
         const uesEl = document.querySelector('#union_energy_system');
         maybeMulti('#energy_system_type', 'Тип энергосистемы');

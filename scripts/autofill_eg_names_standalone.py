@@ -120,7 +120,7 @@ def main() -> None:
         for group, old_name, suggested in planned[:30]:
             print(f"  id={group.id} numb={group.numb}: {old_name!r} -> {suggested!r}")
         if len(planned) > 30:
-            print(f"  ... и ещё {len(planned) - 30}")
+            print(f"  ... и еще {len(planned) - 30}")
 
         if args.dry_run or not planned:
             if args.dry_run:

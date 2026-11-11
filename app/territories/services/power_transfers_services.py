@@ -61,7 +61,7 @@ def get_power_transfer_filter_year_list() -> list[int]:
 
 
 def get_power_transfer_default_year_range() -> tuple[int, int]:
-    """Период по умолчанию: отчётное окно N−9…N."""
+    """Период по умолчанию: отчетное окно N−9…N."""
     bounds = get_power_transfer_filter_year_list()
     n = _power_transfer_period_base_year_n()
     default_sy = n - 9
@@ -426,7 +426,7 @@ def update_power_transfer_service(
             if changes:
                 log_to_db(
                     user,
-                    f"Обновлён переток мощности id={record_id}",
+                    f"Обновлен переток мощности id={record_id}",
                     "; ".join(changes),
                     entity_type=ENTITY_TYPE,
                     entity_id=record_id,
@@ -562,7 +562,7 @@ def delete_power_transfer_service(ids: list, user: str) -> dict[str, Any]:
             successful_deletes += 1
             log_to_db(
                 user,
-                "Удалён переток мощности",
+                "Удален переток мощности",
                 f"ID={record_id}",
                 entity_type=ENTITY_TYPE,
                 entity_id=record_id,

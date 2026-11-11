@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Исходные данные по территориям{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/territory_inputs.css') }}?v=11">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/pages.css') }}?v=5">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2 rs-data-page" data-territory-editor
+     data-save-url="{{ url_for('rational_structure_module_bp.update_territory_cell', kind='inputs') }}"
+     data-version-id="{{ version_id }}" data-zone-id="{{ 0 if is_ees else (selected_zone.id if selected_zone else '') }}"
+     data-sheet="{{ sheet }}" data-rounding="{{ rounding_digits }}">
+    {% set territory_active_sheet = sheet %}
+    {% set territory_zone_id = 0 if is_ees else (selected_zone.id if selected_zone else none) %}
+    <div class="rs-sheet-nav mb-2">
+        {% include 'rational_structure/_territory_nav.html' %}
+        {% include 'rational_structure/_territory_zone_nav.html' %}
+    </div>
+    <h1 class="text-center mb-2">{% if is_ees %}{{ 'Состав генерирующего оборудования' if sheet == 'equipment' else 'Исходные данные' }} – ЕЭС России{% elif selected_zone %}{{ 'Состав генерирующего оборудования энергозоны' if sheet == 'equipment' else 'Исходные данные по энергозоне' }} {{ selected_zone.number }} - {{ selected_zone.name }}{% else %}{{ 'Состав генерирующего оборудования' if sheet == 'equipment' else 'Исходные данные по территориям' }}{% endif %}</h1>
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="database_version_id" value="{{ version_id }}">
+    {% if version_id is none %}
+    <div class="alert alert-warning">Выберите версию базы данных для просмотра и ввода данных.</div>
+    {% elif not zones %}
+    <div class="alert alert-info">В текущей версии БД нет энергозон. Добавьте их в справочнике «Энергозоны».</div>
+    {% else %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+        {% if sheet != 'equipment' %}<a class="btn btn-outline-success d-inline-flex align-items-center gap-2" href="{{ url_for('rational_structure_module_bp.export_territory_inputs_excel', energy_zone_id=territory_zone_id, sheet=sheet, start_year=start_year, end_year=end_year, view_year=view_year) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel</a>{% endif %}
+        <span data-save-status role="status" class="small"></span>
+    </div>
+    {% include 'rational_structure/_territory_year_controls.html' %}
+    {% if not years %}<div class="alert alert-info">В выбранном периоде нет данных. Выберите другой диапазон годов.</div>{% endif %}
+    {% if equipment_missing_years %}<div class="alert alert-warning">Для ТЭС и АЭС нет исходных годовых значений мощности за {{ equipment_missing_years|join(', ') }} гг. Агрегаты без указанной Руст не учитываются ни в мощности, ни в количестве. В разделе «Всего за вычетом первого и второго ресурса» используются мощности карточек за год столбца.</div>{% endif %}
+    {% if transfer_source_empty %}<div class="alert alert-info">В «Перетоках ЭЭ» нет данных о зарубежных перетоках РЭС {{ 'энергозон' if is_ees else 'этой энергозоны' }} за выбранные годы.</div>{% endif %}
+    <div class="page-table-scroll territory-table-scroll rs-data-scroll">
+        <table class="table table-hover table-striped table-bordered align-middle territory-table rs-data-table">
+            <caption class="visually-hidden">{{ input_sheets[sheet] }}: {{ 'ЕЭС России' if is_ees else selected_zone.name }}</caption>
+            <thead class="table-success"><tr>
+                <th scope="col" class="territory-number">№ п/п</th>
+                <th scope="col" class="territory-label fw-bold">Показатель{% if sheet == 'equipment' %}
+                    <div class="dropdown d-inline-block ms-1" data-equipment-filter>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-equipment-filter-toggle data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Фильтр групп оборудования" title="Фильтр групп оборудования"><i class="bi bi-funnel" aria-hidden="true"></i><span data-equipment-filter-status class="ms-1"></span></button>
+                        <div class="dropdown-menu territory-group-filter p-2">
+                            <div class="fw-bold mb-2">Группы оборудования</div>
+                            <input type="search" class="form-control form-control-sm mb-2" data-equipment-filter-search placeholder="Поиск группы" aria-label="Поиск группы оборудования">
+                            <label class="d-flex gap-2 align-items-center mb-2"><input type="checkbox" class="form-check-input m-0" data-equipment-filter-all checked> Выбрать все найденные</label>
+                            <div class="territory-group-filter-options" data-equipment-filter-options></div>
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-primary" data-equipment-filter-apply>ОК</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-equipment-filter-reset>Сбросить фильтр</button>
+                            </div>
+                        </div>
+                    </div>{% endif %}</th>
+                <th scope="col">Единица<br>измерения</th>
+                {% for year in years %}<th scope="col" data-year="{{ year }}">{{ year }}{% if year_features.get(year) %}<div class="small fw-normal">{{ year_features[year] }}</div>{% endif %}</th>{% endfor %}
+                <th scope="col">Примечание</th>
+            </tr></thead>
+            <tbody>
+            {% set equipment_footnote = 'для агрегированных групп указывается суммарная располагаемая мощность' %}
+            {% for row in rows + (equipment_verification_rows|default([])) if not (row.section and row.label|trim == '** ' ~ equipment_footnote) %}
+            {% set row_rounding_digits = 0 if row.unit == 'шт' else rounding_digits %}
+            {% set is_count_row = sheet == 'equipment' and row.unit == 'шт' %}
+            {% set row_classes = ['territory-section' if row.section or row.equipment_rollup else '', 'territory-subsection' if row.subsection else '', 'territory-transfer-child territory-transfer-hidden' if row.parent_key else '', 'territory-count-hidden' if is_count_row else '', 'territory-verification-hidden' if row.equipment_verification else ''] %}
+            <tr class="{{ row_classes|select|join(' ') }}"{% if row.equipment_verification %} data-equipment-verification data-equipment-check-sources="{{ row.verification_sources|tojson|forceescape }}"{% elif sheet == 'equipment' %} data-equipment-row-key="{{ row.key }}"{% endif %}{% if row.equipment_parent or row.parent_key %} data-transfer-parent="{{ row.equipment_parent or row.parent_key }}"{% endif %}{% if row.equipment_diagnostic %} data-equipment-diagnostic{% elif not row.section and not row.equipment_rollup %} data-value-row{% endif %}{% if is_count_row %} data-equipment-count-row{% endif %}{% if row.equipment_block %} data-equipment-block="{{ row.equipment_block }}" data-equipment-unit="{{ row.unit }}"{% endif %}{% if row.equipment_group %} data-equipment-group="{{ row.equipment_group }}"{% endif %}{% if row.equipment_rollup %} data-equipment-rollup="{{ row.equipment_rollup }}"{% endif %}{% if row.equipment_identity and row.equipment_identity[0] == 'type' %} data-equipment-generation-type="{{ row.equipment_identity[1] }}"{% endif %}{% if row.equipment_identity and row.equipment_identity[0] in ('tes', 'aes') and row.equipment_identity[3] is not none %} data-equipment-filter-group="{{ row.equipment_identity[3] }}" data-equipment-filter-label="{{ row.label|replace('**', '')|trim }}"{% endif %}>
+                <td class="territory-number">{{ row.number }}</td>
+                <th scope="row" class="territory-label">{% if row.equipment_rollup in ('block', 'verification') %}<button type="button" class="btn btn-link p-0" data-transfer-toggle="{{ row.equipment_block }}" aria-expanded="true" title="Свернуть раздел" aria-label="Свернуть: {{ row.label }}"><i class="bi bi-dash-square" aria-hidden="true"></i></button> {% endif %}{% if sheet == 'equipment' and '**' in row.label %}{% for part in row.label.split('**') %}{{ part }}{% if not loop.last %}<button type="button" class="btn btn-link p-0 align-baseline" title="{{ equipment_footnote }}" aria-label="{{ equipment_footnote }}">**</button>{% endif %}{% endfor %}{% else %}{{ row.label }}{% endif %}{% if row.transfer_total %}<div class="territory-transfer-total">{% if row.collapsible %}<button type="button" class="btn btn-link p-0" data-transfer-toggle="{{ row.key }}" aria-expanded="false" title="Показать составляющие суммы" aria-label="Показать составляющие: {{ row.label }}"><i class="bi bi-plus-square" aria-hidden="true"></i></button> {% endif %}Всего</div>{% endif %}{% if row.formula and not (sheet == 'equipment' and row.key.startswith(('tes_', 'aes_'))) %} <button type="button" class="btn btn-link p-0 align-baseline bi bi-info-circle" title="{{ row.formula }}" aria-label="Формула: {{ row.label }}"></button>{% endif %}</th>
+                {% if row.section %}
+                <td colspan="{{ years|length + 2 }}"></td>
+                {% else %}
+                <td>{{ row.unit }}</td>
+                {% for value in row.cells %}
+                {% set equipment_details = row.cell_details[loop.index0] if row.cell_details else [] %}
+                {% set cell_year = years[loop.index0] %}
+                <td data-raw-value="{{ value }}"{% if row.equipment_verification and row.verification_errors[loop.index0] %} class="territory-verification-error"{% endif %}{% if row.readonly %} title="{{ value|trim_decimal if value != '' else '' }}"{% endif %}>{% if equipment_details %}{% include 'rational_structure/_territory_equipment_cell.html' %}{% elif can_edit and not row.readonly and (row.shared_input or cell_year in editable_years) %}<input type="text" inputmode="decimal" class="territory-value rs-cell-input" name="value_{{ row.key }}_{{ cell_year }}" value="{{ value|format_decimal(row_rounding_digits) if value != '' else '' }}" data-raw="{{ value }}" data-field="value" data-row-key="{{ row.key }}" data-year="{{ cell_year }}" aria-label="{{ row.label }}, {{ cell_year }}" autocomplete="off">{% else %}{{ value|format_decimal(row_rounding_digits) if value != '' else '' }}{% endif %}</td>
+                {% endfor %}
+                <td>{% if can_edit and not is_ees and not row.virtual and not row.note_readonly %}<input type="text" name="note_{{ row.key }}" class="territory-note rs-cell-input" maxlength="2000" value="{{ row.note }}" data-raw="{{ row.note }}" data-field="note" data-row-key="{{ row.key }}" aria-label="Примечание: {{ row.label }}">{% else %}{{ row.note }}{% endif %}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/rational_structure/territory_cells.js') }}?v=11"></script>
+{% endblock %}

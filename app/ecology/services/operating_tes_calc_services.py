@@ -131,7 +131,7 @@ def apply_capture(motkh: Any, eta: Any) -> Decimal | None:
 
 
 def equivalent_energy_billion_kwh(e_mln_kwh: Any, q_ths_gcal: Any) -> Decimal | None:
-    """Приведённая энергия, млрд кВт·ч = (E + Q·1,163) / 1000."""
+    """Приведенная энергия, млрд кВт·ч = (E + Q·1,163) / 1000."""
     e = _d(e_mln_kwh)
     q = _d(q_ths_gcal)
     if e is None and q is None:

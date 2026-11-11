@@ -1,6 +1,6 @@
 /**
- * Живой пересчёт план-годов, ЧЧИУМ и агрегатов на странице СЭС/ВЭС.
- * ЧЧИУМ – по сырым значениям (data-raw), не по округлённому отображению.
+ * Живой пересчет план-годов, ЧЧИУМ и агрегатов на странице СЭС/ВЭС.
+ * ЧЧИУМ – по сырым значениям (data-raw), не по округленному отображению.
  */
 (function () {
     "use strict";
@@ -159,11 +159,8 @@
         if (!el) {
             return null;
         }
-        if (isInputEl(el)) {
-            if (el.getAttribute("data-dirty") === "1") {
-                return parseNum(el.value);
-            }
-            return cellRawNumber(el);
+        if (el.getAttribute("data-dirty") === "1") {
+            return parseNum(isInputEl(el) ? el.value : el.textContent);
         }
         return cellRawNumber(el);
     }
@@ -188,28 +185,28 @@
     }
 
     var PLAN_RULE_OWNER_IN_PLAN =
-        "Расчёт: выработка от собственника (ввод мощности в плановом периоде)";
+        "Расчет: выработка от собственника (ввод мощности в плановом периоде)";
     var PLAN_RULE_CAPACITY_SES =
-        "Расчёт: установленная мощность × 1,5 (СЭС, нет данных от собственника)";
+        "Расчет: установленная мощность × 1,5 (СЭС, нет данных от собственника)";
     var PLAN_RULE_CAPACITY_VES =
-        "Расчёт: установленная мощность × 2,5 (ВЭС, нет данных от собственника)";
+        "Расчет: установленная мощность × 2,5 (ВЭС, нет данных от собственника)";
     var PLAN_RULE_CAPACITY_SES_PARTIAL =
-        "Расчёт: установленная мощность × 1,5 × доля года работы по ожидаемой дате ввода (СЭС, нет данных от собственника)";
+        "Расчет: установленная мощность × 1,5 × доля года работы по ожидаемой дате ввода (СЭС, нет данных от собственника)";
     var PLAN_RULE_CAPACITY_VES_PARTIAL =
-        "Расчёт: установленная мощность × 2,5 × доля года работы по ожидаемой дате ввода (ВЭС, нет данных от собственника)";
-    var PLAN_RULE_OWNER_POSITIVE = "Расчёт: выработка от собственника (> 0)";
+        "Расчет: установленная мощность × 2,5 × доля года работы по ожидаемой дате ввода (ВЭС, нет данных от собственника)";
+    var PLAN_RULE_OWNER_POSITIVE = "Расчет: выработка от собственника (> 0)";
     var PLAN_RULE_SEVEN_YEAR_MIN =
-        "Расчёт: минимум положительной выработки за последние 7 лет факта";
+        "Расчет: минимум положительной выработки за последние 7 лет факта";
     var PLAN_RULE_SEVEN_YEAR_MIN_RAMP =
-        "Расчёт: минимум положительной выработки за последние 7 лет факта (без учёта лет разгона после ввода)";
+        "Расчет: минимум положительной выработки за последние 7 лет факта (без учета лет разгона после ввода)";
     var PLAN_RULE_MIN_OWNER_SAMPLE_OWNER =
-        "Расчёт: минимум из выработки от собственника и минимума за 7 лет факта (взята выработка от собственника)";
+        "Расчет: минимум из выработки от собственника и минимума за 7 лет факта (взята выработка от собственника)";
     var PLAN_RULE_MIN_OWNER_SAMPLE_SAMPLE =
-        "Расчёт: минимум из выработки от собственника и минимума за 7 лет факта (взято значение за 7 лет факта)";
+        "Расчет: минимум из выработки от собственника и минимума за 7 лет факта (взято значение за 7 лет факта)";
     var PLAN_RULE_MIN_OWNER_SAMPLE_SAMPLE_RAMP =
-        "Расчёт: минимум из выработки от собственника и минимума за 7 лет факта (взято значение за 7 лет факта, без учёта лет разгона после ввода)";
+        "Расчет: минимум из выработки от собственника и минимума за 7 лет факта (взято значение за 7 лет факта, без учета лет разгона после ввода)";
     var PLAN_RULE_MIN_OWNER_SAMPLE_EQUAL =
-        "Расчёт: минимум из выработки от собственника и минимума за 7 лет факта (значения совпадают)";
+        "Расчет: минимум из выработки от собственника и минимума за 7 лет факта (значения совпадают)";
 
     function minSampleResult(energyByYear, cfg) {
         var empty = { value: null, rampExcluded: false };
@@ -422,7 +419,7 @@
 
     function hydroOwnNeeds(coefficient, energy) {
         if (coefficient == null || energy == null) return null;
-        return coefficient * energy;
+        return (coefficient / 100) * energy;
     }
 
     function hydroDelivery(coefficient, energy) {
@@ -430,12 +427,12 @@
         return ownNeeds == null ? null : energy - ownNeeds;
     }
 
-    function setCellText(td, value, digits) {
+    function setCellText(td, value, digits, showZero) {
         if (!td) {
             return;
         }
-        td.textContent = value == null ? "–" : formatNum(value, digits);
-        var rawTitle = formatRawTitle(value);
+        td.textContent = value == null ? "–" : formatNum(value, digits, showZero);
+        var rawTitle = showZero && value === 0 ? "0" : formatRawTitle(value);
         if (rawTitle) {
             td.setAttribute("title", rawTitle);
             td.setAttribute("data-raw", rawTitle);
@@ -548,6 +545,8 @@
             var chiimTr = chiimById[id];
             var rec = {
                 id: id,
+                isGroup: attrId(tr, "data-is-group") === "1",
+                parentGroup: attrId(tr, "data-parent-group"),
                 tr: tr,
                 energyTr: energyTr,
                 chiimTr: chiimTr,
@@ -576,7 +575,9 @@
                 ownNeedsPercentInputs: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs']"), "input[data-kind='own_needs_percent'], [data-ves-deferred='1'][data-kind='own_needs_percent']"),
                 ownNeedsTds: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs']"), "td[data-ves-col='own-needs']"),
                 deliveryTds: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='delivery']"), "td[data-ves-col='delivery']"),
-                coefficientInput: table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs'] input[data-kind='coefficient']"),
+                coefficientInput: table.querySelector("tr[data-station-id='" + id + "'] input[data-kind='coefficient']:not([data-year])"),
+                coefficientInputs: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs_coefficient']"), "input[data-kind='coefficient'], [data-ves-deferred='1'][data-kind='coefficient']"),
+                coefficientTds: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs_coefficient']"), "td[data-ves-col='own-needs-coefficient']"),
                 minTd: energyTr ? energyTr.querySelector("td[data-ves-col='min']") : null
             };
             stations.push(rec);
@@ -617,22 +618,55 @@
                 minTd: energyRow ? energyRow.querySelector("td[data-ves-col='min']") : null
             };
             agg.stations = stations.filter(function (st) {
-                return stationMatches(st, agg);
+                return !st.parentGroup && stationMatches(st, agg);
             });
             aggs.push(agg);
         });
 
         function readOwnNeeds(st, year) {
-            return energyRawForChiim(st.ownNeedsEnergyInputs[year], st.ownNeedsEnergyTds[year]);
+            var control = st.ownNeedsEnergyInputs[year];
+            var td = st.ownNeedsEnergyTds[year];
+            if (st.isGroup) {
+                if (control && !control.getAttribute("data-orig") && control.getAttribute("data-dirty") !== "1") return null;
+                if (!control && td && td.getAttribute("data-own-needs-calculated") === "1") return null;
+            }
+            return energyRawForChiim(control, td);
+        }
+
+        function effectiveOwnNeeds(st, year, energy) {
+            var ownNeeds = readOwnNeeds(st, year);
+            if (st.isGroup && ownNeeds == null) {
+                var percent = energyRawForChiim(st.ownNeedsPercentInputs[year], st.ownNeedsTds[year]);
+                return energy != null && percent != null ? energy * percent / 100 : null;
+            }
+            return ownNeeds;
+        }
+
+        function updateGroupOwnNeeds(st, year, energy) {
+            var td = st.ownNeedsEnergyTds[year];
+            var control = st.ownNeedsEnergyInputs[year];
+            var calculated = readOwnNeeds(st, year) == null;
+            if (td) td.setAttribute("data-own-needs-calculated", calculated ? "1" : "0");
+            if (!calculated) return;
+            var value = effectiveOwnNeeds(st, year, energy);
+            if (!control) {
+                setCellText(td, value, cfg.digits, true);
+                return;
+            }
+            var display = value == null ? "" : formatNum(value, cfg.digits, true);
+            if (isInputEl(control)) control.placeholder = display;
+            else control.textContent = display;
+            setPlanRuleTitle(control, "", value === 0 ? "0" : formatRawTitle(value));
+            setPlanRuleTitle(td, "", value === 0 ? "0" : formatRawTitle(value));
         }
 
         function updateAesOwnNeedsPercent(st, year, energy) {
             var control = st.ownNeedsPercentInputs[year];
             var ownNeeds = readOwnNeeds(st, year);
             var calculated = ownNeeds != null;
-            var percent = calculated ? aesOwnNeedsPercent(ownNeeds, energy) : readControlNumber(control);
+            var percent = calculated ? aesOwnNeedsPercent(ownNeeds, energy) : energyRawForChiim(control, st.ownNeedsTds[year]);
             if (!control) {
-                setCellText(st.ownNeedsTds[year], percent, cfg.digits);
+                setCellText(st.ownNeedsTds[year], percent, cfg.digits, true);
                 return percent;
             }
             if (calculated) {
@@ -678,7 +712,6 @@
             });
             var energyRaw = {};
             var capacityRaw = {};
-            var coefficient = readControlNumber(st.coefficientInput);
             cfg.years.forEach(function (year) {
                 var energyVal = readEnergy(st, year);
                 energyRaw[year] = energyVal;
@@ -711,7 +744,7 @@
             var sample = minSampleResult(energyMap, stationCfg);
             var minValue = sample.value;
             setCellText(st.minTd, minValue, cfg.digits);
-            var yearsToFill = cfg.planYears.slice();
+            var yearsToFill = st.isGroup ? [] : cfg.planYears.slice();
             if (
                 usesPlanCapacityFallback(stationCfg) &&
                 cfg.currentYear != null &&
@@ -749,25 +782,33 @@
                 energyRaw[year] = explained.value;
             });
             cfg.years.forEach(function (year) {
+                var coefficient = readCoefficient(st, year);
                 setCellText(
                     st.chiimTds[year],
                     chiimHours(energyRaw[year], capacityRaw[year], cfg.chiimScale),
                     cfg.chiimDigits
                 );
                 var percent = null;
-                if (cfg.coefficientMode) {
-                    setCellText(st.ownNeedsTds[year], hydroOwnNeeds(coefficient, energyRaw[year]), cfg.digits);
+                if (cfg.coefficientMode && !st.isGroup) {
+                    setCellText(st.ownNeedsTds[year], hydroOwnNeeds(coefficient, energyRaw[year]), cfg.digits, true);
                 } else {
                     percent = updateAesOwnNeedsPercent(st, year, energyRaw[year]);
+                    if (st.isGroup) updateGroupOwnNeeds(st, year, energyRaw[year]);
                 }
                 setCellText(
                     st.deliveryTds[year],
-                    cfg.coefficientMode
+                    cfg.coefficientMode && !st.isGroup
                         ? hydroDelivery(coefficient, energyRaw[year])
                         : aesDeliveryEnergy(readOwnNeeds(st, year), energyRaw[year], percent),
                     cfg.digits
                 );
             });
+        }
+
+        function readCoefficient(st, year) {
+            if (st.coefficientInput) return readControlNumber(st.coefficientInput);
+            if (st.coefficientInputs[year]) return readControlNumber(st.coefficientInputs[year]);
+            return cellRawNumber(st.coefficientTds[year]);
         }
 
         function snapshotStation(st) {
@@ -776,14 +817,16 @@
             var owner = {};
             var ownNeeds = {};
             var delivery = {};
-            var coefficient = readControlNumber(st.coefficientInput);
             cfg.years.forEach(function (year) {
+                var coefficient = readCoefficient(st, year);
                 energy[year] = readEnergy(st, year);
                 capacity[year] = cellRawNumber(st.capacityTds[year]);
-                ownNeeds[year] = cfg.coefficientMode
+                ownNeeds[year] = cfg.coefficientMode && !st.isGroup
                     ? hydroOwnNeeds(coefficient, energy[year])
-                    : readOwnNeeds(st, year);
-                delivery[year] = cfg.coefficientMode
+                    : effectiveOwnNeeds(st, year, energy[year]);
+                delivery[year] = st.isGroup
+                    ? aesDeliveryEnergy(ownNeeds[year], energy[year], readControlNumber(st.ownNeedsPercentInputs[year]))
+                    : cfg.coefficientMode
                     ? hydroDelivery(coefficient, energy[year])
                     : null;
             });
@@ -801,6 +844,19 @@
         }
 
         function recalcAggregates() {
+            stations.filter(function (st) { return st.isGroup; }).forEach(function (group) {
+                cfg.years.forEach(function (year) {
+                    var control = group.energyInputs[year];
+                    if (!control || control.getAttribute("data-orig") || control.getAttribute("data-dirty") === "1") return;
+                    var sum = null;
+                    stations.filter(function (st) { return st.parentGroup === group.id; }).forEach(function (st) {
+                        var value = readEnergy(st, year);
+                        if (value != null) sum = sum == null ? value : sum + value;
+                    });
+                    setControlDisplay(control, sum, cfg.digits, "");
+                });
+                updateStationDerived(group);
+            });
             var snaps = {};
             stations.forEach(function (st) {
                 snaps[st.id] = snapshotStation(st);
@@ -943,6 +999,8 @@
                 st.ownNeedsEnergyInputs[year] = el;
             } else if (kind === "own_needs_percent" && isFinite(year)) {
                 st.ownNeedsPercentInputs[year] = el;
+            } else if (kind === "coefficient" && isFinite(year)) {
+                st.coefficientInputs[year] = el;
             } else if (kind === "owner" && isFinite(year)) {
                 st.ownerInputs[year] = el;
             } else if (kind === "exploitation_date") {

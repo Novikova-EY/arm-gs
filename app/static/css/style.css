@@ -111,7 +111,7 @@ html.has-page-table-scroll {
 /* Единая логика для страниц с таблицами:
    скроллим весь контент страницы, а шапка таблицы остается sticky */
 .page-table-scroll {
-    /* Высота: от фактической позиции wrapper (задаётся JS), fallback – topbar + отступ */
+    /* Высота: от фактической позиции wrapper (задается JS), fallback – topbar + отступ */
     max-height: calc(100vh - var(--page-table-scroll-top, var(--app-topbar-height, 0px)) - var(--page-table-scroll-bottom-gap, 8px));
     overflow-y: auto;
     /* На Windows при "always show scrollbars" любой overflow-x:auto рисует полосу даже без переполнения.
@@ -136,7 +136,7 @@ html.has-page-table-scroll {
 }
 
 /* Горизонтальный скролл только у сводной таблицы: панель над шапкой не уезжает вбок.
-   Вертикальная прокрутка остаётся на .page-table-scroll; липкая шапка – top от wrapper, left – от host. */
+   Вертикальная прокрутка остается на .page-table-scroll; липкая шапка – top от wrapper, left – от host. */
 .page-table-scroll:has(.pd-summary-table-x-scroll-host) {
     overflow-x: hidden !important;
 }
@@ -225,7 +225,7 @@ tfoot {
     background-color: var(--bs-primary-bg-subtle, #cfe2ff);
 }
 
-/* Многострочные шапки (до 6 строк): top задаётся из base.html (--sticky-thead-rowN-top) */
+/* Многострочные шапки (до 6 строк): top задается из base.html (--sticky-thead-rowN-top) */
 .table-responsive table thead tr:nth-child(2) th {
     top: var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px));
     z-index: 49;
@@ -255,7 +255,7 @@ tfoot {
     z-index: 1052;
 }
 
-/* Как на /generation/stations/station_list: свёрнутая строка «Импорт/Экспорт» не занимает место в потоке */
+/* Как на /generation/stations/station_list: свернутая строка «Импорт/Экспорт» не занимает место в потоке */
 .page-table-scroll .pd-ec-summary-sticky-stack > .col-12:has(> #importExportCollapse:not(.show)) {
     display: none;
 }
@@ -271,7 +271,7 @@ tfoot {
     overflow: visible !important;
 }
 
-/* До инициализации dropdown/Select2 не показывать развёрнутый <select multiple> */
+/* До инициализации dropdown/Select2 не показывать развернутый <select multiple> */
 .page-table-scroll #filtersCollapse select.form-select[multiple]:not(.select2-hidden-accessible):not(.d-none) {
     height: calc(1.5em + 0.75rem + 2px);
     overflow: hidden;

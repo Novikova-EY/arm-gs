@@ -23,7 +23,7 @@
     <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-nav bg-body">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
         {% if calculation_back_url is defined and calculation_back_url %}
-        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
+        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчету</a>
         {% endif %}
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
@@ -389,7 +389,7 @@
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
         box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
     }
-    /* Nуст изменился к предыдущему году: жёлтые ячейки поверх table-striped */
+    /* Nуст изменился к предыдущему году: желтые ячейки поверх table-striped */
     #fuelFormulaTable tbody td.table-warning {
         --bs-table-bg: var(--bs-warning-bg-subtle, #fff3cd);
         background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;

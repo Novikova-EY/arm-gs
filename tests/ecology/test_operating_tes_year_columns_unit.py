@@ -100,9 +100,85 @@ def test_volumes_use_year_buttons_and_selected_year_data(year_range, selected_ye
     assert cells[0].split('>', 1)[1].split('</td>')[0].strip() == ("20" if expected_year == 2026 else "60")
 
 
+def test_operating_volumes_show_affiliations_as_filtered_subcolumns(year_range, monkeypatch):
+    accepted = {
+        2026: {
+            "vsego": {"gaz_prir": Decimal("10")},
+            "vsego::minen": {"gaz_prir": Decimal("5")},
+            "vsego::prompred": {"gaz_prir": Decimal("2")},
+            "centr": {"gaz_prir": Decimal("3")},
+            "centr::minen": {"gaz_prir": Decimal("4")},
+            "centr::prompred": {"gaz_prir": Decimal("6")},
+        },
+    }
+    monkeypatch.setattr(exchange, "load_accepted_fuel_inputs", lambda years: {
+        year: accepted.get(year, {}) for year in years
+    })
+    context = services.build_operating_tes_table_context(
+        "vsego", "obemy", 2026, 2026, view_year=2026,
+        show_affiliation_columns=True,
+    )
+
+    expected_affiliations = ["all", "minen", "prompred"]
+    assert [column["slug"] for column in context["affiliation_columns"]] == expected_affiliations
+    assert [column["affiliation"] for column in context["value_columns"][:3]] == expected_affiliations
+    row = next(row for row in context["rows"] if row["key"] == "co2")
+    assert [Decimal(row["col_values_raw"][f"vsego:2026:{slug}"]) for slug in expected_affiliations] == [20, 10, 4]
+    assert [Decimal(row["col_values_raw"][f"centr:2026:{slug}"]) for slug in expected_affiliations] == [6, 8, 12]
+
+    context["value_columns"][0]["affiliation_label"] = "Все принадлежности"
+    html = render_page(context)
+    before_table, table_html = html.split("<table", 1)
+    assert 'aria-label="Принадлежность данных"' not in before_table
+    assert 'data-storage-key="ecology.operating_tes.territories"' in html
+    assert 'data-territory-filter-button' in table_html
+    thead = table_html.split("<thead", 1)[1].split("</thead>", 1)[0]
+    assert thead.count("<tr") == 2
+    assert "ot-affiliation-volume-table" in table_html
+    assert "ot-uniform-value-columns" in table_html
+    assert "--ot-value-col-width: 8.5rem" in html
+    table_css = html.rsplit(".ot-calculation-table.ot-affiliation-volume-table td.ot-year-cell", 1)[1].split("}", 1)[0]
+    assert "white-space: nowrap" in table_css
+    assert "overflow: visible" in table_css
+    assert "Всего" in thead
+    assert "Станции отрасли" in thead
+    assert '<th class="text-center align-middle ot-terr-col">Пром<wbr>предприятия</th>' in thead
+    subheaders = thead.split("<tr", 2)[2].split("</tr>", 1)[0]
+    assert "Всего" in subheaders
+    assert "Все принадлежности" not in subheaders
+
+
+def test_legacy_volumes_snapshot_does_not_repeat_totals_as_affiliation_slices(year_range, monkeypatch):
+    accepted = {
+        2026: {
+            "vsego": {"gaz_prir": Decimal("10")},
+            "minen": {"gaz_prir": Decimal("5")},
+            "prompred": {"gaz_prir": Decimal("2")},
+            "centr": {"gaz_prir": Decimal("3")},
+        },
+    }
+    monkeypatch.setattr(exchange, "load_accepted_fuel_inputs", lambda years: {
+        year: accepted.get(year, {}) for year in years
+    })
+    context = services.build_operating_tes_table_context(
+        "vsego", "obemy", 2026, 2026, view_year=2026,
+        show_affiliation_columns=True,
+    )
+    row = next(row for row in context["rows"] if row["key"] == "co2")
+
+    assert row["col_values_raw"]["vsego:2026:minen"]
+    assert row["col_values_raw"]["vsego:2026:prompred"]
+    assert row["col_values_raw"]["centr:2026:minen"] == ""
+    assert row["col_values_raw"]["centr:2026:prompred"] == ""
+    assert row["col_values"]["centr:2026:minen"] == "–"
+    assert row["col_values"]["centr:2026:prompred"] == "–"
+
+
 @pytest.mark.parametrize("year", [2026, 2027])
-@pytest.mark.parametrize("digits", [1, 3])
-def test_specific_emissions_follow_volume_rows_and_selected_fuel(year_range, monkeypatch, year, digits):
+@pytest.mark.parametrize(("digits", "specific_digits"), [(1, 3), (3, 1)])
+def test_specific_emissions_follow_volume_rows_and_selected_fuel(
+    year_range, monkeypatch, year, digits, specific_digits
+):
     accepted = {
         y: {
             slug: {key: Decimal(value) * scale for key, value in {
@@ -118,6 +194,7 @@ def test_specific_emissions_follow_volume_rows_and_selected_fuel(year_range, mon
     })
     context = services.build_operating_tes_table_context(
         "vsego", "obemy", 2026, 2027, digits, view_year=year,
+        specific_rounding_digits=specific_digits,
     )
     tables = context["specific_emission_tables"]
     assert len(tables) == 3
@@ -125,6 +202,10 @@ def test_specific_emissions_follow_volume_rows_and_selected_fuel(year_range, mon
     assert "Выработка электроэнергии + Отпуск тепла / 859,8" in tables[0]["rows"][0]["formula_tooltip"]
     assert tables[1]["title"] == "Удельные выбросы ЗВ и ПГ на единицу электрической энергии, г/кВт.ч"
     assert "Выработка электроэнергии" in tables[1]["rows"][0]["formula_tooltip"]
+    for table in tables[:2]:
+        co_row = next(row for row in table["rows"] if row["key"] == "co")
+        assert co_row["formula_tooltip"].startswith(f'{table["formula"]}.')
+        assert "/ 1000" not in co_row["formula_tooltip"]
     for slug in ("vsego", "centr"):
         column = f"{slug}:{year}"
         fuel = accepted[year][slug]["b"]
@@ -134,13 +215,13 @@ def test_specific_emissions_follow_volume_rows_and_selected_fuel(year_range, mon
         for volume_row in context["rows"]:
             mass = Decimal(volume_row["col_values_raw"][column])
             key = volume_row["key"]
-            mass_for_energy = mass / Decimal("1000") if key == "co" else mass
+            mass_for_energy = mass
             if key == "pollutants_total":
                 component_masses = {
                     row["key"]: Decimal(row["col_values_raw"][column])
                     for row in context["rows"]
                 }
-                mass_for_energy = sum((component_masses[item] for item in ("ash", "so2", "nox")), Decimal("0")) + component_masses["co"] / Decimal("1000")
+                mass_for_energy = sum((component_masses[item] for item in ("ash", "so2", "nox", "co")), Decimal("0"))
             expected = [
                 mass_for_energy / brought_energy,
                 mass_for_energy / electricity,
@@ -149,11 +230,15 @@ def test_specific_emissions_follow_volume_rows_and_selected_fuel(year_range, mon
             for table, value in zip(tables, expected):
                 row = next(row for row in table["rows"] if row["key"] == volume_row["key"])
                 assert Decimal(row["col_values_raw"][column]) == pytest.approx(value)
-                assert row["col_values"][column] == services.format_cell(value, digits)
+                assert row["col_values"][column] == services.format_cell(value, specific_digits)
+        for volume_row in context["rows"]:
+            value = Decimal(volume_row["col_values_raw"][column])
+            assert volume_row["col_values"][column] == services.format_cell(value, digits)
     html = render_page(context)
     assert html.count('<table') == 4
     assert html.count('aria-label="Годы периода"') == 1
     assert html.count('id="rounding_digits"') == 1
+    assert html.count('id="specific_rounding_digits"') == 1
     assert html.count('id="otShowEmptyRowsToggle"') == 1
     expected_order = [row["key"] for row in context["rows"]]
     for table in tables:
@@ -328,14 +413,17 @@ def test_all_sheets_use_reference_territory_labels_and_order(year_range, monkeyp
     ])
     context = services.build_operating_tes_table_context("centr", sheet, 2026, 2027, view_year=2027)
     assert context["territory"]["sheet_name"] == "ОЭС Центра (справочник)"
-    columns = context["coefficient_territories"] if sheet == "koeff" else context["territory_columns"]
+    columns = (
+        context["coefficient_territories"] if sheet == "koeff"
+        else context["level_territories"] if sheet == "khar-topl"
+        else context["territory_columns"]
+    )
     names = [item["sheet_name"] for item in columns]
     assert names.index("ОЭС Центра (справочник)") < names.index("ОЭС Северо-Запада")
-    assert names[-3:] == ["ТИТЭС Сибири", "ТИТЭС Востока", "Децентрализованная зона (Николаевский энергорайон)"]
+    assert names[-3:] == ["ТИТЭС Сибири", "ТИТЭС Востока", "Децентрализованная зона"]
     html = render_page(context)
-    if sheet != "khar-topl":
-        assert "ОЭС Центра (справочник)" in html
-        assert "Децентрализованная зона (Николаевский энергорайон)" in html
+    assert "ОЭС Центра (справочник)" in html
+    assert "Децентрализованная зона" in html
     assert "МинЭн" not in html
     assert "ПромПред" not in html
     if sheet == "pg":
@@ -350,6 +438,7 @@ def render_page(context, can_edit=True):
         DictLoader({"base.html": "{% block content %}{% endblock %}"}),
         FileSystemLoader(Path(__file__).parents[2] / "app" / "templates"),
     ]))
+    env.globals["get_reference_years"] = lambda: [2025, 2026, 2027, 2028]
     def url_for(endpoint, **values):
         from urllib.parse import urlencode
         return "/" + endpoint + "?" + urlencode({key: value for key, value in values.items() if value is not None})
@@ -375,6 +464,7 @@ def test_emissions_use_year_buttons_and_selected_year_data(year_range, sheet, se
     assert f'view_year={2027 if expected_year == 2026 else 2026}' in before_table
     thead = table_html.split('<thead')[1].split('</thead>')[0]
     is_pair = context["emission_view"]["kind"] == "pair"
+    assert "ot-uniform-value-columns" in table_html
     assert thead.count('<tr') == (2 if is_pair else 1)
     assert 'ot-year-col' not in thead
     gas_row = next(row for row in context["rows"] if row["key"] == "gas_natural")
@@ -393,79 +483,119 @@ def test_emissions_use_year_buttons_and_selected_year_data(year_range, sheet, se
             assert Decimal(gas_row["col_values_raw"]["centr:2027"]) == 90
 
 
-@pytest.mark.parametrize("selected_year,expected_year,expected_value", [
-    (2026, 2026, "10"), (2027, 2027, "20"), (2025, 2026, "10"), (None, 2026, "10"),
-])
-def test_fuel_uses_year_buttons_and_selected_year_data(year_range, selected_year, expected_year, expected_value):
+def test_fuel_table_uses_year_buttons_and_all_territories(year_range):
+    context = services.build_operating_tes_table_context(
+        "vsego", "toplivo", 2026, 2027, view_year=2026,
+    )
+    assert context["years"] == [2026]
+    assert context["range_years"] == [2026, 2027]
+    assert context["year_columns_mode"] is False
+    territories = [column["slug"] for column in context["territory_columns"]]
+    assert territories[0] == "vsego"
+    assert "minen" not in territories
+    assert "prompred" not in territories
+    assert {"severo-zapad", "norilsk", "isolated-dv", "decentralized-zone"}.issubset(territories)
+    row = next(row for row in context["rows"] if row["key"] == "gaz_prir")
+    assert row["col_values_raw"]["vsego:2026"] == "10"
+    assert "vsego:2027" not in row["col_values_raw"]
+    html = render_page(context)
+    before_table, table_html = html.split('<table', 1)
+    assert 'aria-label="Территория расчета"' not in before_table
+    assert 'aria-label="Принадлежность данных"' in before_table
+    assert 'aria-label="Годы периода"' in before_table
+    assert 'view_year=2027' in before_table
+    thead = table_html.split('<thead')[1].split('</thead>')[0]
+    assert "Всего" in thead
+    assert "ОЭС Северо-Запада" in thead
+    assert "ТИТЭС Сибири" in thead
+    assert "Децентрализованная зона" in thead
+    assert "Станции отрасли" not in thead
+    assert "Пром-предприятия" not in thead
+    gas_row = table_html.split('data-row-key="gaz_prir"')[1].split('</tr>')[0]
+    assert "10" in gas_row
+    assert "20" not in gas_row
+    assert 'data-autosave="1"' in html
+
+
+@pytest.mark.parametrize("sheet", ["toplivo", "zola", "sera", "azot", "co", "pg", "pg-tj"])
+def test_report_tabs_filter_affiliation_and_year_without_affiliation_columns(year_range, sheet):
     from urllib.parse import parse_qs, urlsplit
 
     context = services.build_operating_tes_table_context(
-        "vsego", "toplivo", 2026, 2027, view_year=selected_year,
+        "vsego", sheet, 2026, 2027, view_year=2027, affiliation="prompred",
     )
-    context["fuel_pending_by_year"] = {2027: SimpleNamespace(id=42)}
-    context["fuel_pending"] = context["fuel_pending_by_year"].get(context["view_year"])
+    assert context["years"] == [2027]
+    assert context["range_years"] == [2026, 2027]
+    assert context["year_columns_mode"] is False
+    expected_slugs = {item["slug"] for item in services.TERRITORIES} - {"minen", "prompred"}
+    assert {column["slug"] for column in context["territory_columns"]} == expected_slugs
+    assert {column["year"] for column in context["value_columns"]} == {2027}
+    assert {column["calculation_affiliation"] for column in context["value_columns"]} == {"prompred"}
+
+    html = render_page(context)
+    before_table, table_html = html.split("<table", 1)
+    affiliation_position = before_table.index('aria-label="Принадлежность данных"')
+    years_position = before_table.index('aria-label="Годы периода"')
+    assert affiliation_position < years_position
+    assert 'name="affiliation" value="prompred"' in before_table
+    target_link = before_table.split('title="Показать данные за 2026 год"')[0].rsplit('href="', 1)[1].split('"')[0]
+    query = parse_qs(urlsplit(target_link).query)
+    assert query["view_year"] == ["2026"]
+    assert query["affiliation"] == ["prompred"]
+    assert query["start_year"] == ["2026"]
+    assert query["end_year"] == ["2027"]
+
+    thead = table_html.split("<thead")[1].split("</thead>")[0]
+    assert "Всего" in thead
+    assert "ОЭС Северо-Запада" in thead
+    assert "ТИТЭС Сибири" in thead
+    assert "Децентрализованная зона" in thead
+    assert "Станции отрасли" not in thead
+    assert "Пром-предприятия" not in thead
+
+
+@pytest.mark.parametrize(("selected_year", "expected_year"), [(2026, 2026), (2027, 2027), (2025, 2026)])
+def test_characteristics_year_buttons_show_the_selected_year(year_range, selected_year, expected_year):
+    from urllib.parse import parse_qs, urlsplit
+
+    context = services.build_operating_tes_table_context(
+        "vsego", "khar-topl", 2026, 2027, view_year=selected_year,
+    )
     assert context["years"] == [expected_year]
     assert context["range_years"] == [2026, 2027]
     assert context["year_columns_mode"] is False
     html = render_page(context)
-    before_table, table_html = html.split('<table', 1)
+    table = TableParser(html.split('<table')[1].split('</table>')[0])
+    assert {field["data-year"] for field in table.inputs} == {str(expected_year)}
+    assert {field["data-field"] for field in table.inputs} == services.CHAR_EDIT_FIELDS
+    assert len(context["rows"]) == len({row["key"] for row in context["rows"]})
+    co2_inputs = [field for field in table.inputs if field.get("data-field") == "k_co2"]
+    assert len(co2_inputs) == 1
+    assert co2_inputs[0]["data-year"] == str(expected_year)
+    assert co2_inputs[0]["value"] == str(2 if expected_year == 2026 else 3)
+    thead = html.split("<thead")[1].split("</thead>")[0]
+    assert thead.count("<tr") == 2
+    assert context["page_title"] not in thead
+    group_row, year_row = thead.split("<tr")[1:]
+    group_headers, year_headers = [TableParser(row).headers for row in (group_row, year_row)]
+    assert group_headers[0]["rowspan"] == "2"
+    assert sum(int(header.get("colspan", 1)) for header in group_headers) == len(context["char_columns"]) + 1
+    assert len(year_headers) == len(context["char_columns"])
+    assert "Низшая теплота сгорания" in group_row
+    assert "Коэффициенты для расчета как в НД о Кадастре ПГ" in group_row
+    assert 'ot-year-col' not in thead
+    before_table = html.split('<table')[0]
     assert 'aria-label="Годы периода"' in before_table
-    assert '<span class="btn btn-success text-nowrap" aria-current="true"' in before_table
+    year_navigation = before_table.split('aria-label="Годы периода"', 1)[1].split('</div>', 1)[0]
+    assert 'aria-current="true"' in year_navigation
     other_year = 2027 if expected_year == 2026 else 2026
     target_link = before_table.split(f'title="Показать данные за {other_year} год"')[0].rsplit('href="', 1)[1].split('"')[0]
     query = parse_qs(urlsplit(target_link).query)
     assert query["view_year"] == [str(other_year)]
     assert query["start_year"] == ["2026"]
     assert query["end_year"] == ["2027"]
-    assert query["rounding_digits"] == ["1"]
-    thead = table_html.split('<thead')[1].split('</thead>')[0]
-    assert thead.count('<tr') == 1
-    assert 'ot-year-col' not in thead
-    gas_row = table_html.split('data-row-key="gaz_prir"')[1].split('</tr>')[0]
-    cells = gas_row.split('<td')[2:]
-    assert len(cells) == len(context["territory_columns"])
-    assert cells[0].split('>', 1)[1].split('</td>')[0].strip() == expected_value
-    assert 'Новые данные</span>' in before_table
-    review_link = 'submission_id=42' in before_table
-    assert review_link is (expected_year == 2027)
-
-
-@pytest.mark.parametrize("selected_year,expected", [(2026, "2"), (2027, "3"), (2025, "2")])
-def test_characteristics_use_year_buttons_and_two_header_rows(year_range, selected_year, expected):
-    context = services.build_operating_tes_table_context("prompred", "khar-topl", 2026, 2027, view_year=selected_year)
-    html = render_page(context)
-    table = TableParser(html.split('<table')[1].split('</table>')[0])
-    assert {field["data-year"] for field in table.inputs} == {str(context["view_year"])}
-    assert {field["data-field"] for field in table.inputs} == services.CHAR_EDIT_FIELDS
-    assert len(context["rows"]) == len({row["key"] for row in context["rows"]})
-    gas_row = html.split('data-row-key="gas_natural"')[1].split('</tr>')[0]
-    assert f'data-field="k_co2"\n              value="{expected}"' in gas_row
-    thead = html.split("<thead")[1].split("</thead>")[0]
-    assert thead.count("<tr") == 2
-    assert context["page_title"] not in thead
-    group_row, unit_row = thead.split("<tr")[1:]
-    group_headers, unit_headers = [TableParser(row).headers for row in (group_row, unit_row)]
-    assert group_headers[0]["rowspan"] == "2"
-    assert sum(int(header.get("colspan", 1)) for header in group_headers) == len(context["char_columns"]) + 1
-    assert len(unit_headers) == len(context["char_columns"])
-    assert 'colspan="2" scope="colgroup"' in group_row
-    assert 'colspan="3" scope="colgroup"' in group_row
-    assert group_row.count("Низшая теплота сгорания") == 1
-    assert group_row.count("Коэффициенты для расчета как в НД о Кадастре ПГ") == 1
-    assert 'A<sup>р</sup>, %' in unit_row
-    assert 'S<sup>р</sup>, %' in unit_row
-    assert 'a<sub>ун</sub>' in unit_row
-    assert 'q<sub>4</sub>, %' in unit_row
-    assert 'Q<sub>н</sub>, кДж/кг' in unit_row
-    assert 'Q<sub>н</sub>, ккал/кг' in unit_row
-    assert 'b<sub>j</sub>' in unit_row
-    assert 'K<sub>CO<sub>2</sub></sub>' in unit_row
-    assert 'q<sub>3</sub>, %' in unit_row
-    assert 'т CO<sub>2</sub>/ТДж' in unit_row
-    assert 'ot-year-col' not in thead
-    assert 'aria-label="Годы периода"' in html.split('<table')[0]
-    assert f'view_year={2026 if context["view_year"] == 2027 else 2027}' in html.split('<table')[0]
-    assert 'Срез характеристик' not in html
+    assert 'aria-label="Территория расчета"' in before_table
+    assert 'aria-label="Принадлежность данных"' in before_table
     assert 'data-autosave="1"' in html
 
 
@@ -584,8 +714,8 @@ def test_emission_columns_use_their_own_accepted_fuel_page_values(
     year_range, monkeypatch, year, only_total, sheet, mass_per_fuel,
 ):
     slugs = (
-        "vsego", "minen", "prompred", "severo-zapad", "centr", "srednyaya-volga",
-        "yug", "ural", "sibir", "vostok", "norilsk", "isolated-dv", "nikolaevsky",
+        "vsego", "severo-zapad", "centr", "srednyaya-volga", "yug", "ural",
+        "sibir", "vostok", "norilsk", "isolated-dv", "decentralized-zone",
     )
     accepted = {
         y: {
@@ -611,12 +741,15 @@ def test_emission_columns_use_their_own_accepted_fuel_page_values(
         }
         for y in years
     })
-    fuel_page = services.build_operating_tes_table_context("vsego", "toplivo", 2026, 2027, view_year=year)
     emission_page = services.build_operating_tes_table_context("vsego", sheet, 2026, 2027, view_year=year)
-    fuel_row = next(row for row in fuel_page["rows"] if row["key"] == "kuzngd")
     emission_row = next(row for row in emission_page["rows"] if row["key"] == "kuzn_gd")
     assert {column["slug"] for column in emission_page["territory_columns"]} == set(slugs)
+    assert not {column["slug"] for column in emission_page["territory_columns"]} & {"minen", "prompred"}
     for slug in slugs:
+        fuel_page = services.build_operating_tes_table_context(
+            slug, "toplivo", 2026, 2027, view_year=year,
+        )
+        fuel_row = next(row for row in fuel_page["rows"] if row["key"] == "kuzngd")
         column = f"{slug}:{year}"
         fuel = fuel_row["col_values_raw"][column]
         motkh_column = column if sheet in {"azot", "pg"} else f"{column}:r"
@@ -648,7 +781,7 @@ def test_emission_summary_uses_six_groups_and_each_columns_capture(
     year_range, monkeypatch, year, sheet, prefix, eta_key, expected_mass,
 ):
     slugs = [territory["slug"] for territory in services.TERRITORIES]
-    aliases = {"norilsk": "tites-sibir", "isolated-dv": "tites-vostok", "nikolaevsky": "decentralized-zone"}
+    aliases = {"norilsk": "tites-sibir", "isolated-dv": "tites-vostok"}
     fuel = {
         "gaz": 999, "gaz_prir": 3, "gazpp": 7,
         "isk_gaz": 999, "domen_g": 20, "mazut": 999, "maztop": 30,
@@ -684,7 +817,11 @@ def test_emission_summary_uses_six_groups_and_each_columns_capture(
     assert [row["key"] for row in context["rows"][:4]] == [
         total_key, eta_key, emitted_key, "gas",
     ]
+    visible_slugs = [slug for slug in slugs if slug not in {"minen", "prompred"}]
+    assert {column["slug"] for column in context["territory_columns"]} == set(visible_slugs)
     for index, slug in enumerate(slugs, 1):
+        if slug in {"minen", "prompred"}:
+            continue
         column = f"{slug}:{year}"
         expected_total = Decimal(expected_mass) * index * (year - 2025)
         expected_eta = Decimal(index + year - 2026) / 100
@@ -698,8 +835,9 @@ def test_emission_summary_uses_six_groups_and_each_columns_capture(
         assert root_sum == expected_total
     html = render_page(context)
     fields = [field for field in TableParser(html).inputs if field.get("class", "").endswith("ot-edit-value")]
-    assert len(fields) == len(slugs)
-    for index, (slug, field) in enumerate(zip(slugs, fields), 1):
+    assert len(fields) == len(visible_slugs)
+    for slug, field in zip(visible_slugs, fields):
+        index = slugs.index(slug) + 1
         assert field["data-year"] == str(year)
         assert field["data-territory"] == aliases.get(slug, slug)
         assert field["data-affiliation"] == "all"
@@ -715,9 +853,9 @@ def test_emission_summary_uses_six_groups_and_each_columns_capture(
         rendered_row = html.split(f'data-row-key="{key}"')[1].split('</tr>')[0]
         if sheet in {"azot", "pg"}:
             assert 'colspan="2"' not in rendered_row
-            assert rendered_row.count('<td') == len(slugs) + 1
+            assert rendered_row.count('<td') == len(visible_slugs) + 1
         else:
-            assert rendered_row.count('colspan="2"') == len(slugs)
+            assert rendered_row.count('colspan="2"') == len(visible_slugs)
         assert "ot-row-empty-hidden" not in html.split(f'data-row-key="{key}"')[0].rsplit('<tr', 1)[1]
     assert "ΣМ<sub>отх</sub>." in html
     assert "М<sub>выб</sub>." in html
@@ -851,3 +989,28 @@ def test_coefficient_rounding_only_changes_coefficient_display(year_range, monke
 def test_coefficient_rounding_control_is_hidden_on_other_tabs(year_range, sheet):
     context = services.build_operating_tes_table_context("vsego", sheet, 2026, 2027)
     assert 'id="coefficient_rounding_digits"' not in render_page(context)
+
+@pytest.mark.parametrize("sheet,kind", [
+    ("zola", "ash_eta"), ("sera", "sulfur_eta"), ("azot", "nox_n"),
+    ("co", "co_k"), ("pg", "pg_k"), ("pg-tj", "pg_k"),
+])
+@pytest.mark.parametrize("stored,editable", [
+    ("0.973410000000000000", "0,97341"),
+    ("0.973410000000000001", "0,973410000000000001"),
+    ("0.000000000000000000", "0"),
+    ("1.000000000000000000", "1"),
+])
+def test_editable_emission_coefficients_trim_only_insignificant_zeros(
+    year_range, monkeypatch, sheet, kind, stored, editable,
+):
+    monkeypatch.setattr(services, "load_coefficient_overrides", lambda years: {
+        ("vsego", 2026, kind): Decimal(stored),
+    })
+    context = services.build_operating_tes_table_context(
+        "vsego", sheet, 2026, 2027, view_year=2026, coefficient_rounding_digits=1,
+    )
+    fields = TableParser(render_page(context)).inputs
+    field = next(field for field in fields
+                 if field.get("data-column") == "vsego:2026" and field.get("data-field") == kind)
+    assert field["data-raw-value"] == editable
+    assert Decimal(field["data-raw-value"].replace(",", ".")) == Decimal(stored)

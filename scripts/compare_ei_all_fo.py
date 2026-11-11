@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Сравнение графиков электроёмкости по всем ФО: Excel vs страница (БД v20)."""
+"""Сравнение графиков электроемкости по всем ФО: Excel vs страница (БД v20)."""
 from __future__ import annotations
 
 import math
@@ -198,7 +198,7 @@ def main():
                 for iss in issues[:8]:
                     print(f"     {iss}")
                 if len(issues) > 8:
-                    print(f"     ... ещё {len(issues)-8}")
+                    print(f"     ... еще {len(issues)-8}")
                 fo_issues += len(issues)
             else:
                 print(f"  OK {name}")

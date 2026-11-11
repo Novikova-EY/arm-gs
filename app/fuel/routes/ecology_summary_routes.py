@@ -19,6 +19,7 @@ def ecology_summary():
         "vsego", "toplivo", start_year=request.args.get("start_year"),
         end_year=request.args.get("end_year"), rounding_digits=request.args.get("rounding_digits"),
         view_year=request.args.get("view_year"), fuel_source=True, fuel_scope=scope,
+        show_affiliation_columns=True,
     )
     can_send = bool(current_user.has_admin)
     if request.method == "POST":

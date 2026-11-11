@@ -1,0 +1,17 @@
+<style>
+  #ecologyRefreshStatus:empty { display: none; }
+  #ecologyRefreshLoadedAt { background: var(--bs-tertiary-bg); }
+</style>
+<span id="ecologyRefreshLoadedAt" class="small text-body-secondary border rounded-pill px-2 py-1 text-nowrap my-1"
+      title="Время формирования страницы"></span>
+<div id="ecologyDataRefresh" class="d-flex flex-wrap align-items-center gap-2 mb-0"
+     data-refresh-url="{{ ecology_refresh.refreshUrl }}"
+     data-csrf-token="{{ csrf_token if csrf_token is string else csrf_token() }}"
+     data-loaded-at="{{ ecology_refresh.loadedAt or '' }}">
+  <button type="button" id="ecologyRefreshButton" class="btn btn-warning text-dark fw-semibold text-nowrap">
+    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    <span>Обновить данные</span>
+  </button>
+  <span id="ecologyRefreshStatus" class="small text-muted" role="status" aria-live="polite"></span>
+</div>
+<script src="{{ url_for('static', filename='js/ecology/data_refresh.js') }}?v=2" defer></script>

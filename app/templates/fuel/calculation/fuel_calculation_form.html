@@ -304,13 +304,13 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
       {% elif not coeff_summary and not coeff_calc_year_is_preview %}
       <p class="small text-muted mb-2">
         Строка «Базовый год» в первой таблице строится из данных БД при
-        загрузке. Строка «Расчётный год» и вторая таблица пусты: по фильтру
-        параметра нет строк топлива за расчётный год для суммирования (или
+        загрузке. Строка «Расчетный год» и вторая таблица пусты: по фильтру
+        параметра нет строк топлива за расчетный год для суммирования (или
         выполните «Коэфф» после появления данных).
       </p>
       {% elif coeff_calc_year_is_preview %}
       <p class="small text-muted mb-2">
-        Строка «Расчётный год» и вторая таблица – предварительный расчёт по
+        Строка «Расчетный год» и вторая таблица – предварительный расчет по
         данным БД (как при «Коэфф», без записи сводки). Нажмите «Коэфф», чтобы
         зафиксировать результат и обновить строки топлива.
       </p>
@@ -578,7 +578,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                           aria-label="ЧЧИУМ hn"
                           class="form-control form-control-sm text-center fuel-calc-chchium-input"
                           value="{{ dec_input_value(tech_row.h) }}"
-                          title="ЧЧИУМ hn (hnps/hngt/hnpg): сохраняется в параметр распределения; затем пересчёт «Коэфф» (kn = hn/ch в сводке)"
+                          title="ЧЧИУМ hn (hnps/hngt/hnpg): сохраняется в параметр распределения; затем пересчет «Коэфф» (kn = hn/ch в сводке)"
                           onchange="this.form.submit()"
                         />
                       </form>
@@ -670,8 +670,8 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
         <h5 class="h6 fw-semibold mb-2">Результаты этапов</h5>
         {% if not coeff_stage_last_result and not distribution_stage_last_result and not fuel_stage_last_result %}
         <p class="small text-muted mb-2">
-          Контроль данных до/после «Коэфф»: группы фильтра без строки топлива за расчётный год
-          или без удельника year ≤ расчётного (Skip в расчёте).
+          Контроль данных до/после «Коэфф»: группы фильтра без строки топлива за расчетный год
+          или без удельника year ≤ расчетного (Skip в расчете).
         </p>
         {% endif %}
         {% set _srt_tbl = "table table-hover table-striped table-bordered
@@ -867,7 +867,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     <td class="text-center">{{ fuel_stage_last_result.e_target }}</td>
                   </tr>
                   <tr>
-                    <td class="text-start">ΣE расчётного года, млн кВтч</td>
+                    <td class="text-start">ΣE расчетного года, млн кВтч</td>
                     <td class="text-center">{{ fuel_stage_last_result.sum_e_cyear }}</td>
                   </tr>
                   <tr>
@@ -1023,7 +1023,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     </td>
                   </tr>
                   <tr>
-                    <td class="text-start">С пересчётом EOTP/B</td>
+                    <td class="text-start">С пересчетом EOTP/B</td>
                     <td class="text-center">
                       {{ fuel_stage_last_result.calculated_count if
                       fuel_stage_last_result.calculated_count is not none else '–' }}
@@ -1133,7 +1133,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
           new bootstrap.Tooltip(el);
         });
     }
-    // Страница «Расчёт»: общий station_filters_first_row.js цепляет авто-submit только к collapse-формам
+    // Страница «Расчет»: общий station_filters_first_row.js цепляет авто-submit только к collapse-формам
     // generation/stations. Здесь – отдельная GET-форма; Select2 не всегда вызывает inline onchange.
     function setupFuelCalculationFilterAutoReload() {
       var form = document.querySelector(".fuel-calc-filters-form");
@@ -1165,7 +1165,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
         var el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("change", function () {
-          // При смене расчётного года сбрасываем byear – иначе залипает чужой базовый год.
+          // При смене расчетного года сбрасываем byear – иначе залипает чужой базовый год.
           if (id === "start_year") {
             var by = document.getElementById("base_year");
             if (by) by.value = "";

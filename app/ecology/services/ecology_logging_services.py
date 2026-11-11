@@ -25,9 +25,8 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     ZV_ECOLOGY_OVERLAY_BY_KEY,
 )
 from app.ecology.services.new_tes_constants import (
-    CAPACITY_GT100_KEY,
-    CAPACITY_LE100_KEY,
     NORM_COLUMNS,
+    NEW_TES_CAPACITY_TABS,
 )
 from app.ecology.services.operating_tes_constants import (
     CHAR_COLUMNS,
@@ -44,9 +43,7 @@ ENTITY_TYPE = "ecology"
 MODULE_TITLE = "Экология"
 NOT_SET = "не указано"
 
-# Текст формулы целиком в журнал не пишем: он длинный и повторяется в /ecology/formulas/.
-MAX_TEXT_IN_LOG = 500
-# Пакет из модуля «Топливо» может менять сотни ячеек – журнал не должен расти без предела.
+# Большие пакеты делим на записи, сохраняя все изменения.
 MAX_CHANGES_IN_LOG = 100
 
 _TERRITORY_LABELS = {
@@ -65,10 +62,7 @@ _CHARACTERISTIC_TITLES = {
 _FUEL_LABELS = {item["key"]: item["label"] for item in FUEL_ROWS}
 _NORM_LABELS = {key: label for key, label in NORM_COLUMNS}
 _NORM_LABELS.update(co="CO", pg="ПГ")
-_CAPACITY_LABELS = {
-    CAPACITY_LE100_KEY: "до 100 МВт",
-    CAPACITY_GT100_KEY: "более 100 МВт",
-}
+_CAPACITY_LABELS = dict(NEW_TES_CAPACITY_TABS)
 _ANALYSIS_FIELD_LABELS = {
     field: KEY_LABELS.get(excel_key, field)
     for overlay in (PG_ECOLOGY_OVERLAY_BY_KEY, ZV_ECOLOGY_OVERLAY_BY_KEY)
@@ -102,6 +96,10 @@ def fuel_label(key: Any) -> str:
     return _FUEL_LABELS.get(str(key or ""), str(key or ""))
 
 
+def capacity_label(capacity_class: Any) -> str:
+    return _CAPACITY_LABELS.get(str(capacity_class or ""), str(capacity_class or ""))
+
+
 def norm_label(kind: Any, capacity_class: Any) -> str:
     label = _NORM_LABELS.get(str(kind or ""), str(kind or ""))
     capacity = _CAPACITY_LABELS.get(str(capacity_class or ""))
@@ -130,7 +128,7 @@ def format_change_number(value: Any) -> str:
     """Число как на страницах: «1234,5» – запятая, группировка тысяч, без лишних нулей."""
     if value is None or value == "":
         return NOT_SET
-    # digits=0 – без округления: в журнале нужно само значение, а не округлённое.
+    # digits=0 – без округления: в журнале нужно само значение, а не округленное.
     # drop_float_noise убирает хвост double (1,1000000000000001 → 1,1), как на страницах.
     number = drop_float_noise(value)
     text = format_decimal_trim_for_display(
@@ -147,8 +145,6 @@ def format_change_text(value: Any) -> str:
     text = str(value).strip()
     if not text:
         return NOT_SET
-    if len(text) > MAX_TEXT_IN_LOG:
-        return f"{text[:MAX_TEXT_IN_LOG]}… (символов: {len(text)})"
     return text
 
 
@@ -210,22 +206,26 @@ def log_changes(
     changes: Iterable[str],
     *,
     context: Optional[Iterable[str]] = None,
+    user: Any = None,
 ) -> None:
-    """Изменения полей модуля; без изменений запись не создаётся."""
+    """Изменения полей модуля; без изменений запись не создается."""
     lines = [str(item) for item in changes if item]
     if not lines:
         return
-    parts = [item for item in (context or ()) if item]
-    if len(lines) > MAX_CHANGES_IN_LOG:
-        parts.append(f"показаны первые {MAX_CHANGES_IN_LOG} из {len(lines)} изменений")
-        lines = lines[:MAX_CHANGES_IN_LOG]
-    parts.extend(lines)
-    log_to_db(
-        _actor(),
-        f"Изменение: {MODULE_TITLE} – {action_title}",
-        "; ".join(parts),
-        entity_type=ENTITY_TYPE,
-    )
+    context_parts = [item for item in (context or ()) if item]
+    total_parts = (len(lines) + MAX_CHANGES_IN_LOG - 1) // MAX_CHANGES_IN_LOG
+    actor = user if user is not None else _actor()
+    for start in range(0, len(lines), MAX_CHANGES_IN_LOG):
+        parts = list(context_parts)
+        if total_parts > 1:
+            parts.append(f"часть={start // MAX_CHANGES_IN_LOG + 1}/{total_parts}")
+        parts.extend(lines[start:start + MAX_CHANGES_IN_LOG])
+        log_to_db(
+            actor,
+            f"Изменение: {MODULE_TITLE} – {action_title}",
+            "; ".join(parts),
+            entity_type=ENTITY_TYPE,
+        )
 
 
 def log_cell_change(

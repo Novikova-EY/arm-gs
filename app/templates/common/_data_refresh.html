@@ -1,0 +1,16 @@
+<style>
+  #energyBalanceRefreshStatus:empty { display: none; }
+  #dataRefreshLoadedAt { background: var(--bs-tertiary-bg); }
+</style>
+<div id="energyBalanceDataRefresh" class="d-flex flex-wrap align-items-center gap-2"
+     data-csrf-token="{{ csrf_token if csrf_token is string else csrf_token() }}">
+  <button type="button" id="energyBalanceRefreshButton" class="btn btn-warning text-dark fw-semibold text-nowrap">
+    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    <span id="energyBalanceRefreshLabel" aria-live="polite">Обновить данные</span>
+  </button>
+  <span id="energyBalanceRefreshStatus" class="small text-muted" role="status" aria-live="polite"></span>
+</div>
+<div id="dataRefreshLoadedAt" class="small text-body-secondary border rounded-pill px-2 py-1 text-nowrap my-1"
+     title="Время формирования страницы"></div>
+<script id="energy-balance-refresh-config" type="application/json">{{ data_refresh|tojson }}</script>
+<script src="{{ url_for('static', filename='js/energy_balance/data_refresh.js') }}?v=12" defer></script>

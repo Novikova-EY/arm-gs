@@ -42,7 +42,7 @@
                 <td></td>
             </tr>
 
-            {# При фильтре «Тип агрегата ТЭС» / для ТЭС – строки по типам агрегатов (с учётом event) #}
+            {# При фильтре «Тип агрегата ТЭС» / для ТЭС – строки по типам агрегатов (с учетом event) #}
             {% if st_name == 'ТЭС' and regional_districts_by_tes_machine_types_yearly_p_ust is defined %}
                 {% for tes_type_id, tes_map in regional_districts_by_tes_machine_types_yearly_p_ust.get(current_rd_id, {}).items() %}
                     {% for tm_id, tm_events in (tes_map or {}).items() %}

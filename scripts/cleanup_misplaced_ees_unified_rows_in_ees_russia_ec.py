@@ -88,7 +88,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Выполнить удаление (без флага – только отчёт).",
+        help="Выполнить удаление (без флага – только отчет).",
     )
     parser.add_argument(
         "--yes",

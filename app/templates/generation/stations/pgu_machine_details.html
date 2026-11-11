@@ -10,6 +10,7 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
+<meta name="csrf-token" content="{{ csrf_token }}">
 {% set filters = [
     'page', 'condition_type_filter', 'gen_company_filter', 'station_name_filter',
     'station_type_filter', 'machine_type_filter', 'tes_type_filter', 'tes_machine_type_filter',
@@ -20,6 +21,13 @@
 {% set allowed_roles = ['generation', 'admin'] %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+{% set can_view_internal_ids = current_user.is_authenticated and (
+    current_user.has_admin
+    or (current_user.role_names | select('in', [
+        'generation-editor', 'fuel-editor', 'demand-editor', 'ecology-editor', 'load-editor',
+        'generation_editor', 'fuel_editor', 'demand_editor', 'ecology_editor', 'load_editor'
+    ]) | list | length > 0)
+) %}
 
 <div class="container-fluid mt-4 machine-details-page">
     <!-- Кнопки возврата -->
@@ -68,6 +76,20 @@
             <div class="container-fluid">
                 <div class="card mb-3 border-0 shadow-none">
                     <div class="card-body">
+                        {% if can_view_internal_ids %}
+                        <div class="row g-2 align-items-center mb-3">
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-5 text-start">
+                                        <h4 class="card-title text-decoration-underline mb-0"><strong>Общая информация</strong></h4>
+                                    </div>
+                                    <div class="col-7 text-start text-muted">
+                                        id = {% if parent_machine and parent_machine.id %}{{ parent_machine.id }}{% if pgu_machine_id %}/{{ pgu_machine_id }}{% endif %}{% else %}–{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="row">
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
@@ -112,6 +134,43 @@
                                         {{ parent_machine.gen_company.name if parent_machine.gen_company else '–' }}
                                     </div>
                                 </div>
+                                {% if can_view_internal_ids %}
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">external_code:</div>
+                                    <div class="col-7 text-start">
+                                        {{ parent_machine.external_code if parent_machine and parent_machine.external_code else '–' }}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Коды Техинспекции:</div>
+                                    <div class="col-7 text-start">
+                                        {% set ti_codes = pgu_machine.turbine_technical_characteristics.filter_by(match_status='matched').all() if pgu_machine else [] %}
+                                        {% set saved_codes = pgu_machine.technical_inspection_codes.all() if pgu_machine else [] %}
+                                        {% set codes = (ti_codes | map(attribute='equipment_code') | list + saved_codes | map(attribute='equipment_code') | list) | unique | list %}
+                                        {% if can_edit %}
+                                            <input type="text"
+                                                name="technical_inspection_code"
+                                                value="{{ codes[0] if codes else '' }}"
+                                                class="form-control"
+                                                maxlength="100"
+                                                data-pgu-machine-id="{{ pgu_machine.id }}"
+                                                data-save-url="{{ url_for('rational_structure_module_bp.save_technical_inspection_code') }}"
+                                                autocomplete="off">
+                                        {% elif codes %}
+                                            <ul class="mb-0">
+                                            {% for ti in ti_codes %}
+                                                <li>{{ ti.equipment_code }} ({{ ti.equipment_type_label }}, {{ ti.report_year }} г.)</li>
+                                            {% endfor %}
+                                            {% for code in saved_codes if code.equipment_code not in ti_codes | map(attribute='equipment_code') | list %}
+                                                <li>{{ code.equipment_code }}</li>
+                                            {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            не заполнены
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
 
                             <div class="col-12 col-lg-3">
@@ -129,12 +188,9 @@
                                     </div>
                                 </div>
                                 {% endif %}
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
-                                    <div class="col-7 text-start">
-                                        {{ parent_machine.equipment_group.name if parent_machine.equipment_group else '–' }}
-                                    </div>
-                                </div>
+                                {% with equipment_group_machine=parent_machine, equipment_group_editable=false %}
+                                    {% include 'generation/stations/_machine_equipment_group_type.html' %}
+                                {% endwith %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип агрегата ПГУ:</div>
                                     <div class="col-7 text-start">
@@ -345,14 +401,14 @@
                             <div class="d-flex align-items-center gap-2">
                                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                                 <select name="start_year" id="start_year" class="form-select">
-                                    {% for year in filter_year_list %}
+                                    {% for year in get_reference_years() %}
                                         <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
 
                                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                                 <select name="end_year" id="end_year" class="form-select">
-                                    {% for year in filter_year_list %}
+                                    {% for year in get_reference_years() %}
                                         <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
@@ -1176,6 +1232,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rational_structure/technical_characteristics.js') }}?v=5"></script>
 
 <!-- Журнал изменений по ПГУ-агрегату -->
 <h3 class="mb-0 ms-3">Журнал изменений по ПГУ-агрегату</h3>

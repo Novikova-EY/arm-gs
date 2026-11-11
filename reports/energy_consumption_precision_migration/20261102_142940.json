@@ -1,0 +1,310 @@
+{
+  "target": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "gs_gen",
+    "schema": "gs_ec"
+  },
+  "migration": "gs26110201",
+  "started_at": "2026-11-02T14:29:40.071492+00:00",
+  "revision_before": [
+    "gs26102901"
+  ],
+  "data_before": {
+    "gs_ec_centralized_zone_consumption_params": {
+      "rows": 232,
+      "checksum": "105e9650aac595ce4490dc3492b5ba9a"
+    },
+    "gs_ec_ees_consumption_params": {
+      "rows": 0,
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "gs_ec_ees_russia_consumption_params": {
+      "rows": 708,
+      "checksum": "e5be28f58ed07044e2b02ef072b3aedb"
+    },
+    "gs_ec_energy_area_consumption_params": {
+      "rows": 0,
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "gs_ec_energy_system_type_consumption_params": {
+      "rows": 976,
+      "checksum": "af40e66e586f486c4a4bfcf0c63cdd61"
+    },
+    "gs_ec_energy_unit_consumption_params": {
+      "rows": 3489,
+      "checksum": "657d19c6818e3a1f9f8677c8c218918c"
+    },
+    "gs_ec_energy_zone_consumption_params": {
+      "rows": 4763,
+      "checksum": "64e9d5a02110d4d10b951b627b0d4737"
+    },
+    "gs_ec_regional_energy_system_consumption_params": {
+      "rows": 25603,
+      "checksum": "028fc5df08d8cde4b35f1031ca5ff198"
+    },
+    "gs_ec_synchronous_area_consumption_params": {
+      "rows": 935,
+      "checksum": "be370d45bf8b92c5e7f489881426d0b7"
+    },
+    "gs_ec_union_energy_system_consumption_params": {
+      "rows": 2971,
+      "checksum": "8e3dc0faecf2137d2e8c5b3d899320fe"
+    },
+    "gs_ec_federal_district_consumption_params": {
+      "rows": 3556,
+      "checksum": "f3eee1416a33d59b374c1e0bb6fb06da"
+    },
+    "gs_ec_regional_district_consumption_params": {
+      "rows": 28111,
+      "checksum": "241f615baadfdc94a829084885bd7737"
+    },
+    "gs_ec_russia_federation_consumption_params": {
+      "rows": 248,
+      "checksum": "3b7fff75ea0f38222dc219a78a8a90ae"
+    }
+  },
+  "revision_after": [
+    "gs26110201"
+  ],
+  "data_after": {
+    "gs_ec_centralized_zone_consumption_params": {
+      "rows": 232,
+      "checksum": "105e9650aac595ce4490dc3492b5ba9a"
+    },
+    "gs_ec_ees_consumption_params": {
+      "rows": 0,
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "gs_ec_ees_russia_consumption_params": {
+      "rows": 708,
+      "checksum": "e5be28f58ed07044e2b02ef072b3aedb"
+    },
+    "gs_ec_energy_area_consumption_params": {
+      "rows": 0,
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "gs_ec_energy_system_type_consumption_params": {
+      "rows": 976,
+      "checksum": "af40e66e586f486c4a4bfcf0c63cdd61"
+    },
+    "gs_ec_energy_unit_consumption_params": {
+      "rows": 3489,
+      "checksum": "657d19c6818e3a1f9f8677c8c218918c"
+    },
+    "gs_ec_energy_zone_consumption_params": {
+      "rows": 4763,
+      "checksum": "64e9d5a02110d4d10b951b627b0d4737"
+    },
+    "gs_ec_regional_energy_system_consumption_params": {
+      "rows": 25603,
+      "checksum": "028fc5df08d8cde4b35f1031ca5ff198"
+    },
+    "gs_ec_synchronous_area_consumption_params": {
+      "rows": 935,
+      "checksum": "be370d45bf8b92c5e7f489881426d0b7"
+    },
+    "gs_ec_union_energy_system_consumption_params": {
+      "rows": 2971,
+      "checksum": "8e3dc0faecf2137d2e8c5b3d899320fe"
+    },
+    "gs_ec_federal_district_consumption_params": {
+      "rows": 3556,
+      "checksum": "f3eee1416a33d59b374c1e0bb6fb06da"
+    },
+    "gs_ec_regional_district_consumption_params": {
+      "rows": 28111,
+      "checksum": "241f615baadfdc94a829084885bd7737"
+    },
+    "gs_ec_russia_federation_consumption_params": {
+      "rows": 248,
+      "checksum": "3b7fff75ea0f38222dc219a78a8a90ae"
+    }
+  },
+  "fields_after": [
+    {
+      "table_name": "gs_ec_centralized_zone_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_centralized_zone_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_ees_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_ees_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_ees_russia_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_ees_russia_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_area_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_area_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_system_type_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_system_type_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_unit_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_unit_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_zone_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_energy_zone_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_federal_district_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_federal_district_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_regional_district_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_regional_district_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_regional_energy_system_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_regional_energy_system_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_russia_federation_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_russia_federation_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_synchronous_area_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_synchronous_area_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_union_energy_system_consumption_params",
+      "column_name": "energy_consumption_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    },
+    {
+      "table_name": "gs_ec_union_energy_system_consumption_params",
+      "column_name": "energy_consumption_sipr_mln_kvt_ch",
+      "data_type": "numeric",
+      "numeric_precision": null,
+      "numeric_scale": null
+    }
+  ],
+  "verified_at": "2026-11-02T14:29:41.248238+00:00",
+  "data_unchanged": true
+}

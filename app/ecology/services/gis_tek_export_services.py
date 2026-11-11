@@ -10,6 +10,7 @@ from werkzeug.datastructures import MultiDict
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import excel_number_format, parse_excel_numeric
 from app.ecology.services.gis_tek_constants import PAGE_TITLES, SHEET_NAMES, ZV_NORM_ATTR
 from app.ecology.services.gis_tek_page_services import (
     build_gis_tek_page_context,
@@ -27,6 +28,7 @@ def build_gis_tek_excel_stream(kind: str, args, user=None) -> BytesIO:
     export_args = MultiDict(args)
     export_args["per_page"] = "all"
     context = build_gis_tek_page_context(kind, export_args, user=user)
+    number_format = excel_number_format(context.get("rounding_digits", 1))
     wb = Workbook()
     ws = wb.active
     ws.title = SHEET_NAMES[kind][:31]
@@ -38,7 +40,7 @@ def build_gis_tek_excel_stream(kind: str, args, user=None) -> BytesIO:
     ws.cell(1, 2, PAGE_TITLES[kind])
 
     identity_columns = list(context.get("identity_columns") or [])
-    # В выгрузке к каждой станции добавляем её ОЭС и РЭС.
+    # В выгрузке к каждой станции добавляем ее ОЭС и РЭС.
     insert_at = next(
         (index + 1 for index, column in enumerate(identity_columns) if column[0] == "station_numb"),
         0,
@@ -144,7 +146,13 @@ def build_gis_tek_excel_stream(kind: str, args, user=None) -> BytesIO:
             ws.cell(row_idx, identity_index_by_key["res_name"], res_name or None)
         metrics = summary.get("metrics") or {}
         for offset, (attr, _label) in enumerate(value_columns):
-            ws.cell(row_idx, identity_count + 1 + offset, metrics.get(attr))
+            cell = ws.cell(row_idx, identity_count + 1 + offset)
+            numeric_value = parse_excel_numeric(metrics.get(attr))
+            if numeric_value is None:
+                cell.value = metrics.get(attr)
+            else:
+                cell.value = numeric_value
+                cell.number_format = number_format
         row_idx += 1
 
     for ues in context["hierarchy"]:
@@ -160,7 +168,13 @@ def build_gis_tek_excel_stream(kind: str, args, user=None) -> BytesIO:
                     values.append(val)
                 values += [row["metrics"].get(attr) for attr, _label in value_columns]
                 for col, value in enumerate(values, start=1):
-                    ws.cell(row_idx, col, value)
+                    cell = ws.cell(row_idx, col)
+                    numeric_value = parse_excel_numeric(value) if col > identity_count else None
+                    if numeric_value is None:
+                        cell.value = value
+                    else:
+                        cell.value = numeric_value
+                        cell.number_format = number_format
                 row_idx += 1
             _write_summary(res.get("summary"), ues.get("ues_name"), res.get("res_name"))
         _write_summary(ues.get("summary"), ues.get("ues_name"))

@@ -15,7 +15,7 @@ Write/update-слой для EquipmentGroupFuelParam.
 согласованы с `equipment_group_fuel_params_services` (единый источник колонок
 для таблиц; типы полей для парсинга – в этом модуле).
 
-Не подменять этот файл упрощёнными заготовками: нужна двухаргументная
+Не подменять этот файл упрощенными заготовками: нужна двухаргументная
 нормализация FK с запросами к таблицам маппинга и текущая семантика
 sanitize / сохранения формы.
 """
@@ -189,7 +189,7 @@ class _BulkFuelParamFormAdapter:
     Адаптер POST-данных массового редактирования: поля вида
     g{equipment_group_id}_fuel_param_{year}_{attr} → как fuel_param_{year}_{attr}
     для update_equipment_group_fuel_params_from_form.
-    (numb1120 на массовой странице не редактируется – передаётся skip_attrs.)
+    (numb1120 на массовой странице не редактируется – передается skip_attrs.)
     """
 
     __slots__ = ("_form", "_gid", "_prefix")
@@ -235,7 +235,7 @@ def apply_equipment_group_fuel_params_bulk_save_from_form(
     rounding_digits_table2: int = 1,
 ) -> tuple[int, list[str], dict[int, list[tuple]]]:
     """
-    Сохраняет основные топливные параметры для набора групп (страница расчётного модуля).
+    Сохраняет основные топливные параметры для набора групп (страница расчетного модуля).
     Возвращает (
       число групп, в которых были изменения,
       список сообщений об ошибках,
@@ -276,7 +276,7 @@ def update_equipment_group_fuel_params_from_form(
     Обновляет EquipmentGroupFuelParam из данных формы.
     Ожидает ключи вида: fuel_param_{year}_{attr}
     rounding_digits_table1/table2 – точность отображения для сравнения (избегаем ложных «изменений»).
-    skip_attrs – не обновлять эти атрибуты (например numb1120 на массовой странице расчёта).
+    skip_attrs – не обновлять эти атрибуты (например numb1120 на массовой странице расчета).
     partial=True – обрабатывать только ключи, присутствующие в form_data (массовая страница:
     не сбрасывать в NULL поля, не переданные в POST).
     Возвращает (success: bool, message: str, change_details: list).
@@ -363,9 +363,9 @@ def update_equipment_group_fuel_params_from_form(
             if param is not None:
                 _assign_attr(attr, val)
 
-        # EURT/TURT/snk/SNT/h: при наличии входов – пересчёт по формуле;
-        # ручной ввод из формы только если входов нет (иначе расчётное поле
-        # не передаётся в POST и не должно затираться в NULL).
+        # EURT/TURT/snk/SNT/h: при наличии входов – пересчет по формуле;
+        # ручной ввод из формы только если входов нет (иначе расчетное поле
+        # не передается в POST и не должно затираться в NULL).
         for attr in sorted(FUEL_PARAM_DERIVED_ATTRS):
             if skip_attrs and attr in skip_attrs:
                 continue

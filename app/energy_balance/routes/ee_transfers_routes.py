@@ -273,7 +273,7 @@ def ee_transfer_value():
 @energy_balance_bp.route("/ee_transfers/export", methods=["GET"])
 @login_required
 def export_ee_transfers():
-    """Экспорт перетоков ЭЭ в Excel с учётом фильтров и настроек отображения."""
+    """Экспорт перетоков ЭЭ в Excel с учетом фильтров и настроек отображения."""
     try:
         ee_period_mode = _parse_ee_period_mode()
         selected_year = None

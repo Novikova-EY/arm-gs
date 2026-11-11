@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Данные для страницы «Редактировать удельные показатели» из модуля расчёта
+Данные для страницы «Редактировать удельные показатели» из модуля расчета
 (/fuel/calculation/equipment_group_specific_fuel_consumption_edit_data).
 
 Источники – как на /fuel/stations_equipment_group_specific_fuel_consumption:
@@ -41,7 +41,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_services import (
     build_equipment_group_specific_fuel_consumption_hierarchy,
     get_equipment_groups_with_specific_fuel_consumption_data,
-    overlay_snk_calc_from_fuel_params,
+    overlay_specific_fuel_consumption_calc_from_fuel_params,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     CONSUMPTION_EDITABLE_ATTRS,
@@ -49,7 +49,7 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
 )
 
 # Как Access «Копирование_удельных» из архива: snk/btp/sntp/bk/y (+ поля VED), без k.
-# k копируется только в сценарии станция→группа, не при добавлении расчётного года.
+# k копируется только в сценарии станция→группа, не при добавлении расчетного года.
 _COPY_SPECIFIC_ATTRS = [a for a in CONSUMPTION_EDITABLE_ATTRS if a != "k"]
 
 
@@ -71,7 +71,7 @@ def _fact_year_numbers_for_current_version() -> frozenset[int]:
 
 
 def _plan_year_numbers_for_current_version() -> frozenset[int]:
-    """Годы с признаком «план» – *_calc только расчёт (не редактируются)."""
+    """Годы с признаком «план» – *_calc только расчет (не редактируются)."""
     return _year_numbers_with_feature("план")
 
 
@@ -226,7 +226,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
     )
     rows = specific_data.get("rows") or []
     rows = _expand_specific_rows_for_year_interval(rows, start_year, end_year)
-    overlay_snk_calc_from_fuel_params(rows)
+    overlay_specific_fuel_consumption_calc_from_fuel_params(rows)
 
     def _row_sort_key(item: tuple) -> tuple:
         eg, param = item
@@ -238,7 +238,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
 
     rows = sorted(rows, key=_row_sort_key)
 
-    # Жёлтая подсветка строк при изменении Nуст – как на equipment_group_fuel_params_edit_data
+    # Желтая подсветка строк при изменении Nуст – как на equipment_group_fuel_params_edit_data
     fuel_params_data = get_equipment_groups_with_fuel_params_data(
         filters=f,
         per_page="all",
@@ -309,7 +309,7 @@ def copy_specific_fuel_consumption_between_years_for_filters(
     """Явное копирование года (coeff_copy_specific_consumption_year).
 
     «Добавить год/период» на странице удельных это не вызывает: Access U.Seek
-    не требует строки расчётного года, без неё берётся последняя year ≤ цели.
+    не требует строки расчетного года, без нее берется последняя year ≤ цели.
     """
     if source_year == target_year:
         return 0, 0, 0

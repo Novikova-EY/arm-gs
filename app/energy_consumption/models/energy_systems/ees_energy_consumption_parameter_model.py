@@ -19,9 +19,9 @@ class EesEnergyConsumptionParameter(db.Model, AuditMixin, PerimeterVariantColumn
 
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
-    energy_consumption_mln_kvt_ch = db.Column(Numeric(25, 16), nullable=True)
+    energy_consumption_mln_kvt_ch = db.Column(Numeric(), nullable=True)
 
-    energy_consumption_sipr_mln_kvt_ch = db.Column(Numeric(25, 16), nullable=True)
+    energy_consumption_sipr_mln_kvt_ch = db.Column(Numeric(), nullable=True)
 
     note = db.Column(db.Text, nullable=True)
 

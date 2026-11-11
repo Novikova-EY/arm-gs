@@ -89,7 +89,7 @@ def test_new_submission_supersedes_old_and_prevents_stale_accept(exchange):
     new = service.submit_fuel_year(2026)
     assert old.status == "superseded"
     assert service.pending_submissions([2026]) == [new]
-    with pytest.raises(ValueError, match="заменён"):
+    with pytest.raises(ValueError, match="заменен"):
         service.review_fuel_submission(old.id, accept=True)
     service.review_fuel_submission(new.id, accept=True)
     assert service.load_accepted_fuel_inputs([2026])[2026]["vsego"]["b"] == 200

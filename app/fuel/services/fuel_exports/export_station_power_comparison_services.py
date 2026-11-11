@@ -53,7 +53,7 @@ def export_station_power_comparison_to_excel(comparison):
     sheet.append([
         f"Год: {year_label}; VED=0: {'да' if comparison['show_ved0'] else 'нет'}; "
         f"Котельные: {'да' if comparison['show_boilers'] else 'нет'}. "
-        "VED=0 и котельные не входят в расчётные суммы."
+        "VED=0 и котельные не входят в расчетные суммы."
     ])
     for row_number in (1, 2):
         sheet.merge_cells(start_row=row_number, start_column=1, end_row=row_number, end_column=len(columns))

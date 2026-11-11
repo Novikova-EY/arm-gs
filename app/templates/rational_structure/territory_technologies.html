@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% macro editable_cell(row, field, value, label, zone_number='') %}
+{% if can_import %}<input type="text" inputmode="decimal" class="rs-cell-input rs-number-input" data-row-id="{{ row.id }}" data-field="{{ field }}" data-zone-number="{{ zone_number }}" data-raw="{{ value if value is not none else '' }}" value="{{ value|format_decimal(-1 if field in ('technology_number', 'zone_membership', 'zone_paths') else rounding_digits) if value is not none else '' }}" aria-label="{{ row.name }}: {{ label }}{% if zone_number %}, ЭЗ {{ zone_number }}{% endif %}" autocomplete="off">{% else %}{{ value|format_decimal(rounding_digits) if value is not none else '–' }}{% endif %}
+{% endmacro %}
+{% block title %}Технологии и МСК + МДП{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/territory_technologies.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/pages.css') }}?v=5">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2 rs-territory-page rs-data-page" data-territory-editor
+     data-save-url="{{ url_for('rational_structure_module_bp.update_territory_cell', kind='technologies') }}"
+     data-version-id="{{ version_id }}" data-sheet="{{ sheet }}" data-rounding="{{ rounding_digits }}">
+    {% set territory_active_sheet = sheet %}
+    {% set territory_zone_id = selected_zone %}
+    <div class="rs-sheet-nav mb-2">
+        {% include 'rational_structure/_territory_nav.html' %}
+        {% include 'rational_structure/_territory_zone_nav.html' %}
+    </div>
+    <h1 class="text-center mb-2">{% if sheet == 'transfers' %}МСК + МДП{% elif selected_energy_zone %}Технологии энергозоны {{ selected_energy_zone.number }} - {{ selected_energy_zone.name }}{% else %}Технологии по всем энергозонам{% endif %}</h1>
+    {% if not version %}<div class="alert alert-warning">Выберите версию базы данных для просмотра и загрузки данных.</div>{% endif %}
+    <div class="d-flex flex-wrap align-items-center gap-2 rs-data-controls">
+        {% if can_import %}
+        <button type="button" class="btn btn-outline-secondary text-body" data-bs-toggle="collapse" data-bs-target="#territory-import" aria-expanded="false" aria-controls="territory-import">📁 Импорт из Excel</button>
+        {% endif %}
+        <a class="btn btn-outline-success{% if not version %} disabled{% endif %}" {% if version %}href="{{ url_for('rational_structure_module_bp.export_territory_technologies_excel', sheet=sheet, energy_zone=selected_zone, rounding_digits=rounding_digits) }}"{% else %}aria-disabled="true"{% endif %} download data-export-saved-cells><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Выгрузить в Excel</a>
+        <span data-save-status role="status" class="small"></span>
+        <form method="get" class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+            <input type="hidden" name="energy_zone" value="{{ selected_zone }}">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            <label for="territory-rounding">Округление:</label>
+            <select class="form-select w-auto" name="rounding_digits" id="territory-rounding" data-rounding-control>
+                {% for digits, label in ((0, 'Не округлять'), (-1, 'Целое число'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (6, '6 знаков')) %}
+                <option value="{{ digits }}" {% if rounding_digits == digits %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% if can_import %}
+    <div class="collapse mb-3" id="territory-import">
+        <p class="mt-2">Книга с листами «Технологии» и «МСК + МДП». Совпавшие технологии и сечения обновляются только в выбранной версии; отсутствующие в файле записи сохраняются. Формулы не пересчитываются: используются результаты, сохраненные Excel. Энергозоны связываются со справочником по номеру. Тип технологии, группа оборудования и топливо определяются по названию, если соответствие однозначно. Нераспознанные названия сохраняются как есть. Связи можно выбрать вручную; повторный импорт не меняет ручной выбор.</p>
+        <form action="{{ url_for('rational_structure_module_bp.import_territory_technologies') }}" method="post" enctype="multipart/form-data" class="d-flex align-items-center flex-wrap gap-2">
+            {{ import_form.hidden_tag() }}
+            <input type="hidden" name="database_version_id" value="{{ version_id }}">
+            <input class="form-control w-auto" type="file" name="file" accept=".xlsx" aria-label="Исходные данные Excel" required {% if version_id is none %}disabled{% endif %}>
+            <button class="btn btn-outline-primary" type="submit" {% if version_id is none %}disabled{% endif %}>Загрузить в выбранную версию</button>
+        </form>
+    </div>
+    {% endif %}
+    {% if sheet == 'technologies' %}
+    <div class="page-table-scroll rs-territory-scroll rs-data-scroll">
+        <table class="table table-hover table-striped table-bordered align-middle rs-territory-table rs-data-table">
+            <thead class="table-success">
+                <tr>
+                    <th scope="col" rowspan="2">ЭЗ</th>
+                    <th scope="col" rowspan="2" class="d-none">Энергозона</th>
+                    <th scope="col" rowspan="2">Название технологии</th>
+                    <th scope="col" rowspan="2" class="d-none">Справочники</th>
+                    <th scope="col" rowspan="2">Тип №</th>
+                    {% for label, subheaders in technology_header_groups %}
+                    <th scope="{{ 'colgroup' if subheaders else 'col' }}" {% if subheaders %}colspan="{{ subheaders|length }}"{% else %}rowspan="2"{% endif %}>{% for line in label.split('\n') %}{% if not loop.first %}<br>{% endif %}{{ line }}{% endfor %}{% if loop.last and year_features.get(2042) %}<div class="small fw-normal">{{ year_features[2042] }}</div>{% endif %}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for label, subheaders in technology_header_groups %}
+                    {% for subheader in subheaders %}<th scope="col">{{ subheader }}</th>{% endfor %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr><td class="text-center">{{ row.energy_zone.number }}</td><td class="d-none">{{ row.energy_zone.name }}</td><th scope="row">{{ row.name }}</th>
+                <td class="d-none">
+                    <div>Тип: {{ row.technology_type.name if row.technology_type else 'Не определен' }}</div>
+                    <div>Группа: {{ row.equipment_group_type.name if row.equipment_group_type else 'Не определена' }}</div>
+                    <div>Топливо: {{ fuel_categories.get(row.fuel_category, 'Не определено') }}</div>
+                    {% if can_import %}
+                    <details><summary>Выбрать из справочников</summary>
+                        <form action="{{ url_for('rational_structure_module_bp.update_territory_technology_references', row_id=row.id) }}" method="post" class="d-grid gap-2 mt-2">
+                            {{ import_form.hidden_tag() }}
+                            <input type="hidden" name="database_version_id" value="{{ version_id }}">
+                            {% for field, label, options, selected in (('technology_type_id', 'Тип технологии', technology_types, row.technology_type_id), ('equipment_group_type_id', 'Группа оборудования', equipment_group_types, row.equipment_group_type_id)) %}
+                            <label>{{ label }}
+                                <select name="{{ field }}" class="form-select form-select-sm" aria-label="{{ row.name }}: {{ label }}">
+                                    <option value="">Не определено</option>
+                                    {% for item in options %}<option value="{{ item.id }}" {% if item.id == selected %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+                                </select>
+                            </label>
+                            {% endfor %}
+                            <label>Вид топлива
+                                <select name="fuel_category" class="form-select form-select-sm" aria-label="{{ row.name }}: Вид топлива">
+                                    <option value="">Не определено</option>
+                                    {% for key, label in fuel_categories.items() %}<option value="{{ key }}" {% if key == row.fuel_category %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                                </select>
+                            </label>
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить связи</button>
+                        </form>
+                    </details>
+                    {% endif %}
+                </td>
+                <td class="text-center">{{ editable_cell(row, 'technology_number', row.technology_number, 'Тип №') }}</td>
+                {% for field, label in columns %}{% set value = row|attr(field) %}<td class="text-center" title="{{ value if value is not none else '' }}">{{ editable_cell(row, field, value, label) }}</td>{% endfor %}</tr>
+                {% else %}<tr><td colspan="{{ 3 + columns|length }}" class="text-center">В выбранной версии и энергозоне данных нет.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="page-table-scroll rs-territory-scroll rs-data-scroll">
+        <div class="rs-transfer-matrices">
+            <table class="table table-hover table-striped table-bordered align-middle rs-territory-table rs-data-table rs-transfer-matrix" data-transfer-matrix="paths">
+                <caption class="caption-top text-center text-body">Матрица путей</caption>
+                <thead class="table-success"><tr><th scope="col">ЭЗ / сечение</th>{% for row in sections %}<th scope="col">{{ row.name }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                    {% for zone in matrix_zones %}
+                    <tr><th scope="row" title="{{ zone.name }}">{{ zone.number }}</th>
+                        {% for row in sections %}<td class="text-center">{{ editable_cell(row, 'zone_paths', row.zone_paths[zone.number], 'Матрица путей', zone.number) }}</td>{% endfor %}
+                    </tr>
+                    {% else %}<tr><td colspan="{{ 1 + sections|length }}">Данные матрицы в выбранной энергозоне отсутствуют.</td></tr>{% endfor %}
+                </tbody>
+                {% if sections %}
+                <tfoot>
+                    {% for field, label, sign in (('forward_limit', 'ПР', 1), ('reverse_limit', 'ОБР', -1)) %}
+                    <tr><th scope="row">{{ label }}</th>{% for row in sections %}{% set limit = row|attr(field) %}<td class="text-center"><span data-limit-row-id="{{ row.id }}" data-limit-field="{{ field }}" data-limit-sign="{{ sign }}">{{ (limit * sign)|format_decimal(rounding_digits) if limit is not none else '–' }}</span></td>{% endfor %}</tr>
+                    {% endfor %}
+                </tfoot>
+                {% endif %}
+            </table>
+            <table class="table table-hover table-striped table-bordered align-middle rs-territory-table rs-data-table rs-transfer-matrix" data-transfer-matrix="membership">
+                <caption class="caption-top text-center text-body">Матрица МСК и МДП, МВт</caption>
+                <thead class="table-success"><tr><th scope="col">Сечение / ЭЗ</th>{% for zone in matrix_zones %}<th scope="col" title="{{ zone.name }}">{{ zone.number }}</th>{% endfor %}<th scope="col" class="rs-transfer-limit">ПР</th><th scope="col" class="rs-transfer-limit">ОБР</th></tr></thead>
+                <tbody>
+                    {% for row in sections %}
+                    <tr><th scope="row">{{ row.name }}</th>
+                        {% for zone in matrix_zones %}<td class="text-center">{{ editable_cell(row, 'zone_membership', row.zone_membership[zone.number], 'Матрица МСК', zone.number) }}</td>{% endfor %}
+                        <td class="text-center rs-transfer-limit">{{ editable_cell(row, 'forward_limit', row.forward_limit, 'МДП ПР, МВт') }}</td><td class="text-center rs-transfer-limit">{{ editable_cell(row, 'reverse_limit', row.reverse_limit, 'МДП ОБР, МВт') }}</td>
+                    </tr>
+                    {% else %}<tr><td colspan="{{ 3 + matrix_zones|length }}">Данные сечений в выбранной версии отсутствуют.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/rational_structure/territory_cells.js') }}?v=3"></script>
+{% endblock %}

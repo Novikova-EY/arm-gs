@@ -1,0 +1,445 @@
+[2026-11-02 09:29:58,415] INFO in __init__: Redis connection established successfully
+[2026-11-02 09:29:58,469] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-02 09:29:59,117] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 09:29:59,124] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-02 09:29:59,129] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-02 09:29:59,892] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+[2026-11-02 09:29:59,909] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 0.02s (warmed=0 skipped=6)
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+[2026-11-02 09:30:00,038] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/load_forecast
+[2026-11-02 09:30:00,040] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:30:00] "GET /api/datasets/37/load_forecast HTTP/1.1" 200 -
+[2026-11-02 09:30:04,619] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+[2026-11-02 09:30:04,625] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 09:30:04] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+[2026-11-02 09:30:04,714] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_exchange_config, URL: http://127.0.0.1:5000/api/config
+[2026-11-02 09:30:04,714] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 09:30:04] "GET /api/config HTTP/1.1" 200 -
+[2026-11-02 09:30:15,075] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:30:15,075] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:30:15] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:30:28,526] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:30:28,533] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:28] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:30:29] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:30:30,361] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.export_output_document_excel, URL: http://127.0.0.1:5000/output_documents_transfer/export_excel/import_gs_to_ee_zam_cena?database_version=37
+[2026-11-02 09:30:30,367] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:30:30,440] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+[2026-11-02 09:30:30,444] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:30:30] "GET /output_documents_transfer/export_excel/import_gs_to_ee_zam_cena?database_version=37 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:30:30] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+[2026-11-02 09:31:30,173] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:31:30,186] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:30] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:47] "GET /static/js/generation/stations/station_second_row.js HTTP/1.1" 200 -
+[2026-11-02 09:31:52,143] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.stations_equipment_groups, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups?equipment_group_name_filter=Новороссийск
+[2026-11-02 09:31:52,148] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /fuel/stations_equipment_groups?equipment_group_name_filter=Новороссийск HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/generation/stations/station_filters_first_row.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/fuel/numb1120_header_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/generation/stations/station_page_logic.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/fuel/stations_equipment_groups_inline_edit.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/generation/stations/highlight_changes.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:53] "GET /static/js/fuel/fuel_db_import.js?v=1 HTTP/1.1" 200 -
+[2026-11-02 09:31:53,967] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.fuel_db_import_active, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/import_fuel_db/active
+[2026-11-02 09:31:53,970] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.equipment_group_inline_edit, URL: http://127.0.0.1:5000/fuel/equipment_group/29385/inline
+[2026-11-02 09:31:53,971] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:31:53,976] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:31:54] "GET /fuel/stations_equipment_groups/import_fuel_db/active HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:54] "GET /fuel/equipment_group/29385/inline HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:31:55] "GET /static/js/generation/stations/station_second_row.js HTTP/1.1" 200 -
+[2026-11-02 09:32:21,499] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.soft_import_composite_flags, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/soft_import_composite_flags?equipment_group_name_filter=Новороссийск
+[2026-11-02 09:32:21,506] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:32:35,916] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:32:35,924] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:32:36] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:32:41,614] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&rounding_digits=-1
+[2026-11-02 09:32:41,622] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&rounding_digits=-1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:32:41] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:32:42] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:33:06,875] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: fuel_bp.soft_import_composite_flags, URL: http://127.0.0.1:5000/fuel/stations_equipment_groups/soft_import_composite_flags?equipment_group_name_filter=Новороссийск
+[2026-11-02 09:33:06,893] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:33:17,884] INFO in soft_import_composite_flags_services: [SOFT_IMPORT_COMPOSITE_FLAGS] dry_run=False user=Новикова Елена Юрьевна matched=2243 would_update=11 updated=11 missing=1 phase_a=0 phase_b=0 missing_numbs=4 ved0=0 elapsed=56.02s
+[2026-11-02 09:33:17,901] INFO in fuel_routes: [SOFT_IMPORT_COMPOSITE_FLAGS_ROUTE] user=Новикова Елена Юрьевна dry_run=False would_update=11 updated=11
+127.0.0.1 - - [02/Nov/2026 09:33:18] "POST /fuel/stations_equipment_groups/soft_import_composite_flags?equipment_group_name_filter=Новороссийск HTTP/1.1" 302 -
+[2026-11-02 09:33:30,740] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:33:30,758] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:33:31] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:34:10,768] INFO in soft_import_composite_flags_services: [SOFT_IMPORT_COMPOSITE_FLAGS] dry_run=False user=Новикова Елена Юрьевна matched=2243 would_update=11 updated=11 missing=1 phase_a=0 phase_b=0 missing_numbs=0 ved0=0 elapsed=63.71s
+[2026-11-02 09:34:10,786] INFO in fuel_routes: [SOFT_IMPORT_COMPOSITE_FLAGS_ROUTE] user=Новикова Елена Юрьевна dry_run=False would_update=11 updated=11
+127.0.0.1 - - [02/Nov/2026 09:34:10] "POST /fuel/stations_equipment_groups/soft_import_composite_flags?equipment_group_name_filter=Новороссийск HTTP/1.1" 302 -
+[2026-11-02 09:34:24,011] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: refdata_bp.refdata, URL: http://127.0.0.1:5000/refdata/
+[2026-11-02 09:34:24,019] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /refdata/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:24] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:34:25,223] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: refdata_bp.years_list, URL: http://127.0.0.1:5000/refdata/years
+[2026-11-02 09:34:25,230] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:34:25,245] DEBUG in choices_cache_service: [CHOICES_CACHE] Загружаем yearfeature_ver_37 из БД (с фильтрацией по версии)
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /refdata/years HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:25] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:34:39,289] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&rounding_digits=-1
+[2026-11-02 09:34:39,294] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&rounding_digits=-1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:39] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:34:45,446] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1
+[2026-11-02 09:34:45,453] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:45] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:34:46] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:46] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:34:46] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:35:08,726] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena?year=2041
+[2026-11-02 09:35:08,764] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 09:35:08] "GET /api/datasets/37/import_gs_to_ee_zam_cena?year=2041 HTTP/1.1" 200 -
+[2026-11-02 09:35:27,300] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+[2026-11-02 09:35:27,306] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:35:27] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+[2026-11-02 09:35:32,091] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+[2026-11-02 09:35:32,136] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:35:32] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+[2026-11-02 09:35:40,260] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.output_documents_transfer, URL: http://127.0.0.1:5000/output_documents_transfer
+[2026-11-02 09:35:40,303] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /output_documents_transfer HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:35:40] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:36:23,748] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1
+[2026-11-02 09:36:23,754] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:23] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:24] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:36:27,976] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1
+[2026-11-02 09:36:27,982] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=2&rounding_digits=-1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+[2026-11-02 09:36:28,415] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+[2026-11-02 09:36:28,425] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:28] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:36:38,507] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=0&rounding_digits=0
+[2026-11-02 09:36:38,511] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=0&rounding_digits=0 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:38] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:39] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:39] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:39] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:36:42,640] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=1&rounding_digits=0
+[2026-11-02 09:36:42,645] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=1&rounding_digits=0 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:43] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+[2026-11-02 09:36:55,045] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=1&rounding_digits=0
+[2026-11-02 09:36:55,048] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /rational_structure/marginal_price?territory=south&start_year=2025&end_year=2042&price_rounding_digits=1&rounding_digits=0 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:55] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 09:36:56,926] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.hub, URL: http://127.0.0.1:5000/rational_structure/
+[2026-11-02 09:36:56,930] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /rational_structure/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:57] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:36:58,526] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.marginal_price, URL: http://127.0.0.1:5000/rational_structure/marginal_price
+[2026-11-02 09:36:58,529] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /rational_structure/marginal_price HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/rational_structure/pages.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/css/rational_structure/calculation_pages.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:58] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:36:59] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:59] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:36:59] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:37:27,712] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena
+[2026-11-02 09:37:27,756] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:37:27] "GET /api/datasets/37/import_gs_to_ee_zam_cena HTTP/1.1" 200 -
+[2026-11-02 09:37:27,999] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 09:37:28,003] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 09:37:28,003] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/api/datasets/37/import_gs_to_ee_zam_cena)
+127.0.0.1 - - [02/Nov/2026 09:37:28] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 09:37:41,357] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: refdata_bp.refdata, URL: http://127.0.0.1:5000/refdata/
+[2026-11-02 09:37:41,365] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /refdata/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:41] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 09:37:45,830] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: refdata_bp.years_list, URL: http://127.0.0.1:5000/refdata/years
+[2026-11-02 09:37:45,835] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:37:45] "GET /refdata/years HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:46] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+[2026-11-02 09:37:47,904] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: refdata_bp.years_list, URL: http://127.0.0.1:5000/refdata/years?page=2&per_page=25&sort_by=number&sort_dir=asc&year_filter=
+[2026-11-02 09:37:47,909] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 09:37:47] "GET /refdata/years?page=2&per_page=25&sort_by=number&sort_dir=asc&year_filter= HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 09:37:48] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -

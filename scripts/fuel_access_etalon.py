@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Эталон расчёта топлива из Access СиПР.
+Эталон расчета топлива из Access СиПР.
 
 Копирует «СиПР ЭЭС_2031_4 этап.mdb», на форме «Расчет» для каждой ОЭС
-и года 2026–2031 жмёт Коэфф → Распред → Топливо (без формы ограничений),
+и года 2026–2031 жмет Коэфф → Распред → Топливо (без формы ограничений),
 пишет результаты в эталонный MDB и выгружает TSV для сверки с АРМ.
 
   python scripts/fuel_access_etalon.py copy
@@ -704,7 +704,7 @@ def main() -> int:
     p_run.add_argument("--year", type=int, default=None)
     p_run.add_argument("--fresh", action="store_true", help="Перезаписать эталон из исходника")
     p_run.add_argument("--skip-patch", action="store_true", help="Не перезаписывать форму из SaveAsText")
-    p_run.add_argument("--ping", action="store_true", help="Только SiprPing, без трёх кнопок")
+    p_run.add_argument("--ping", action="store_true", help="Только SiprPing, без трех кнопок")
 
     sub.add_parser("export", help="Выгрузить Станции / Доп_угли / параметры в TSV")
     sub.add_parser("patch-form", help="Патч SaveAsText формы (ProgCtrl, OTET, Public кнопки)")

@@ -1,0 +1,20 @@
+{% if energy_consumption_refresh and data_refresh_inline %}
+{% with data_refresh=energy_consumption_refresh %}
+{% include 'common/_data_refresh.html' %}
+{% endwith %}
+{% endif %}
+{% set growth_rd = request.args.get('growth_rounding_digits', '2')|int(default=2) %}
+{% if growth_rd not in (-1, 0, 1, 2, 3) %}{% set growth_rd = 2 %}{% endif %}
+<div class="d-flex align-items-center gap-1 flex-shrink-0" title="Округление годовых темпов прироста, включая СиПР">
+    <label for="growth_rounding_digits" class="mb-0 text-nowrap">Округл (%):</label>
+    <select id="growth_rounding_digits" name="growth_rounding_digits" form="powerDemandSummaryYearForm"
+            class="form-select" style="min-width: 140px; width: auto;"
+            aria-label="Округление годовых темпов прироста">
+        <option value="0" {% if growth_rd == 0 %}selected{% endif %}>Не округлять</option>
+        <option value="1" {% if growth_rd == 1 %}selected{% endif %}>1 знак</option>
+        <option value="2" {% if growth_rd == 2 %}selected{% endif %}>2 знака</option>
+        <option value="3" {% if growth_rd == 3 %}selected{% endif %}>3 знака</option>
+        <option value="-1" {% if growth_rd == -1 %}selected{% endif %}>Целое число</option>
+    </select>
+</div>
+<script src="{{ url_for('static', filename='js/energy_consumption/growth_rounding.js') }}?v=2" defer></script>

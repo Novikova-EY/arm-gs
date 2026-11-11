@@ -40,14 +40,14 @@
 
                     <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                     <select name="start_year" id="start_year" class="form-select">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
 
                     <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                     <select name="end_year" id="end_year" class="form-select">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
@@ -142,54 +142,62 @@
     <!-- Таблица с данными -->
     <style>
         /* Фиксированная шапка таблицы */
-        .table-responsive {
+        #totalsSummaryTableContainer {
             max-height: calc(100vh - 300px);
             overflow-y: auto;
             overflow-x: auto;
             position: relative;
         }
         
-        .table-responsive table {
+        #totalsSummaryTableContainer table {
             margin-bottom: 0;
+            width: max-content;
+            min-width: 100%;
+            table-layout: auto;
+        }
+
+        #totalsSummaryTableContainer th,
+        #totalsSummaryTableContainer td {
+            white-space: nowrap;
         }
         
-        .table-responsive thead {
+        #totalsSummaryTableContainer thead {
             position: sticky;
             top: 0;
             z-index: 10;
         }
         
-        .table-responsive thead tr:first-child th {
+        #totalsSummaryTableContainer thead tr:first-child th {
             position: sticky;
             top: 0;
             background-color: #d1e7dd; /* Цвет table-success */
             z-index: 11;
         }
         
-        .table-responsive thead tr:nth-child(2) th {
+        #totalsSummaryTableContainer thead tr:nth-child(2) th {
             position: sticky;
             background-color: #d1e7dd; /* Цвет table-success */
             z-index: 11;
         }
         
         /* Для правильного отображения границ при прокрутке */
-        .table-responsive thead th {
+        #totalsSummaryTableContainer thead th {
             box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
         }
     </style>
-    <div class="table-responsive">
-        <table class="table table-hover table-striped table-bordered table-responsive">
+    <div class="table-responsive" id="totalsSummaryTableContainer">
+        <table class="table table-hover table-striped table-bordered">
 
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
-                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th style="width: 300px;"></th>
-                    <th style="width: 80px; text-align: center;">Тип мощ-ти</th>
+                <tr class="text-center align-middle">
+                    <th style="min-width: 300px;"></th>
+                    <th style="min-width: 80px;">Тип мощ-ти</th>
                     <!-- Столбцы для годов с start_year по end_year -->
                     {% for year in range(start_year, end_year + 1) %}
-                    <th style="width: 50px; text-align: center;">
+                    <th style="min-width: 50px;">
                         {{ year }}
-                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                        <div>
                             {% if year_features[year] is defined %}
                                 {{ year_features[year] }}
                             {% endif %}

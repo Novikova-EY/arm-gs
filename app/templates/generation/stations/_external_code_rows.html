@@ -1,0 +1,144 @@
+{% from 'generation/stations/external_code_cell.html' import external_code_cell %}
+
+{% macro station_row(station, nested=False) %}
+<tr class="external-code-station-row">
+    <td class="text-center align-middle fw-bold{% if nested %} ps-4{% endif %}" colspan="3" style="vertical-align: middle;">
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+            {{ station.name }}
+        </a>
+        {% if station.regional_district %}
+            <div class="small text-muted">{{ station.regional_district.name }}</div>
+        {% endif %}
+    </td>
+    {% for version in database_versions %}
+        {{ external_code_cell(
+            'station',
+            version,
+            station.external_codes_by_version.get(version.id, ''),
+            station.external_code_record_ids_by_version.get(version.id),
+            station.external_code
+        ) }}
+    {% endfor %}
+</tr>
+{% endmacro %}
+
+{% macro machine_rows(machines, station) %}
+{% for machine in machines %}
+    {% set group_value = (machine.machine_group or '') | trim %}
+    {% set display_group = group_value if group_value and group_value.lower() != 'не указано' else '' %}
+
+    {% if not machine.pgu_machines %}
+        <tr class="text-center machine-row external-code-machine-row" style="vertical-align: middle;">
+            <td class="fuel-cell">{{ display_group }}</td>
+
+            <td class="rowspan-td">
+                {{ machine.machine_number }}
+            </td>
+
+            <td class="rowspan-td">
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                    {{ machine.display_name or machine.machine_name }}
+                </a>
+            </td>
+
+            {% for version in database_versions %}
+                {{ external_code_cell(
+                    'machine',
+                    version,
+                    machine.external_codes_by_version.get(version.id, ''),
+                    machine.external_code_record_ids_by_version.get(version.id),
+                    machine.external_code
+                ) }}
+            {% endfor %}
+        </tr>
+    {% else %}
+        <tr class="text-center machine-row external-code-machine-row" style="vertical-align: middle;">
+            <td class="fuel-cell">{{ display_group }}</td>
+
+            <td class="rowspan-td">
+                {{ machine.machine_number }}
+            </td>
+
+            <td class="rowspan-td">
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                    {{ machine.display_name or machine.machine_name }}
+                </a>
+            </td>
+
+            {% for version in database_versions %}
+                {{ external_code_cell(
+                    'machine',
+                    version,
+                    machine.external_codes_by_version.get(version.id, ''),
+                    machine.external_code_record_ids_by_version.get(version.id),
+                    machine.external_code
+                ) }}
+            {% endfor %}
+        </tr>
+
+        {% for pgu in machine.pgu_machines %}
+            <tr class="text-center pgu-row">
+                <td></td>
+                <td></td>
+                <td class="text-start ps-4">
+                    {{ pgu.pgu_machine_name or pgu.pgu_machine_number }}
+                </td>
+                {% for version in database_versions %}
+                    <td data-external-code-version="{{ version.id if version.id is not none else 'legacy' }}" class="text-center align-middle small"><span class="text-muted">–</span></td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    {% endif %}
+{% endfor %}
+{% endmacro %}
+
+{% macro equipment_group_row(equipment_group) %}
+<tr class="external-code-equipment-group-row">
+    <td colspan="3" class="align-middle text-start {% if equipment_group.main %}ps-5{% else %}ps-3{% endif %}">
+        <div class="small">Группа оборудования{% if equipment_group.numb %} № {{ equipment_group.numb }}{% endif %}</div>
+        <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="fw-semibold text-decoration-none">
+            {{ equipment_group.name or equipment_group.name_ext or 'Без названия' }}
+        </a>
+        {% if equipment_group.database_version_id is not none and equipment_group.duplicate_code_count | default(0) <= 1 %}
+        <div class="small external-code-group-transfer">
+            {% for version in database_versions if version.id is not none and not equipment_group.external_code_record_ids_by_version.get(version.id) %}
+            <a class="d-block" target="_blank" rel="noopener"
+               href="{{ url_for('fuel_bp.equipment_group_binding_transfer_page', source_version_id=equipment_group.database_version_id, destination_version_id=version.id, group_id=equipment_group.id, create_missing=1) }}">Перенести группу и связи в «{{ version.version_number }}»</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if equipment_group.duplicate_code_count | default(0) > 1 %}
+        <div class="small text-danger external-code-duplicate-note">
+            Дубликат external_code: запись ID {{ equipment_group.id }},
+            {% for version in database_versions if version.id == equipment_group.database_version_id %}«{{ version.version_number }}»{% endfor %}.
+            Записей с этим кодом: {{ equipment_group.duplicate_code_count }}.
+        </div>
+        {% endif %}
+    </td>
+    {% for version in database_versions %}
+        {{ external_code_cell(
+            'equipment_group',
+            version,
+            equipment_group.external_codes_by_version.get(version.id, ''),
+            equipment_group.external_code_record_ids_by_version.get(version.id),
+            equipment_group.external_code
+        ) }}
+    {% endfor %}
+</tr>
+{% endmacro %}
+
+{% macro station_rows(station, equipment_groups=none, ungrouped_machines=none) %}
+{% set equipment_groups = station.external_code_equipment_groups | default([]) if equipment_groups is none else equipment_groups %}
+{{ station_row(station) }}
+{% for equipment_group in equipment_groups %}
+{{ equipment_group_row(equipment_group) }}
+{{ machine_rows(equipment_group.machines, station) }}
+{% endfor %}
+{% set ungrouped_machines = station.external_code_ungrouped_machines | default(station.machines) if ungrouped_machines is none else ungrouped_machines %}
+{% if equipment_groups and ungrouped_machines %}
+<tr class="external-code-ungrouped-row">
+    <td colspan="{{ 3 + database_versions | length }}" class="small text-muted ps-3">Агрегаты без связи с показанными группами оборудования</td>
+</tr>
+{% endif %}
+{{ machine_rows(ungrouped_machines, station) }}
+{% endmacro %}

@@ -1,6 +1,8 @@
 from app.extensions import db
 from functools import lru_cache
 
+from flask import g
+
 from sqlalchemy import func
 
 # Модели
@@ -34,7 +36,7 @@ def get_year_list_full():
 
     Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache –
     после завершения запроса сессия закрывается, и повторное обращение к атрибутам
-    даёт DetachedInstanceError.
+    дает DetachedInstanceError.
     """
     current_version = get_current_version()
     query = Year.query
@@ -57,6 +59,15 @@ def get_year_numbers_sorted_for_current_db_version() -> list[int]:
     if current_version is not None:
         q = q.filter(Year.database_version_id == current_version)
     return sorted({int(n) for (n,) in q.all() if n is not None})
+
+
+def get_reference_years() -> list[int]:
+    """Годы для фильтров периода – ровно из /refdata/years, без вымышленных диапазонов."""
+    from app.refdata.services.years.year_services import year_query
+
+    if not hasattr(g, "reference_years"):
+        g.reference_years = sorted({year.number for year in year_query().all()})
+    return g.reference_years
 
 
 def get_current_year():
@@ -146,7 +157,8 @@ def _get_planning_period_years_for_version(version_id: int | None) -> tuple[int,
     """
     Период для фильтров страниц генерации:
     - start_year = year_sipr_start - 2;
-    - end_year: «СиПР» → year_sipr_end; «ГС» → END_YEAR_GENERAL_SCHEME (2042).
+    - end_year: «СиПР» → year_sipr_end; «ГС» → горизонт цикла по текущему году версии.
+    Без известного горизонта ГС используется общий END_YEAR для фильтров.
     """
     if not version_id:
         return Config.START_YEAR, Config.END_YEAR
@@ -155,9 +167,13 @@ def _get_planning_period_years_for_version(version_id: int | None) -> tuple[int,
     version_number = version.version_number if version else None
     description = version.description if version else None
 
+    scheme = _planning_scheme_from_version_number(version_number)
     sipr_start, sipr_end = _year_service_sipr_bounds(version_id)
-    if sipr_start is None or sipr_end is None:
-        from app.refdata.services.year_management_services import get_current_year_info
+    if scheme == "gs" or sipr_start is None or sipr_end is None:
+        from app.refdata.services.year_management_services import (
+            get_current_year_info,
+            get_general_scheme_end_year,
+        )
 
         info = get_current_year_info(version_id)
         if sipr_start is None:
@@ -171,7 +187,6 @@ def _get_planning_period_years_for_version(version_id: int | None) -> tuple[int,
 
     effective_sipr_start = int(sipr_start) if sipr_start else None
 
-    scheme = _planning_scheme_from_version_number(version_number)
     if scheme == "sipr":
         start = _filter_start_year_from_sipr_start(
             effective_sipr_start if effective_sipr_start is not None else Config.START_YEAR_SIPR
@@ -183,7 +198,7 @@ def _get_planning_period_years_for_version(version_id: int | None) -> tuple[int,
         start = _filter_start_year_from_sipr_start(
             effective_sipr_start if effective_sipr_start is not None else Config.START_YEAR_SIPR
         )
-        end = int(getattr(Config, "END_YEAR_GENERAL_SCHEME", 2042))
+        end = get_general_scheme_end_year(info["current_year"]) or Config.END_YEAR
         return start, end
 
     parsed_start, parsed_end = _parse_year_range_from_version_text(version_number, description)
@@ -305,7 +320,7 @@ def get_year_feature_dict_for_version(version_id: int | None):
 def get_year_number_for_year_feature_name_current_version(feature_name: str) -> int | None:
     """
     Календарный год (Year.number) для признака года с заданным именем в текущей версии БД.
-    Если записей несколько – берётся год с минимальным number.
+    Если записей несколько – берется год с минимальным number.
     """
     current_version = get_current_version()
     if not current_version:

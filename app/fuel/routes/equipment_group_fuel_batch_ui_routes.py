@@ -209,7 +209,7 @@ def equipment_group_fuel_batch_calculation_page():
     else:
         default_batch_filter_start_year = sipr_start
         default_batch_filter_end_year = sipr_end
-    # Год расчёта по умолчанию = год конца (отбора / СиПР) + 1, но только из списка лет справочника
+    # Год расчета по умолчанию = год конца (отбора / СиПР) + 1, но только из списка лет справочника
     preferred_calc_year = default_batch_filter_end_year + 1
     if years:
         if preferred_calc_year in years:
@@ -289,7 +289,7 @@ def equipment_group_fuel_batch_calculation_resolve_group_ids():
             "filter_start_year": filter_start_year,
             "filter_end_year": filter_end_year,
             "station_filters": station_filters,
-            "note": "Пересчёт не выполнялся; calculation_write_reference – куда пишутся данные при запуске пакета.",
+            "note": "Пересчет не выполнялся; calculation_write_reference – куда пишутся данные при запуске пакета.",
             "calculation_write_reference": get_fuel_calculation_write_reference(),
         }
     )
@@ -408,7 +408,7 @@ def equipment_group_fuel_batch_calculation_batch_api():
                     "Для каждой успешной группы calculate_group_year записывает значения в строки "
                     f"{SCHEMA_FUEL}.gs_fue_equipment_group_fuel_param и "
                     f"{SCHEMA_FUEL}.gs_fue_equipment_group_extra_fuel_param "
-                    "с тем же year_number и обновлённым database_version_id."
+                    "с тем же year_number и обновленным database_version_id."
                 ),
             },
             "calculation_write_reference": get_fuel_calculation_write_reference(),
@@ -425,7 +425,7 @@ def equipment_group_fuel_batch_fuel_params_tables_api():
 
     JSON-тело может содержать ``fuel_param_column_set``: ``full`` (по умолчанию) –
     все колонки как на полной выгрузке; ``calculation`` – только баланс энергии и
-    расчётные показатели по строке (страница «Расчёт»).
+    расчетные показатели по строке (страница «Расчет»).
     """
     if not _csrf_ok():
         return jsonify({"ok": False, "error": "Недействительный CSRF-токен"}), 403

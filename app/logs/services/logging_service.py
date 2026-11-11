@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, DataError, DBAPIError
 from app.extensions import db
 from app.logs.models.log_model import Log
+from app.logs.services.module_labels import resolve_log_module
 
 # Жесткие лимиты под типы колонок
 MAX_USERNAME = 100
@@ -75,7 +76,8 @@ def log_to_db(
     action: str,
     details: Optional[str] = None,
     entity_type: Optional[str] = None,
-    entity_id: Optional[int] = None
+    entity_id: Optional[int] = None,
+    module: Optional[str] = None,
 ) -> None:
     session = None
     try:
@@ -116,6 +118,7 @@ def log_to_db(
 
         rec = Log(
             username=username,
+            module=_safe_trim(resolve_log_module(module, entity_type), 100),
             action=safe_action,
             details=details,
             entity_type=safe_entity_type,

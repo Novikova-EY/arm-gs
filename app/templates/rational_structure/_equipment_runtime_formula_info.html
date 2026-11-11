@@ -1,0 +1,77 @@
+{% macro indicator(key) -%}«{{ table.columns|selectattr('key', 'equalto', key)|map(attribute='label')|first }}»{%- endmacro %}
+{% set resource = '«Нормативный срок службы (парковый ресурс), лет (ч)»' %}
+{% set hours = '«Наработка с начала эксплуатации, ч»' %}
+{% set commissioning = '«Год ввода оборудования в эксплуатацию»' %}
+{% set scheme_end = general_scheme_end_year if general_scheme_end_year is not none else 'не задан' %}
+{% set sipr_end = sipr_end_year + 1 if sipr_end_year is not none else 'не задан' %}
+{% set formula_help %}
+    <p><strong>{{ column.label }}</strong></p>
+    {% if column.key in ('AS', 'AY', 'BA', 'BC') %}
+    <p>Расчетная граница = год окончания СиПР + 1 = {{ sipr_end }}.</p>
+    {% endif %}
+    {% if column.key == 'AN' %}
+    <p><strong>Средняя наработка = сумма ненулевых значений «Наработка за отчетный год, ч» за {{ selected_year - 2 }}–{{ selected_year }} годы / количество этих значений.</strong></p>
+    <p>Если ненулевых значений нет – результат 0.</p>
+    {% elif column.key == 'AO' %}
+    <p><strong>Если {{ resource }} &gt; 100:</strong><br>Остаток = max(2 × {{ resource }} − {{ hours }}, 0), ч.</p>
+    <p><strong>Иначе:</strong><br>Остаток = {{ commissioning }} + 2 × {{ resource }} − {{ selected_year }}, лет.</p>
+    {% elif column.key == 'AP' %}
+    <p><strong>Если {{ resource }} &gt; 100:</strong><br>Год демонтажа = {{ selected_year }} + ОКРУГЛ({{ indicator('AO') }} / {{ indicator('AN') }}; 0).</p>
+    <p>Если {{ indicator('AN') }} = 0 – результат 0.</p>
+    <p><strong>Иначе:</strong><br>Год демонтажа = {{ commissioning }} + 2 × {{ resource }}.</p>
+    {% elif column.key == 'AQ' %}
+    <p><strong>1. Если {{ indicator('AN') }} = 0:</strong><br>Результат = «Ожидаемый год достижения нормативного/назначенного срока службы (ресурса)».</p>
+    <p><strong>2. Если {{ resource }} &gt; 100:</strong><br>При {{ hours }} &lt; {{ resource }}: результат = {{ selected_year }} + ОКРУГЛ(({{ resource }} − {{ hours }}) / {{ indicator('AN') }}; 0).<br>Иначе – 0.</p>
+    <p><strong>3. Иначе:</strong><br>Результат = {{ commissioning }} + {{ resource }}.</p>
+    {% elif column.key == 'AR' %}
+    <p>Пустой {{ indicator('AU') }} в расчете принимается равным 0.</p>
+    <p><strong>1. Если 0 &lt; {{ indicator('AQ') }} &lt; {{ selected_year + 1 }} – результат 0.</strong></p>
+    <p><strong>2. Если {{ indicator('AU') }} = 0 и {{ indicator('AQ') }} ≤ {{ scheme_end }}:</strong><br>Результат = ОКРУГЛ({{ indicator('AQ') }}; 0).</p>
+    <p><strong>3. Иначе:</strong><br>Если {{ commissioning }} = {{ indicator('AU') }} – результат 0, иначе – {{ indicator('AU') }}.</p>
+    {% elif column.key == 'AS' %}
+    <p>Пустой {{ indicator('AU') }} в расчете принимается равным 0.</p>
+    <p><strong>Если 0 &lt; {{ indicator('AR') }} &lt; {{ sipr_end }} и {{ indicator('AU') }} = 0 – результат {{ sipr_end }}.</strong></p>
+    <p><strong>Иначе – {{ indicator('AR') }}.</strong></p>
+    {% elif column.key == 'planned_modernization_year' %}
+    <p><strong>Результат = min(«Ожидаемый год модернизации с изменением мощности»; «Ожидаемый год модернизации без изменения мощности»).</strong></p>
+    <p>Если заполнен только один год – результат равен этому году; если оба – выбирается более ранний.</p>
+    {% elif column.key in ('AT', 'AU', 'AV') %}
+        {% if column.key == 'AU' %}
+    <p><strong>Результат = «Ожидаемый год ввода в эксплуатацию», если «Тип изменения состояния оборудования» – «не указано» или «новый ввод».</strong></p>
+    <p>Пустой тип изменения приравнивается к «не указано».</p>
+        {% else %}
+    <p><strong>Результат = «Ожидаемый год вывода из эксплуатации», если «Тип изменения состояния оборудования» – «{{ 'окончательный вывод' if column.key == 'AT' else 'замена' }}».</strong></p>
+        {% endif %}
+    {% elif column.key == 'AW' %}
+    <p><strong>1. Если {{ indicator('AM') }} – уголь и {{ indicator('AT') }} &gt; 0 – результат {{ indicator('AT') }}.</strong></p>
+    <p><strong>2. Иначе, если {{ indicator('AM') }} – уголь и {{ commissioning }} + 70 ≤ {{ scheme_end }} – результат {{ commissioning }} + 70.</strong></p>
+    <p><strong>3. Иначе – 0.</strong></p>
+    {% elif column.key == 'AX' %}
+    <p><strong>1. Если {{ indicator('AM') }} – уголь – результат 0.</strong></p>
+    <p><strong>2. Если {{ indicator('AT') }} &gt; 0 – результат {{ indicator('AT') }}.</strong></p>
+    <p><strong>3. Если 0 &lt; {{ indicator('AP') }} ≤ {{ scheme_end }} – результат {{ indicator('AP') }}. Иначе – 0.</strong></p>
+    {% elif column.key == 'AY' %}
+    <p><strong>1. Если {{ indicator('AT') }} &gt; 0 – результат {{ indicator('AT') }}.</strong></p>
+    <p><strong>2. Если {{ indicator('AW') }} &gt; 0 или {{ indicator('AX') }} &gt; 0:</strong><br>Результат = {{ indicator('AW') }} + {{ indicator('AX') }}. Если сумма &lt; {{ selected_year + 1 }} – результат {{ sipr_end }}.</p>
+    <p><strong>3. Иначе – 0.</strong></p>
+    {% elif column.key == 'AZ' %}
+    <p><strong>Если {{ indicator('AY') }} &gt; 0 и {{ indicator('AU') }} &gt; 0:</strong><br>Результат = {{ indicator('AU') }} + 15. Если результат &gt; {{ scheme_end }} – 0.</p>
+    <p><strong>Иначе – {{ indicator('AY') }}.</strong></p>
+    {% elif column.key == 'BA' %}
+    <p><strong>Если 0 &lt; {{ indicator('AZ') }} &lt; {{ sipr_end }} и {{ indicator('AT') }} = 0 – результат {{ sipr_end }}.</strong></p>
+    <p><strong>Иначе – {{ indicator('AZ') }}.</strong></p>
+    {% elif column.key == 'BC' %}
+    <p><strong>1. Если {{ indicator('AS') }} &gt; {{ sipr_end }} − 1 и {{ indicator('BA') }} &gt; {{ sipr_end }} − 1 – результат 0.</strong></p>
+    <p><strong>2. Если 0 &lt; {{ indicator('BA') }} &lt; {{ indicator('AY') }} – результат {{ indicator('AY') }}.</strong></p>
+    <p><strong>3. Иначе – {{ indicator('BA') }}.</strong></p>
+    {% elif column.key == 'BD' %}
+    <p><strong>Если {{ indicator('AM') }} – уголь и {{ commissioning }} + 70 ≤ {{ selected_year }} – «yes», иначе – «no».</strong></p>
+    {% elif column.key == 'BF' %}
+    <p><strong>Если {{ resource }} &gt; 100:</strong><br>«yes», если {{ indicator('AM') }} – не уголь и {{ hours }} ≥ 2 × {{ resource }}; иначе – «no».</p>
+    <p><strong>Иначе:</strong><br>«yes», если {{ commissioning }} + 2 × {{ resource }} ≤ {{ selected_year }}; иначе – «no».</p>
+    {% endif %}
+{% endset %}
+<button type="button" class="btn btn-link p-0 border-0 bi bi-info-circle text-primary ms-1"
+        data-bs-html="true" data-bs-custom-class="rs-runtime-formula-tooltip"
+        title="{{ formula_help|forceescape }}"
+        aria-label="Формула: {{ column.label|replace('  ', ' ') }}"></button>

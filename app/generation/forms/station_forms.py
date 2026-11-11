@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, TextAreaField, HiddenField, SelectMultipleField
+from wtforms import BooleanField, StringField, SelectField, TextAreaField, HiddenField, SelectMultipleField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 
 from app.generation.models.station.station_constants import STATION_SIGN_CHOICES
@@ -120,6 +120,12 @@ class StationFilterForm(FlaskForm):
         coerce=int,
         choices=[],  # Заполняется динамически
         validators=[Optional()]
+    )
+
+    station_group_name = StringField(
+        'Группа электростанций',
+        validators=[Optional(), Length(max=80)],
+        filters=[lambda value: value.strip() if value else ''],
     )
 
     # Примечание
@@ -248,6 +254,8 @@ class StationFilterForm(FlaskForm):
 
 
 class AddStationForm(FlaskForm):
+    is_generation_only = BooleanField("Только для агрегации на странице «Выработка ЭЭ»", default=False)
+
     # Подтверждение создания при дубликате
     confirm_duplicate = HiddenField(default="", validators=[Optional()])
 

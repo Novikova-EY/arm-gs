@@ -1,4 +1,4 @@
-"""Состав топливной сводки по признакам d, r и годовой мощности NUST групп."""
+"""Состав топливной сводки по d, r, годовой NUST действующих ГО и n1 новых."""
 from collections import defaultdict
 from decimal import Decimal
 

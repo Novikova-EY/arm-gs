@@ -26,7 +26,7 @@
        иначе широкая таблица раздвигает страницу, а не скроллится внутри блока */
     overflow-x: auto !important;
     /* При overflow-x:auto значение visible для Y в спецификации часто сводится к auto – тогда
-       появляется лишний вертикальный скролл; clip даёт только горизонтальную прокрутку блока */
+       появляется лишний вертикальный скролл; clip дает только горизонтальную прокрутку блока */
     overflow-y: clip;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
@@ -448,7 +448,7 @@
                 <span class="readonly-indicator">Режим просмотра</span>
             {% endif %}
             <div class="generation-details-header-spacer" aria-hidden="true"></div>
-            {% if station_prospective_place_tep_links %}
+            {% if station_prospective_place_tep_links and not station.is_generation_only %}
                 {% if station_prospective_place_tep_links|length == 1 %}
                 <a href="{{ station_prospective_place_tep_links[0].url }}" class="btn station-tep-btn fs-5 text-nowrap d-inline-flex align-items-center gap-2 flex-shrink-0"><i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span></a>
                 {% else %}
@@ -463,6 +463,17 @@
                     </ul>
                 </div>
                 {% endif %}
+            {% endif %}
+            {% if station.created_as_generation_only %}
+            <div class="form-check d-flex align-items-center gap-2 ms-auto mb-0">
+                {% if can_edit %}
+                <input type="hidden" name="generation_only_toggle_present" value="1" form="stationUnifiedSaveForm">
+                {% endif %}
+                <input type="checkbox" id="station-generation-only" name="is_generation_only" value="1"
+                       class="form-check-input m-0" form="stationUnifiedSaveForm"
+                       {% if station.is_generation_only %}checked{% endif %}{% if not can_edit %} disabled{% endif %}>
+                <label class="form-check-label" for="station-generation-only">Только для страницы «Выработка ЭЭ»</label>
+            </div>
             {% endif %}
         </div>
 
@@ -498,11 +509,9 @@
                                 <div class="col-5 text-start fw-semibold">Группа электростанций:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
-                                        <span id="id_station_group_span">
-                                            {{ form.id_station_group(class="form-select", data_station_meta_autosave="1") }}
-                                        </span>
+                                        {{ form.station_group_name(class="form-control", maxlength="80", data_station_meta_autosave="1") }}
                                     {% else %}
-                                        <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '–' }}</span>
+                                        <span>{{ form.station_group_name.data or '–' }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -582,7 +591,7 @@
                                     <h4 class="card-title text-decoration-underline mb-3"><strong>Местоположение</strong></h4>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Часть энергосистемы России:</div>
-                                <div class="col-7 text-start" id="energy_system_type"{% if is_station_decentralized_zone %} data-decentralized-zone-fixed="1"{% endif %}>
+                                <div class="col-7 text-start" id="energy_system_type">
                                     {% if is_station_decentralized_zone %}
                                         {{ decentralized_zone_energy_system_type_name }}
                                     {% else %}
@@ -661,6 +670,7 @@
             </div>
         </div>
 
+        {% if not station.is_generation_only %}
         {% if station.station_type and station.station_type.name and station.station_type.name|lower == 'тэс' %}
         <!-- Группы оборудования (только для ТЭС) -->
         <div class="container-fluid">
@@ -807,29 +817,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
 
                         <!-- Левая группа кнопок -->
-                        <form method="GET" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
-                            {% for key, value in request.args.items() %}
-                                {% if key != "per_page" and key != "start_year" and key != "end_year" %}
-                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                {% endif %}
-                            {% endfor %}
-
-                            <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-                            <select name="start_year" id="start_year" class="form-select" style="width: auto;">
-                                {% for year in (filter_year_list|default([])) %}
-                                <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
-                                {% endfor %}
-                            </select>
-
-                            <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-                            <select name="end_year" id="end_year" class="form-select" style="width: auto;">
-                                {% for year in (filter_year_list|default([])) %}
-                                <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
-                                {% endfor %}
-                            </select>
-
-                            <button type="submit" class="btn btn-outline-success">Применить</button>
-                        </form>
+                        {% include 'generation/stations/_station_details_year_filters.html' %}
 
                         
                         <!-- Правая группа: чекбоксы и подсветка -->
@@ -936,6 +924,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         <style>
             #station-energy-generation-table td.is-save-success,
             #station-owner-energy-generation-table td.is-save-success,
@@ -970,8 +959,11 @@
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
                         <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией, млн кВтч</h3>
+                        {% if station.is_generation_only %}
+                        {% include 'generation/stations/_station_details_year_filters.html' %}
+                        {% endif %}
                         <div class="d-flex align-items-center gap-2 ms-auto">
-                            {% if is_snee_station %}
+                            {% if is_snee_station and not station.is_generation_only %}
                             <div id="station-snee-efficiency-control" class="d-flex align-items-center gap-2 station-toolbar-rounding station-snee-efficiency-control">
                                 <label for="station-snee-efficiency-percent" class="mb-0 text-nowrap station-snee-efficiency-label">КПД, % =</label>
                                 {% set efficiency_display = station.station_snee_efficiency_percent | format_decimal(0) if station.station_snee_efficiency_percent is not none else '' %}
@@ -995,7 +987,7 @@
                             </div>
                         </div>
                     </div>
-                    {% if is_gaes_station %}
+                    {% if is_gaes_station and not station.is_generation_only %}
                     <form method="POST" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" id="stationUnifiedSaveForm">
                         {{ form.hidden_tag() }}
                         {{ form_machines.hidden_tag() }}
@@ -1034,10 +1026,10 @@
                                 </tbody>
                             </table>
                         </div>
-                        {% if (is_ges_station or is_gaes_station) and hydro_forecast %}
+                        {% if not station.is_generation_only and (is_ges_station or is_gaes_station) and hydro_forecast %}
                         {% include 'generation/prospective_places/_hydro_energy_forecast_table.html' %}
                         {% endif %}
-                        {% if is_snee_station %}
+                        {% if is_snee_station and not station.is_generation_only %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
                             <h3 class="mb-0 ms-3">Потребление электрической энергии электростанцией, млн кВтч</h3>
                         </div>
@@ -1062,7 +1054,7 @@
                             </table>
                         </div>
                         {% endif %}
-                        {% if is_gaes_station %}
+                        {% if is_gaes_station and not station.is_generation_only %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
                             <h3 class="mb-0 ms-3">Потребление электрической энергии ГАЭС на заряд, млн кВтч</h3>
                             <div class="d-flex align-items-center gap-2 ms-auto">
@@ -1099,7 +1091,7 @@
                             </table>
                         </div>
                         {% endif %}
-                        {% if is_ves_or_ses_station %}
+                        {% if is_ves_or_ses_station and not station.is_generation_only %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
                             <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией (от собственника), млн кВтч</h3>
                         </div>
@@ -1208,7 +1200,7 @@
                                 orig: orig
                             };
                             if (payload.kind === 'owner_generation') {
-                                // Значение план-ячейки приходит в ответе уже округлённым.
+                                // Значение план-ячейки приходит в ответе уже округленным.
                                 var roundingSelect = document.getElementById('rounding_digits_gen');
                                 payload.rounding = roundingSelect ? roundingSelect.value : '';
                             }
@@ -1236,7 +1228,7 @@
                                 if (input.value === value) {
                                     input.value = orig;
                                     markSaveState(input, 'is-save-error');
-                                    {% if is_snee_station %}
+                                    {% if is_snee_station and not station.is_generation_only %}
                                     if (payload.kind === 'snee_consumption' || payload.kind === 'snee_efficiency') {
                                         recalculateSneePlanGeneration();
                                     }
@@ -1273,7 +1265,7 @@
                             }, 400);
                         }
 
-                        {% if is_snee_station %}
+                        {% if is_snee_station and not station.is_generation_only %}
                         function formatPlanGeneration(value) {
                             var rounding = Number((document.getElementById('rounding_digits_gen') || {}).value);
                             if (rounding === -1) return String(Math.round(value));
@@ -1305,7 +1297,7 @@
                         document.addEventListener('input', function (event) {
                             var input = event.target;
                             if (!input || !input.matches || !input.matches('[data-save-kind]')) return;
-                            {% if is_snee_station %}
+                            {% if is_snee_station and not station.is_generation_only %}
                             if (input.getAttribute('data-save-kind') === 'snee_consumption' ||
                                 input.getAttribute('data-save-kind') === 'snee_efficiency') {
                                 recalculateSneePlanGeneration();
@@ -1591,7 +1583,7 @@
                         // Парсим во временный контейнер и инкрементально вставляем по чанкам
                         const tmp = document.createElement('tbody');
                         tmp.innerHTML = html;
-                        // Скрытые input вне <tr> браузер может оставить соседями строк – перенесём в #machinesForm
+                        // Скрытые input вне <tr> браузер может оставить соседями строк – перенесем в #machinesForm
                         const machinesRoot = document.getElementById('machinesForm');
                         Array.from(tmp.querySelectorAll(':scope > input[type="hidden"]')).forEach(function (inp) {
                             if (machinesRoot) machinesRoot.insertBefore(inp, machinesRoot.firstChild);
@@ -1745,7 +1737,6 @@
         
         function updateEnergySystemFields(data) {
             const estElement = document.getElementById("energy_system_type");
-            const estIsFixed = estElement && estElement.dataset.decentralizedZoneFixed === "1";
             // Согласно новой логике:
             // - Федеральный округ определяется по субъекту РФ
             // - Региональная энергосистема / ОЭС / Часть энергосистемы:
@@ -1787,7 +1778,7 @@
                     }, 1000);
                 }
 
-                if (estElement && !estIsFixed) {
+                if (estElement) {
                     estElement.innerText = estText;
                     estElement.style.transition = "background-color 0.3s ease";
                     estElement.style.backgroundColor = "#d4edda";
@@ -1833,7 +1824,6 @@
         function updateEnergySystemFromRes() {
             const uesElement = document.getElementById("union_energy_system");
             const estElement = document.getElementById("energy_system_type");
-            const estIsFixed = estElement && estElement.dataset.decentralizedZoneFixed === "1";
             if (!uesElement || !estElement || !resSelect) {
                 return;
             }
@@ -1845,12 +1835,10 @@
             const estValue = info && info.energy_system_type ? info.energy_system_type : "Нет данных";
 
             uesElement.innerText = uesValue;
-            if (!estIsFixed) {
-                estElement.innerText = estValue;
-            }
+            estElement.innerText = estValue;
 
             // Подсветка обновленных значений зеленым, как у федерального округа
-            [uesElement, estIsFixed ? null : estElement].filter(Boolean).forEach((el) => {
+            [uesElement, estElement].forEach((el) => {
                 if (!el) return;
                 el.style.transition = "background-color 0.3s ease";
                 el.style.backgroundColor = "#d4edda";

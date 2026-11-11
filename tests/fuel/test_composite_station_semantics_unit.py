@@ -432,7 +432,7 @@ def test_plain_group_without_res_stays_unspecified():
 
 
 def test_standalone_uses_obl_mapping_res_not_unspecified():
-    """Калининградская ТЭЦ-1 без FK РЭС идёт в ветку по obl, не в «Не указано»."""
+    """Калининградская ТЭЦ-1 без FK РЭС идет в ветку по obl, не в «Не указано»."""
     ues = SimpleNamespace(id=410, id_energy_system_type=207)
     res = SimpleNamespace(id=2775, union_energy_system=ues)
     group = SimpleNamespace(

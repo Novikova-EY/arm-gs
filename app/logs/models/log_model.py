@@ -8,6 +8,7 @@ from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_LOGS, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
+from app.logs.services.module_labels import resolve_log_module
 
 class Log(db.Model, AuditMixin):
     __tablename__ = 'logs'
@@ -24,6 +25,12 @@ class Log(db.Model, AuditMixin):
     # Краткое действие + детали (опционально)
     action = db.Column(db.String(500), nullable=False, index=True)
     details = db.Column(db.Text, nullable=True)
+    module = db.Column(
+        db.String(100), nullable=False, index=True, server_default="Система",
+        default=lambda context: resolve_log_module(
+            entity_type=context.get_current_parameters().get("entity_type")
+        ),
+    )
 
     # Привязка к сущности (например, entity_type='station', entity_id=123)
     entity_type = db.Column(db.String(50), nullable=True, index=True)

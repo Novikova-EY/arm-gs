@@ -1,7 +1,9 @@
-{# Строка проверки сумм по РЭС (скрыта по умолчанию, включается кнопкой «Проверка») #}
-<tr class="ee-verification-row ee-verify-for-row summary-row-hidden text-center align-middle"
+{# Строка проверки контрольного итога (скрыта по умолчанию, включается кнопкой «Проверка») #}
+{% set control_key = control_key|default('res-' ~ res_id|string) %}
+<tr data-ee-refresh class="ee-verification-row ee-verify-for-row summary-row-hidden text-center align-middle"
     style="font-weight: bold;"
-    data-res-id="{{ res_id }}">
+    data-res-id="{{ res_id }}"
+    data-control-key="{{ control_key }}">
     <td></td>
     <td class="text-start">
         {{ label }}{% if info_tooltip %}
@@ -18,6 +20,7 @@
     {% set left_value = (left_totals or {}).get(period_num) %}
     <td class="ee-verification-cell"
         data-res-id="{{ res_id }}"
+        data-control-key="{{ control_key }}"
         data-period="{{ period_num }}"
         data-left-sum="{% if left_value is not none %}{{ left_value }}{% endif %}">
         <span class="{% if is_verification_nonzero(verification_value) %}text-danger{% endif %}">

@@ -1,3 +1,30 @@
+{% if affiliation_columns %}
+<colgroup>
+  <col class="ot-col-label" />
+  {% for territory_col in territory_columns %}
+    {% for affiliation_col in affiliation_columns %}
+  <col class="ot-col-terr" />
+    {% endfor %}
+  {% endfor %}
+</colgroup>
+<thead class="table-success">
+  <tr class="text-center align-middle">
+    <th rowspan="2" class="text-center align-middle ot-label-col">Наименование
+      {% if territory_filter_storage_key %}
+      {% include 'ecology/operating_tes/_territory_filter.html' %}
+      {% endif %}
+    </th>
+    {% for territory_col in territory_columns %}
+    <th colspan="{{ affiliation_columns|length }}" class="text-center align-middle ot-terr-col">{{ 'Россия' if territory_col.slug == 'vsego' else territory_col.sheet_name }}</th>
+    {% endfor %}
+  </tr>
+  <tr class="text-center align-middle">
+    {% for col in value_columns %}
+    <th class="text-center align-middle ot-terr-col">{% if col.affiliation == 'all' %}Всего{% elif col.affiliation == 'prompred' %}Пром<wbr>предприятия{% else %}{{ col.affiliation_label }}{% endif %}</th>
+    {% endfor %}
+  </tr>
+</thead>
+{% else %}
 <colgroup>
   <col class="ot-col-label" />
   {% for col in territory_columns %}
@@ -12,10 +39,11 @@
       {% endif %}
     </th>
     {% for col in territory_columns %}
-    <th class="text-center align-middle ot-terr-col">{{ col.sheet_name }}</th>
+    <th class="text-center align-middle ot-terr-col">{{ col.sheet_name }}{% if col.year is defined and year_features is defined and year_features.get(col.year) %}<div class="small fw-normal">{{ year_features[col.year] }}</div>{% endif %}</th>
     {% endfor %}
   </tr>
 </thead>
+{% endif %}
 <tbody>
   {% for row in rows %}
   {% if row.key in ('pollutants_total', 'co2') %}

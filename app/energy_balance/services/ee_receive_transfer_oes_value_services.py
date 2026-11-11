@@ -40,7 +40,7 @@ def load_ee_receive_transfer_oes_values(
     version_id: int | None = None,
     years: list[int] | None = None,
 ) -> dict[tuple[int, int, int], Decimal | None]:
-    """Сохранённые значения по ключу (источник ОЭС, принимающая ОЭС, год)."""
+    """Сохраненные значения по ключу (источник ОЭС, принимающая ОЭС, год)."""
     query = filter_by_explicit_db_version(
         EeReceiveTransferOesValue.query,
         EeReceiveTransferOesValue,
@@ -174,7 +174,7 @@ def update_ee_receive_transfer_value(
         .first()
     )
     if target is None:
-        raise ValueError("Приёмщик не найден в текущей версии БД")
+        raise ValueError("Приемщик не найден в текущей версии БД")
 
     version_id = get_current_db_version_id()
     existing = (
@@ -222,13 +222,13 @@ def update_ee_receive_transfer_value(
     clear_energy_balance_cache()
     log_cell_change(
         user,
-        "Изменения в балансе ЭЭ, приём/передача электроэнергии по ОЭС",
+        "Изменения в балансе ЭЭ, прием/передача электроэнергии по ОЭС",
         f"{year_number} г.",
         previous_value,
         value,
         context=(
-            f"Лист: приём/передача ЭЭ по ОЭС; источник: {source.name}; "
-            f"приёмщик: {target.name}"
+            f"Лист: прием/передача ЭЭ по ОЭС; источник: {source.name}; "
+            f"приемщик: {target.name}"
         ),
     )
     return {"year": year_number, "value": value}

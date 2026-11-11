@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Характеристики топлива для расчёта выбросов действующих ТЭС (лист «Хар.топл.»)."""
+"""Характеристики топлива для расчета выбросов действующих ТЭС (лист «Хар.топл.»)."""
 from sqlalchemy import ForeignKeyConstraint, Numeric, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -15,6 +15,7 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
     __table_args__ = (
         UniqueConstraint(
             "territory_slug",
+            "affiliation",
             "fuel_key",
             "year_number",
             "database_version_id",
@@ -35,9 +36,12 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
     # Уникальный идентификатор записи
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # Общий набор хранится под vsego; поле сохранено для совместимости со старыми срезами.
+    # Территория и принадлежность задают уровень характеристик.
     territory_slug = db.Column(
-        db.String(40), nullable=False, default="vsego", server_default="vsego", index=True
+        db.String(80), nullable=False, default="vsego", server_default="vsego", index=True
+    )
+    affiliation = db.Column(
+        db.String(20), nullable=False, default="all", server_default="all", index=True
     )
 
     # Ключ вида топлива (gas_natural, mazut, donetsk, …)

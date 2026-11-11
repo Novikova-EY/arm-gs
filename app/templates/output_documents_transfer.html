@@ -29,17 +29,15 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
     margin-top: 0;
   }
   .output-docs-page .output-docs-wrap .home-outline__tiles {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
     align-items: stretch;
-    justify-content: flex-start;
     gap: 0.65rem;
   }
   .output-docs-page .output-doc-row {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.6rem;
     align-items: stretch;
     gap: 0.45rem;
     width: 100%;
@@ -47,8 +45,10 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
   }
   .output-docs-page .output-docs-wrap .home-outline__tile {
     justify-content: flex-start;
-    min-height: 3.6rem;
+    min-height: 4.5rem;
+    padding: 0.55rem 0.9rem;
     font-size: 1.05rem;
+    line-height: 1.35;
     text-align: left;
   }
   /* config.json и одиночные плитки – на всю ширину */
@@ -57,18 +57,81 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
     width: 100%;
     max-width: 100%;
   }
-  /* в строке с Excel плитка занимает оставшееся место, кнопка справа */
+  /* Место под правую кнопку сохраняется и в строках без нее. */
   .output-docs-page .output-doc-row > .home-outline__tile {
-    flex: 1 1 auto;
-    width: auto;
+    width: 100%;
     max-width: none;
     min-width: 0;
   }
   .output-docs-page .output-docs-wrap .home-outline__tile span {
     overflow-wrap: anywhere;
   }
-  .output-docs-page .output-doc-excel-btn {
-    flex: 0 0 3.6rem;
+  .output-docs-page .home-outline__soon-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+  .output-docs-page .home-outline__soon-mark i {
+    width: auto;
+    height: auto;
+    font-size: 0.8rem;
+    color: inherit;
+  }
+  .output-docs-page .output-doc-row > .output-doc-mock,
+  .output-docs-page .output-doc-row > .output-doc-future {
+    background: #e8eaed;
+    border-color: #c9cdd3;
+    color: #495057;
+  }
+  .output-docs-page .output-doc-mock:hover,
+  .output-docs-page .output-doc-mock:focus-visible,
+  .output-docs-page .output-doc-future:hover,
+  .output-docs-page .output-doc-future:focus-visible {
+    background: #dce0e5;
+    border-color: #6c757d;
+    color: #343a40;
+  }
+  .output-docs-page .output-doc-mock i,
+  .output-docs-page .output-doc-future i {
+    color: inherit;
+  }
+  .output-docs-page .output-doc-row > .output-doc-2027 {
+    background: #e8e5d3;
+    border-color: #c4bea0;
+    color: #59543b;
+  }
+  .output-docs-page .output-doc-row > .output-doc-2027:hover,
+  .output-docs-page .output-doc-row > .output-doc-2027:focus-visible {
+    background: #dcd6b9;
+    border-color: #a69b6e;
+    color: #48432d;
+  }
+  .output-docs-page .output-doc-row > .output-doc-inactive,
+  .output-docs-page .output-doc-row > .output-doc-inactive:hover {
+    background: var(--home-tile);
+    border-color: var(--home-blue-soft);
+    color: var(--home-navy);
+  }
+  .output-docs-page .output-doc-inactive i {
+    color: var(--home-navy);
+  }
+  .output-docs-page .output-doc-row > .output-doc-result {
+    background: #d1e7dd;
+    border-color: #a3cfbb;
+    color: #0f5132;
+  }
+  .output-docs-page .output-doc-row > .output-doc-result:hover,
+  .output-docs-page .output-doc-row > .output-doc-result:focus-visible {
+    background: #badbcc;
+    border-color: #198754;
+    color: #0f5132;
+  }
+  .output-docs-page .output-doc-result i {
+    color: inherit;
+  }
+  .output-docs-page .output-doc-excel-btn,
+  .output-docs-page .output-doc-interface-btn {
     width: 3.6rem;
     display: inline-flex;
     align-items: center;
@@ -85,7 +148,9 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
     box-sizing: border-box;
   }
   .output-docs-page .output-doc-excel-btn:hover,
-  .output-docs-page .output-doc-excel-btn:focus {
+  .output-docs-page .output-doc-excel-btn:focus,
+  .output-docs-page .output-doc-interface-btn:hover,
+  .output-docs-page .output-doc-interface-btn:focus {
     color: #fff;
     background: #198754;
     border-color: #198754;
@@ -106,6 +171,11 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
 </style>
 {% endblock %} {% block content %} {% if current_user.is_authenticated %}
 {% set can_export_excel = current_user.is_admin %}
+{% set datasets_2027 = ('daymonth_info', 'hour_info', 'month_info') %}
+{% set future_datasets = datasets_2027 + ('line_capital_investments', 'newlines_building', 'substations_customers_info', 'substations_load_info', 'substations_overload_transformer', 'substations_transformer_info') %}
+{% macro document_label(item) -%}
+<span>{{ item.filename }}{% if item.dataset in ('general_info', 'generation_machines_changes', 'generation_stations_changes', 'power_energy_export_import_country', 'rational_struct_functionals', 'rational_struct_k0', 'rational_struct_load_graf_import_to_java', 'rational_struct_zones', 'rational_struct_base') %}<span class="home-outline__soon-mark" title="Скоро будет разработано"><i class="bi bi-clock" aria-hidden="true"></i>Скоро</span>{% elif item.dataset in future_datasets %}<span class="home-outline__soon-mark" title="{% if item.dataset in datasets_2027 %}Разработка запланирована на 2027 год{% else %}Разработка запланирована на перспективу{% endif %}"><i class="bi bi-calendar-event" aria-hidden="true"></i>{% if item.dataset in datasets_2027 %}2027{% else %}Перспектива{% endif %}</span>{% elif item.dataset == 'load_forecast' %}<span class="home-outline__soon-mark" title="Дублирующий набор данных"><i class="bi bi-files" aria-hidden="true"></i>Дубль</span>{% endif %}</span>
+{%- endmacro %}
 <div class="home-outline">
   <div class="home-outline__title-row">
     <h1 class="home-outline__title">Передача данных для выходных документов</h1>
@@ -162,7 +232,29 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
           <div class="home-outline__tiles">
             {% for item in group.files %}
             <div class="output-doc-row">
-              {% if item.enabled and item.kind == 'versions_list' %}
+              {% if item.dataset in ('generation_machines_changes', 'generation_stations_changes') %}
+              <span
+                class="home-outline__tile is-disabled output-doc-inactive"
+                aria-disabled="true"
+                tabindex="-1"
+                title="Скоро будет разработано"
+              >
+                <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+                {{ document_label(item) }}
+              </span>
+              {% elif item.kind in ('mock', 'external') %}
+              <a
+                class="home-outline__tile{% if item.dataset in ('rational_struct_export_from_java_powers', 'rational_struct_export_from_java_technologies') %} output-doc-result{% endif %}"
+                href="{% if item.kind == 'mock' %}{{ url_for('static', filename='mocks/' ~ item.filename) }}{% else %}http://10.31.224.135:8080/api/v1/external-sync/views/ge_stage/v_{{ item.dataset }}{% endif %}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-no-preloader
+                title="{% if item.kind == 'mock' %}Mock: GET {{ url_for('static', filename='mocks/' ~ item.filename) }}{% else %}GET /api/v1/external-sync/views/ge_stage/v_{{ item.dataset }}{% endif %}"
+              >
+                <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+                {{ document_label(item) }}
+              </a>
+              {% elif item.enabled and item.kind == 'versions_list' %}
               <a
                 class="home-outline__tile"
                 href="{{ url_for('database_versions_api_bp.api_list_database_versions') }}"
@@ -172,11 +264,11 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
                 title="GET /api/database_versions"
               >
                 <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
-                <span>{{ item.filename }}</span>
+                {{ document_label(item) }}
               </a>
               {% elif item.enabled and selected_version_id %}
               <a
-                class="home-outline__tile output-doc-dataset"
+                class="home-outline__tile output-doc-dataset{% if item.dataset in future_datasets %} output-doc-future{% endif %}{% if item.dataset in datasets_2027 %} output-doc-2027{% endif %}"
                 data-dataset="{{ item.dataset }}"
                 href="{{ url_for('exchange_api_bp.get_dataset_by_version', database_version=selected_version_id, dataset=item.dataset) }}"
                 target="_blank"
@@ -185,20 +277,33 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
                 title="GET /api/datasets/{{ selected_version_id }}/{{ item.dataset }}"
               >
                 <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
-                <span>{{ item.filename }}</span>
+                {{ document_label(item) }}
               </a>
               {% else %}
               <span
-                class="home-outline__tile is-disabled"
+                class="home-outline__tile is-disabled{% if item.dataset in future_datasets %} output-doc-future{% endif %}{% if item.dataset in datasets_2027 %} output-doc-2027{% endif %}"
                 aria-disabled="true"
                 tabindex="-1"
-                title="{% if not item.enabled %}API ещё не реализован{% else %}Выберите версию базы данных{% endif %}"
+                title="{% if not item.enabled %}API еще не реализован{% else %}Выберите версию базы данных{% endif %}"
               >
                 <i class="bi bi-file-earmark" aria-hidden="true"></i>
-                <span>{{ item.filename }}</span>
+                {{ document_label(item) }}
               </span>
               {% endif %}
-              {% if can_export_excel %}
+              {% if item.interface %}
+              <a
+                class="output-doc-interface-btn"
+                href="{{ url_for('rational_structure_module_bp.calculated_values', dataset_key=item.interface) }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-no-preloader
+                title="Открыть интерфейс приема данных: {{ item.interface }}"
+                aria-label="Открыть интерфейс приема данных: {{ item.interface }}"
+              >
+                <i class="bi bi-table" aria-hidden="true"></i>
+              </a>
+              {% endif %}
+              {% if can_export_excel and item.kind in ('dataset', 'versions_list') %}
                 {% if item.enabled and item.kind == 'versions_list' %}
                 <a
                   class="output-doc-excel-btn"
@@ -224,7 +329,7 @@ output-docs-page{% endblock %} {% block title %}Передача данных д
                 <span
                   class="output-doc-excel-btn is-disabled"
                   aria-disabled="true"
-                  title="{% if not item.enabled %}API ещё не реализован{% else %}Выберите версию базы данных{% endif %}"
+                  title="{% if not item.enabled %}API еще не реализован{% else %}Выберите версию базы данных{% endif %}"
                 >
                   <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
                 </span>

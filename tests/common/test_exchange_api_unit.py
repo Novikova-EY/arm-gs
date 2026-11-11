@@ -27,6 +27,8 @@ def test_list_exchange_datasets_known_names():
         "substations_transformer_info",
         "load_forecast",
         "rational_struct_base",
+        "rational_struct_import_to_java",
+        "import_gs_to_ee_zam_cena",
     ]
     assert "generation_objects" not in names
     assert "equipment_group_params" not in names
@@ -62,7 +64,7 @@ def test_build_exchange_config_shape():
     assert "general_info" in names
     assert "rational_struct_base" in names
     assert "generation_objects" not in names
-    assert "rational_struct_import_to_java" not in names
+    assert "rational_struct_import_to_java" in names
 
 
 def test_config_datasets_match_page_enabled_buttons():
@@ -91,6 +93,8 @@ def test_config_datasets_match_page_enabled_buttons():
         "substations_load_info",
         "substations_overload_transformer",
         "substations_transformer_info",
+        "import_gs_to_ee_zam_cena",
+        "rational_struct_import_to_java",
         "rational_struct_base",
     ]
 
@@ -150,7 +154,7 @@ def test_load_exchange_dataset_unknown_name(monkeypatch):
         lambda version_id: int(version_id),
     )
     with pytest.raises(datasets_svc.UnknownDatasetError):
-        datasets_svc.load_exchange_dataset("rational_struct_import_to_java", version_id=7)
+        datasets_svc.load_exchange_dataset("unknown_dataset", version_id=7)
 
 
 def test_list_exchange_datasets_for_version(monkeypatch):
@@ -177,6 +181,8 @@ def test_list_exchange_datasets_for_version(monkeypatch):
         "substations_transformer_info",
         "load_forecast",
         "rational_struct_base",
+        "rational_struct_import_to_java",
+        "import_gs_to_ee_zam_cena",
     ]
     assert payload["paths"] == [
         "/api/datasets/37/general_info",
@@ -195,6 +201,8 @@ def test_list_exchange_datasets_for_version(monkeypatch):
         "/api/datasets/37/substations_transformer_info",
         "/api/datasets/37/load_forecast",
         "/api/datasets/37/rational_struct_base",
+        "/api/datasets/37/rational_struct_import_to_java",
+        "/api/datasets/37/import_gs_to_ee_zam_cena",
     ]
 
 
@@ -273,10 +281,13 @@ def test_output_document_groups_enable_only_public_api():
     assert [group["title"] for group in groups] == [
         "common",
         "gs_sipr",
+        "IMPORT_GS_TO_EE",
         "rational_struct_calc",
         "rational_struct_report",
     ]
-    assert [group["column"] for group in groups] == [1, 2, 3, 3]
+    assert [group["column"] for group in groups] == [1, 2, 2, 3, 3]
+    assert groups[2]["files"][0]["dataset"] == "import_gs_to_ee_zam_cena"
+    assert by_name["import_gs_to_ee_zam_cena"]["enabled"] is True
     assert by_name["database_versions"]["enabled"] is True
     assert by_name["general_info"]["enabled"] is True
     assert by_name["gentypes_info"]["enabled"] is True
@@ -293,7 +304,7 @@ def test_output_document_groups_enable_only_public_api():
     assert by_name["substations_overload_transformer"]["enabled"] is True
     assert by_name["substations_transformer_info"]["enabled"] is True
     assert by_name["load_forecast"]["enabled"] is True
-    assert by_name["rational_struct_import_to_java"]["enabled"] is False
+    assert by_name["rational_struct_import_to_java"]["enabled"] is True
     assert by_name["rational_struct_base"]["enabled"] is True
     assert by_name["rational_struct_base"]["filename"] == "rational_struct_base.json"
     assert by_name["database_versions"]["filename"] == "database_versions.json"

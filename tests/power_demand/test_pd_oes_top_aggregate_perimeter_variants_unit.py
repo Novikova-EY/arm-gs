@@ -93,7 +93,7 @@ def test_build_centralized_zone_perimeter_entities_skips_unspecified_variant() -
 
 
 def test_synchronous_area_summary_parameters_include_combined_on_ees() -> None:
-    """На сводной таблице у СЗ есть совмещённое на ЕЭС (строка k на coeff), без расчёта/проверки."""
+    """На сводной таблице у СЗ есть совмещенное на ЕЭС (строка k на coeff), без расчета/проверки."""
     for params in (
         dss.PARAMETERS_SYNCHRONOUS_AREA,
         dss.PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY,

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Юнит-тесты расчёта по новым ТЭС (М = В × У)."""
+"""Юнит-тесты расчета по новым ТЭС (М = В × У)."""
 
 from decimal import Decimal
 from pathlib import Path

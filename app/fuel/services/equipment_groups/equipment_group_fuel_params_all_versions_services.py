@@ -438,7 +438,7 @@ def _log_all_versions_result(
         log_lines.append("По группам:")
         log_lines.extend(f"  - {line}" for line in per_group_log[:80])
         if len(per_group_log) > 80:
-            log_lines.append(f"  ... ещё {len(per_group_log) - 80} строк")
+            log_lines.append(f"  ... еще {len(per_group_log) - 80} строк")
     if aggregate_details:
         log_lines.append("Изменения (первые 100 строк):")
         for table_name, year, attr, old_val, new_val in aggregate_details[:100]:
@@ -446,7 +446,7 @@ def _log_all_versions_result(
                 f"  [{table_name}] год {year}, {attr}: было {old_val} → стало {new_val}"
             )
         if len(aggregate_details) > 100:
-            log_lines.append(f"  ... ещё {len(aggregate_details) - 100} изменений")
+            log_lines.append(f"  ... еще {len(aggregate_details) - 100} изменений")
     log_to_db(
         user,
         "Синхронизация топливных параметров группы оборудования во всех версиях БД",

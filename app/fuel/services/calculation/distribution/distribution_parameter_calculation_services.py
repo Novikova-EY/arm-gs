@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Мост между DistributionParameter, AccessFilterAdapter, отбором EquipmentGroup и
-пакетным расчётом топлива (EquipmentGroupFuelBatchCalculationService).
+пакетным расчетом топлива (EquipmentGroupFuelBatchCalculationService).
 
 Сервис только:
   получает строку DistributionParameter;
   определяет эффективную версию БД;
   разбирает filter_text через AccessFilterAdapter (сам filter_text не парсит);
   выбирает группы оборудования;
-  запускает пакетный расчёт.
+  запускает пакетный расчет.
 
 Не содержит математики топлива, UI, построения таблиц и import-логики.
 
@@ -49,7 +49,7 @@ class DistributionRunResult:
 
 class DistributionParameterCalculationService:
     """
-    Запуск пересчёта по «Параметры-распределения».
+    Запуск пересчета по «Параметры-распределения».
 
     Строка filter_text не парсится здесь – только через AccessFilterAdapter
     (справочник + oes/obl/ved рабочей строки топлива).
@@ -58,7 +58,7 @@ class DistributionParameterCalculationService:
     строка DistributionParameter
       -> filter_text / year / version
       -> отбор EquipmentGroup
-      -> пакетный пересчёт топлива
+      -> пакетный пересчет топлива
     """
 
     def __init__(self, session: Session | None = None):

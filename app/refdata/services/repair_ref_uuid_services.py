@@ -213,14 +213,14 @@ def _assert_plan_unique_in_version(rows: list[dict], updates: list[RefUuidUpdate
         prev_name = seen.get(key)
         if prev_name is not None and prev_name != row["name"]:
             raise ValueError(
-                f"После правки ref_uuid={uuid_key} всё ещё общий у разных названий "
+                f"После правки ref_uuid={uuid_key} все еще общий у разных названий "
                 f"в версии {row['database_version_id']}: {prev_name!r} и {row['name']!r}."
             )
         seen[key] = row["name"]
 
 
 def mapping_uuid_rewrites(plan: RefUuidRepairPlan) -> list[tuple[str, str, str]]:
-    """Переносы uuid во внешних таблицах, только если старый uuid однозначно заменён."""
+    """Переносы uuid во внешних таблицах, только если старый uuid однозначно заменен."""
     old_to_new: dict[str, set[str]] = defaultdict(set)
     samples: dict[str, RefUuidUpdate] = {}
     for update in plan.updates:

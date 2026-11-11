@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Помесячный расчёт прогнозной выработки ТЭС (форма «БЭ по месяцам», Магадан).
+"""Помесячный расчет прогнозной выработки ТЭС (форма «БЭ по месяцам», Магадан).
 
 Годовые итоги вкладок (потребление, ГЭС, ТЭС) переносятся в сводную таблицу БЭ
 за тот же год. ПИВР ГЭС - прогноз выработки с карточек ГЭС Центрального энергорайона.
@@ -361,7 +361,7 @@ def machine_group_row_key(prefix: str, station_id: int, group_label: str) -> str
     slug = re.sub(
         r"[^\w]+",
         "_",
-        str(group_label or "").casefold().replace("ё", "е"),
+        str(group_label or "").casefold().replace("\u0451", "е"),
         flags=re.UNICODE,
     ).strip("_")
     return f"{prefix}_group_{int(station_id)}_{slug or 'none'}"
@@ -833,7 +833,7 @@ def compute_tes_forecast_year(
             "Выработка электрической энергии",
             _with_year_total(production),
             kind=KIND_TOTAL,
-            formula_tooltip="ГЭС (в объёме не выше ПИВР) + ТЭС",
+            formula_tooltip="ГЭС (в объеме не выше ПИВР) + ТЭС",
         ),
         _row(
             ROW_PIVR_SUM,
@@ -1390,7 +1390,7 @@ def _station_type_group_key(station: Any) -> str:
     except (TypeError, ValueError):
         type_int = None
     key = _stable_type_key(str(type_name or ""), type_int)
-    blob = f"{type_name or ''} {getattr(station, 'name', '')}".casefold().replace("ё", "е")
+    blob = f"{type_name or ''} {getattr(station, 'name', '')}".casefold().replace("\u0451", "е")
     if "дэс" in blob and key not in {"installed_ges", "installed_gaes", "installed_aes"}:
         return "installed_tes"
     return key
@@ -1898,7 +1898,7 @@ def update_tes_forecast_value(
     if not slug:
         raise ValueError("Не указан лист баланса")
     if not is_tes_forecast_sheet(sheet):
-        raise ValueError("Помесячный расчёт недоступен для этого листа")
+        raise ValueError("Помесячный расчет недоступен для этого листа")
     try:
         year_int = int(year)
         month_int = int(month)
@@ -1938,7 +1938,7 @@ def update_tes_forecast_value(
     if key == ROW_CONSUMPTION_SHARE and parsed is not None:
         annual = load_tes_forecast_annual_consumption(sheet, year_int)
         if annual is not None and annual != 0:
-            # Старая ручная запись не должна перекрывать расчёт по новой доле.
+            # Старая ручная запись не должна перекрывать расчет по новой доле.
             _write_month_value(row_key=ROW_CONSUMPTION, parsed=None, **write_kw)
     station_to_machines, machine_to_station = _tes_generation_key_links(
         entities.get("tes_stations") or []
@@ -1993,7 +1993,7 @@ def _log_tes_forecast_change(
 
     log_cell_change(
         user,
-        "Изменения в балансе ЭЭ, помесячный расчёт выработки ТЭС",
+        "Изменения в балансе ЭЭ, помесячный расчет выработки ТЭС",
         f"Строка «{row_key}», {year} г., месяц {month}",
         old_value,
         new_value,

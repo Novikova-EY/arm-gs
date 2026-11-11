@@ -180,7 +180,7 @@ class FuelCoefficientCalculationService:
         if row.base_year is not None and getattr(row.base_year, "number", None) is not None:
             years.append(int(row.base_year.number))
         # Группа в выборке, если ved>0 хотя бы в одном из лет; строку года
-        # циклы ниже ещё режут access_ved_filter_year_row_participates (как Access).
+        # циклы ниже еще режут access_ved_filter_year_row_participates (как Access).
         year_numbers = sorted(set(years)) or None
         return select_equipment_group_ids_for_calculation(
             self.session,
@@ -218,8 +218,8 @@ class FuelCoefficientCalculationService:
     ) -> dict:
         """
         Группы фильтра для контроля Skip на Коэфф / Распред / Топливо:
-        - без строки топлива за расчётный год;
-        - с топливом за расчётный год, но без удельника в окне [byear, cyear].
+        - без строки топлива за расчетный год;
+        - с топливом за расчетный год, но без удельника в окне [byear, cyear].
         """
         row = self.session.get(
             DistributionParameter,
@@ -520,7 +520,7 @@ class FuelCoefficientCalculationService:
 
         bptp = betp / be * Decimal("100") if be > 0 else Decimal("0")
         # Access Кнопка5_Click: cptp = csumetp / E * 100 – E это Ераспред на форме (поле e параметра).
-        # Если E не задан (=0), в качестве знаменателя используем ΣE по строкам расчётного года.
+        # Если E не задан (=0), в качестве знаменателя используем ΣE по строкам расчетного года.
         denom_cptp = e_target if e_target > 0 else sum_e_cyear
         cptp = cetp / denom_cptp * Decimal("100") if denom_cptp > 0 else Decimal("0")
         bh = be / bnust * Decimal("1000") if bnust > 0 else Decimal("0")
@@ -691,10 +691,10 @@ class FuelCoefficientCalculationService:
         distribution_parameter_id: int,
     ) -> dict[str, Decimal] | None:
         """
-        Агрегаты по расчётному году для строки «Расчётный год» и второй таблицы «Коэфф»
-        до сохранённой сводки DistributionCoefficientSummary.
+        Агрегаты по расчетному году для строки «Расчетный год» и второй таблицы «Коэфф»
+        до сохраненной сводки DistributionCoefficientSummary.
 
-        Та же логика сумм и пересчёта теплофикационной выработки ЭЭ (ewtp) по удельному расходу, что в ``run_for_distribution_parameter``,
+        Та же логика сумм и пересчета теплофикационной выработки ЭЭ (ewtp) по удельному расходу, что в ``run_for_distribution_parameter``,
         без записи в БД.
         """
         row = self.session.get(

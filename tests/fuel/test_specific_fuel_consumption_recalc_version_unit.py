@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Пересчёт удельных: только текущая версия БД при all_versions=False."""
+"""Пересчет удельных: только текущая версия БД при all_versions=False."""
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -117,14 +117,11 @@ def test_recalculate_all_versions_false_scopes_to_current_version_only():
         "EquipmentGroupSpecificFuelConsumption",
         SimpleNamespace(query=_FakeQuery([existing])),
     ), patch.object(svc, "db", SimpleNamespace(session=session)), patch.object(
-        svc, "calc_y_calc", return_value=1
-    ), patch.object(svc, "calc_btp_calc", return_value=2), patch.object(
-        svc, "calc_sntp_calc", return_value=3
-    ), patch.object(svc, "calc_bk_calc", return_value=4), patch.object(
-        svc, "calc_snk_calc", return_value=5
-    ), patch.object(svc, "_sync_numb1120_from_equipment_group", return_value={}), patch.object(
-        svc, "set_db_version_on_create", lambda obj: None
-    ):
+        svc, "specific_fuel_consumption_source_query", return_value=fuel_param_model.query
+    ), patch.object(
+        svc, "calculate_specific_fuel_consumption_calc",
+        return_value=dict(y_calc=1, btp_calc=2, sntp_calc=3, bk_calc=4, snk_calc=5),
+    ), patch.object(svc, "_sync_numb1120_from_equipment_group", return_value={}):
         updated = svc.recalculate_all_specific_fuel_consumption_calc(
             year=2024, all_versions=False, commit=False
         )
@@ -175,14 +172,11 @@ def test_recalculate_all_versions_true_processes_all_version_params():
     ), patch.object(
         svc, "EquipmentGroupSpecificFuelConsumption", _ConsumptionCls
     ), patch.object(svc, "db", SimpleNamespace(session=session)), patch.object(
-        svc, "calc_y_calc", return_value=1
-    ), patch.object(svc, "calc_btp_calc", return_value=2), patch.object(
-        svc, "calc_sntp_calc", return_value=3
-    ), patch.object(svc, "calc_bk_calc", return_value=4), patch.object(
-        svc, "calc_snk_calc", return_value=5
-    ), patch.object(svc, "_sync_numb1120_from_equipment_group", return_value={}), patch.object(
-        svc, "set_db_version_on_create", lambda obj: None
-    ):
+        svc, "specific_fuel_consumption_source_query", return_value=fuel_param_model.query
+    ), patch.object(
+        svc, "calculate_specific_fuel_consumption_calc",
+        return_value=dict(y_calc=1, btp_calc=2, sntp_calc=3, bk_calc=4, snk_calc=5),
+    ), patch.object(svc, "_sync_numb1120_from_equipment_group", return_value={}):
         with patch.object(svc, "EquipmentGroup") as eg_model:
             eg_model.query = MagicMock()
             updated = svc.recalculate_all_specific_fuel_consumption_calc(

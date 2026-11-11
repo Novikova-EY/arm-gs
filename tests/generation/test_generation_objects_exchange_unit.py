@@ -263,10 +263,6 @@ def test_build_machine_year_row_mock_keys_and_placeholders():
         "Производство агрегатом электроэнергии в году, МВт*ч",
         "Тип агрегата",
         "Блок является планируемым",
-        "твердые частицы (зола), млн т",
-        "диоксид серы (SO2), млн т",
-        "оксиды азота (NOx), млн т",
-        "диоксид углерода (CO2), млн т",
         "Год вывода из эксплуатации",
         "Номер энергозоны (код для оптимизации)",
         "Дата ввода блока (фактическая)",
@@ -279,10 +275,7 @@ def test_build_machine_year_row_mock_keys_and_placeholders():
     assert row[svc.KEY_MACHINE_NUMBER] == "1"
     assert row[svc.KEY_MACHINE_CAPACITY] == 100.0
     assert row[svc.KEY_MACHINE_GENERATION] == 0.0
-    assert row[svc.KEY_ASH] == 0.0
-    assert row[svc.KEY_SO2] == 0.0
-    assert row[svc.KEY_NOX] == 0.0
-    assert row[svc.KEY_CO2] == 0.0
+    assert not any("млн т" in key for key in row)
     assert row[svc.KEY_MODERNIZATION_ADVISABLE] is False
     assert row[svc.KEY_COMMISSION_FACT_DATE] == "01.01.2020"
     assert row[svc.KEY_MACHINE_PLANNED] is True
@@ -454,7 +447,7 @@ def test_build_generation_machines_rows_fields_and_planned():
     assert rows[2][svc.KEY_DECOMMISSION_DATE] == "01.01.2025"
     assert rows[2][svc.KEY_MODERNIZATION_DATE] == "01.01.2030"
     assert rows[2][svc.KEY_MACHINE_GENERATION] == 0.0
-    assert rows[2][svc.KEY_ASH] == 0.0
+    assert not any("млн т" in key for key in rows[2])
     assert rows[2][svc.KEY_MODERNIZATION_ADVISABLE] is False
     assert rows[2][svc.KEY_MACHINE_CODE] == "m-1"
     assert rows[2][svc.KEY_STATION_CODE_ON_MACHINE] == "st-1"
@@ -485,7 +478,7 @@ def test_dataset_envelope_shape():
 
 def test_generation_machines_comment_lists_missing_sources():
     text = svc.GENERATION_MACHINES_COMMENT
-    assert "твердые частицы (зола), млн т" in text
+    assert "млн т" not in text
     assert "Производство агрегатом электроэнергии в году, МВт*ч" in text
     assert "Модернизация целесообразна" in text
     assert "Ожидаемый год модернизации с изменением мощности" in text
@@ -495,7 +488,7 @@ def test_generation_machines_comment_lists_missing_sources():
     assert "Станционный номер" in text
     assert "Номер агрегата" in text
     assert text.endswith('14.10.2026 - добавлено поле "Станционный номер"')
-    assert text.count("\n\n") == 5
+    assert text.count("\n\n") == 4
     payload = svc.dataset_envelope(
         "generation_machines",
         database_version=7,

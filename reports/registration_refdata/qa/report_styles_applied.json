@@ -1,0 +1,17 @@
+{
+  "reference": "z:\\НИО-10\\АРМ ГС\\02. Отчеты НИР\\2026 год\\Отчет_Этап 1_АРМ_ГС_2026-НК.docx",
+  "reference_sha256": "9a1ab8fc392ae908ad4993842cd015e1fbdbaef82d5e3b0c9596831a802d1198",
+  "document": "АРМ_Справочники_Описание_для_госрегистрации.docx",
+  "body_style": "7.32 Основной текст",
+  "table_style": "7.32 Таблица. 13 Заголовки ГРАФ+основной части таблицы",
+  "figure_style": "7.32 Иллюстрация. Расположение иллюстрации",
+  "figure_caption_style": "7.32 Иллюстрация. Подпись к иллюстрации",
+  "headings": [
+    "Heading 1",
+    "Heading 2",
+    "Heading 3"
+  ],
+  "code_style": "SourceCode retained for monospaced source listings; report has no code style",
+  "content_unchanged": true,
+  "style_definitions_imported": 262
+}

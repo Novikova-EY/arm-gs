@@ -1,4 +1,7 @@
-{% extends 'base.html' %} {% block title %}Выработка ЭЭ{% endblock %} {% block
+{% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+
+{% block title %}Выработка ЭЭ{% endblock %} {% block
 content %} {% if current_user.is_authenticated %}
 
 <div
@@ -90,11 +93,18 @@ content %} {% if current_user.is_authenticated %}
       #eeGenerationTable thead th .filter-button {
         font-size: inherit;
       }
+      #eeGenerationTable input.ee-station-value,
       #eeGenerationTable input.ee-control-value {
         min-width: 4.5rem;
         max-width: 7rem;
         margin: 0 auto;
         font-size: inherit;
+        font-weight: inherit;
+      }
+      #eeGenerationTable input.ee-station-value {
+        text-align: center;
+      }
+      #eeGenerationTable input.ee-control-value {
         font-weight: 600;
       }
       #eeGenerationTable td.ee-control-cell.is-save-success {
@@ -129,6 +139,10 @@ content %} {% if current_user.is_authenticated %}
     <table
       class="table table-hover table-striped table-bordered"
       id="eeGenerationTable"
+      data-station-save-url="{{ url_for('energy_balance_bp.ee_generation_station_value') }}"
+      data-csrf="{{ csrf_token if csrf_token is string else csrf_token() }}"
+      data-period-mode="{{ ee_period_mode }}"
+      data-selected-year="{{ selected_year or '' }}"
     >
       <thead class="table-success">
         <tr
@@ -268,7 +282,25 @@ content %} {% if current_user.is_authenticated %}
         {}).get(ues_block.ues_id, {}), row_class='table-primary',
         info_tooltip=total_tooltip_ues %} {% include
         'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
-        endwith %} {% endif %} {% endfor %} {% endfor %} {% if
+        endwith %} {% endif %} {% endfor %} {% if
+        should_show_totals.get('decentralized_zone') and est_block.est_id ==
+        should_show_totals.get('decentralized_zone_est_id') %} {% with
+        label=est_block.est_name ~ ', всего',
+        period_totals=decentralized_zone_control_by_period|default({}),
+        res_id=est_block.est_id, control_level='est',
+        control_entity_id=est_block.est_id,
+        control_key='est-' ~ est_block.est_id|string,
+        info_tooltip=control_tooltip %} {% include
+        'energy_balance/ee_generation/ee_generation_control_row.html' %} {%
+        endwith %} {% with
+        label='Проверка для ' ~ est_block.est_name,
+        period_totals=decentralized_zone_verification_by_period|default({}),
+        left_totals=decentralized_zone_station_sum_by_period|default({}),
+        res_id=est_block.est_id,
+        control_key='est-' ~ est_block.est_id|string,
+        info_tooltip=verification_tooltip %} {% include
+        'energy_balance/ee_generation/ee_generation_verification_row.html' %} {%
+        endwith %} {% endif %} {% endfor %} {% if
         should_show_totals.get('total') %} {% with label='Россия, всего',
         period_totals=generation_aggregates.get('total', {}),
         row_class='table-danger', info_tooltip=total_tooltip_russia %} {% include
@@ -292,6 +324,7 @@ content %} {% if current_user.is_authenticated %}
   <!-- /.page-table-scroll -->
 </div>
 
+<script src="{{ url_for('static', filename='js/energy_balance/ee_generation_station_live.js') }}" defer></script>
 <script id="filters-data" type="application/json">
   {{ {
       'energy_system_type_list': energy_system_type_list,
@@ -527,10 +560,10 @@ content %} {% if current_user.is_authenticated %}
         return out;
       }
 
-      function updateVerificationCell(resId, period, controlRaw) {
+      function updateVerificationCell(controlKey, period, controlRaw) {
         const cell = table.querySelector(
-          'td.ee-verification-cell[data-res-id="' +
-            resId +
+          'td.ee-verification-cell[data-control-key="' +
+            controlKey +
             '"][data-period="' +
             period +
             '"]',
@@ -560,9 +593,13 @@ content %} {% if current_user.is_authenticated %}
       }
 
       function saveControlInput(input) {
-        const resId = input.getAttribute("data-res-id");
+        const level = input.getAttribute("data-control-level") || "res";
+        const entityId =
+          input.getAttribute("data-control-entity-id") ||
+          input.getAttribute("data-res-id");
+        const controlKey = input.getAttribute("data-control-key") || `res-${entityId}`;
         const period = input.getAttribute("data-period");
-        if (!resId || period == null) return;
+        if (!entityId || period == null) return;
 
         const cell = input.closest('td');
         if (cell) cell.classList.remove("is-save-success", "is-save-error");
@@ -570,6 +607,20 @@ content %} {% if current_user.is_authenticated %}
         if (Number.isNaN(parsed)) {
           if (cell) cell.classList.add("is-save-error");
           return;
+        }
+
+        const payload = {
+          level,
+          period: Number(period),
+          value: parsed == null ? "" : input.value,
+          ee_period_mode: PERIOD_MODE,
+          selected_year: SELECTED_YEAR,
+          rounding_digits: DIGITS,
+        };
+        if (level === "res") {
+          payload.res_id = Number(entityId);
+        } else {
+          payload.entity_id = Number(entityId);
         }
 
         fetch(SAVE_URL, {
@@ -580,14 +631,7 @@ content %} {% if current_user.is_authenticated %}
             "X-Requested-With": "XMLHttpRequest",
             "X-CSRFToken": CSRF || "",
           },
-          body: JSON.stringify({
-            res_id: Number(resId),
-            period: Number(period),
-            value: parsed == null ? "" : input.value,
-            ee_period_mode: PERIOD_MODE,
-            selected_year: SELECTED_YEAR,
-            rounding_digits: DIGITS,
-          }),
+          body: JSON.stringify(payload),
         })
           .then(function (response) {
             return response.json().then(function (payload) {
@@ -607,7 +651,7 @@ content %} {% if current_user.is_authenticated %}
               payload.value == null || payload.value === ""
                 ? null
                 : Number(payload.value);
-            updateVerificationCell(resId, period, savedRaw);
+            updateVerificationCell(controlKey, period, savedRaw);
           })
           .catch(function (error) {
             if (cell) cell.classList.add("is-save-error");

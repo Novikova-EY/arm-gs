@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set data_refresh_inline = true %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -53,28 +54,31 @@
                     {% endfor %}
                     <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                     <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                     <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                     <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                        {% for year in filter_year_list %}
+                        {% for year in get_reference_years() %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                     <button type="submit" class="btn btn-outline-success">Применить</button>
                     <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
                 </form>
-                <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto" style="min-width: 16rem;">
-                    <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
-                    <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
-                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
-                    </select>
+                <div class="d-flex align-items-center flex-wrap gap-2 ms-auto">
+                    {% include 'power_demand/_data_refresh.html' %}
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 16rem;">
+                        <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
+                        <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -221,7 +225,7 @@
                     {% set val = peak_values[loop.index0] %}
                     <td class="text-center summary-year-cell">
                         {% if can_edit_ozp %}
-                        <input type="text"
+                        <textarea rows="2"
                                class="form-control form-control-lg text-center fuel-param-input"
                                autocomplete="off"
                                maxlength="64"
@@ -229,9 +233,8 @@
                                data-model="OzpMaxPowerParameter"
                                data-parameter-key="peak_datetime"
                                data-slice="{{ col.ozp_end }}"
-                               value="{{ val }}"
                                title="{{ val }}"
-                               aria-label="{{ row_peak_dt_label }} – {{ col.label }}" />
+                               aria-label="{{ row_peak_dt_label }} – {{ col.label }}">{{ val }}</textarea>
                         {% else %}
                         {{ val if val else "–" }}
                         {% endif %}
@@ -254,7 +257,7 @@
     </div>
 </div>
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}?v=2"></script>
-<script src="{{ url_for('static', filename='js/power_demand/ozp_max_power.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='js/power_demand/ozp_max_power.js') }}?v=5" defer></script>
 <script>
 window.__ozpMaximaCsrfToken = {{ csrf_token|tojson }};
 </script>

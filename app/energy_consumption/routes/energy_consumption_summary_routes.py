@@ -115,7 +115,10 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
 
 
 def _render_ec_summary_page(template: str, context: dict):
-    return render_template(template, **finalize_ec_summary_page_context(context))
+    context = finalize_ec_summary_page_context(
+        context, growth_rounding_digits=_parse_rounding_digits("growth_rounding_digits", 2)
+    )
+    return render_template(template, **context)
 
 
 def _attach_ec_summary_client_render(context: dict, *, scope: str, data_path: str) -> None:
@@ -164,7 +167,9 @@ def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
             scope=scope,
             entity_pagination=entity_pagination,
         )
-        page_context = finalize_ec_summary_page_context(page_context)
+        page_context = finalize_ec_summary_page_context(
+            page_context, growth_rounding_digits=_parse_rounding_digits("growth_rounding_digits", 2)
+        )
         return build_summary_data_json_response(
             page_context,
             pagination_meta=pagination_meta,
@@ -173,19 +178,19 @@ def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
     return jsonify(cached_load_ec_summary_data(scope, page_loader))
 
 
-def _parse_rounding_digits() -> int:
-    raw = request.args.get("rounding_digits")
+def _parse_rounding_digits(parameter: str = "rounding_digits", default: int = 1) -> int:
+    raw = request.args.get(parameter)
     if raw is None or str(raw).strip() == "":
-        return 1
+        return default
     try:
         value = int(raw)
     except (TypeError, ValueError):
-        return 1
+        return default
     if value == -1:
         return -1
     if value in (0, 1, 2, 3):
         return value
-    return 1
+    return default
 
 
 def _filter_year_list_for_summary() -> list[int]:
@@ -196,7 +201,7 @@ def _filter_year_list_for_summary() -> list[int]:
 
 
 def _summary_period_base_year_n() -> int:
-    """N для колонок «отчётный N−9…N», «среднесрочный N+1…N+6» (как на странице коэффициентов спроса)."""
+    """N для колонок «отчетный N−9…N», «среднесрочный N+1…N+6» (как на странице коэффициентов спроса)."""
     n = get_ges_tep_current_price_year_number()
     if n is not None:
         return int(n)
@@ -216,7 +221,7 @@ def _parse_summary_include_medium_years() -> bool:
 def _expand_summary_years_for_period_segments(
     sy: int, ey: int, n: int, *, include_medium_years: bool
 ) -> tuple[int, int]:
-    """Объединить выбранный диапазон с отчётным окном N−9…N; при include_medium_years – ещё с N+1…N+6."""
+    """Объединить выбранный диапазон с отчетным окном N−9…N; при include_medium_years – еще с N+1…N+6."""
     bounds = _filter_year_list_for_summary()
     if not bounds:
         lo, hi = sy, ey
@@ -268,7 +273,7 @@ def _ec_summary_common_page_kwargs(*, summary_table_page: bool) -> dict:
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
-    """По умолчанию – отчётное окно N−9…N (как кнопка «Отчётный период»), в границах справочника Year."""
+    """По умолчанию – отчетное окно N−9…N (как кнопка «Отчетный период»), в границах справочника Year."""
     bounds = _filter_year_list_for_summary()
     n = _summary_period_base_year_n()
     default_sy = n - 9
@@ -390,6 +395,7 @@ def _demand_summary_excel_response(context: dict, filename_prefix: str):
             if context.get("rounding_digits") is not None
             else 1
         ),
+        growth_rounding_digits=context.get("growth_rounding_digits", 2),
         sipr_on=bool(ui_opts.sipr_on),
         summary_table_page=bool(ui_opts.summary_table_page),
     )
@@ -423,7 +429,9 @@ def _apply_ec_summary_export_filters(
         visible_parameter_keys=visible,
         ui_opts=ui_opts,
     )
-    return finalize_ec_summary_page_context(context)
+    return finalize_ec_summary_page_context(
+        context, growth_rounding_digits=_parse_rounding_digits("growth_rounding_digits", 2)
+    )
 
 
 @energy_consumption_bp.route("/summary_table/start/")
@@ -631,7 +639,7 @@ def _build_ec_summary_import_payload(stats: dict) -> dict:
 def demand_summary_fo_ez_import_xlsx():
     """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО – для страниц сводки по ОЭС, ФО и энергозонам.
 
-    Данные записываются во все зарегистрированные версии БД.
+    Данные и смежные расчетные периметры записываются только в текущую версию БД.
     """
     if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
@@ -653,7 +661,7 @@ def demand_summary_fo_ez_import_xlsx():
         ok=True,
         job_id=job_id,
         message=(
-            "Импорт запущен. Данные будут записаны во все версии БД; "
+            "Импорт запущен. Данные будут записаны только в текущую версию БД; "
             "обработка может занять несколько минут."
         ),
     )
@@ -681,6 +689,32 @@ def demand_summary_fo_ez_import_status(job_id: str):
     payload = _build_ec_summary_import_payload(stats)
     payload["status"] = "done"
     return jsonify(payload)
+
+
+@energy_consumption_bp.route("/summary/note", methods=["POST"])
+@login_required
+def demand_summary_save_note():
+    if not can_edit_energy_consumption(current_user):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    from app.energy_consumption.services.summary_row_note_services import save_summary_row_note
+
+    data = request.get_json(silent=True) or {}
+    try:
+        version_id = get_current_version()
+        if int(data.get("database_version_id")) != version_id:
+            raise ValueError("Версия базы данных изменилась. Обновите страницу.")
+        value = save_summary_row_note(
+            data.get("row_key"), data.get("value"), version_id=version_id,
+            user=str(current_user.username),
+        )
+    except (ValueError, TypeError) as exc:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Energy consumption row note save failed")
+        return jsonify(ok=False, error="Не удалось сохранить примечание."), 500
+    return jsonify(ok=True, value=value)
 
 
 @energy_consumption_bp.route("/summary/cell", methods=["POST"])
@@ -771,7 +805,7 @@ def demand_summary_save_cell():
 def demand_summary_persist_computed_rows():
     """После сохранения ячеек: пересчитать формулы сводки и записать во все версии БД.
 
-    Временно – как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    Временно – как импорт Excel; позже вернемся к пересчету только текущей версии.
     """
     if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
@@ -798,6 +832,12 @@ def demand_summary_persist_computed_rows():
             user=user or None,
         )
         db.session.commit()
+        from app.energy_consumption.services.ec_display_cache import (
+            invalidate_energy_consumption_display_caches,
+        )
+
+        for version_id in result.get("database_version_ids", []):
+            invalidate_energy_consumption_display_caches(version_id=version_id)
     except ValueError as e:
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 400
@@ -806,7 +846,7 @@ def demand_summary_persist_computed_rows():
         current_app.logger.exception(
             "persist_all_energy_consumption_summary_computed_rows_for_all_versions"
         )
-        return jsonify(ok=False, error="Не удалось записать расчётные значения в БД."), 400
+        return jsonify(ok=False, error="Не удалось записать расчетные значения в БД."), 400
 
     return jsonify(
         ok=True,
@@ -933,7 +973,7 @@ def demand_summary_persist_formula_block():
         return jsonify(ok=False, error="Не указана модель параметров."), 400
     formula_kind = str(data.get("formula_kind") or "").strip()
     if formula_kind != "without_gaes_charge":
-        return jsonify(ok=False, error="Неподдерживаемый тип расчётной строки."), 400
+        return jsonify(ok=False, error="Неподдерживаемый тип расчетной строки."), 400
 
     pfk_raw = data.get("parent_fk_column")
     parent_fk_column = str(pfk_raw).strip() if pfk_raw not in (None, "") else None
@@ -947,7 +987,7 @@ def demand_summary_persist_formula_block():
 
     formula_context = data.get("formula_context")
     if not isinstance(formula_context, dict):
-        return jsonify(ok=False, error="Не передан контекст расчётной строки."), 400
+        return jsonify(ok=False, error="Не передан контекст расчетной строки."), 400
 
     sy = data.get("start_year")
     ey = data.get("end_year")
@@ -981,6 +1021,12 @@ def demand_summary_persist_formula_block():
             user=user or None,
         )
         db.session.commit()
+        from app.energy_consumption.services.ec_display_cache import (
+            invalidate_energy_consumption_display_caches,
+        )
+
+        for version_id in result.get("database_version_ids", []):
+            invalidate_energy_consumption_display_caches(version_id=version_id)
     except ValueError as e:
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 400

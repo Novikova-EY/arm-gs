@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Coeff ФО/ЭЗ: тот же набор расчётных строк и подписи, что на max-сводках."""
+"""Coeff ФО/ЭЗ: тот же набор расчетных строк и подписи, что на max-сводках."""
 
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ def test_strip_new_territories_block_for_coeff_ez_removes_header_and_subjects() 
 
 
 def test_fo_ez_level_skip_second_coeff_k_row() -> None:
-    """На уровне ФО/ЭЗ/ОЭС нет строки k у расчётного совмещённого (вторая k под совмещённым)."""
+    """На уровне ФО/ЭЗ/ОЭС нет строки k у расчетного совмещенного (вторая k под совмещенным)."""
     fo_keep = {
         "demand_model_name": FederalDistrictDemandParameter.__name__,
         "parameter_key": "combined_on_cz",

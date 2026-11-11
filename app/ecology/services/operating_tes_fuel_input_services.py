@@ -11,7 +11,10 @@ from sqlalchemy import String, and_, case, cast, func, or_
 from sqlalchemy.orm import aliased
 
 from app.common.services.database_version_filter import get_current_db_version_id
-from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _to_decimal
+from app.ecology.services.ecology_decimal_helpers import (
+    decimal_from_loose_text,
+    decimal_or_none as _to_decimal,
+)
 from app.ecology.services.operating_tes_constants import (
     FUEL_EXTRA_SUM_FIELDS,
     FUEL_MAIN_SUM_FIELDS,
@@ -35,6 +38,11 @@ from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
     TerritoriesEnergyExternalMapping,
 )
 from app.generation.models.station.station_model import Station
+from app.generation.services.station_services.station_access_services import (
+    DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME,
+    UNSPECIFIED_REF_LABEL,
+)
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import (
     regional_district_regional_energy_system,
@@ -54,7 +62,7 @@ def _norm(text: str | None) -> str:
     return (
         (text or "")
         .casefold()
-        .replace("ё", "е")
+        .replace("\u0451", "е")
         .replace("-", " ")
         .replace("  ", " ")
         .strip()
@@ -115,17 +123,51 @@ def _distribute(
     values: dict[str, Decimal],
     cap_class: str | None = None,
 ) -> None:
-    targets = ["vsego"]
-    if ved in VED_INDUSTRY:
-        targets.append("minen")
-    elif ved in VED_INDUSTRIAL:
-        targets.append("prompred")
-    targets.extend(sorted(territory_slugs))
+    affiliation = (
+        "minen" if ved in VED_INDUSTRY
+        else "prompred" if ved in VED_INDUSTRIAL
+        else None
+    )
+    targets = list(dict.fromkeys(["vsego", *sorted(territory_slugs)]))
+    if affiliation:
+        targets.append("minen" if affiliation == "minen" else "prompred")
     for slug in targets:
+        target = buckets[slug]
         if cap_class:
-            _add(buckets[slug][cap_class], values)
+            _add(target[cap_class], values)
         else:
-            _add(buckets[slug], values)
+            _add(target, values)
+        level_key = f"{slug}::{affiliation or 'all'}"
+        level_bucket = buckets[level_key]
+        if cap_class:
+            _add(level_bucket[cap_class], values)
+        else:
+            _add(level_bucket, values)
+
+
+def fuel_bucket_for_level(
+    inputs: dict[int, dict[str, Any]],
+    year: int,
+    territory_slug: str,
+    affiliation: str = "all",
+) -> dict[str, Decimal] | None:
+    """Return fuel inputs for a territory/affiliation, supporting older snapshots."""
+    by_territory = inputs.get(int(year), {})
+    if territory_slug in {"minen", "prompred"}:
+        return by_territory.get(territory_slug) or empty_fuel_bucket()
+    if affiliation == "all":
+        return by_territory.get(f"{territory_slug}::all") or by_territory.get(territory_slug)
+    key = f"{territory_slug}::{affiliation}"
+    if key in by_territory:
+        return by_territory[key]
+    if any("::" in item for item in by_territory):
+        # New-format payloads distinguish an empty slice from a missing legacy slice.
+        return empty_fuel_bucket()
+    if territory_slug == "vsego":
+        return by_territory.get(affiliation) or by_territory.get(territory_slug)
+    # Older accepted snapshots had only total territory buckets. Until those are
+    # refreshed, repeat their values across the newly introduced affiliation levels.
+    return by_territory.get(territory_slug)
 
 
 def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
@@ -142,11 +184,15 @@ def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
         .having(func.count() == 1)
         .subquery()
     )
-    group_unit = aliased(EnergyUnit)
+    station_subject_res = unique_subject_res.alias("station_subject_res")
+    station_res = aliased(RegionalEnergySystem)
+    station_ues = aliased(UnionEnergySystem)
+    station_energy_system_type = aliased(EnergySystemType)
     rows = (
         db.session.query(
             EquipmentGroup.id,
-            group_unit.name,
+            station_energy_system_type.name,
+            station_res.name,
             UnionEnergySystem.name,
             RegionalEnergySystem.name,
             EnergyUnit.name,
@@ -155,7 +201,6 @@ def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
             TerritoriesEnergyExternalMapping.external_name,
         )
         .select_from(EquipmentGroup)
-        .outerjoin(group_unit, group_unit.id == EquipmentGroup.energy_unit_id)
         .outerjoin(EquipmentGroupSet, EquipmentGroupSet.equipment_group_id == EquipmentGroup.id)
         .outerjoin(
             EquipmentGroupSetStation,
@@ -182,6 +227,25 @@ def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
             == func.coalesce(EquipmentGroup.regional_district_id, Station.id_regional_district),
         )
         .outerjoin(
+            station_subject_res,
+            station_subject_res.c.regional_district_id == Station.id_regional_district,
+        )
+        .outerjoin(
+            station_res,
+            station_res.id == func.coalesce(
+                Station.id_regional_energy_system,
+                station_subject_res.c.res_id,
+            ),
+        )
+        .outerjoin(
+            station_ues,
+            station_ues.id == station_res.id_union_energy_system,
+        )
+        .outerjoin(
+            station_energy_system_type,
+            station_energy_system_type.id == station_ues.id_energy_system_type,
+        )
+        .outerjoin(
             RegionalEnergySystem,
             RegionalEnergySystem.id == func.coalesce(
                 EquipmentGroup.regional_energy_system_id,
@@ -206,10 +270,20 @@ def _load_group_territory_slugs(group_ids: set[int]) -> dict[int, set[str]]:
         .all()
     )
     result = defaultdict(set)
-    for group_id, group_unit_name, ues, res, unit, external_ues, external_name, subject in rows:
-        # Николаевский столбец определяется только полем «Энергорайон» карточки ГО.
-        if "николаев" in _norm(group_unit_name):
-            result[group_id].add("nikolaevsky")
+    # Карточка станции отображает тип «Децентрализованная зона» для единственной РЭС «не указано».
+    decentralized_group_ids = {
+        row[0]
+        for row in rows
+        if _norm(row[1]) == _norm(DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME)
+        or (
+            row[2]
+            and "," not in row[2]
+            and _norm(row[2]) == _norm(UNSPECIFIED_REF_LABEL)
+        )
+    }
+    for group_id, _station_energy_type_name, _station_res_name, ues, res, unit, external_ues, external_name, subject in rows:
+        if group_id in decentralized_group_ids:
+            result[group_id] = {"decentralized-zone"}
             continue
         slug = (
             match_special_slug(unit, None)
@@ -312,6 +386,7 @@ def load_group_fuel_rows(wanted, *, operating=None, by_capacity=False, fuel_scop
         for f in FUEL_EXTRA_SUM_FIELDS
     ]
     cap_expr = _capacity_class_expr() if by_capacity else None
+    new_tes_scope = fuel_scope in ("new_lt100", "new_ge100")
     select_cols = [
         EquipmentGroupFuelParam.year_number,
         EquipmentGroupFuelParam.ved,
@@ -321,6 +396,8 @@ def load_group_fuel_rows(wanted, *, operating=None, by_capacity=False, fuel_scop
         select_cols.append(cap_expr.label("capacity_class"))
     select_cols.extend(main_sums)
     select_cols.extend(extra_sums)
+    if new_tes_scope:
+        select_cols.append(EquipmentGroup.n1)
     query = (
         db.session.query(*select_cols)
         .join(
@@ -356,15 +433,12 @@ def load_group_fuel_rows(wanted, *, operating=None, by_capacity=False, fuel_scop
             EquipmentGroup.d == 1, EquipmentGroup.r == 1,
             EquipmentGroupFuelParam.nust.is_not(None),
         )
-    elif fuel_scope in ("new_lt100", "new_ge100"):
+    elif new_tes_scope:
         query = query.filter(
             or_(
                 and_(EquipmentGroup.d == 1, EquipmentGroup.r == 2),
                 and_(EquipmentGroup.d.is_(None), EquipmentGroup.r.is_(None)),
             ),
-            EquipmentGroupFuelParam.nust.is_not(None),
-            EquipmentGroupFuelParam.nust < 100 if fuel_scope == "new_lt100"
-            else EquipmentGroupFuelParam.nust >= 100,
         )
     elif fuel_scope is not None:
         raise ValueError("Неизвестный раздел сводки")
@@ -376,8 +450,21 @@ def load_group_fuel_rows(wanted, *, operating=None, by_capacity=False, fuel_scop
     ]
     if cap_expr is not None:
         group_cols.append(cap_expr)
+    if new_tes_scope:
+        group_cols.append(EquipmentGroup.n1)
     query = query.group_by(*group_cols)
-    return query.all()
+    rows = query.all()
+    if not new_tes_scope:
+        return rows
+    # n1 – текстовое поле карточки ГО, а не годовой показатель NUST.
+    selected = []
+    for row in rows:
+        capacity = decimal_from_loose_text(row[-1])
+        if capacity is None or not capacity.is_finite():
+            continue
+        if (capacity < 100) == (fuel_scope == "new_lt100"):
+            selected.append(row[:-1])
+    return selected
 
 
 def _add(target: dict[str, Decimal], values: dict[str, Decimal]) -> None:

@@ -32,7 +32,7 @@ _OVERRIDE_STORE = FormulaTextOverrideStore(
     "pd_summary_formula_text_overrides",
 )
 
-# Переименованные ключи формул (сохранённые переопределения в БД).
+# Переименованные ключи формул (сохраненные переопределения в БД).
 # Значение – старый ключ в БД, откуда читать переопределение для нового ключа.
 _LEGACY_FORMULA_KEY_FALLBACKS: dict[str, str] = {
     "sa_first_calc_max_power_mw_without_nt": "sa_first_calc_max_power_mw",

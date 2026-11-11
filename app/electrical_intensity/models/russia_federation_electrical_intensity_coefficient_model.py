@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Коэффициенты A и X электроёмкости для РФ в целом."""
+"""Коэффициенты A и X электроемкости для РФ в целом."""
 from sqlalchemy import Numeric
 from sqlalchemy.sql import func
 

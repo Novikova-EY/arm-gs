@@ -10,7 +10,7 @@ def get_station_type_list_full():
 
     Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache –
     после завершения запроса сессия закрывается, и повторное обращение к атрибутам
-    даёт DetachedInstanceError.
+    дает DetachedInstanceError.
     """
     current_version = get_current_version()
     query = StationType.query

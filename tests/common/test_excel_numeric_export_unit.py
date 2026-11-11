@@ -3,7 +3,11 @@
 
 from openpyxl import load_workbook
 
-from app.common.services.excel_numeric_cell import excel_number_format, parse_excel_numeric
+from app.common.services.excel_numeric_cell import (
+    excel_number_format,
+    excel_number_format_trimmed,
+    parse_excel_numeric,
+)
 from app.energy_consumption.services.energy_consumption_summary_export_services import (
     build_demand_summary_excel_stream as build_ec_excel,
 )
@@ -18,6 +22,14 @@ def test_excel_number_format_matches_ee_pattern():
     assert excel_number_format(1) == "#,##0.0"
     assert excel_number_format(2) == "#,##0.00"
     assert excel_number_format(3) == "#,##0.000"
+
+
+def test_trimmed_excel_number_format_matches_screen_precision():
+    assert excel_number_format_trimmed(-1) == "#,##0"
+    assert excel_number_format_trimmed(0) == "#,##0.###############"
+    assert excel_number_format_trimmed(1) == "#,##0.#"
+    assert excel_number_format_trimmed(2) == "#,##0.##"
+    assert excel_number_format_trimmed(3) == "#,##0.###"
 
 
 def test_parse_excel_numeric_accepts_display_strings():

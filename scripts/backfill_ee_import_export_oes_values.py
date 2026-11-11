@@ -126,7 +126,7 @@ def main() -> int:
         had_previous_version = hasattr(g, "current_db_version")
         try:
             for version_id in versions:
-                # Пересчёт использует текущие справочники территорий, поэтому
+                # Пересчет использует текущие справочники территорий, поэтому
                 # контекст должен совпадать с версией исходных строк.
                 g.current_db_version = version_id
                 for job_version_id, year in jobs:

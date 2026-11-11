@@ -1,0 +1,13 @@
+{% if show_summary_note_col %}
+<td class="ec-summary-row-note-cell align-middle text-start">
+    {% set note_text = row.entity_note_text | default('') %}
+    {% if can_edit_summary_cells %}
+    <textarea rows="2" maxlength="4000" autocomplete="off"
+              class="form-control form-control-sm ec-summary-row-note power-demand-summary-note-field"
+              data-initial="{{ note_text|e }}" data-note-key="{{ row.pd_ec_note_key }}" data-note-version="{{ row.pd_ec_note_version_id }}"
+              aria-label="{{ row.entity_label }} – {{ row.parameter_label }}, примечание">{{ note_text }}</textarea>
+    {% else %}
+    <span class="text-break">{{ note_text }}</span>
+    {% endif %}
+</td>
+{% endif %}

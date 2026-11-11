@@ -229,7 +229,7 @@ def fmt_tep_source_row_full(r: ProspectivePlaceGaesTepSource) -> dict[str, str]:
     result["year_specific_semifixed_operating_costs"] = _fmt_year_ref(
         r.year_specific_semifixed_operating_costs
     )
-    # Год у удельных капвложений – как у капзатрат «здания, сооружения…» (база расчёта).
+    # Год у удельных капвложений – как у капзатрат «здания, сооружения…» (база расчета).
     result["year_specific_capital_investment"] = result["year_capital_cost_wo_pir_ges_with_reservoir"]
     return result
 
@@ -263,7 +263,7 @@ def build_tep_view_rows(
 ) -> list[dict[str, Any]]:
     """Строки для шаблона: группировка по электростанции, merged TEP при совпадении значений.
 
-    ``tep_main_scaling_target_year`` – год конца цепочки пересчёта капзатрат (как в подписи
+    ``tep_main_scaling_target_year`` – год конца цепочки пересчета капзатрат (как в подписи
     «в ценах N года»). Если не передан, используется год «текущий» из справочника годов.
     """
     if not tep_rows:

@@ -100,7 +100,7 @@ def _merge_equipment_group_type_into_canonical(*, from_id: int, to_id: int, user
     )
 
     # По одной строке + flush: при нескольких записях с (station, from_id, NULL) в UNIQUE
-    # подзапрос «уже есть to_id» не видит только что обновлённые строки до flush.
+    # подзапрос «уже есть to_id» не видит только что обновленные строки до flush.
     while True:
         old_link = (
             EquipmentGroupSetStation.query.filter_by(
@@ -184,7 +184,7 @@ def _merge_equipment_group_type_into_canonical(*, from_id: int, to_id: int, user
     log_to_db(
         user,
         "Слияние типов групп оборудования",
-        f"Дубликат id={from_id} объединён с id={to_id}; ссылки переназначены, дубликат удалён.",
+        f"Дубликат id={from_id} объединен с id={to_id}; ссылки переназначены, дубликат удален.",
         entity_type="equipment_group",
         entity_id=to_id,
     )
@@ -198,7 +198,7 @@ def _merge_submitted_batch_duplicates(
 ) -> None:
     """
     В одной форме несколько строк с одинаковой парой (name, technology_type_id).
-    Оставляем запись с минимальным id, остальные сливаем в неё.
+    Оставляем запись с минимальным id, остальные сливаем в нее.
     Иначе при уже совпадающих в БД полях не срабатывала ветка «изменение → дубликат».
     """
     groups = defaultdict(list)
@@ -417,7 +417,7 @@ def update_equipment_group_service(data, user):
                         entity_id=equipment_group_id)
                     raise ValueError(f"Запись с ID «{equipment_group_id}» не найдена.")
 
-                # Пара (name, technology_type): при дубле с уже существующей записью – сливаем с неё
+                # Пара (name, technology_type): при дубле с уже существующей записью – сливаем с нее
                 if name != (obj.name or "") or new_technology_type_id != obj.id_technology_type:
                     dup = (
                         _equipment_group_dup_query(name, new_technology_type_id, exclude_id=equipment_group_id)
@@ -633,7 +633,7 @@ def add_equipment_group_service(data, user):
 @no_autoflush
 def add_equipment_group_all_versions_service(data, user):
     """
-    Создаёт по одной записи типа группы в каждой зарегистрированной версии БД
+    Создает по одной записи типа группы в каждой зарегистрированной версии БД
     с общим ref_uuid.
     """
     if not isinstance(data, list) or not data:

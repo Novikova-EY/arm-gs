@@ -27,8 +27,8 @@ def test_resolve_keeps_manual_name():
     assert (
         resolve_auto_equipment_group_name(
             suggested=suggested,
-            old_name="Моё ручное имя",
-            submitted_name="Моё ручное имя",
+            old_name="Мое ручное имя",
+            submitted_name="Мое ручное имя",
             old_suggested=suggested,
         )
         is None

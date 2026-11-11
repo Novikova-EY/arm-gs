@@ -1,6 +1,10 @@
-{# Редактируемая строка контрольных значений выработки по РЭС #}
+{# Редактируемая строка контрольной выработки #}
+{% set control_key = control_key|default('res-' ~ res_id|string) %}
+{% set control_level = control_level|default('res') %}
+{% set control_entity_id = control_entity_id|default(res_id) %}
 <tr class="ee-control-row table-secondary text-center align-middle" style="font-weight: bold;"
-    data-res-id="{{ res_id }}">
+    data-res-id="{{ res_id }}"
+    data-control-key="{{ control_key }}">
     <td></td>
     <td class="text-start">
         {{ label }}{% if info_tooltip %}
@@ -21,6 +25,9 @@
         <input type="text"
                class="form-control form-control-sm text-center ee-control-value"
                data-res-id="{{ res_id }}"
+               data-control-key="{{ control_key }}"
+               data-control-level="{{ control_level }}"
+               data-control-entity-id="{{ control_entity_id }}"
                data-period="{{ period_num }}"
                value="{{ format_generation_input_value(control_value, rounding_digits) }}"
                inputmode="decimal"

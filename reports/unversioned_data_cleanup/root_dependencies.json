@@ -1,0 +1,128 @@
+[
+  {
+    "parent": "gs_gen.gs_gen_stations",
+    "child": "gs_bem.gs_bem_station_energy_generations",
+    "fk": "id_station",
+    "rows_referencing_unversioned_parent": 84165,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_stations",
+    "child": "gs_fue.gs_fue_equipment_group_type_stations",
+    "fk": "station_id",
+    "rows_referencing_unversioned_parent": 857,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_stations",
+    "child": "gs_gen.gs_gen_machines",
+    "fk": "id_station",
+    "rows_referencing_unversioned_parent": 474,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_stations",
+    "child": "gs_gen.gs_gen_station_gaes_charge_consumptions",
+    "fk": "id_station",
+    "rows_referencing_unversioned_parent": 62,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_machines",
+    "child": "gs_fue.gs_fue_machine_fuel_param",
+    "fk": "machine_id",
+    "rows_referencing_unversioned_parent": 302,
+    "with_named_version": 302
+  },
+  {
+    "parent": "gs_gen.gs_gen_machines",
+    "child": "gs_gen.gs_gen_machine_names",
+    "fk": "id_machine",
+    "rows_referencing_unversioned_parent": 5214,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_machines",
+    "child": "gs_gen.gs_gen_machine_powers",
+    "fk": "id_machine",
+    "rows_referencing_unversioned_parent": 5214,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_gen.gs_gen_machines",
+    "child": "gs_gen.gs_gen_machine_tes_types",
+    "fk": "id_machine",
+    "rows_referencing_unversioned_parent": 5214,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_electricity_production_cost",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 5239,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_extra_fuel_param",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 10825,
+    "with_named_version": 5
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_fuel_formula",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 3592,
+    "with_named_version": 609
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_fuel_param",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 4469,
+    "with_named_version": 28
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_heat_and_tariffs",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 8646,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_natural_fuel",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 7501,
+    "with_named_version": 0
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_sets",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 1188,
+    "with_named_version": null
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_specific_fuel_consumption",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 3634,
+    "with_named_version": 213
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_specific_fuel_cost",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 4509,
+    "with_named_version": 1
+  },
+  {
+    "parent": "gs_fue.gs_fue_equipment_groups",
+    "child": "gs_fue.gs_fue_equipment_group_specific_fuel_price",
+    "fk": "equipment_group_id",
+    "rows_referencing_unversioned_parent": 1025,
+    "with_named_version": 427
+  }
+]

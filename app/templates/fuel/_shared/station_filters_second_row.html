@@ -390,7 +390,7 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelCostFile" multiple required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importSpecificFuelCostBtn" title="Можно выбрать несколько файлов сразу. Имя должно содержать «Стоимость». Год берётся из имени файла (Стоимость2024.xlsx → 2024). Если года в имени нет – используется год фильтра.">
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importSpecificFuelCostBtn" title="Можно выбрать несколько файлов сразу. Имя должно содержать «Стоимость». Год берется из имени файла (Стоимость2024.xlsx → 2024). Если года в имени нет – используется год фильтра.">
                         <span class="position-absolute bottom-0 start-0 w-100" style="height: 6px; background: rgba(13, 110, 253, 0.18);"></span>
                         <span id="importSpecificFuelCostProgressBar" class="position-absolute bottom-0 start-0" style="height: 6px; width: 0; background-color: var(--bs-primary); pointer-events: none; transition: width 0.25s ease;"></span>
                         <span class="position-relative d-inline-flex align-items-center justify-content-center gap-2" id="importSpecificFuelCostBtnLabel">
@@ -630,7 +630,7 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelParamsFile" multiple required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importFuelParamsBtn" title="Можно выбрать несколько файлов сразу. Access «Станции(Схема)*.xlsx» – входы расчёта по NUMB1120 и году (ved, NUST, NR, H, HFIX, Q, QOTR, TURT, NT, E, EWTP, SNK, obor; пустая ячейка очищает поле). DEP и виды топлива не грузятся. Доп_угли*.xlsx – детализация топлива; Сводная таблица для ОТЭТ*.xls(x) – СН. Год из столбца Year или из имени файла. Другие файлы будут отклонены.">
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importFuelParamsBtn" title="Можно выбрать несколько файлов сразу. Access «Станции(Схема)*.xlsx» – входы расчета по NUMB1120 и году (ved, NUST, NR, H, HFIX, Q, QOTR, TURT, NT, E, EWTP, SNK, obor; пустая ячейка очищает поле). DEP и виды топлива не грузятся. Доп_угли*.xlsx – детализация топлива; Сводная таблица для ОТЭТ*.xls(x) – СН. Год из столбца Year или из имени файла. Другие файлы будут отклонены.">
                         <span class="position-absolute bottom-0 start-0 w-100" style="height: 6px; background: rgba(13, 110, 253, 0.18);"></span>
                         <span id="importFuelParamsProgressBar" class="position-absolute bottom-0 start-0" style="height: 6px; width: 0; background-color: var(--bs-primary); pointer-events: none; transition: width 0.25s ease;"></span>
                         <span class="position-relative d-inline-flex align-items-center justify-content-center gap-2" id="importFuelParamsBtnLabel">
@@ -854,6 +854,9 @@
                 </script>
                 {% else %}
                 <!-- Загрузка данных БД Топливо (страница groups или turbines) -->
+                <div id="fuelDbImportWidget" data-owner="{{ current_user.id }}"
+                     data-active-url="{{ url_for('fuel_bp.fuel_db_import_active') }}"
+                     data-status-url="{{ url_for('fuel_bp.fuel_db_import_status', job_id='JOB_ID') }}">
                 <form action="{{ import_fuel_db_action|default(url_for('fuel_bp.import_fuel_db_equipment_groups')) }}"
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importFuelDbForm">
@@ -863,19 +866,21 @@
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}
-                        <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelDbFile" required>
-                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn" title="Нужен шаблон с id_station и equipment_group (экспорт с этой страницы). Не загружайте Access «Имена_станций.xlsx» – он для жёлтой кнопки «Проверить / загрузить флаги». Не загружайте Access «Станции*.xlsx» – он для «Сведения о работе ТЭС».">
+                        <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelDbFile" data-auto-submit required>
+                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn" title="Нужен шаблон с id_station и equipment_group (экспорт с этой страницы). Не загружайте Access «Имена_станций.xlsx» – он для желтой кнопки «Проверить / загрузить флаги». Не загружайте Access «Станции*.xlsx» – он для «Сведения о работе ТЭС».">
                             <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% else %}
-                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" style="max-width: 220px;" required>
+                        <input type="file" name="file" id="importFuelDbFile" class="form-control" accept=".xlsx,.xls" style="max-width: 220px;" required>
                         <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn" title="Нужен шаблон с id_station и equipment_group. Не загружайте Access «Станции*.xlsx».">
                             <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% endif %}
                 </form>
+                {% include 'fuel/_shared/fuel_db_import_status.html' %}
+                </div>
                 {% if show_soft_import_composite_flags|default(false) and current_user.is_authenticated and current_user.has_admin %}
-                {# В одной строке с «Импорт из Excel»: файл, галочки, жёлтая кнопка #}
+                {# В одной строке с «Импорт из Excel»: файл, галочки, желтая кнопка #}
                 <form
                     method="post"
                     action="{{ url_for('fuel_bp.soft_import_composite_flags', **request.args) }}"
@@ -941,127 +946,7 @@
                     </button>
                 </form>
                 {% endif %}
-                {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}
-                <div class="w-100">
-                    <p class="text-muted small mb-0 mt-1">
-                        Синяя «Импорт из Excel» – шаблон АРМ с <strong>id_station</strong> и <strong>equipment_group</strong>.
-                        Access <strong>Имена_станций.xlsx</strong> – только в жёлтую форму справа (файл + «Проверить / загрузить флаги»).
-                        Access <strong>Станции*.xlsx</strong> / <strong>Доп_угли*.xlsx</strong> –
-                        на странице «Сведения о работе ТЭС».
-                    </p>
-                    {% if show_soft_import_composite_flags|default(false) and current_user.is_authenticated and current_user.has_admin %}
-                    <p class="text-muted small mb-0 mt-1">
-                        Без «Применить» – только отчёт. С галочкой: флаги + словарные поля по <strong>NUMB</strong>
-                        (d, r, name_ext, vedomstvo, be, gk, gkf, er, n1/n2, p1/p2, addr, codegor, note)
-                        у уже существующих групп; название АРМ (<strong>name</strong>) не перезаписывается.
-                        Пустые ячейки не затирают БД. Группы из id агрегатов/станций не создаются – это синяя кнопка.
-                        Phase A (семьи с детьми) тоже при «Применить».
-                        <strong>Phase B</strong> (COMP=1 без детей – архив/отменённые планы) – только если отмечено «Включая phase B» (по умолчанию выкл).
-                        <strong>Создать отсутствующие NUMB</strong> – группы из файла, которых нет в текущей версии БД, без привязки к станции (связь потом вручную). Сначала проверка, затем «Применить».
-                        Access <strong>Станции*.xlsx</strong> отклоняется.
-                    </p>
-                    {% endif %}
-                    {% if soft_composite_import_report %}
-                    <div class="alert {% if soft_composite_import_report.dry_run %}alert-warning{% else %}alert-success{% endif %} small mt-2 mb-0" id="softCompositeImportReportAlert" role="alert">
-                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                            <div>
-                                <strong class="d-block mb-1">
-                                    {% if soft_composite_import_report.dry_run %}
-                                    Отчёт проверки флагов и словарных полей (запись не выполнялась)
-                                    {% else %}
-                                    Отчёт дозагрузки флагов и словарных полей (изменения записаны)
-                                    {% endif %}
-                                </strong>
-                                <ul class="mb-1">
-                                    {% for line in soft_composite_import_report.lines %}
-                                    <li>{{ line }}</li>
-                                    {% endfor %}
-                                </ul>
-                                {% if soft_composite_import_report.sample_updates %}
-                                <details>
-                                    <summary>Примеры изменений ({{ soft_composite_import_report.sample_updates|length }})</summary>
-                                    <ul class="mt-1 mb-0">
-                                        {% for u in soft_composite_import_report.sample_updates %}
-                                        <li>
-                                            numb={{ u.numb }} id={{ u.eg_id }}
-                                            {% if u.name %} «{{ u.name }}»{% endif %}:
-                                            {% if u.old_comp != u.new_comp or u.old_main != u.new_main or u.old_niv != u.new_niv %}
-                                            comp {{ u.old_comp }}->{{ u.new_comp }},
-                                            main {{ u.old_main }}->{{ u.new_main }},
-                                            niv {{ u.old_niv }}->{{ u.new_niv }}
-                                            {% endif %}
-                                            {% if u.dict_changes %}
-                                            {% for field, ch in u.dict_changes.items() %}
-                                            {{ field }} {{ ch.old }}->{{ ch.new }}{% if not loop.last %}; {% endif %}
-                                            {% endfor %}
-                                            {% endif %}
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </details>
-                                {% endif %}
-                                {% if soft_composite_import_report.sample_missing_numbs %}
-                                <details>
-                                    <summary>
-                                        {% if soft_composite_import_report.missing_numbs_enabled %}
-                                        Примеры создаваемых NUMB
-                                        {% else %}
-                                        Примеры отложенных NUMB
-                                        {% endif %}
-                                        ({{ soft_composite_import_report.sample_missing_numbs|length }})
-                                    </summary>
-                                    <ul class="mt-1 mb-0">
-                                        {% for s in soft_composite_import_report.sample_missing_numbs %}
-                                        <li>
-                                            numb={{ s.numb }}
-                                            {% if s.name %} «{{ s.name }}»{% endif %}
-                                            main={{ s.main }}
-                                            ver={{ s.database_version_id }}
-                                            (без станции)
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </details>
-                                {% endif %}
-                            </div>
-                            <a
-                                class="btn btn-sm btn-outline-dark"
-                                href="{{ url_for('fuel_bp.stations_equipment_groups', clear_soft_composite_report=1, **request.args) }}"
-                            >
-                                Скрыть отчёт
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                <script>
-                (function() {
-                    var form = document.getElementById('importFuelDbForm');
-                    var btn = document.getElementById('importFuelDbBtn');
-                    var fileInput = document.getElementById('importFuelDbFile');
-                    if (form && btn) {
-                        btn.addEventListener('click', function() {
-                            if (fileInput) {
-                                fileInput.click();
-                            } else {
-                                form.submit();
-                            }
-                        });
-                        if (fileInput) {
-                            fileInput.addEventListener('change', function() {
-                                if (fileInput.files && fileInput.files.length > 0) {
-                                    form.submit();
-                                }
-                            });
-                        }
-                        form.addEventListener('submit', function() {
-                            btn.disabled = true;
-                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
-                        });
-                    }
-                })();
-                </script>
+                <script src="{{ url_for('static', filename='js/fuel/fuel_db_import.js') }}?v=1" defer></script>
                 {% endif %}
                 {% endif %}
             </div>

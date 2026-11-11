@@ -15,7 +15,7 @@
     <h1 class="text-center mb-4">{{ page_title }}</h1>
 
     <p class="text-muted text-center mb-3">
-        Редактируются только тексты подсказок (иконка «i»). Расчёт и импорт данных не меняются.
+        Редактируются только тексты подсказок (иконка «i»). Расчет и импорт данных не меняются.
     </p>
 
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
@@ -122,7 +122,7 @@
             </div>
         </div>
         <div id="ecFormulaSummaryScrollWrap" class="table-responsive power-demand-summary-scroll" style="visibility: hidden;">
-            <table id="ecFormulaSummaryTable"
+            <table id="ecFormulaSummaryTable" data-live-save="power-demand"
                    class="table table-bordered table-striped table-hover align-middle power-demand-summary-table fuel-params-edit-table"
                    data-save-url="{{ url_for('power_demand_bp.power_demand_formulas_save') }}"
                    data-reset-url="{{ url_for('power_demand_bp.power_demand_formulas_reset') }}"
@@ -227,6 +227,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/energy_consumption/ec_summary_formulas_table.js') }}"></script>
+<script src="{{ url_for('static', filename='js/energy_consumption/ec_summary_formulas_table.js') }}?v=2"></script>
 {% endif %}
 {% endblock %}

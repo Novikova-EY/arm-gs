@@ -57,7 +57,7 @@ def _ges_specific_capital_source_year_display(tep_row) -> str:
 
 
 def _ges_tep_derive_template_context():
-    """Контекст для расчёта удельных капвложений на карточке ГЭС (как в таблице ТЭП)."""
+    """Контекст для расчета удельных капвложений на карточке ГЭС (как в таблице ТЭП)."""
     from app.common.services.get_services.years.years_get_services import get_year_list_full
 
     ty = get_ges_tep_current_price_year_number()

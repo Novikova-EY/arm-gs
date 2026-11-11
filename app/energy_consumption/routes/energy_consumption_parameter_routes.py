@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import asc, not_
 
@@ -13,6 +13,7 @@ from app.energy_consumption.forms.energy_consumption_parameter_forms import Empt
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
 from app.energy_consumption.services.access_services import can_edit_energy_consumption
+from app.energy_consumption.services.ec_display_cache import invalidate_energy_consumption_display_caches
 from app.energy_consumption.services.energy_consumption_summary_formula_registry import (
     PAGE_ELECTRICAL_INTENSITY,
 )
@@ -87,8 +88,41 @@ def _csrf():
 
 
 def _deny_energy_consumption_edit_html():
+    if _is_live_save():
+        return jsonify(ok=False, error="Недостаточно прав"), 403
     flash("Недостаточно прав для редактирования модуля «Спрос».", "danger")
     return redirect(url_for("energy_consumption_bp.hub"))
+
+
+def _is_live_save() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _save_demand_rows_from_post(model, fk_column, parent_id, form_data, **kwargs):
+    dps.save_demand_rows_from_post(model, fk_column, parent_id, form_data, **kwargs)
+    if not _is_live_save():
+        return None
+    rows = dps.get_demand_rows(
+        model, fk_column, parent_id,
+        perimeter_variant_code=kwargs.get("perimeter_variant_code"),
+    )
+    return jsonify(ok=True, rows=[{
+        "id": row.id,
+        "year": row.year_number,
+        "ec_mln": str(row.energy_consumption_mln_kvt_ch) if row.energy_consumption_mln_kvt_ch is not None else "",
+        "ec_sipr": str(row.energy_consumption_sipr_mln_kvt_ch) if row.energy_consumption_sipr_mln_kvt_ch is not None else "",
+    } for row in rows])
+
+
+def _handle_demand_save_error(error):
+    db.session.rollback()
+    if not _is_live_save():
+        flash(f"Ошибка сохранения: {error}", "danger")
+        return None
+    if isinstance(error, ValueError):
+        return jsonify(ok=False, error=str(error)), 400
+    current_app.logger.exception("Energy consumption live save failed")
+    return jsonify(ok=False, error="Не удалось сохранить данные."), 500
 
 
 def _parse_energy_consumption_rounding_digits() -> int:
@@ -162,6 +196,7 @@ def energy_consumption_formulas_save():
             formula_text=str(data.get("formula_text") or ""),
         )
         db.session.commit()
+        invalidate_energy_consumption_display_caches()
     except ValueError as exc:
         db.session.rollback()
         return jsonify(ok=False, error=str(exc)), 400
@@ -179,6 +214,7 @@ def energy_consumption_formulas_reset():
         return jsonify(ok=False, error="Не указан ключ формулы."), 400
     reset_formula_text_override(key)
     db.session.commit()
+    invalidate_energy_consumption_display_caches()
     return jsonify(ok=True)
 
 
@@ -203,10 +239,12 @@ def russia_demand():
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 RussiaFederationEnergyConsumptionParameter,
                 None,
                 None,
@@ -214,9 +252,13 @@ def russia_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITHOUT_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("energy_consumption_bp.russia_demand")
 
     rows = dps.get_demand_rows(
@@ -254,10 +296,12 @@ def russia_with_nt_demand():
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 RussiaFederationEnergyConsumptionParameter,
                 None,
                 None,
@@ -265,9 +309,13 @@ def russia_with_nt_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITH_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("energy_consumption_bp.russia_with_nt_demand")
 
     rows = dps.get_demand_rows(
@@ -305,10 +353,12 @@ def ees_russia_demand():
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 EesRussiaEnergyConsumptionParameter,
                 None,
                 None,
@@ -316,9 +366,13 @@ def ees_russia_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITHOUT_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_demand")
 
     rows = dps.get_demand_rows(
@@ -356,10 +410,12 @@ def ees_russia_with_nt_demand():
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 EesRussiaEnergyConsumptionParameter,
                 None,
                 None,
@@ -367,9 +423,13 @@ def ees_russia_with_nt_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITH_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_with_nt_demand")
 
     rows = dps.get_demand_rows(
@@ -407,19 +467,25 @@ def ees_demand():
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 EesEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
                 require_combined_oe_ees=False,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("energy_consumption_bp.ees_demand")
 
     rows = dps.get_demand_rows(EesEnergyConsumptionParameter, None, None)
@@ -510,10 +576,12 @@ def _demand_detail(
         if not can_edit_energy_consumption(current_user):
             return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 demand_model,
                 fk_column,
                 parent_id,
@@ -522,9 +590,13 @@ def _demand_detail(
                 and not show_combined_on_ez,
                 require_combined_on_ez=show_combined_on_ez,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding(request.endpoint, parent_id=parent_id)
 
     rows = dps.get_demand_rows(demand_model, fk_column, parent_id)
@@ -782,7 +854,7 @@ def synchronous_area_demand(parent_id: int):
 def union_energy_system_list():
     return _parent_list(
         UnionEnergySystem,
-        "Нагрузки: объединённые энергосистемы (ОЭС)",
+        "Нагрузки: объединенные энергосистемы (ОЭС)",
         "energy_consumption_bp.union_energy_system_list",
         "energy_consumption_bp.union_energy_system_demand",
         lambda o: o.name,

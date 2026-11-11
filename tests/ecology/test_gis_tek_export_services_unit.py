@@ -67,6 +67,21 @@ def _export(monkeypatch, kind, context, args=None):
     return load_workbook(workbook).active
 
 
+def test_gis_tek_export_uses_screen_rounding_for_rows_and_summaries(monkeypatch):
+    context = _context([("total", "Всего")], [], {"total": Decimal("12.3456")})
+    context['rounding_digits'] = 2
+    context['hierarchy'][0]['res_list'][0]['rows'][0]['metrics']['total'] = Decimal('12.3456')
+    context['hierarchy'][0]['res_list'][0]['summary'] = {
+        'label': 'ЭС, всего', 'metrics': {'total': Decimal('1.23456')}, 'is_empty': False,
+    }
+    ws = _export(monkeypatch, REPORT_PG, context)
+
+    assert ws.cell(4, EXPORT_IDENTITY_COUNT + 1).value == 12.3456
+    assert ws.cell(4, EXPORT_IDENTITY_COUNT + 1).number_format == '#,##0.00'
+    assert ws.cell(5, EXPORT_IDENTITY_COUNT + 1).value == 1.23456
+    assert ws.cell(5, EXPORT_IDENTITY_COUNT + 1).number_format == '#,##0.00'
+
+
 def test_zv_export_headers_norm_zv_with_selected_parts(monkeypatch):
     value_columns = [("total", "всего"), (ZV_NORM_ATTR, "Нормируемые ЗВ")]
     groups = [("всего", [("total", "")]), ("Нормируемые ЗВ", [(ZV_NORM_ATTR, "")])]

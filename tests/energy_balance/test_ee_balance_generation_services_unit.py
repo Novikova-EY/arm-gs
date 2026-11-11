@@ -15,12 +15,51 @@ from app.energy_balance.services.ee_balance_generation_services import (
     HYDRO_YEAR_AVERAGE,
     HYDRO_YEAR_LOW,
     accumulate_hydro_forecast_generation,
+    _apply_station_group_generation_overrides,
     classify_ee_balance_generation_years,
     forecast_scenario_for_hydro_year,
     load_ee_balance_generation_inputs,
     _hydro_forecast_items_from_places,
     _place_territory_ids,
 )
+
+
+def test_focus_page_group_energy_override_is_used_once_for_balance_generation():
+    stations = [
+        SimpleNamespace(id=1, name="Zulu", id_station_group=7, id_station_type=1),
+        SimpleNamespace(id=2, name="Alpha", id_station_group=7, id_station_type=1),
+    ]
+    generation = {
+        1: {2026: Decimal("100")},
+        2: {2026: Decimal("200")},
+    }
+    with patch(
+        "app.energy_balance.services.ee_balance_station_group_services.load_group_values",
+        return_value={(7, 2026): SimpleNamespace(energy=Decimal("55"))},
+    ):
+        result = _apply_station_group_generation_overrides(
+            stations, generation, {1: GENERATION_AES_KEY}, [2026]
+        )
+
+    assert result[2][2026] == Decimal("55")
+    assert 2026 not in result[1]
+
+
+def test_group_without_source_page_override_keeps_member_generation():
+    stations = [
+        SimpleNamespace(id=1, name="Station A", id_station_group=7, id_station_type=1),
+        SimpleNamespace(id=2, name="Station B", id_station_group=7, id_station_type=1),
+    ]
+    generation = {1: {2026: Decimal("100")}, 2: {2026: Decimal("200")}}
+    with patch(
+        "app.energy_balance.services.ee_balance_station_group_services.load_group_values",
+        return_value={},
+    ):
+        result = _apply_station_group_generation_overrides(
+            stations, generation, {1: GENERATION_AES_KEY}, [2026]
+        )
+
+    assert result == generation
 
 
 def test_classify_ee_balance_generation_years_fact_current_plan():
@@ -358,7 +397,7 @@ def test_apply_ves_ses_plan_generation_fills_missing_plan_years():
 
 
 def test_apply_ves_ses_plan_uses_seven_year_min_when_capacity_exists_before_plan():
-    """Лист 2026–2031 не должен считать станцию новой из‑за усечённого ряда Руст."""
+    """Лист 2026–2031 не должен считать станцию новой из‑за усеченного ряда Руст."""
     from app.energy_balance.services.ee_balance_generation_services import (
         apply_ves_ses_plan_generation_to_station_map,
     )
@@ -603,7 +642,7 @@ def test_hydro_forecast_items_from_places_maps_ges_and_gaes():
     assert by_key[GENERATION_GAES_KEY]["eu_id"] == 101
 
 
-def test_load_ee_balance_generation_inputs_adds_hydro_forecast_to_ges_gaes():
+def test_load_ee_balance_generation_inputs_uses_page_generation_without_hydro_forecast():
     groups = [
         {"key": GENERATION_GES_KEY, "label": "ГЭС", "type_ids": (4,), "is_ses_ves": False},
         {"key": GENERATION_GAES_KEY, "label": "ГАЭС", "type_ids": (3,), "is_ses_ves": False},
@@ -673,18 +712,19 @@ def test_load_ee_balance_generation_inputs_adds_hydro_forecast_to_ges_gaes():
         patch(
             "app.energy_balance.services.ee_balance_generation_services._load_hydro_forecast_generation_by_territory",
             return_value=hydro,
-        ),
+        ) as load_hydro,
     ):
         result = load_ee_balance_generation_inputs(
             [2026], sheets=sheets, hydro_year="average"
         )
 
     sheet = result["severo-zapad"]
-    assert sheet[GENERATION_GES_KEY][2026] == Decimal("19")
-    assert sheet[GENERATION_GAES_KEY][2026] == Decimal("9")
+    assert sheet[GENERATION_GES_KEY][2026] == Decimal("15")
+    assert sheet[GENERATION_GAES_KEY][2026] == Decimal("7")
+    load_hydro.assert_not_called()
 
 
-def test_load_ee_balance_generation_inputs_applies_hydro_year_per_oes():
+def test_load_ee_balance_generation_inputs_does_not_overlay_hydro_forecasts():
     groups = [
         {"key": GENERATION_GES_KEY, "label": "ГЭС", "type_ids": (4,), "is_ses_ves": False},
     ]
@@ -713,19 +753,7 @@ def test_load_ee_balance_generation_inputs_applies_hydro_year_per_oes():
 
     def fake_hydro(years, groups_arg, hydro_year):
         seen.append(str(hydro_year))
-        if hydro_year == HYDRO_YEAR_AVERAGE:
-            return (
-                {2: {GENERATION_GES_KEY: {2026: Decimal("10")}}},
-                {},
-                {},
-                {101: {GENERATION_GES_KEY: {2026: Decimal("1")}}},
-            )
-        return (
-            {6: {GENERATION_GES_KEY: {2026: Decimal("7")}}},
-            {},
-            {},
-            {101: {GENERATION_GES_KEY: {2026: Decimal("8")}}},
-        )
+        raise AssertionError("Hydro forecasts must not be added to source-page generation")
 
     with (
         patch(
@@ -753,7 +781,7 @@ def test_load_ee_balance_generation_inputs_applies_hydro_year_per_oes():
             [2026], sheets=sheets, hydro_year="low"
         )
 
-    assert set(seen) == {HYDRO_YEAR_AVERAGE, HYDRO_YEAR_LOW}
-    assert result["centr"][GENERATION_GES_KEY][2026] == Decimal("10")
-    assert result["sibir"][GENERATION_GES_KEY][2026] == Decimal("7")
-    assert result["eu-101"][GENERATION_GES_KEY][2026] == Decimal("8")
+    assert seen == []
+    assert result["centr"][GENERATION_GES_KEY][2026] == Decimal("0")
+    assert result["sibir"][GENERATION_GES_KEY][2026] == Decimal("0")
+    assert result["eu-101"][GENERATION_GES_KEY][2026] == Decimal("0")

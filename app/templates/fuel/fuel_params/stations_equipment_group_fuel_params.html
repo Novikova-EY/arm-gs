@@ -1,10 +1,11 @@
 {% extends 'base.html' %} {% from 'fuel/_shared/_value_macros.html' import
 render_numeric_or_dash %} {% from 'fuel/_shared/fuel_param_edit_macros.html'
 import fuel_param_edit_or_view, fuel_param_derived_edit_or_view, fuel_param_data_cell_content,
-fuel_param_tooltip_title, fuel_param_numb1120_display, fuel_param_numb1120_title, fuel_param_numb1120_header_th %} {% from 'fuel/_shared/equipment_group_name_macros.html'
+fuel_param_tooltip_title, fuel_param_warning_value_attr, fuel_param_numb1120_display, fuel_param_numb1120_title, fuel_param_numb1120_header_th %} {% from 'fuel/_shared/equipment_group_name_macros.html'
 import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% block title %}Сведения о работе ТЭС{% endblock %}
 {% block content %} {% if current_user.is_authenticated %} {% set can_edit_bulk
 = current_user.is_authenticated and current_user.has_admin %}
+{% set show_regional_totals = request.args.get('show_totals') == '1' %}
 {% set fuel_param_derived_formulas = fuel_param_derived_formulas|default({}) %}
 {% set fuel_param_derived_attrs = fuel_param_derived_formulas.keys()|list %}
 
@@ -110,13 +111,13 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         фиксированной подписью. Группы шапки – как на
         equipment_group_fuel_params_edit_data. Столбцы h/hfix («Часы») на этой
         странице не показываем. #} {% set fuel_header_metric_cols = ('numb1120',
-        'nust', 'nr', 'e', 'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk', 'nt',
+        'nust', 'nr', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'sn_ee', 'snk', 'nt',
         'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t') %} {# nust+nr: первая
         строка шапки – «Электрическая мощность» (colspan=2), вторая –
         подписи столбцов. #} {% set fuel_power_metric_cols = ('nust', 'nr') %}
         {# e…snk: первая строка шапки – «Электрические показатели», вторая –
         подписи столбцов. #} {% set fuel_electric_metric_cols = ('e',
-        'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk') %} {# nt+nt_sum: первая строка
+        'ewtp', 'eotp', 'eurt', 'eust', 'sn_ee', 'snk') %} {# nt+nt_sum: первая строка
         шапки – «Тепловая мощность» (colspan=2), вторая – подписи
         столбцов. #} {% set fuel_heat_power_metric_cols = ('nt', 'nt_sum') %} {#
         q…sn_t: первая строка шапки – «Тепловые показатели», вторая
@@ -131,7 +132,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         _fuel_hier.get('fuel_param_columns') else [ ('numb1120', 'Код группы оборудования', false), ('nust', 'Суммарная установленная мощность, МВт', true),
         ('nr', 'Суммарная располагаемая мощность, МВт', true), ('e', 'Выработка ЭЭ, млн кВтч',
         true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true),
-        ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eust', 'Расход топлива на ЭЭ, т у.т./⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
+        ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true), ('eust', 'Расход топлива на ЭЭ, т у.т./⁠тыс.кВтч', true),
         ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true),
         ('snk', 'СН на выработку ЭЭ, %', true), ('nt', 'Тепловая мощность отборов, Гкал/ч',
         true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt',
@@ -174,6 +175,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         fuel_nazvl_to_name.get('ugol', 'Уголь, в т.ч.') %}
 
         {% macro fuel_param_aggregate_row(label, aggregate_row, columns, sum_attrs, collapse_under) %}
+        {% if show_regional_totals %}
         <tr class="text-center align-middle {{ aggregate_row.row_class }}" style="font-weight: bold">
           <td>{{ label }}</td>
           {% for attr, column_label, is_numeric in columns %}
@@ -189,6 +191,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           </td>
           {% endfor %}
         </tr>
+        {% endif %}
         {% endmacro %}
 
         {% if can_edit_bulk
@@ -485,6 +488,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 <td
                   class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% endif %}"
                   data-column="{{ attr }}"
+                  {{ fuel_param_warning_value_attr(attr, cell_param) }}
                   {%
                   if
                   fuel_collapse_under.get(attr)
@@ -548,8 +552,8 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 </td>
                 {% endfor %}
               </tr>
-              {% endfor %} {% endfor %} {# Жёлтая «станция, всего» отключена:
-              для составных итог на строке родителя («…, всего»). #} {% endfor %} {% if res_block.group_blocks and not res_block.get('hide_res_summary') %} {# Итоги
+              {% endfor %} {% endfor %} {# Желтая «станция, всего» отключена:
+              для составных итог на строке родителя («…, всего»). #} {% endfor %} {% if show_regional_totals and res_block.group_blocks and not res_block.get('hide_res_summary') %} {# Итоги
               по РЭС – формульные, не редактируются #}
               <tr
                 class="text-center align-middle table-info fuel-param-detail-row fuel-param-summary-row"
@@ -666,6 +670,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 <td
                   class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% endif %}"
                   data-column="{{ attr }}"
+                  {{ fuel_param_warning_value_attr(attr, cell_param) }}
                   {%
                   if
                   fuel_collapse_under.get(attr)
@@ -986,7 +991,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
     color: inherit;
   }
   /* Нижние таблицы «Детализация топлива»: более контрастные границы ячеек
-     (у расчётных с голубым фоном стандартные #dee2e6 почти не видны). */
+     (у расчетных с голубым фоном стандартные #dee2e6 почти не видны). */
   #fuelParamsBottomPanel .fuel-params-bottom-data-table {
     --bs-table-border-color: #adb5bd;
     border-color: #adb5bd;
@@ -1062,7 +1067,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
     overflow: hidden;
     box-sizing: border-box;
   }
-  /* Не даём широким таблицам раздувать body – скролл только у обёрток */
+  /* Не даем широким таблицам раздувать body – скролл только у оберток */
   body:has(.fuel-params-shell) {
     overflow-x: hidden;
   }
@@ -1272,7 +1277,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
     background-color: transparent;
     background-clip: padding-box;
   }
-  /* Одинаковый размер шрифта: ввод, расчётные значения и обычный текст ячеек */
+  /* Одинаковый размер шрифта: ввод, расчетные значения и обычный текст ячеек */
   #fuelParamsTable tbody td {
     font-size: 1rem;
     line-height: 1.3;
@@ -1357,6 +1362,18 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+      const totalsSwitch = document.getElementById('show_totals_switch');
+      if (totalsSwitch) {
+          totalsSwitch.addEventListener('change', function () {
+              const url = new URL(window.location.href);
+              if (totalsSwitch.checked) {
+                  url.searchParams.set('show_totals', '1');
+              } else {
+                  url.searchParams.delete('show_totals');
+              }
+              window.location.href = url.toString();
+          });
+      }
       const loadingOverlay = document.getElementById('loading-overlay');
       if (loadingOverlay) loadingOverlay.style.display = 'none';
 
@@ -2012,7 +2029,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       }
 
       function updateAllIndependentXScroll() {
-          /* Верхний H-скролл – у .fuel-params-top (overflow:auto), класс на обёртке не нужен */
+          /* Верхний H-скролл – у .fuel-params-top (overflow:auto), класс на обертке не нужен */
           if (topTableWrap) {
               topTableWrap.classList.remove('has-x-scroll');
           }

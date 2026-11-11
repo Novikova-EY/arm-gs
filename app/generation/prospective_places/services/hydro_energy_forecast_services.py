@@ -266,7 +266,7 @@ def save_hydro_forecast_from_form(
         db.session.commit()
         log_to_db(
             user,
-            f"Изменён прогноз выработки ({place_kind.upper()} id={place_id})",
+            f"Изменен прогноз выработки ({place_kind.upper()} id={place_id})",
             details="; ".join(changes),
             entity_type=entity_type,
             entity_id=place_id if entity_id is None else entity_id,

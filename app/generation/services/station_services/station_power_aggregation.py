@@ -96,7 +96,7 @@ def aggregate_powers_from_machine_power_rows(
     """
     Суммирует мощности из объектов/строк MachinePower (или совместимых).
 
-    При нескольких записях на один (machine, year) берётся запись с максимальным id
+    При нескольких записях на один (machine, year) берется запись с максимальным id
     (как в assign_machine_powers_by_year), затем суммы по станции.
     """
     best_by_machine_year: dict[tuple[Any, int], Any] = {}

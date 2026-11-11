@@ -264,13 +264,13 @@
                 {% endfor %}
                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                 <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                    {% for year in filter_year_list %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                 <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
-                    {% for year in filter_year_list %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
@@ -411,7 +411,7 @@
         /* Выше липкой шапки coeff-таблицы (1050–1051), ниже .modal Bootstrap (1055); !important – против Popper/Bootstrap */
         z-index: 1054 !important;
     }
-    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребёнком body – задаём класс в JS */
+    /* Select2 (dropdownParent: body): выпадающий список может быть не прямым ребенком body – задаем класс в JS */
     body .select2-dropdown.pd-summary-filter-select2-dd {
         z-index: 1054 !important;
     }
@@ -607,7 +607,7 @@
     {% set _coeff_mixin_num_col_w = "9.25rem" %}
     {% set _coeff_mixin_sample_col_w = "10.5rem" %}
     {% set _coeff_mixin_source_col_w = "12rem" %}
-    {# Для coeff ширины числовых колонок не задаём в % – см. комментарий выше. #}
+    {# Для coeff ширины числовых колонок не задаем в % – см. комментарий выше. #}
     {% if summary_route_variant == 'coeff' %}
     <style>
     /* Критичные правила скрытия должны идти ДО разметки таблицы,
@@ -724,9 +724,9 @@
             {% set _pd_coeff_k_formula_default_suffix = " / Максимальное потребление мощности, МВт" %}
             <thead>
                 {% if summary_route_variant == 'coeff' and coeff_period_header_groups is defined %}
-                {% set _pd_coeff_f_gs10 = "Среднее арифметическое коэффициентов k по годам отчётного периода (10 лет: N−9…N, N – базовый год)" %}
-                {% set _pd_coeff_f_gs10trim = "По годам отчётного периода (N−9…N): из значений k исключаются одно минимальное и одно максимальное, для остальных вычисляется среднее" %}
-                {% set _pd_coeff_f_gs5 = "Среднее арифметическое коэффициентов k по пяти годам N−4…N (N – базовый год отчётного периода)" %}
+                {% set _pd_coeff_f_gs10 = "Среднее арифметическое коэффициентов k по годам отчетного периода (10 лет: N−9…N, N – базовый год)" %}
+                {% set _pd_coeff_f_gs10trim = "По годам отчетного периода (N−9…N): из значений k исключаются одно минимальное и одно максимальное, для остальных вычисляется среднее" %}
+                {% set _pd_coeff_f_gs5 = "Среднее арифметическое коэффициентов k по пяти годам N−4…N (N – базовый год отчетного периода)" %}
                 {% set _pd_coeff_f_sample = "Среднее арифметическое коэффициентов k по годам, отмеченным в выпадающем списке выборки (чекбоксы)" %}
                 <tr class="table-success power-demand-coeff-thead-top">
                     <th rowspan="2" class="text-center align-middle summary-entity-col">Энергосистема</th>
@@ -776,13 +776,13 @@
                 </tr>
                 <tr class="table-success power-demand-coeff-thead-years">
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет без<br>min и max)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10trim|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет без<br>min и max)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10trim|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
-                        для СиПР<br><span class="power-demand-coeff-mixin-th-paren">(5 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs5|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                        для СиПР<br><span class="power-demand-coeff-mixin-th-paren">(5 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs5|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                     </th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-sample">
                         <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
@@ -806,7 +806,7 @@
                                     {% endfor %}
                                 </ul>
                             </div>
-                            <i class="bi bi-info-circle text-primary align-self-center ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_sample|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
+                            <i class="bi bi-info-circle text-primary align-self-center ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_sample|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчета столбца"></i>
                             <button class="btn btn-sm btn-outline-danger filter-clear-btn{% if not request.args.getlist('coeff_sample_years') %} d-none{% endif %}" type="button" data-filter-name="coeff_sample_years" title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;">
                                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                             </button>
@@ -934,21 +934,21 @@
                         {% if _pd_coeff_combined_res %}
                         <span class="text-wrap">{{ row.parameter_label }}</span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта столбца"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета столбца"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта столбца"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета столбца"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'fo' and _cz_fo_tot %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_coeff_cz_total_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Пояснение расчёта строки"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_coeff_cz_total_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Пояснение расчета строки"></i></span>
                         {% else %}
                         {{ row.parameter_label }}
                         {% endif %}
@@ -1176,7 +1176,7 @@
                             {% set _pd_param_for_k = row.parameter_label|replace(', МВт', '')|replace(', °C', '')|trim %}
                             {% set _pd_coeff_k_tooltip = 'k = «' ~ _pd_param_for_k ~ '»' ~ _pd_coeff_k_formula_default_suffix %}
                         {% endif %}
-                        <span class="pd-coeff-k-label-text">k</span>{% if _pd_coeff_k_tooltip %}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_k_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта коэффициента k"></i>{% endif %}
+                        <span class="pd-coeff-k-label-text">k</span>{% if _pd_coeff_k_tooltip %}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_k_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчета коэффициента k"></i>{% endif %}
                     </td>
                     {% if _pd_coeff_mixin_ui %}
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-gs10-cell"></td>
@@ -2122,7 +2122,7 @@ if (summaryTable) {
     .pd-coeff-year-seg-table.table-hover > tbody > tr.pd-entity-block-stripe-alt:hover > td {
         background-color: #dde8fc;
     }
-    /* Строки k: чуть темнее строки показателя, нейтрально-серый (отличимы, текст остаётся чёрным) */
+    /* Строки k: чуть темнее строки показателя, нейтрально-серый (отличимы, текст остается черным) */
     .pd-coeff-year-seg-table tbody tr.summary-row-coeff-k.pd-entity-block-stripe-base > td {
         background-color: #e8e8e8;
     }
@@ -2432,7 +2432,7 @@ if (summaryTable) {
         min-width: 5.5rem;
         max-width: none;
     }
-    /* Неактивные переключатели периодов: чёрный текст (outline-warning по умолчанию слабо читается) */
+    /* Неактивные переключатели периодов: черный текст (outline-warning по умолчанию слабо читается) */
     #powerDemandCoeffSegToggles .btn-outline-warning {
         color: #000;
     }
@@ -3083,7 +3083,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return getRoundingDigits();
         }
 
-        /** Расчётные максимумы: до 3 знаков после запятой, без лишних нулей (100, а не 100,000). */
+        /** Расчетные максимумы: до 3 знаков после запятой, без лишних нулей (100, а не 100,000). */
         function formatCalculatedMaxMw(num) {
             if (!Number.isFinite(num)) {
                 return "–";
@@ -3109,7 +3109,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return formatAvg(num, getRoundingDigits());
         }
 
-        /** k = МВт / макс. мощность: не более 6 знаков после запятой в расчёте. */
+        /** k = МВт / макс. мощность: не более 6 знаков после запятой в расчете. */
         function roundCoeffKCalc(n) {
             if (!Number.isFinite(n)) {
                 return n;
@@ -3118,7 +3118,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return Math.round(n * mult) / mult;
         }
 
-        /** Отображение коэффициента k: не более 6 знаков в расчёте, затем «Округл (k)». */
+        /** Отображение коэффициента k: не более 6 знаков в расчете, затем «Округл (k)». */
         function formatCoeffK(avg, rd) {
             return formatAvg(roundCoeffKCalc(avg), rd);
         }
@@ -3324,7 +3324,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return Number.isFinite(n) ? roundCoeffKCalc(n) : null;
         }
 
-        /** Как :func:`_coeff_union_res_sum_year` (отчётный N−9…N и среднесрочный N+1…N+6). */
+        /** Как :func:`_coeff_union_res_sum_year` (отчетный N−9…N и среднесрочный N+1…N+6). */
         function coeffUnionResSumYear(y, n) {
             return (y >= n - 9 && y <= n) || (y >= n + 1 && y <= n + 6);
         }
@@ -3546,11 +3546,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var coeff = getCoeffSourceNumber(tr);
                 var kTrFill = coeffKRowForMwTr(tr) || tr;
                 kTrFill.querySelectorAll('.summary-year-k-cell[data-coeff-year-segment="medium"]').forEach(function (kCell) {
-                    /* Строки «Расчетный …» УЭС: k задаётся МВт/макс (refreshCoeffYearKCells), не из выпадающего «используемого k». */
+                    /* Строки «Расчетный …» УЭС: k задается МВт/макс (refreshCoeffYearKCells), не из выпадающего «используемого k». */
                     if (kCell.querySelector("input.pd-coeff-display-k")) {
                         return;
                     }
-                    /* Плановые годы (пустые МВт): k в среднесрочном периоде всё равно показываем из выбранного коэффициента. */
+                    /* Плановые годы (пустые МВт): k в среднесрочном периоде все равно показываем из выбранного коэффициента. */
                     var kinp = kCell.querySelector("input.pd-coeff-medium-k-input");
                     if (kinp) {
                         if (kinp.getAttribute("data-pd-medium-k-override") === "1") {
@@ -3661,7 +3661,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /** Пересчёт k = МВт / макс. мощность года после правок ячеек. */
+        /** Пересчет k = МВт / макс. мощность года после правок ячеек. */
         function refreshCoeffYearKCells() {
             var rd = getRoundingDigitsK();
             table.querySelectorAll("tr.summary-row-param").forEach(function (tr) {
@@ -3739,7 +3739,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам отчётного периода (10 лет) для столбца «для ГС (10 лет)». */
+        /** Среднее коэффициентов k по годам отчетного периода (10 лет) для столбца «для ГС (10 лет)». */
         function refreshGs10ReportingAvg() {
             var rd = getRoundingDigitsK();
             table.querySelectorAll("tr.summary-row-param").forEach(function (tr) {
@@ -3782,7 +3782,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         /**
-         * Среднее k по отчётному периоду без одного мин. и одного макс. значения
+         * Среднее k по отчетному периоду без одного мин. и одного макс. значения
          * (столбец «для ГС (10 лет без мин и макс)»).
          */
         function refreshGs10ReportingTrimmedAvg() {
@@ -3830,7 +3830,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчётного периода. */
+        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчетного периода. */
         function refreshGs5N4toNAvg() {
             var rd = getRoundingDigitsK();
             var nRaw = table.getAttribute("data-coeff-base-year");
@@ -3889,7 +3889,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Пересчёт трёх итоговых строк под «ЦЗ России» на coeff/ФО (суммы и небаланс по МВт из текущей таблицы). */
+        /** Пересчет трех итоговых строк под «ЦЗ России» на coeff/ФО (суммы и небаланс по МВт из текущей таблицы). */
         function refreshFoCoeffCzTotals() {
             if (table.getAttribute("data-summary-view") !== "fo") {
                 return;

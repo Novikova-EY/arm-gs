@@ -504,7 +504,7 @@ def peek_stored_perimeter_variant_code_for_parent(
     fk_column_name: Optional[str],
     parent_id: Optional[int],
 ) -> str | None:
-    """Сохранённый код варианта периметра у родителя (метка year IS NULL или любая строка)."""
+    """Сохраненный код варианта периметра у родителя (метка year IS NULL или любая строка)."""
     if not model_supports_perimeter_variant(demand_model):
         return None
     if fk_column_name is None or parent_id is None:
@@ -726,7 +726,7 @@ def sync_energy_zone_consumption_aggregates(
     id_energy_zone: Optional[int] = None,
     id_regional_energy_system: Optional[int] = None,
 ) -> None:
-    """Пересчёт потребления по энергозоне как суммы показателей РЭС, входящих в зону (по субъектам зоны).
+    """Пересчет потребления по энергозоне как суммы показателей РЭС, входящих в зону (по субъектам зоны).
 
     Обновляет ``energy_consumption_mln_kvt_ch`` и ``energy_consumption_sipr_mln_kvt_ch`` в
     :class:`EnergyZoneEnergyConsumptionParameter`. Примечания к строкам не меняет.
@@ -896,7 +896,7 @@ def sync_federal_district_consumption_aggregates(
     id_regional_energy_system: Optional[int] = None,
     id_regional_district: Optional[int] = None,
 ) -> None:
-    """Пересчёт потребления по ФО как суммы показателей РЭС, входящих в округ (по субъектам ФО)."""
+    """Пересчет потребления по ФО как суммы показателей РЭС, входящих в округ (по субъектам ФО)."""
     vid = database_version_id if database_version_id is not None else get_current_version()
     aggregates = compute_federal_district_res_aggregates(
         database_version_id=vid,
@@ -1002,7 +1002,7 @@ def resolve_max_power_mw_for_save(
 ) -> Optional[Decimal]:
     """
     Видимое поле может быть округлено относительно БД. Если текст совпадает с отображением
-    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввёл пользователь.
+    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввел пользователь.
     """
     vis = parse_decimal(visible_raw if visible_raw is not None else "")
     if not str(db_snapshot_raw or "").strip():
@@ -1162,6 +1162,8 @@ def save_energy_consumption_rows_from_post(
     for i in range(n):
         rid_s = ids[i] if i < len(ids) else ""
         rid = int(rid_s) if str(rid_s).strip().isdigit() else None
+        if rid in deleted:
+            continue
         raw_sl = slice_years[i] if i < len(slice_years) else ""
         year_n = _parse_calendar_year_slice(raw_sl)
 
@@ -1241,6 +1243,7 @@ def save_demand_rows_from_post(
     *,
     require_combined_oe_ees: bool = True,
     require_combined_on_ez: bool = False,
+    perimeter_variant_code: str | None = None,
 ) -> tuple[int, int]:
     """
     POST: row_id[], slice_year[], ec_mln[], ec_sipr[], ec_mln_db[], ec_sipr_db[], note[], del[].
@@ -1452,7 +1455,7 @@ def _assert_summary_formula_row_editable(
     ):
         raise ValueError(
             "Эта строка рассчитывается по формуле и не редактируется вручную. "
-            "Измените исходные строки, затем пересчёт обновит значение."
+            "Измените исходные строки, затем пересчет обновит значение."
         )
 
 
@@ -1660,7 +1663,7 @@ def _fmt_tri_snap_val(val: Any, key: str, rounding_digits: int) -> str:
 
 
 def _tri_snap_numeric_equal(a: Any, b: Any) -> bool:
-    """Сравнение значений показателей млн/СиПР для журнала (учёт Decimal/чисел из БД)."""
+    """Сравнение значений показателей млн/СиПР для журнала (учет Decimal/чисел из БД)."""
     if a is None and b is None:
         return True
     if a is None or b is None:
@@ -1941,9 +1944,9 @@ def persist_computed_energy_consumption_summary_rows_after_change(
     *,
     rounding_digits: int = 1,
 ) -> int:
-    """Пересчитать формулы сводки потребления и записать расчётные строки во все версии БД.
+    """Пересчитать формулы сводки потребления и записать расчетные строки во все версии БД.
 
-    Временно – как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    Временно – как импорт Excel; позже вернемся к пересчету только текущей версии.
     """
     from flask_login import current_user
 
@@ -1963,6 +1966,12 @@ def persist_computed_energy_consumption_summary_rows_after_change(
         user=user or None,
     )
     db.session.commit()
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
+    )
+
+    for version_id in result.get("database_version_ids", []):
+        invalidate_energy_consumption_display_caches(version_id=version_id)
     return int(result.get("cells_written_formula") or 0)
 
 
@@ -1982,7 +1991,7 @@ def save_demand_summary_cell(
     perimeter_variant_code: str | None | _UnsetType = _UNSET,
 ) -> str:
     """
-    Создаёт или обновляет одно поле строки параметров потребления (сводная таблица).
+    Создает или обновляет одно поле строки параметров потребления (сводная таблица).
     """
     allowed = {
         "energy_consumption_mln_kvt_ch",

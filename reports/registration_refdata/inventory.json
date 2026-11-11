@@ -1,0 +1,1204 @@
+[
+  {
+    "key": "economic_activity_type",
+    "route": "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+    "functions": [
+      {
+        "name": "economic_activity_type_list",
+        "url": "/ved",
+        "line": 35,
+        "end": 203,
+        "templates": [
+          "refdata/economic_activity/economic_activity_type/economic_activity_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_economic_activity_type",
+        "url": "/add_ved",
+        "line": 206,
+        "end": 302,
+        "templates": [
+          "refdata/economic_activity/economic_activity_type/economic_activity_type_add.html",
+          "refdata/economic_activity/economic_activity_type/economic_activity_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_economic_activity_type",
+        "url": "/export_ved",
+        "line": 305,
+        "end": 347,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/economic_activity/economic_activity_type_model.py",
+    "service": "app/refdata/services/economic_activity/economic_activity_type_services.py"
+  },
+  {
+    "key": "electricity_production_cost_type",
+    "route": "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+    "functions": [
+      {
+        "name": "electricity_production_cost_type_list",
+        "url": "/electricity_production_cost_type",
+        "line": 31,
+        "end": 171,
+        "templates": [
+          "refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_electricity_production_cost_type",
+        "url": "/add_electricity_production_cost_type",
+        "line": 174,
+        "end": 264,
+        "templates": [
+          "refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type_add.html",
+          "refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_electricity_production_cost_type",
+        "url": "/export_electricity_production_cost_type",
+        "line": 267,
+        "end": 307,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/electricity_production_cost/electricity_production_cost_type_model.py",
+    "service": "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py"
+  },
+  {
+    "key": "energy_area",
+    "route": "app/refdata/routes/energy_systems/energy_area_routes.py",
+    "functions": [
+      {
+        "name": "energy_area_list",
+        "url": "/energy_areas",
+        "line": 45,
+        "end": 225,
+        "templates": [
+          "refdata/energy_systems/energy_area/energy_area.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_energy_area",
+        "url": "/add_energy_area",
+        "line": 228,
+        "end": 335,
+        "templates": [
+          "refdata/energy_systems/energy_area/energy_area_add.html",
+          "refdata/energy_systems/energy_area/energy_area_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_energy_area",
+        "url": "/export_energy_area_to_excel",
+        "line": 338,
+        "end": 382,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/energy_area_model.py",
+    "service": "app/refdata/services/energy_systems/energy_area_services.py"
+  },
+  {
+    "key": "energy_system_type",
+    "route": "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+    "functions": [
+      {
+        "name": "energy_system_type_list",
+        "url": "/energy_system_type",
+        "line": 35,
+        "end": 171,
+        "templates": [
+          "refdata/energy_systems/energy_system_type/energy_system_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_energy_system_type",
+        "url": "/add_energy_system_type",
+        "line": 174,
+        "end": 260,
+        "templates": [
+          "refdata/energy_systems/energy_system_type/energy_system_type_add.html",
+          "refdata/energy_systems/energy_system_type/energy_system_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_energy_system_type",
+        "url": "/export_energy_system_type",
+        "line": 263,
+        "end": 302,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/energy_system_type_model.py",
+    "service": "app/refdata/services/energy_systems/energy_system_type_services.py"
+  },
+  {
+    "key": "energy_unit",
+    "route": "app/refdata/routes/energy_systems/energy_unit_routes.py",
+    "functions": [
+      {
+        "name": "energy_unit_list",
+        "url": "/energy_units",
+        "line": 47,
+        "end": 249,
+        "templates": [
+          "refdata/energy_systems/energy_unit/energy_unit.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_energy_unit",
+        "url": "/add_energy_unit",
+        "line": 252,
+        "end": 366,
+        "templates": [
+          "refdata/energy_systems/energy_unit/energy_unit_add.html",
+          "refdata/energy_systems/energy_unit/energy_unit_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_energy_unit",
+        "url": "/export_energy_unit",
+        "line": 369,
+        "end": 414,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/energy_unit_model.py",
+    "service": "app/refdata/services/energy_systems/energy_unit_services.py"
+  },
+  {
+    "key": "energy_zone",
+    "route": "app/refdata/routes/energy_systems/energy_zone_routes.py",
+    "functions": [
+      {
+        "name": "energy_zone_list",
+        "url": "/energy_zone",
+        "line": 33,
+        "end": 171,
+        "templates": [
+          "refdata/energy_systems/energy_zone/energy_zone.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_energy_zone",
+        "url": "/add_energy_zone",
+        "line": 174,
+        "end": 260,
+        "templates": [
+          "refdata/energy_systems/energy_zone/energy_zone_add.html",
+          "refdata/energy_systems/energy_zone/energy_zone_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_energy_zone",
+        "url": "/export_energy_zone",
+        "line": 262,
+        "end": 301,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/energy_zone_model.py",
+    "service": "app/refdata/services/energy_systems/energy_zone_services.py"
+  },
+  {
+    "key": "regional_energy_system",
+    "route": "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+    "functions": [
+      {
+        "name": "regional_energy_system_list",
+        "url": "/regional_energy_system",
+        "line": 44,
+        "end": 213,
+        "templates": [
+          "refdata/energy_systems/regional_energy_system/regional_energy_system.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_regional_energy_system",
+        "url": "/add_regional_energy_system",
+        "line": 216,
+        "end": 310,
+        "templates": [
+          "refdata/energy_systems/regional_energy_system/regional_energy_system_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_regional_energy_system",
+        "url": "/import_regional_energy_system",
+        "line": 313,
+        "end": 342,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_regional_energy_system",
+        "url": "/export_regional_energy_system",
+        "line": 345,
+        "end": 386,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/regional_energy_system_model.py",
+    "service": "app/refdata/services/energy_systems/regional_energy_system_services.py"
+  },
+  {
+    "key": "synchronous_area",
+    "route": "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+    "functions": [
+      {
+        "name": "synchronous_area_list",
+        "url": "/synchronous_area",
+        "line": 35,
+        "end": 203,
+        "templates": [
+          "refdata/energy_systems/synchronous_area/synchronous_area.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_synchronous_area",
+        "url": "/add_synchronous_area",
+        "line": 206,
+        "end": 295,
+        "templates": [
+          "refdata/energy_systems/synchronous_area/synchronous_area_add.html",
+          "refdata/energy_systems/synchronous_area/synchronous_area_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_synchronous_area",
+        "url": "/export_synchronous_area",
+        "line": 298,
+        "end": 337,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/synchronous_area_model.py",
+    "service": "app/refdata/services/energy_systems/synchronous_area_services.py"
+  },
+  {
+    "key": "union_energy_system",
+    "route": "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+    "functions": [
+      {
+        "name": "union_energy_system_list",
+        "url": "/union_energy_system",
+        "line": 40,
+        "end": 200,
+        "templates": [
+          "refdata/energy_systems/union_energy_system/union_energy_system.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_union_energy_system",
+        "url": "/add_union_energy_system",
+        "line": 203,
+        "end": 303,
+        "templates": [
+          "refdata/energy_systems/union_energy_system/union_energy_system_add.html",
+          "refdata/energy_systems/union_energy_system/union_energy_system_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_union_energy_system",
+        "url": "/import_union_energy_system",
+        "line": 306,
+        "end": 334,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_union_energy_system",
+        "url": "/export_union_energy_system",
+        "line": 337,
+        "end": 378,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/energy_systems/union_energy_system_model.py",
+    "service": "app/refdata/services/energy_systems/union_energy_system_services.py"
+  },
+  {
+    "key": "fuel",
+    "route": "app/refdata/routes/fuels/fuel_routes.py",
+    "functions": [
+      {
+        "name": "fuel_hierarchy",
+        "url": "/fuel/hierarchy",
+        "line": 43,
+        "end": 59,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "name": "fuel_list",
+        "url": "/fuel",
+        "line": 62,
+        "end": 288,
+        "templates": [
+          "refdata/fuels/fuel/fuel.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_fuel",
+        "url": "/add_fuel",
+        "line": 290,
+        "end": 393,
+        "templates": [
+          "refdata/fuels/fuel/fuel_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_fuel",
+        "url": "/import_fuel",
+        "line": 405,
+        "end": 452,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_fuel",
+        "url": "/export_fuel",
+        "line": 455,
+        "end": 502,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/fuels/fuel_model.py",
+    "service": "app/refdata/services/fuels/fuel_services.py"
+  },
+  {
+    "key": "fuel_type",
+    "route": "app/refdata/routes/fuels/fuel_type_routes.py",
+    "functions": [
+      {
+        "name": "fuel_type_list",
+        "url": "/fuel_type",
+        "line": 37,
+        "end": 209,
+        "templates": [
+          "refdata/fuels/fuel_type/fuel_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_fuel_type",
+        "url": "/add_fuel_type",
+        "line": 212,
+        "end": 304,
+        "templates": [
+          "refdata/fuels/fuel_type/fuel_type_add.html",
+          "refdata/fuels/fuel_type/fuel_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_fuel_type",
+        "url": "/import_fuel_type",
+        "line": 307,
+        "end": 335,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_fuel_type",
+        "url": "/export_fuel_type",
+        "line": 338,
+        "end": 382,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/fuels/fuel_type_model.py",
+    "service": "app/refdata/services/fuels/fuel_type_services.py"
+  },
+  {
+    "key": "gen_company",
+    "route": "app/refdata/routes/gen_companies/gen_company_routes.py",
+    "functions": [
+      {
+        "name": "gen_company_list",
+        "url": "/gen_company",
+        "line": 36,
+        "end": 163,
+        "templates": [
+          "refdata/gen_companies/gen_company.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_gen_company",
+        "url": "/add_gen_company",
+        "line": 166,
+        "end": 253,
+        "templates": [
+          "refdata/gen_companies/gen_company_add.html",
+          "refdata/gen_companies/gen_company_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_gen_company",
+        "url": "/import_gen_company",
+        "line": 256,
+        "end": 288,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_gen_company",
+        "url": "/export_gen_company",
+        "line": 291,
+        "end": 332,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/gen_companies/gen_company_model.py",
+    "service": "app/refdata/services/gen_companies/gen_company_services.py"
+  },
+  {
+    "key": "condition_type",
+    "route": "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+    "functions": [
+      {
+        "name": "condition_type_list",
+        "url": "/condition_type",
+        "line": 35,
+        "end": 162,
+        "templates": [
+          "refdata/refdata_for_stations/condition_type/condition_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_condition_type",
+        "url": "/add_condition_type",
+        "line": 165,
+        "end": 253,
+        "templates": [
+          "refdata/refdata_for_stations/condition_type/condition_type_add.html",
+          "refdata/refdata_for_stations/condition_type/condition_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_condition_type",
+        "url": "/export_condition_type",
+        "line": 256,
+        "end": 297,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/condition_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/condition_type_services.py"
+  },
+  {
+    "key": "federal_district",
+    "route": "app/refdata/routes/territories/federal_district_routes.py",
+    "functions": [
+      {
+        "name": "federal_district_list",
+        "url": "/federal_district",
+        "line": 36,
+        "end": 187,
+        "templates": [
+          "refdata/territories/federal_district/federal_district.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_federal_district",
+        "url": "/add_federal_district",
+        "line": 190,
+        "end": 277,
+        "templates": [
+          "refdata/territories/federal_district/federal_district_add.html",
+          "refdata/territories/federal_district/federal_district_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_federal_district",
+        "url": "/import_federal_district",
+        "line": 280,
+        "end": 309,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_federal_district",
+        "url": "/export_federal_district",
+        "line": 312,
+        "end": 352,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/territories/federal_district_model.py",
+    "service": "app/refdata/services/territories/federal_district_services.py"
+  },
+  {
+    "key": "foreign_border_country",
+    "route": "app/refdata/routes/territories/foreign_border_country_routes.py",
+    "functions": [
+      {
+        "name": "foreign_border_country_list",
+        "url": "/foreign_border_country",
+        "line": 37,
+        "end": 186,
+        "templates": [
+          "refdata/territories/foreign_border_country/foreign_border_country.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_foreign_border_country",
+        "url": "/add_foreign_border_country",
+        "line": 189,
+        "end": 268,
+        "templates": [
+          "refdata/territories/foreign_border_country/foreign_border_country_add.html",
+          "refdata/territories/foreign_border_country/foreign_border_country_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_foreign_border_country",
+        "url": "/export_foreign_border_country",
+        "line": 271,
+        "end": 308,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/territories/foreign_border_country_model.py",
+    "service": "app/refdata/services/territories/foreign_border_country_services.py"
+  },
+  {
+    "key": "regional_district",
+    "route": "app/refdata/routes/territories/regional_district_routes.py",
+    "functions": [
+      {
+        "name": "regional_district_list",
+        "url": "/regional_district",
+        "line": 42,
+        "end": 242,
+        "templates": [
+          "refdata/territories/regional_district/regional_district.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_regional_district",
+        "url": "/add_regional_district",
+        "line": 245,
+        "end": 356,
+        "templates": [
+          "refdata/territories/regional_district/regional_district_add.html",
+          "refdata/territories/regional_district/regional_district_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "import_regional_district",
+        "url": "/import_regional_district",
+        "line": 359,
+        "end": 393,
+        "templates": [],
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "name": "export_regional_district",
+        "url": "/export_regional_district",
+        "line": 396,
+        "end": 443,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/territories/regional_district_model.py",
+    "service": "app/refdata/services/territories/regional_district_services.py"
+  },
+  {
+    "key": "years",
+    "route": "app/refdata/routes/years/year_routes.py",
+    "functions": [
+      {
+        "name": "years_list",
+        "url": "/years",
+        "line": 38,
+        "end": 180,
+        "templates": [
+          "refdata/years/year/year.html",
+          "errors/forbidden.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_years",
+        "url": "/export_years",
+        "line": 183,
+        "end": 217,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "name": "add_year",
+        "url": "/add_year",
+        "line": 220,
+        "end": 286,
+        "templates": [
+          "refdata/years/year/year_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/years/year_model.py",
+    "service": "app/refdata/services/years/year_services.py"
+  },
+  {
+    "key": "machine_type",
+    "route": "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+    "functions": [
+      {
+        "name": "machine_type_list",
+        "url": "/machine_type",
+        "line": 35,
+        "end": 161,
+        "templates": [
+          "refdata/refdata_for_stations/machines/machine_type/machine_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_machine_type",
+        "url": "/add_machine_type",
+        "line": 164,
+        "end": 252,
+        "templates": [
+          "refdata/refdata_for_stations/machines/machine_type/machine_type_add.html",
+          "refdata/machines/machine_type/machine_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_machine_type",
+        "url": "/export_machine_type",
+        "line": 255,
+        "end": 297,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/machine/machine_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/machines/machine_type_services.py"
+  },
+  {
+    "key": "pgu_tes_machine_type",
+    "route": "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+    "functions": [
+      {
+        "name": "pgu_tes_machine_type_list",
+        "url": "/pgu_tes_machine_type",
+        "line": 35,
+        "end": 161,
+        "templates": [
+          "refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_pgu_tes_machine_type",
+        "url": "/add_pgu_tes_machine_type",
+        "line": 164,
+        "end": 252,
+        "templates": [
+          "refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type_add.html",
+          "refdata/refdata_for_stations/pgu_tes_machine_type/pgu_tes_machine_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_pgu_tes_machine_type",
+        "url": "/export_pgu_tes_machine_type",
+        "line": 255,
+        "end": 296,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/machine/pgu_tes_machine_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py"
+  },
+  {
+    "key": "tes_machine_type",
+    "route": "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+    "functions": [
+      {
+        "name": "tes_machine_type_list",
+        "url": "/tes_machine_type",
+        "line": 42,
+        "end": 182,
+        "templates": [
+          "refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_tes_machine_type",
+        "url": "/add_tes_machine_type",
+        "line": 185,
+        "end": 273,
+        "templates": [
+          "refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type_add.html",
+          "refdata/tes_machines/tes_machine_type/tes_machine_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_tes_machine_type",
+        "url": "/export_tes_machine_type",
+        "line": 276,
+        "end": 318,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py"
+  },
+  {
+    "key": "tes_type",
+    "route": "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+    "functions": [
+      {
+        "name": "tes_type_list",
+        "url": "/tes_type",
+        "line": 42,
+        "end": 182,
+        "templates": [
+          "refdata/refdata_for_stations/machines/tes_type/tes_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_tes_type",
+        "url": "/add_tes_type",
+        "line": 185,
+        "end": 273,
+        "templates": [
+          "refdata/refdata_for_stations/machines/tes_type/tes_type_add.html",
+          "refdata/tess/tes_type/tes_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_tes_type",
+        "url": "/export_tes_type",
+        "line": 276,
+        "end": 318,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/machine/tes_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/machines/tes_type_services.py"
+  },
+  {
+    "key": "station_type",
+    "route": "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+    "functions": [
+      {
+        "name": "station_type_list",
+        "url": "/station_type",
+        "line": 42,
+        "end": 182,
+        "templates": [
+          "refdata/refdata_for_stations/stations/station_type/station_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_station_type",
+        "url": "/add_station_type",
+        "line": 185,
+        "end": 273,
+        "templates": [
+          "refdata/refdata_for_stations/stations/station_type/station_type_add.html",
+          "refdata/stations/station_type/station_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_station_type",
+        "url": "/export_station_type",
+        "line": 276,
+        "end": 318,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/station/station_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/stations/station_type_services.py"
+  },
+  {
+    "key": "equipment_group",
+    "route": "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+    "functions": [
+      {
+        "name": "equipment_group_list",
+        "url": "/equipment_group",
+        "line": 58,
+        "end": 241,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/equipment_group/equipment_group.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_equipment_group",
+        "url": "/add_equipment_group",
+        "line": 244,
+        "end": 338,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/equipment_group/equipment_group_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_equipment_group",
+        "url": "/export_equipment_group",
+        "line": 341,
+        "end": 392,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/technologies/equipment_group_model.py",
+    "service": "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py"
+  },
+  {
+    "key": "technology_availability",
+    "route": "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+    "functions": [
+      {
+        "name": "technology_availability_list",
+        "url": "/technology_availability",
+        "line": 35,
+        "end": 161,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/technology_availability/technology_availability.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_technology_availability",
+        "url": "/add_technology_availability",
+        "line": 164,
+        "end": 252,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/technology_availability/technology_availability_add.html",
+          "refdata/technologies/technology_availability/technology_availability_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_technology_availability",
+        "url": "/export_technology_availability",
+        "line": 255,
+        "end": 297,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py",
+    "service": "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py"
+  },
+  {
+    "key": "technology_type",
+    "route": "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+    "functions": [
+      {
+        "name": "technology_type_list",
+        "url": "/technology_type",
+        "line": 35,
+        "end": 174,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/technology_type/technology_type.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "add_technology_type",
+        "url": "/add_technology_type",
+        "line": 177,
+        "end": 272,
+        "templates": [
+          "refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html",
+          "refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html"
+        ],
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "name": "export_technology_type",
+        "url": "/export_technology_type",
+        "line": 275,
+        "end": 317,
+        "templates": [],
+        "methods": [
+          "GET"
+        ]
+      }
+    ],
+    "model": "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py",
+    "service": "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py"
+  }
+]

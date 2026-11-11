@@ -3,9 +3,76 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from app.energy_consumption.services import ec_summary_page_cache as cache
+
+
+def test_cached_load_ignores_v5_payload_with_old_russia_parameter_label(app, monkeypatch):
+    stored = {}
+    redis = SimpleNamespace(
+        get=stored.get,
+        setex=lambda key, ttl, value: stored.__setitem__(key, value),
+    )
+    monkeypatch.setattr(cache, "get_redis_client", lambda: redis)
+    monkeypatch.setattr(cache, "get_current_db_version_id", lambda: 37)
+    monkeypatch.setattr(cache, "_memory_cache", {})
+    monkeypatch.setattr(cache, "_cache_generation", 0)
+    stale = {"summary_rows": [{
+        "entity_label": "Россия с НТ",
+        "parameter_label": "Потребление электрической энергии, млн кВтч",
+    }]}
+    fresh = {"summary_rows": [{
+        "entity_label": "Россия с НТ",
+        "parameter_label": "Потребление электрической энергии, млрд кВтч",
+    }]}
+
+    with app.test_request_context("/energy_consumption/summary/oes/data.json?pd_page_size=0"):
+        with patch.object(cache, "EC_SUMMARY_PAGE_CACHE_KEY_VERSION", 5):
+            old_key = cache.make_ec_summary_data_cache_key("oes", "pd_page_size=0")
+            cache.set_cached_value(old_key, stale)
+        cache._memory_cache.clear()
+
+        result = cache.cached_load_ec_summary_data("oes", lambda: fresh)
+
+        assert result == fresh
+        assert old_key in stored
+        assert cache.cached_load_ec_summary_data("oes", lambda: stale) == fresh
+
+
+@pytest.mark.parametrize("scope", ["oes", "fo", "ez"])
+def test_cached_load_ignores_v10_unmasked_first_sync_area(app, monkeypatch, scope):
+    stored = {}
+    redis = SimpleNamespace(
+        get=stored.get,
+        setex=lambda key, ttl, value: stored.__setitem__(key, value),
+    )
+    monkeypatch.setattr(cache, "get_redis_client", lambda: redis)
+    monkeypatch.setattr(cache, "get_current_db_version_id", lambda: 37)
+    monkeypatch.setattr(cache, "_memory_cache", {})
+    monkeypatch.setattr(cache, "_cache_generation", 0)
+    stale = {"summary_rows": [{
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "perimeter_variant_code": "with_nt_with_gaes_kaliningrad",
+        "year_values": ["950", "962"],
+    }]}
+    fresh = {"summary_rows": [{
+        **stale["summary_rows"][0],
+        "perimeter_variant_from_year": 2023,
+        "year_values": ["–", "962"],
+    }]}
+
+    with app.test_request_context("/energy_consumption/summary/oes/data.json"):
+        with patch.object(cache, "EC_SUMMARY_PAGE_CACHE_KEY_VERSION", 10):
+            old_key = cache.make_ec_summary_data_cache_key(scope, "")
+            cache.set_cached_value(old_key, stale)
+        cache._memory_cache.clear()
+
+        assert cache.cached_load_ec_summary_data(scope, lambda: fresh) == fresh
+        assert cache.cached_load_ec_summary_data(scope, lambda: stale) == fresh
 
 
 def test_cached_load_skips_set_when_generation_bumped(app):

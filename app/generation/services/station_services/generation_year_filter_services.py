@@ -35,7 +35,7 @@ def _strip_years_from_station_list_session() -> None:
 
 def sync_generation_years_session_on_version_change() -> bool:
     """
-    Фиксирует смену версии БД в сессии и сбрасывает сохранённые годы station_list.
+    Фиксирует смену версии БД в сессии и сбрасывает сохраненные годы station_list.
     Возвращает True, если версия изменилась с прошлего запроса.
     """
     version_id = get_current_db_version_id()
@@ -128,7 +128,7 @@ def resolve_generation_year_filters_for_request():
     Возвращает (start_year, end_year, redirect_response).
 
     При смене версии БД подставляет период планирования с /refdata/ и при необходимости
-    делает redirect с обновлёнными start_year/end_year в query string.
+    делает redirect с обновленными start_year/end_year в query string.
     """
     default_start = get_filter_start_year()
     default_end = get_filter_end_year()

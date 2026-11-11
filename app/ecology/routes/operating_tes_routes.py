@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Маршруты расчёта по действующим ТЭС."""
+"""Маршруты расчета по действующим ТЭС."""
 
 from __future__ import annotations
 
-from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.ecology.routes.ecology_bp import ecology_bp
@@ -68,8 +68,10 @@ def operating_tes_table(territory_slug: str, sheet_slug: str):
         end_year=request.args.get("end_year"),
         rounding_digits=request.args.get("rounding_digits"),
         coefficient_rounding_digits=request.args.get("coefficient_rounding_digits"),
+        specific_rounding_digits=request.args.get("specific_rounding_digits"),
         view_year=request.args.get("view_year"),
         affiliation=request.args.get("affiliation", "all"),
+        show_affiliation_columns=sheet_slug in {"obemy", "toplivo"},
     )
     if context is None:
         abort(404)
@@ -101,6 +103,23 @@ def operating_tes_table(territory_slug: str, sheet_slug: str):
         "ecology/operating_tes/operating_tes_table.html",
         document_title="Расчет по действующим ТЭС",
         **context,
+    )
+
+
+@ecology_bp.route("/operating_tes/<territory_slug>/export.xlsx")
+@login_required
+def operating_tes_export(territory_slug):
+    from app.ecology.services.tes_excel_export_services import build_tes_excel_stream
+
+    if get_territory(territory_slug) is None and get_coefficient_territory(territory_slug) is None:
+        abort(404)
+    try:
+        stream = build_tes_excel_stream(territory_slug, request.args)
+    except ValueError as exc:
+        abort(400, description=str(exc))
+    return send_file(
+        stream, as_attachment=True, download_name=f"operating_tes_{territory_slug}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 
@@ -190,10 +209,15 @@ def operating_tes_update_value(territory_slug: str, sheet_slug: str):
     except (TypeError, ValueError):
         return jsonify(ok=False, error="Некорректный год"), 400
     raw = data.get("value")
-    try:
-        amount = parse_decimal_from_display(raw) if raw not in (None, "") else None
-    except Exception:
-        return jsonify(ok=False, error="Некорректное число"), 400
+    if sheet_slug == "khar-topl" and field == "note":
+        if raw is not None and not isinstance(raw, str):
+            return jsonify(ok=False, error="Некорректное примечание"), 400
+        amount = raw or ""
+    else:
+        try:
+            amount = parse_decimal_from_display(raw) if raw not in (None, "") else None
+        except Exception:
+            return jsonify(ok=False, error="Некорректное число"), 400
     try:
         if sheet_slug == "koeff":
             upsert_coefficient(
@@ -201,12 +225,15 @@ def operating_tes_update_value(territory_slug: str, sheet_slug: str):
                 affiliation=str(data.get("affiliation") or "all"),
             )
         elif sheet_slug == "khar-topl":
-            upsert_characteristic(territory_slug, row_key, year_int, field, amount)
+            upsert_characteristic(
+                territory_slug, row_key, year_int, field, amount,
+                affiliation=str(data.get("affiliation") or "all"),
+            )
         else:
             return jsonify(ok=False, error="Лист только для просмотра"), 400
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
-        current_app.logger.exception("Не удалось сохранить значение расчёта ТЭС")
+        current_app.logger.exception("Не удалось сохранить значение расчета ТЭС")
         return jsonify(ok=False, error="Не удалось сохранить"), 500
     return jsonify(ok=True)

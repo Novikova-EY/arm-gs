@@ -196,7 +196,7 @@ def update_ee_transfer_value(
         record.source_oes_name = matching_pair.source_oes_name
 
     if month_number == EE_TRANSFER_PERIOD_YEAR:
-        # Свод перетоков между ОЭС пересчитывается из завершённого годового периода.
+        # Свод перетоков между ОЭС пересчитывается из завершенного годового периода.
         record.transfer_value = value
         db.session.flush()
         recalculate_ee_import_export_oes_values(year_number=year_number, version_id=version_id)

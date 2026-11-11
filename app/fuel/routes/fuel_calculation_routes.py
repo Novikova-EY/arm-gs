@@ -124,8 +124,8 @@ def _cptp_for_coeff_table(selected_row, coeff_calc_year_display):
     Доля %тп по формуле Access: cptp = csumetp / E * 100.
 
     Знаменатель E – актуальное «Ераспред» из параметра (`selected_row.e`), числитель – `cetp` из сводки/превью,
-    чтобы колонка совпадала с введённым E без обязательного повторного запуска «Коэфф» после правки параметра.
-    Если E ≤ 0, показываем сохранённое cptp (уже посчитанное с запасным знаменателем ΣE в сервисе).
+    чтобы колонка совпадала с введенным E без обязательного повторного запуска «Коэфф» после правки параметра.
+    Если E ≤ 0, показываем сохраненное cptp (уже посчитанное с запасным знаменателем ΣE в сервисе).
     """
     if coeff_calc_year_display is None:
         return None
@@ -149,7 +149,7 @@ def _coeff_ratio_row(
     Третья строка таблицы «Коэфф»: PE, PQ, Pотр, PH1 (как в Access после Кнопка5_Click).
 
     При наличии сводки – из БД (или восстановление из полей сводки, если коэффициенты не записаны).
-    В режиме предпросмотра – из агрегатов базового года и расчёта по текущим данным.
+    В режиме предпросмотра – из агрегатов базового года и расчета по текущим данным.
     """
     if selected_row is None or coeff_calc_year_display is None:
         return None
@@ -248,7 +248,7 @@ def _nr_hfix_pending_for_page(selected_row: DistributionParameter | None):
 
 def _distribution_last_run_display_for_page(selected_row: DistributionParameter | None):
     """
-    Результат последнего POST «Распред» для текущего параметра (таблица внизу страницы расчёта).
+    Результат последнего POST «Распред» для текущего параметра (таблица внизу страницы расчета).
     """
     if selected_row is None:
         return None
@@ -288,7 +288,7 @@ def _distribution_last_run_display_for_page(selected_row: DistributionParameter 
 
 def _fuel_stage_last_run_display_for_page(selected_row: DistributionParameter | None):
     """
-    Результат последнего POST «Топливо» для текущего параметра (таблица внизу страницы расчёта).
+    Результат последнего POST «Топливо» для текущего параметра (таблица внизу страницы расчета).
     """
     if selected_row is None:
         return None
@@ -383,7 +383,7 @@ def _get_coeff_summary_for_distribution_parameter(row: DistributionParameter):
     """
     Сводка этапа «Коэфф» для параметра распределения.
 
-    Только строка с тем же database_version_id, что и при расчёте
+    Только строка с тем же database_version_id, что и при расчете
     (поле параметра или текущая версия БД); при отсутствии версии – только NULL.
     """
     effective_version = row.database_version_id or get_current_db_version_id()
@@ -435,7 +435,7 @@ def fuel_calculation_form():
         except (TypeError, ValueError):
             base_year = None
 
-    # Расчёт – строго по одной ОЭС (без режима «Все ОЭС»).
+    # Расчет – строго по одной ОЭС (без режима «Все ОЭС»).
     ues_ids_raw = filters.get("union_energy_system_filter") or []
     ues_ids = ues_ids_raw[:1] if ues_ids_raw else []
 
@@ -466,8 +466,8 @@ def fuel_calculation_form():
         if not base_year_from_query and selected_row is not None and selected_row.base_year is not None:
             base_year = selected_row.base_year.number
 
-    # Нет строк ТЭП за расчётный год – посев с базового (без формул и удельных:
-    # Access Seek year ≤ расчётный, копия 2024 перекрыла бы 2025/2026).
+    # Нет строк ТЭП за расчетный год – посев с базового (без формул и удельных:
+    # Access Seek year ≤ расчетный, копия 2024 перекрыла бы 2025/2026).
     if (
         start_year is not None
         and base_year is not None
@@ -497,7 +497,7 @@ def fuel_calculation_form():
                     parts.append(f"Q из схем теплоснабжения: {hat_q}")
                 if parts:
                     flash(
-                        f"Для расчётного {start_year} г. обновлены данные "
+                        f"Для расчетного {start_year} г. обновлены данные "
                         f"({'; '.join(parts)}).",
                         "success",
                     )
@@ -597,7 +597,7 @@ def fuel_calculation_form():
                 if g.get("equipment_group_id") is not None
             ]
             if missing_ids:
-                # Как у кнопки «ТЭП»: Год начала = базовый, Год конца = расчётный.
+                # Как у кнопки «ТЭП»: Год начала = базовый, Год конца = расчетный.
                 missing_specific_edit_url = url_for(
                     "fuel_bp.equipment_group_specific_fuel_consumption_edit_data",
                     equipment_group_ids=missing_ids,
@@ -705,7 +705,7 @@ def fuel_calculation_form():
         union_energy_system_filter=ues_ids,
         # Fallback, если tep-qs пуст (без годов/фильтров).
         calculation_edit_links_qs=fuel_calculation_form_query_string(request.args),
-        # Сведения / ТЭП / формулы: Год начала = базовый, Год конца = расчётный.
+        # Сведения / ТЭП / формулы: Год начала = базовый, Год конца = расчетный.
         calculation_tep_edit_links_qs=fuel_calculation_tep_edit_query_string(
             base_year=base_year,
             calc_year=start_year,
@@ -777,7 +777,7 @@ def distribution_parameters_list():
 @fuel_bp.route("/distribution_parameters/bulk_row_data", methods=["GET"])
 @login_required
 def distribution_parameters_bulk_row_data():
-    """JSON: поля для массового добавления строк (все ОЭС) по базовому году и году расчёта."""
+    """JSON: поля для массового добавления строк (все ОЭС) по базовому году и году расчета."""
     if not getattr(current_user, "has_admin", False):
         return jsonify({"ok": False, "errors": ["Недостаточно прав."]}), 403
 
@@ -971,7 +971,7 @@ def _redirect_fuel_restrictions_list_after_save():
     qs = (request.form.get("restrictions_save_return_qs") or "").strip()
     base = url_for("fuel_bp.fuel_restrictions_list")
     if qs:
-        # После сохранения остаёмся в режиме правки.
+        # После сохранения остаемся в режиме правки.
         if "edit=" not in qs:
             qs = f"{qs}&edit=1" if qs else "edit=1"
         elif "edit=0" in qs or "edit=false" in qs:
@@ -991,7 +991,7 @@ def fuel_restrictions_save():
         for e in errs[:12]:
             flash(e, "danger")
         if len(errs) > 12:
-            flash(f"…и ещё ошибок: {len(errs) - 12}", "danger")
+            flash(f"…и еще ошибок: {len(errs) - 12}", "danger")
         return _redirect_fuel_restrictions_list_after_save()
     flash(
         f"Ограничения сохранены во все версии БД "
@@ -1148,7 +1148,7 @@ def distribution_parameter_row_delete(row_id: int):
     except IntegrityError:
         db.session.rollback()
         flash(
-            "Не удалось удалить запись: есть связанные данные (коэффициенты, расчёты). Сначала удалите зависимости.",
+            "Не удалось удалить запись: есть связанные данные (коэффициенты, расчеты). Сначала удалите зависимости.",
             "danger",
         )
         return redirect(redirect_target)
@@ -1158,7 +1158,7 @@ def distribution_parameter_row_delete(row_id: int):
         return redirect(redirect_target)
 
     flash(
-        f"Параметр распределения удалён во всех версиях БД (записей: {len(deleted_ids)}).",
+        f"Параметр распределения удален во всех версиях БД (записей: {len(deleted_ids)}).",
         "success",
     )
     _write_distribution_parameter_delete_logs(current_user, deleted_ids)
@@ -1180,7 +1180,7 @@ def distribution_parameters_save():
         for msg in errs[:25]:
             flash(msg, "danger")
         if len(errs) > 25:
-            flash(f"… и ещё ошибок: {len(errs) - 25}.", "danger")
+            flash(f"… и еще ошибок: {len(errs) - 25}.", "danger")
     elif n == 0:
         flash("Изменений для сохранения не было (все значения совпадают с данными в БД).", "info")
     else:
@@ -1192,7 +1192,7 @@ def distribution_parameters_save():
 @fuel_bp.route("/distribution_parameters/export", methods=["GET"])
 @login_required
 def distribution_parameters_export():
-    """Экспорт списка параметров распределения (с учётом фильтров в query)."""
+    """Экспорт списка параметров распределения (с учетом фильтров в query)."""
     start_year_filter: list[int] = []
     for raw in request.args.getlist("start_year"):
         if raw in (None, ""):

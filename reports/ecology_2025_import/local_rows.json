@@ -1,0 +1,549 @@
+[
+  {
+    "key": "b",
+    "label": "Расход топлива",
+    "unit": "тыс. т у.т.",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "gaz",
+    "label": "Газ естественный",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "gazpp",
+    "label": "газ естественный попутный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "gaz_prir",
+    "label": "газ естественный природный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "isk_gaz",
+    "label": "газ искусственный (прочие виды)",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "domen_g",
+    "label": "газ искусственный доменный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "koks_g",
+    "label": "газ искусственный коксовый",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "prochgaz",
+    "label": "газ НПЗ",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "mazut",
+    "label": "Нефтетопливо",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "gtt",
+    "label": "газотурбинное топливо",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "maztop",
+    "label": "мазут топочный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "nft_proch",
+    "label": "нефтетопливо прочее",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "disel",
+    "label": "топливо дизельное",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "proch",
+    "label": "Прочее топливо",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "szh_gaz",
+    "label": "газ сжиженный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "inoe",
+    "label": "иное топливо",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "tvproch",
+    "label": "прочие виды твердого топлива",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "slan",
+    "label": "сланцы",
+    "indent": 0,
+    "kind": "value"
+  },
+  {
+    "key": "torf",
+    "label": "торф",
+    "indent": 0,
+    "kind": "value"
+  },
+  {
+    "key": "ugol",
+    "label": "Уголь, в т.ч.",
+    "indent": 0,
+    "kind": "total"
+  },
+  {
+    "key": "kazah",
+    "label": "угли Казахстана",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "karag",
+    "label": "уголь карагандинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "maikub",
+    "label": "уголь майкубенский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "karajyra",
+    "label": "уголь разреза Каражыра (Казахстан)",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "teniz",
+    "label": "уголь тениз-коржункольский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "ekib",
+    "label": "уголь экибастузский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "amur",
+    "label": "уголь амурский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "erk",
+    "label": "уголь ерковецкий",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "ogodj",
+    "label": "уголь огоджинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "rai",
+    "label": "уголь райчихинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "svo",
+    "label": "уголь свободненский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "arkt",
+    "label": "уголь арктический",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "bashk",
+    "label": "уголь башкирский (южно-уральский)",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "bur",
+    "label": "уголь бурятский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "gusin",
+    "label": "уголь гусиноозерский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "okino",
+    "label": "уголь разреза Окино-Ключевской",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "tugn",
+    "label": "уголь тугнуйский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "don",
+    "label": "уголь донецкий",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "chit",
+    "label": "уголь забайкальский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "zab_kam",
+    "label": "уголь забайкальский каменный",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "tarbag",
+    "label": "уголь тарбагатайский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "tataur",
+    "label": "уголь татауровский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "urt",
+    "label": "уголь уртуйский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "har",
+    "label": "уголь харанорский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "irkut",
+    "label": "уголь иркутский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "azey",
+    "label": "уголь азейский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "mug",
+    "label": "уголь мугунский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "cher",
+    "label": "уголь черемховский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kamch",
+    "label": "уголь камчатский",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "kan",
+    "label": "уголь канско-ачинский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "berez",
+    "label": "уголь березовский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "ibor",
+    "label": "уголь бородинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "irbei",
+    "label": "уголь ирбейский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kansk",
+    "label": "уголь канский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "nazar",
+    "label": "уголь назаровский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "per",
+    "label": "уголь переясловский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kuzn",
+    "label": "уголь кузнецкий",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "kuzngd",
+    "label": "уголь кузнецкий марки Г, Д",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kuznss",
+    "label": "уголь кузнецкий марки СС",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kuznt",
+    "label": "уголь кузнецкий марки Т",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "kuznun",
+    "label": "уголь кузнецкий прочий",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "mag",
+    "label": "уголь магаданский",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "pech",
+    "label": "уголь печорский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "vork",
+    "label": "уголь воркутинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "intin",
+    "label": "уголь интинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "podm",
+    "label": "уголь подмосковный",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "prim",
+    "label": "уголь приморский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "bikin",
+    "label": "уголь бикинский (лучегорский)",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "razdol",
+    "label": "уголь раздольненский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "hankai",
+    "label": "уголь ханкайский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "sah",
+    "label": "уголь сахалинский",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "tuv",
+    "label": "уголь тувинский (улуг-хемский)",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "tung",
+    "label": "уголь тунгусский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "jer",
+    "label": "уголь жеронский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "karab",
+    "label": "уголь карабульский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "ural",
+    "label": "уголь уральский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "kizel",
+    "label": "уголь кизеловский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "sver",
+    "label": "уголь свердловский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "sosv",
+    "label": "уголь северо-сосьвинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "chel",
+    "label": "уголь челябинский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "urg",
+    "label": "уголь ургальский",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "ushum",
+    "label": "уголь ушумунский (средне-амурский)",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "hak",
+    "label": "уголь хакасский",
+    "indent": 1,
+    "kind": "value"
+  },
+  {
+    "key": "chukot",
+    "label": "уголь чукотский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "anad",
+    "label": "уголь анадырский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "bering",
+    "label": "уголь беринговский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "yakut",
+    "label": "уголь якутский",
+    "indent": 1,
+    "kind": "total"
+  },
+  {
+    "key": "zyryan",
+    "label": "уголь зырянский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "neru",
+    "label": "уголь нерюнгринский",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "pyak",
+    "label": "уголь якутский прочий",
+    "indent": 2,
+    "kind": "value"
+  },
+  {
+    "key": "tal",
+    "label": "уголь таловский",
+    "indent": 0,
+    "kind": "value"
+  }
+]

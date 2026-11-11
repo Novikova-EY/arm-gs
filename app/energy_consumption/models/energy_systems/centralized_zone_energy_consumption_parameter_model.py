@@ -21,10 +21,10 @@ class CentralizedZoneEnergyConsumptionParameter(db.Model, AuditMixin, PerimeterV
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Потребление электрической энергии, млн кВтч
-    energy_consumption_mln_kvt_ch = db.Column(Numeric(25, 16), nullable=True)
+    energy_consumption_mln_kvt_ch = db.Column(Numeric(), nullable=True)
 
     # Потребление электрической энергии (СиПР), млн кВтч
-    energy_consumption_sipr_mln_kvt_ch = db.Column(Numeric(25, 16), nullable=True)
+    energy_consumption_sipr_mln_kvt_ch = db.Column(Numeric(), nullable=True)
 
     # Примечание
     note = db.Column(db.Text, nullable=True)

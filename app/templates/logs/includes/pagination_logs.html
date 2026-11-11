@@ -6,7 +6,8 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=1, 
-            username=username_filter, 
+            username=username_filter,
+            module=module_filter,
             action=action_filter, 
             details=details_filter,
             database_version_id=database_version_filter,
@@ -25,7 +26,8 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.prev_num, 
-            username=username_filter, 
+            username=username_filter,
+            module=module_filter,
             action=action_filter, 
             details=details_filter,
             database_version_id=database_version_filter,
@@ -45,7 +47,8 @@
                 <a class="page-link" href="{{ 
                 url_for('logs.view_logs', 
                 page=1, 
-                username=username_filter, 
+                username=username_filter,
+                module=module_filter,
                 action=action_filter, 
                 details=details_filter,
                 database_version_id=database_version_filter,
@@ -67,7 +70,8 @@
                     <a class="page-link" href="{{ 
                     url_for('logs.view_logs', 
                     page=num, 
-                    username=username_filter, 
+                    username=username_filter,
+                    module=module_filter,
                     action=action_filter, 
                     details=details_filter,
                     database_version_id=database_version_filter,
@@ -89,7 +93,8 @@
                 <a class="page-link" href="{{ 
                 url_for('logs.view_logs', 
                 page=logs.pages, 
-                username=username_filter, 
+                username=username_filter,
+                module=module_filter,
                 action=action_filter, 
                 details=details_filter,
                 database_version_id=database_version_filter,
@@ -107,7 +112,8 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.next_num, 
-            username=username_filter, 
+            username=username_filter,
+            module=module_filter,
             action=action_filter, 
             details=details_filter,
             database_version_id=database_version_filter,
@@ -126,7 +132,8 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.pages, 
-            username=username_filter, 
+            username=username_filter,
+            module=module_filter,
             action=action_filter, 
             details=details_filter,
             database_version_id=database_version_filter,

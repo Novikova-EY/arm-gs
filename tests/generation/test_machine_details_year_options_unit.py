@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Списки «Год начала» / «Год конца» на карточке агрегата – как на station_details.
 
-Источник значений – справочник Year текущей версии БД (см. `get_filter_year_list`),
+Источник значений – справочник Year текущей версии БД (см. `get_reference_years`),
 поэтому карточка агрегата и карточка станции показывают одинаковые годы.
 """
 from __future__ import annotations
@@ -43,19 +43,20 @@ def _years_select_block(template_name: str, select_id: str) -> str:
 
 @pytest.mark.parametrize("select_id", ["start_year", "end_year"])
 @pytest.mark.parametrize("template_name", [MACHINE_TEMPLATE, PGU_MACHINE_TEMPLATE])
-def test_year_selects_use_filter_year_list(template_name, select_id):
+def test_year_selects_use_reference_years(template_name, select_id):
     block = _years_select_block(template_name, select_id)
 
-    assert "{% for year in filter_year_list %}" in block
+    assert "{% for year in get_reference_years() %}" in block
     # захардкоженных диапазонов быть не должно – иначе список лет расходится со station_details
     assert "range(" not in block
 
 
 @pytest.mark.parametrize("select_id", ["start_year", "end_year"])
 def test_station_details_uses_same_source(select_id):
-    block = _years_select_block(STATION_TEMPLATE, select_id)
+    assert "_station_details_year_filters.html" in _template_text(STATION_TEMPLATE)
+    block = _years_select_block("_station_details_year_filters.html", select_id)
 
-    assert "filter_year_list" in block
+    assert "get_reference_years()" in block
 
 
 def test_get_filter_year_list_uses_year_reference(monkeypatch):

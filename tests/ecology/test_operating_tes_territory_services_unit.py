@@ -1,4 +1,4 @@
-"""Названия и порядок ОЭС следуют справочнику, ключи расчёта не меняются."""
+"""Названия и порядок ОЭС следуют справочнику, ключи расчета не меняются."""
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, registry
@@ -69,5 +69,5 @@ def test_affiliation_and_special_territory_names_keep_saved_keys():
     assert [(item["slug"], item["sheet_name"]) for item in columns[-3:]] == [
         ("norilsk", "ТИТЭС Сибири"),
         ("isolated-dv", "ТИТЭС Востока"),
-        ("nikolaevsky", "Децентрализованная зона (Николаевский энергорайон)"),
+        ("decentralized-zone", "Децентрализованная зона"),
     ]

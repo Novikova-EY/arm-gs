@@ -1,0 +1,215 @@
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.fuel-param-input, .ec-summary-row-note, input[name="ec_mln[]"], input[name="ec_sipr[]"], textarea[name="note[]"]):not([readonly]):not(:disabled) {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: var(--bs-border-radius, 0.375rem);
+    background-color: var(--bs-body-bg, #fff);
+    background-clip: padding-box;
+    color: var(--bs-body-color, #212529);
+    box-shadow: none;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.fuel-param-input, .ec-summary-row-note, input[name="ec_mln[]"], input[name="ec_sipr[]"], textarea[name="note[]"]):not([readonly]):not(:disabled):hover {
+    background-color: var(--bs-body-bg, #fff);
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.fuel-param-input, .ec-summary-row-note, input[name="ec_mln[]"], input[name="ec_sipr[]"], textarea[name="note[]"]):not([readonly]):not(:disabled):focus {
+    background-color: var(--bs-body-bg, #fff);
+    border-style: solid;
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: -2px;
+}
+
+#powerDemandSummaryTable:not([data-active-summary]) tbody td.summary-year-cell:not(:has(:is(input, textarea, select):not([readonly]):not(:disabled))):not(.summary-plan-empty):not(.pd-ec-variant-year-out) {
+    color: #000;
+}
+
+#powerDemandSummaryTable:not([data-active-summary]) tbody td.summary-hist-cell:not(:has(:is(input, textarea, select):not([readonly]):not(:disabled))):not(.summary-plan-empty):not(.pd-ec-variant-year-out) {
+    background-image: linear-gradient(#e9edf1, #e9edf1);
+    color: #000;
+    --bs-table-bg-type: transparent;
+    --bs-table-bg-state: transparent;
+    --bs-table-accent-bg: transparent;
+}
+
+#power-demand-edit-table tbody td:has(> :is(input[name="ec_mln[]"], input[name="ec_sipr[]"])[readonly]) {
+    background-image: linear-gradient(#e9edf1, #e9edf1);
+    color: #000;
+    --bs-table-bg-type: transparent;
+    --bs-table-bg-state: transparent;
+    --bs-table-accent-bg: transparent;
+}
+
+#powerDemandSummaryTable tbody td:is(.summary-year-cell, .summary-hist-cell) > span.text-danger {
+    color: #000 !important;
+}
+
+#powerDemandSummaryTable td:is(.summary-year-cell, .summary-hist-cell) .form-control[readonly],
+#power-demand-edit-table :is(input[name="ec_mln[]"], input[name="ec_sipr[]"])[readonly] {
+    border: 0;
+    background-color: #e9edf1;
+    background-image: linear-gradient(#e9edf1, #e9edf1);
+    box-shadow: none;
+    color: #000;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.form-control, .form-select).is-save-success:not([readonly]):not(:disabled),
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.form-control, .form-select).is-save-success:not([readonly]):not(:disabled):focus {
+    background-color: #d1e7dd;
+    outline: 2px solid var(--bs-success, #198754);
+    outline-offset: -2px;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.form-control, .form-select).is-save-error:not([readonly]):not(:disabled),
+:is(#powerDemandSummaryTable, #power-demand-edit-table) :is(.form-control, .form-select).is-save-error:not([readonly]):not(:disabled):focus {
+    background-color: #f8d7da;
+    outline: 2px solid var(--bs-danger, #dc3545);
+    outline-offset: -2px;
+}
+
+.power-demand-summary-table [aria-busy="true"],
+.power-demand-params-table [aria-busy="true"] {
+    opacity: 0.65;
+}
+
+#powerDemandSummaryTable tbody td:has(> :is(input.fuel-param-input, textarea.fuel-param-input, textarea.ec-summary-row-note):not([readonly]):not(:disabled)),
+#power-demand-edit-table tbody td:has(> :is(input[name="ec_mln[]"], input[name="ec_sipr[]"], textarea[name="note[]"]):not([readonly]):not(:disabled)) {
+    position: relative;
+    height: 2.5rem;
+    padding: 0 !important;
+    vertical-align: middle;
+}
+
+#powerDemandSummaryTable tbody td > :is(input.fuel-param-input, textarea.fuel-param-input, textarea.ec-summary-row-note).form-control:not([readonly]):not(:disabled),
+#power-demand-edit-table tbody td > :is(input[name="ec_mln[]"], input[name="ec_sipr[]"], textarea[name="note[]"]).form-control:not([readonly]):not(:disabled) {
+    position: absolute;
+    inset: 0;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+    resize: none;
+}
+
+/* Годовые ячейки в коэффициентной таблице повторяют оформление ячейки параметра. */
+.pd-coeff-year-seg-table:not([data-ec-unify-block-bg="1"]) tbody tr:is(.summary-kind-group, .summary-kind-group-root) > td:is(.summary-parameter-cell, .summary-year-cell, .summary-coeff-mixin-cell) {
+    background-color: #eef5ff !important;
+}
+
+.pd-coeff-year-seg-table:not([data-ec-unify-block-bg="1"]) tbody tr:is(.summary-kind-child, .summary-kind-res_subject_sum_check) > td:is(.summary-parameter-cell, .summary-year-cell, .summary-coeff-mixin-cell) {
+    background-color: #fbfcff !important;
+}
+
+.pd-coeff-year-seg-table.table-hover:not([data-ec-unify-block-bg="1"]) tbody tr:is(.summary-kind-group, .summary-kind-group-root):hover > td:is(.summary-parameter-cell, .summary-year-cell, .summary-coeff-mixin-cell) {
+    background-color: #dde8fc !important;
+}
+
+.pd-coeff-year-seg-table.table-hover:not([data-ec-unify-block-bg="1"]) tbody tr:is(.summary-kind-child, .summary-kind-res_subject_sum_check):hover > td:is(.summary-parameter-cell, .summary-year-cell, .summary-coeff-mixin-cell) {
+    background-color: #eef2fc !important;
+}
+
+#power-demand-edit-table tbody td:has(> :is(input[name="ec_mln[]"], input[name="ec_sipr[]"])) {
+    min-width: 6rem;
+}
+
+#powerDemandSummaryTable tbody td.ec-summary-row-note-cell,
+#power-demand-edit-table tbody td:has(> textarea[name="note[]"]) {
+    height: 3rem;
+    min-width: 12rem;
+}
+
+#powerDemandSummaryTable textarea.ec-summary-row-note {
+    white-space: pre-wrap;
+    overflow-y: auto;
+    text-align: left;
+}
+
+#powerDemandSummaryTable tbody td,
+.power-demand-params-table tbody td {
+    font-size: 1.15rem !important;
+}
+
+#powerDemandSummaryTable tbody td :is(span, div, a, input, select, textarea),
+.power-demand-params-table tbody td :is(span, div, a, input, select, textarea) {
+    font-size: inherit !important;
+}
+
+#powerDemandSummaryScrollWrap,
+.table-responsive:has(> .power-demand-params-table) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+#powerDemandSummaryTable,
+.power-demand-params-table {
+    table-layout: auto !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: none !important;
+}
+
+#powerDemandSummaryTable tbody td:is(.summary-year-cell, .summary-hist-cell),
+#powerDemandSummaryTable tbody td:is(.summary-year-cell, .summary-hist-cell) :is(span, div, input, textarea),
+.power-demand-params-table tbody td[title],
+#power-demand-edit-table :is(input[name="ec_mln[]"], input[name="ec_sipr[]"]),
+#power-demand-edit-table tbody td:has(> :is(input[name="ec_mln[]"], input[name="ec_sipr[]"])) {
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
+#powerDemandSummaryTable tbody td:is(.summary-year-cell, .summary-hist-cell):has(input:not([type="hidden"]), textarea),
+#power-demand-edit-table tbody td:has(> :is(input[name="ec_mln[]"], input[name="ec_sipr[]"])) {
+    min-width: max(5.5rem, var(--ec-year-field-width, 0px)) !important;
+}
+
+.ec-formula-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--bs-primary, #0d6efd);
+    font: italic 600 0.9rem Georgia, serif;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.ec-formula-info:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table, #ozpMaximaTable) tbody td:has(> input.form-control:not([type="hidden"]):not([readonly]):not(:disabled)) {
+    padding: 0.35rem 0.5rem !important;
+    vertical-align: middle;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table, #ozpMaximaTable) tbody td > input.form-control:not([type="hidden"]):not([readonly]):not(:disabled) {
+    position: static !important;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: min(100%, 5.5rem);
+    max-width: 8rem;
+    height: auto !important;
+    min-height: 2rem;
+    margin: 0.15rem auto;
+    padding: 0.25rem 0.4rem !important;
+    border: 1px solid var(--bs-border-color, #dee2e6) !important;
+    border-radius: var(--bs-border-radius, 0.375rem) !important;
+    box-shadow: none;
+    text-align: center;
+}
+
+:is(#powerDemandSummaryTable, #power-demand-edit-table, #ozpMaximaTable) tbody td > input.form-control:not([type="hidden"]):not([readonly]):not(:disabled):not(.is-save-success):not(.is-save-error) {
+    background-color: var(--bs-body-bg, #fff);
+}

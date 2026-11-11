@@ -1,0 +1,18 @@
+<div class="d-flex align-items-center gap-2 w-100 pb-1 mb-2">
+    <nav class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1 rs-page-nav" aria-label="{{ 'Исходные данные по территориям' if territory_active_sheet in ('years', 'equipment') else 'Технологии и МСК + МДП' }}">
+        {% if territory_active_sheet in ('years', 'equipment') %}
+        {% for key, label in input_sheets.items() %}
+        <a class="btn {{ 'btn-primary' if territory_active_sheet == key else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0"
+           {% if territory_active_sheet == key %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_inputs', energy_zone_id=territory_zone_id, sheet=key, start_year=start_year|default(none), end_year=end_year|default(none), view_year=view_year|default(none), rounding_digits=rounding_digits|default(none)) }}">{{ label }}</a>
+        {% endfor %}
+        {% else %}
+        {% for key, label in (('technologies', 'Технологии'), ('transfers', 'МСК + МДП')) %}
+        <a class="btn {{ 'btn-primary' if territory_active_sheet == key else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0"
+           {% if territory_active_sheet == key %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_technologies', sheet=key, energy_zone=territory_zone_id or none, rounding_digits=rounding_digits|default(none)) }}">{{ label }}</a>
+        {% endfor %}
+        {% endif %}
+    </nav>
+    <a class="btn btn-secondary fs-5 text-nowrap flex-shrink-0" href="{{ url_for('rational_structure_module_bp.hub') }}">Модуль «Рациональная структура»</a>
+</div>

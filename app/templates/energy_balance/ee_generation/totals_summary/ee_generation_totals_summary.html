@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -28,13 +30,13 @@
           <input type="hidden" name="show_res" value="{{ 1 if show_res else 0 }}">
           <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
           <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;">
-            {% for year in filter_year_list %}
+            {% for year in get_reference_years() %}
             <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
             {% endfor %}
           </select>
           <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
           <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;">
-            {% for year in filter_year_list %}
+            {% for year in get_reference_years() %}
             <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
             {% endfor %}
           </select>
@@ -65,6 +67,9 @@
         </button>
 
         <div class="d-flex align-items-center gap-1">
+          {% if energy_balance_refresh %}
+          {% include 'energy_balance/_data_refresh.html' %}
+          {% endif %}
           <label for="rounding_digits" class="mb-0" style="white-space: nowrap;">Округл:</label>
           <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
             <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
@@ -108,7 +113,7 @@
       padding-left: 2rem;
       font-weight: 400;
     }
-    /* table-striped затемняет чётные/нечётные цветные строки по-разному –
+    /* table-striped затемняет четные/нечетные цветные строки по-разному –
        у итогов ОЭС/ЕЭС/СЗ цвет должен быть одинаковым. */
     #eeGenerationTotalsTable tbody tr.table-info > *,
     #eeGenerationTotalsTable tbody tr.table-primary > *,

@@ -50,7 +50,7 @@ def _param_row(
 
 
 def test_oes_verify_row_values_after_res_aggregation() -> None:
-    """Проверка ОЭС = расчётный максимум (сумма combined_on_oes по РЭС) − max_power."""
+    """Проверка ОЭС = расчетный максимум (сумма combined_on_oes по РЭС) − max_power."""
     years = [2024]
     rows = [
         _param_row(
@@ -124,7 +124,7 @@ def test_finalize_oes_summary_verify_segment_triggers_calc_max_enrichment(
 
 
 def test_refresh_verify_row_values_uses_updated_plan_year_operands() -> None:
-    """После заполнения плановых МВт пересчёт «Проверка» = a − b."""
+    """После заполнения плановых МВт пересчет «Проверка» = a − b."""
     years = [2025, 2026]
     rows = [
         _param_row(

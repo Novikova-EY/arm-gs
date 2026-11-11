@@ -5,7 +5,8 @@
 ``GET /api/database_versions`` (блок «Периоды планирования» на /refdata/):
 - «Текущий год» – YearFeature «текущий (оценка)»;
 - «Начало периода» – year_sipr_start (как начало строки СиПР / ГС на странице);
-- «Конец периода» – для версии СиПР: year_sipr_end; для ГС: конец Генеральной схемы (2042).
+- «Конец периода» – для версии СиПР: year_sipr_end;
+  для ГС: горизонт Генеральной схемы по шестилетнему циклу от текущего года версии.
 
 Не путать с границами фильтров страниц (там start = sipr_start − 2).
 
@@ -16,7 +17,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from config import Config
 from app.common.models.database_version_model import DatabaseVersion
 from app.common.services.get_services.years.years_get_services import (
     _planning_scheme_from_version_number,
@@ -26,7 +26,10 @@ from app.api.services.exchange_common_services import (
     dataset_envelope,
     resolve_database_version,
 )
-from app.refdata.services.year_management_services import get_current_year_info
+from app.refdata.services.year_management_services import (
+    get_current_year_info,
+    get_general_scheme_end_year,
+)
 
 DATASET_GENERAL_INFO = "general_info"
 
@@ -60,7 +63,7 @@ def build_general_info_row(version_id: int | None) -> dict[str, Any]:
         version_number = getattr(row, "version_number", None) if row is not None else None
     scheme = _planning_scheme_from_version_number(version_number)
     if scheme == "gs":
-        end = int(getattr(Config, "END_YEAR_GENERAL_SCHEME", 2042))
+        end = get_general_scheme_end_year(current) or 0
 
     return {
         KEY_CURRENT_YEAR: current,

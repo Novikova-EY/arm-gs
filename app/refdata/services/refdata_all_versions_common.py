@@ -17,7 +17,7 @@ from config import SCHEMA_REFDATA
 
 # Кэш (model_name, source_pk, target_version_id) -> target_pk в рамках одной
 # операции «во всех версиях». Без него каждая строка формы × каждая версия × каждый FK
-# даёт отдельный SELECT (и log_to_db – отдельный commit).
+# дает отдельный SELECT (и log_to_db – отдельный commit).
 _fk_id_cache: ContextVar[dict | None] = ContextVar("refdata_fk_id_cache", default=None)
 
 
@@ -422,7 +422,7 @@ def update_all_versions_records(
 
         if updated_ids:
             sample = ", ".join(str(i) for i in updated_ids[:20])
-            more = "" if len(updated_ids) <= 20 else f" и ещё {len(updated_ids) - 20}"
+            more = "" if len(updated_ids) <= 20 else f" и еще {len(updated_ids) - 20}"
             log_to_db(
                 user,
                 "Обновлены записи во всех версиях БД",

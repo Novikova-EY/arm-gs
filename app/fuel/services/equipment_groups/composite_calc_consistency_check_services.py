@@ -3,7 +3,7 @@
 Контроль составных станций на этапах Коэфф / Распред / Топливо.
 
 Типичный промах: родитель в фильтре (ved>0) без E, а энергия посчитана
-на дочерней группе с ved=0 – ребёнок не входит в (ved>0), ΣE дырявая.
+на дочерней группе с ved=0 – ребенок не входит в (ved>0), ΣE дырявая.
 """
 from __future__ import annotations
 
@@ -101,9 +101,9 @@ def classify_composite_cluster_energy_level(
     children: Sequence[tuple[Any, Any | None]],
 ) -> dict | None:
     """
-    Промах уровня учёта за один год. None – кластер согласован с фильтром ved>0.
+    Промах уровня учета за один год. None – кластер согласован с фильтром ved>0.
 
-    parent_param – FuelParam расчётного года. Участие смотрим по ved этой строки,
+    parent_param – FuelParam расчетного года. Участие смотрим по ved этой строки,
     не по попаданию в фильтр из‑за базового года.
     """
     if parent_group is None or not is_composite_parent_group(parent_group):
@@ -136,7 +136,7 @@ def classify_composite_cluster_energy_level(
             "children": [_child_payload(g, p) for g, p in active_children],
             "child_e_sum": child_e_sum,
             "message": (
-                "Родитель и дочерние группы одновременно с ved>0 – риск двойного счёта. "
+                "Родитель и дочерние группы одновременно с ved>0 – риск двойного счета. "
                 "У родителя составной станции должен быть ved=0."
             ),
         }
@@ -212,11 +212,11 @@ def _parents_participating_in_year(
     """
     Родители составных станций с ved>0 за год на любой строке FuelParam.
 
-    Не фильтруем FuelParam.database_version_id: строка года часто остаётся
+    Не фильтруем FuelParam.database_version_id: строка года часто остается
     с vid другой версии, хотя EquipmentGroup уже в текущей – иначе Распред
     молча выкидывает станцию из (ved>0).
 
-    oes_code ограничивает поиск той же ОЭС, что и текущий расчёт: иначе
+    oes_code ограничивает поиск той же ОЭС, что и текущий расчет: иначе
     Липецк (oes=2) всплывает на странице Средней Волги (oes=3).
     """
     q = (
@@ -368,7 +368,7 @@ def flash_text_for_composite_energy_level_issues(issues: Sequence[dict]) -> str 
             f"{name}, numb={numb}."
         )
     return (
-        f"Составные станции: у {n} станций энергия не на том уровне учёта"
+        f"Составные станции: у {n} станций энергия не на том уровне учета"
         f"{suffix}."
     )
 

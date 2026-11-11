@@ -73,6 +73,9 @@ def create_app():
     # Обновление шаблонов без перезапуска (только в режиме разработки)
     app.config['TEMPLATES_AUTO_RELOAD'] = app.debug
     app.jinja_env.auto_reload = app.debug
+    from app.common.services.get_services.years.years_get_services import get_reference_years
+
+    app.add_template_global(get_reference_years)
     app.config['SQLALCHEMY_ECHO'] = False
     # Возвращаем JSON в читаемом виде и с порядком полей как задано
     app.config["JSON_AS_ASCII"] = False
@@ -197,6 +200,19 @@ def create_app():
     login_manager.login_message = "Пожалуйста, войдите, чтобы получить доступ к этой странице."
     login_manager.login_message_category = "warning"
     
+    from app.auth.services.user_settings_services import init_user_settings_reset
+    init_user_settings_reset(app)
+    from app.energy_balance.services.energy_balance_change_events import init_energy_balance_change_events
+    from app.energy_consumption.services.data_refresh_services import init_energy_consumption_change_events
+    init_energy_balance_change_events()
+    init_energy_consumption_change_events()
+    from app.power_demand.services.data_refresh_services import init_power_demand_change_events
+    init_power_demand_change_events()
+    from app.electrical_intensity.services.data_refresh_services import init_electrical_intensity_change_events
+    init_electrical_intensity_change_events()
+    from app.common.services.data_refresh_history import init_data_refresh_history
+    init_data_refresh_history(app)
+
     # Инициализация middleware для управления версиями БД (ПЕРВЫМ!)
     from app.common.middleware.database_version_middleware import init_database_version_middleware
     init_database_version_middleware(app)
@@ -207,6 +223,8 @@ def create_app():
     # Лог входа пользователя на каждую HTML-страницу модуля
     from app.logs.services.page_view_logging import init_page_view_logging
     init_page_view_logging(app)
+    from app.energy_consumption.services.consumption_change_logging import init_consumption_change_logging
+    init_consumption_change_logging()
     
     # Инициализация автоматических бэкапов по расписанию
     from app.common.services.scheduled_backup_service import scheduled_backup_service
@@ -306,13 +324,14 @@ def create_app():
         from app.generation.prospective_places.models.gaes import prospective_place_type_gaes_model  # noqa: F401
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import external_mapping
-        importlib.import_module("app.power_demand.models")  # noqa: F401 – без «import app.…», иначе затрём Flask app
+        importlib.import_module("app.power_demand.models")  # noqa: F401 – без «import app.…», иначе затрем Flask app
         importlib.import_module("app.economics.models")  # noqa: F401 – таблицы «Экономика» (gs_ekp)
-        importlib.import_module("app.electrical_intensity.models")  # noqa: F401 – электроёмкость (gs_ei)
+        importlib.import_module("app.electrical_intensity.models")  # noqa: F401 – электроемкость (gs_ei)
         importlib.import_module("app.energy_consumption.models")  # noqa: F401 – таблицы gs_ec
         importlib.import_module("app.energy_balance.models")  # noqa: F401 – таблицы gs_bem
         importlib.import_module("app.territories.models")  # noqa: F401 – таблицы gs_ter
         importlib.import_module("app.ecology.models")  # noqa: F401 – таблицы gs_eco
+        importlib.import_module("app.rational_structure.models")
 
         # Проброс мапперов
         db.configure_mappers()
@@ -548,7 +567,7 @@ def create_app():
             except Exception as e:
                 app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
 
-            # Фоновый импорт сводки потребления – daemon-поток; после рестарта/reloader он мёртв,
+            # Фоновый импорт сводки потребления – daemon-поток; после рестарта/reloader он мертв,
             # а статус в Redis мог остаться «running» (UI зависает на N/M).
             try:
                 from app.energy_consumption.services.energy_consumption_summary_import_jobs import (
@@ -779,6 +798,7 @@ def create_app():
     from app.generation.routes.stations import station_bp
     from app.generation.routes.generation_routes import generation_bp
     from app.generation.routes.rational_structure import rational_structure_bp
+    from app.rational_structure.routes import rational_structure_module_bp
     from app.generation.prospective_places.routes import prospective_places_bp
     from app.fuel.routes import fuel_bp
     from app.generation.routes.station_changes import station_changes_bp
@@ -805,6 +825,7 @@ def create_app():
     app.register_blueprint(generation_bp, url_prefix="/generation")
     app.register_blueprint(station_bp, url_prefix="/generation/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
+    app.register_blueprint(rational_structure_module_bp, url_prefix="/rational_structure")
     app.register_blueprint(prospective_places_bp, url_prefix="/prospective_places")
     app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
     app.register_blueprint(fuel_bp, url_prefix="/fuel")
@@ -843,7 +864,7 @@ def create_app():
     @app.route("/economics/electrical_intensity/", defaults={"subpath": ""})
     @app.route("/economics/electrical_intensity/<path:subpath>")
     def redirect_economics_electrical_intensity_to_demand(subpath=""):
-        """Электроёмкость перенесена в модуль спроса."""
+        """Электроемкость перенесена в модуль спроса."""
         from flask import redirect
 
         if subpath == "formulas" or subpath.startswith("formulas/"):

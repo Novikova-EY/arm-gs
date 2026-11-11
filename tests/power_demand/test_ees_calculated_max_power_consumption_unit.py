@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Расчёт «Расчетное максимальное потребление мощности» для агрегата «ЭЭС России»."""
+"""Расчет «Расчетное максимальное потребление мощности» для агрегата «ЭЭС России»."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def test_ees_without_nt_is_ees_russia_max_plus_raw_eu_max(
 def test_ees_with_nt_adds_nt_subjects_max_power(
     _mock_nt_ids, _mock_south, _mock_eu_ids
 ) -> None:
-    """С НТ: расчёт без НТ + сумма max_power субъектов «Новые территории»."""
+    """С НТ: расчет без НТ + сумма max_power субъектов «Новые территории»."""
     years = [2025]
     without = _ees_aggregate_block(variant="without_nt", label="ЭЭС России без НТ")
     with_nt = _ees_aggregate_block(variant="with_nt", label="ЭЭС России с НТ")

@@ -1,0 +1,344 @@
+[2026-11-02 10:29:22,450] INFO in __init__: Redis connection established successfully
+[2026-11-02 10:29:22,501] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-02 10:29:23,130] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 10:29:23,137] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-02 10:29:23,149] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-02 10:29:23,791] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+[2026-11-02 10:29:23,802] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 0.01s (warmed=0 skipped=6)
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+[2026-11-02 10:29:35,483] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_exchange_config, URL: http://127.0.0.1:5000/api/config
+[2026-11-02 10:29:35,488] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:35] "GET /api/config HTTP/1.1" 200 -
+[2026-11-02 10:29:36,840] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info
+[2026-11-02 10:29:36,843] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:44] "GET /api/datasets/37/gentypes_info HTTP/1.1" 200 -
+[2026-11-02 10:29:45,916] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/generation_machines?year=2024
+[2026-11-02 10:29:45,921] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:46] "GET /api/datasets/37/generation_machines?year=2024 HTTP/1.1" 200 -
+[2026-11-02 10:29:46,787] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info?start_year=2024&end_year=2025
+[2026-11-02 10:29:46,791] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:50] "GET /api/datasets/37/gentypes_info?start_year=2024&end_year=2025 HTTP/1.1" 200 -
+[2026-11-02 10:29:50,511] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info?year=2024
+[2026-11-02 10:29:50,515] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:53] "GET /api/datasets/37/gentypes_info?year=2024 HTTP/1.1" 200 -
+[2026-11-02 10:29:53,773] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info?year=2024
+[2026-11-02 10:29:53,777] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:29:57] "GET /api/datasets/37/gentypes_info?year=2024 HTTP/1.1" 200 -
+[2026-11-02 10:29:57,024] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info?year=2024
+[2026-11-02 10:29:57,028] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:30:00] "GET /api/datasets/37/gentypes_info?year=2024 HTTP/1.1" 200 -
+[2026-11-02 10:45:05,714] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/gentypes_info
+[2026-11-02 10:45:05,756] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:45:08,101] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: exchange_api_bp.get_dataset_by_version, URL: http://127.0.0.1:5000/api/datasets/37/generation_machines
+[2026-11-02 10:45:08,149] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:45:10] "GET /api/datasets/37/generation_machines HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:15] "GET /api/datasets/37/gentypes_info HTTP/1.1" 200 -
+[2026-11-02 10:45:35,302] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.index, URL: http://127.0.0.1:5000/
+[2026-11-02 10:45:35,307] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:35] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:45:37,996] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: ecology_bp.hub, URL: http://127.0.0.1:5000/ecology/
+[2026-11-02 10:45:38,002] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /ecology/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/ecology_formulas.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/ecology/formula_presentation.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:38] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:45:40,404] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: ecology_bp.calculation_summary_index, URL: http://127.0.0.1:5000/ecology/calculation_summary/
+[2026-11-02 10:45:40,409] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /ecology/calculation_summary/ HTTP/1.1" 302 -
+[2026-11-02 10:45:40,484] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: ecology_bp.calculation_summary, URL: http://127.0.0.1:5000/ecology/calculation_summary/vsego/russia/
+[2026-11-02 10:45:40,490] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /ecology/calculation_summary/vsego/russia/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:40] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/css/ecology_formulas.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/ecology/formula_presentation.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/ecology/tes_territory_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/css/ecology_territory_filter.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/common/excel_export_fetch.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:45:41] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:46:15,675] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: ecology_bp.calculation_summary, URL: http://127.0.0.1:5000/ecology/calculation_summary/vsego/russia/?view_year=2026&start_year=2021&end_year=2031
+[2026-11-02 10:46:15,680] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:46:15] "GET /ecology/calculation_summary/vsego/russia/?view_year=2026&start_year=2021&end_year=2031 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/ecology_formulas.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/css/ecology_territory_filter.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/ecology/formula_presentation.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/ecology/tes_territory_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/common/excel_export_fetch.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:16] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:46:19,406] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: ecology_bp.calculation_summary, URL: http://127.0.0.1:5000/ecology/calculation_summary/vsego/russia/?start_year=2021&end_year=2031&rounding_digits=1&coefficient_rounding_digits=0&specific_rounding_digits=1&view_year=2021
+[2026-11-02 10:46:19,412] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /ecology/calculation_summary/vsego/russia/?start_year=2021&end_year=2031&rounding_digits=1&coefficient_rounding_digits=0&specific_rounding_digits=1&view_year=2021 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/ecology_territory_filter.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/js/ecology/formula_presentation.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/js/ecology/tes_territory_filter.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:19] "GET /static/css/ecology_formulas.css?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/js/common/excel_export_fetch.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:46:20] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:48:46] "GET /static/mocks/rational_struct_export_from_java_powers.json HTTP/1.1" 200 -
+[2026-11-02 10:48:55,898] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:48:55,903] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:48:55] "GET /rational_structure/calculated_values/powers HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:48:56] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:49:00,233] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:49:00,238] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:49:00,317] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: powers
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    raise ValueError("API вернул неожиданный набор данных.")
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:49:00] "GET /rational_structure/calculated_values/powers HTTP/1.1" 502 -
+[2026-11-02 10:49:04,661] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:49:04,666] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:49:04] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:05] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:05] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:05] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:49:05] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:49:05,891] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:49:05,895] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:49:05,936] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: technologies
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    raise ValueError("API вернул неожиданный набор данных.")
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:49:05] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 502 -
+[2026-11-02 10:50:45,976] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:50:46,020] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:50:46,074] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: powers
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    definition["dataset"], "v_" + definition["dataset"],
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:50:46] "GET /rational_structure/calculated_values/powers HTTP/1.1" 502 -
+[2026-11-02 10:51:04,359] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:51:04,504] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:51:04] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 302 -
+[2026-11-02 10:51:04,513] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: auth.login, URL: http://127.0.0.1:5000/auth/login?next=/rational_structure/calculated_values/technologies
+[2026-11-02 10:51:04,551] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 10:51:04] "GET /auth/login?next=/rational_structure/calculated_values/technologies HTTP/1.1" 200 -
+[2026-11-02 10:51:38,375] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:51:38,528] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /rational_structure/calculated_values/powers HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:38] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:39] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 10:51:41,006] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:51:41,010] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:51:41] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 10:51:42,845] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:51:42,849] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:51:42,889] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: technologies
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    definition["dataset"], "v_" + definition["dataset"],
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:51:42] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 502 -
+127.0.0.1 - - [02/Nov/2026 10:51:47] "GET /static/mocks/rational_struct_functionals.json HTTP/1.1" 304 -
+[2026-11-02 10:51:47,384] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 10:51:47,390] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:51:47,390] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/static/mocks/rational_struct_functionals.json)
+127.0.0.1 - - [02/Nov/2026 10:51:47] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [02/Nov/2026 10:51:50] "GET /static/mocks/rational_struct_export_from_java_powers.json HTTP/1.1" 200 -
+[2026-11-02 10:52:14,965] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: station_bp.database_versions_v2, URL: http://127.0.0.1:5000/generation/stations/database_versions
+[2026-11-02 10:52:14,969] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /generation/stations/database_versions HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:15] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:52:18,196] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: station_bp.clear_all_caches, URL: http://127.0.0.1:5000/generation/stations/clear_all_caches
+[2026-11-02 10:52:18,201] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:52:18,371] DEBUG in choices_cache_service: [CHOICES_CACHE] Очищен весь кэш
+[2026-11-02 10:52:18,372] DEBUG in choices_cache_service: [CHOICES_CACHE] Очищен весь кэш
+[2026-11-02 10:52:18,372] DEBUG in choices_cache_service: [CHOICES_CACHE] Очищен весь кэш
+[2026-11-02 10:52:18,390] INFO in station_routes: Кэш всех модулей очищен администратором: ['станции / агрегации', 'справочники / территории / энергосистемы', 'сводки нагрузок (power demand)', 'сводки потребления (energy consumption)', 'энергобаланс', 'экономика', 'топливо']
+127.0.0.1 - - [02/Nov/2026 10:52:18] "POST /generation/stations/clear_all_caches HTTP/1.1" 200 -
+[2026-11-02 10:52:23,150] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:52:23,158] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /rational_structure/calculated_values/powers HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:23] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 10:52:25,106] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:52:25,111] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/rational_structure/calculated_values.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:25] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 10:52:32] "GET /static/mocks/rational_struct_export_from_java_powers.json HTTP/1.1" 200 -
+[2026-11-02 10:52:56,653] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/powers
+[2026-11-02 10:52:56,658] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:52:56,722] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: powers
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    definition["dataset"], "v_" + definition["dataset"],
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:52:56] "GET /rational_structure/calculated_values/powers HTTP/1.1" 502 -
+[2026-11-02 10:52:58,653] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: rational_structure_module_bp.calculated_values, URL: http://127.0.0.1:5000/rational_structure/calculated_values/technologies
+[2026-11-02 10:52:58,659] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 10:52:58,701] WARNING in calculated_values_routes: Некорректный ответ API рассчитанных значений: technologies
+Traceback (most recent call last):
+  File "C:\arm_gs\app\rational_structure\routes\calculated_values_routes.py", line 25, in calculated_values
+    result = fetch_calculated_values(dataset_key)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\rational_structure\services\calculated_values_services.py", line 59, in fetch_calculated_values
+    definition["dataset"], "v_" + definition["dataset"],
+ValueError: API вернул неожиданный набор данных.
+127.0.0.1 - - [02/Nov/2026 10:52:58] "GET /rational_structure/calculated_values/technologies HTTP/1.1" 502 -

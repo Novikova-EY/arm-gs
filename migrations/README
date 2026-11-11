@@ -1,1 +1,77 @@
-Single-database configuration for Flask.
+# Migration baseline gs26102702
+
+Active history consists of one revision, `versions/gs26102702_baseline.py`, and
+its immutable SQL snapshot, `baseline/gs26102702.sql`. Both files must be shipped.
+The snapshot was captured from gs_gen on 2026-10-29 (PostgreSQL 15.14 on Astra).
+It creates 14 application schemas, 184 application tables, sequences, indexes,
+constraints, the enum and the compatibility view. Alembic creates its own table.
+
+## Existing deployments
+
+Before replacing the old history, back up the database and verify with the OLD
+release that `flask db current -v` reports exactly `gs26102702` as the only head.
+The new baseline deliberately reuses that revision ID with down_revision=None.
+`flask db upgrade` will not replay the snapshot on an already updated database.
+Do not stamp a database to bypass missing migrations or a schema discrepancy.
+An older database must first be upgraded with the previous release/history.
+
+The .deb deployment script removes stale revision files from versions/. For a
+manual deployment, replace that directory as a unit: do not overlay the new
+baseline on top of old files. In particular, the old
+`gs26102702_add_generation_only_station_origin.py` has the SAME revision ID and
+must not coexist with `gs26102702_baseline.py`. Stop the application while
+replacing files and back up the old release outside migrations/versions/.
+
+## New installations
+
+Create an empty PostgreSQL database owned by the application role, configure
+the application environment, and run `flask db upgrade`. env.py creates the
+authorization schema before Alembic creates gs_auth.alembic_version. Do not run
+create_all or stamp first. Existing application relations without a version
+marker are rejected rather than silently accepted.
+
+This is a SCHEMA snapshot, not a data backup. It does not supply users,
+reference data, historical data transformations or application seed data.
+Load the required initial data separately using the project's import/seed
+procedures. Schemas are the fixed gs_* names of the source database; custom
+schema configurations require their own validated baseline.
+
+## Environment-specific objects excluded from the snapshot
+
+- psql restrict/unrestrict commands and session-wide pg_dump settings;
+- both Alembic version tables (gs_auth and the stale public copy), their
+  comments and primary keys; the active table is managed by Alembic;
+- Astra MAC LABEL / MAC CCR statements and WITH (MACS=FALSE) storage options;
+- postgres_fdw, sipr_srv and its user mapping (external connection configuration).
+
+No foreign tables exist in the supplied dump. These FDW objects are not needed
+for the application schema and could require elevated permissions or expose
+connection details. Configure external integrations separately if needed.
+Astra security policies are an administrator responsibility for a NEW database;
+the baseline does not reproduce the source database's MAC policy. Existing
+server policies and FDW objects are unchanged because the baseline is skipped.
+Search path and SQL settings in the snapshot are transaction-local.
+
+## Archived history and rollback
+
+`legacy_gs26102702.zip` contains all 247 original revision files, byte for byte,
+including the local uncommitted changes present before the squash. It is not
+part of Alembic's active graph. Historical regression tests load files directly
+from the archive. Do not extract the archive into the active versions directory
+alongside the baseline. To recover an old migration path, restore the previous
+release or replace versions/ completely with the archive contents.
+
+Downgrade below the baseline is intentionally blocked. Restore a verified DB
+backup and its matching application release instead. Downgrades of FUTURE
+revisions to gs26102702 remain possible if those revisions implement them.
+New revisions must use down_revision = 'gs26102702' (or the subsequent head).
+
+## Verification
+
+Run `python -m pytest -q tests/test_migration_baseline.py` for static checks.
+For real PostgreSQL tests set MIGRATION_TEST_POSTGRES_URL to a DISPOSABLE test
+server's admin DSN (role with CREATE DATABASE). Tests create/drop uniquely named
+migration_test_* databases, never use the application's .env database, and
+cover empty install, repeated upgrade, an existing head with preserved rows
+and sequences, an old revision, unversioned relations, downgrade protection and
+offline SQL. The source server and its production data are not modified.

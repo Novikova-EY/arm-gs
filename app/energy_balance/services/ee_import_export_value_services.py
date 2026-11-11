@@ -26,7 +26,7 @@ def load_ee_import_export_oes_values(
     version_id: int | None = None,
     years: list[int] | None = None,
 ) -> dict[tuple[int, int, int], Decimal | None]:
-    """Сохранённые значения по ключу (ОЭС, страна, год) для текущей версии БД."""
+    """Сохраненные значения по ключу (ОЭС, страна, год) для текущей версии БД."""
     query = filter_by_explicit_db_version(
         EeImportExportOesValue.query,
         EeImportExportOesValue,

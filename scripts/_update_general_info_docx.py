@@ -26,7 +26,7 @@ GENERAL_BODY = """{
         }
     ]
 }
-Источник: /refdata/ – «Текущий год», расчётный период версии по полям СиПР / Генеральная схема
+Источник: /refdata/ – «Текущий год», расчетный период версии по полям СиПР / Генеральная схема
 (начало = year_sipr_start−2; конец = year_sipr_end для СиПР или 2042 для ГС).
 СиПР и ГС различаются выбором версии БД в /api/database_versions (planning_scheme: sipr|gs),
 а не отдельным API наборов."""
@@ -45,7 +45,7 @@ def main() -> None:
 
     # Update datasets list in API blurb
     for p in doc.paragraphs:
-        if "список имён наборов:" in p.text and "general_info" not in p.text:
+        if "список имен наборов:" in p.text and "general_info" not in p.text:
             p.text = p.text.replace(
                 "gentypes_info, generation_objects",
                 "general_info, gentypes_info, generation_objects",

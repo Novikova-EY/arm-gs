@@ -111,7 +111,7 @@ def client_entity_pagination_config(scope: str) -> dict[str, Any]:
         "default_page_size": DEFAULT_ENTITY_PAGE_SIZE,
         "max_page_size": MAX_ENTITY_PAGE_SIZE,
         "all_page_size": ALL_ENTITY_PAGE_SIZE,
-        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать всё"),
+        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать все"),
     }
 
 
@@ -267,7 +267,7 @@ def paginate_summary_rows_for_scope(
         "has_prev": False,
         "has_next": False,
         "section_titles": [],
-        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать всё"),
+        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать все"),
     }
     if not rows:
         return [], empty_meta
@@ -307,7 +307,7 @@ def paginate_summary_rows_for_scope(
         "has_prev": page > 1,
         "has_next": page < total_pages,
         "section_titles": titles,
-        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать всё"),
+        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать все"),
     }
 
 

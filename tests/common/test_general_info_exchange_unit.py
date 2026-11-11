@@ -2,6 +2,8 @@
 """Юнит-тесты general_info."""
 from types import SimpleNamespace
 
+import pytest
+
 from app.api.services import general_info_exchange_services as svc
 
 STUB_FIELDS = {
@@ -32,23 +34,31 @@ def test_build_general_info_row_sipr(monkeypatch):
     }
 
 
-def test_build_general_info_row_gs(monkeypatch):
-    monkeypatch.setattr(
-        svc,
-        "get_current_year_info",
-        lambda version_id: {"current_year": 2025, "sipr_start": 2026, "sipr_end": 2031},
-    )
+@pytest.mark.parametrize(
+    ("current_year", "expected_end"),
+    [(2025, 2042), (2027, 2042), (2029, 2042), (2030, 2048), (2033, 2048),
+     (2036, 2054), (2023, 0), (0, 0)],
+)
+def test_build_general_info_row_gs(monkeypatch, current_year, expected_end):
     monkeypatch.setattr(
         svc.db,
         "session",
         SimpleNamespace(get=lambda model, pk: SimpleNamespace(version_number="ГС 2023-2042")),
     )
-    monkeypatch.setattr(svc.Config, "END_YEAR_GENERAL_SCHEME", 2042, raising=False)
+    monkeypatch.setattr(
+        svc,
+        "get_current_year_info",
+        lambda version_id: {
+            "current_year": current_year,
+            "sipr_start": current_year + 1,
+            "sipr_end": current_year + 6,
+        },
+    )
     row = svc.build_general_info_row(46)
     assert row == {
-        "Текущий год": 2025,
-        "Начало периода": 2026,
-        "Конец периода": 2042,
+        "Текущий год": current_year,
+        "Начало периода": current_year + 1,
+        "Конец периода": expected_end,
         **STUB_FIELDS,
     }
 

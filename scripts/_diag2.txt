@@ -7,7 +7,7 @@ roundedCorners 0
 plotVisOnly 1
 schemeClr 2
 srgbClr 0
-  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхёър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
+  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхеър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
   ser fragment 2: 
 
 === 14 drawing snippet ===
@@ -21,7 +21,7 @@ roundedCorners 1
 plotVisOnly 1
 schemeClr 2
 srgbClr 0
-  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхёър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln w="9525"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
+  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхеър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln w="9525"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
   ser fragment 2: 
 
 === 15 drawing snippet ===

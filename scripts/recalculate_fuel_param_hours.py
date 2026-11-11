@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Пересчёт H = E/NUST·1000 в gs_fue_equipment_group_fuel_param.
+Пересчет H = E/NUST·1000 в gs_fue_equipment_group_fuel_param.
 
 Access calce: If NUST>0 Then H = E/NUST*1000.
 Пишет только там, где есть e и nust>0. Уже совпадающие значения не трогает.
@@ -45,7 +45,7 @@ WHERE nust IS NOT NULL AND nust > 0 AND e IS NOT NULL
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Пересчёт H = E/NUST·1000")
+    parser = argparse.ArgumentParser(description="Пересчет H = E/NUST·1000")
     parser.add_argument("--dry-run", action="store_true", help="Только посчитать, не писать")
     args = parser.parse_args()
 

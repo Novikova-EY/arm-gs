@@ -1,0 +1,1287 @@
+[2026-11-02 14:34:18,286] INFO in __init__: Redis connection established successfully
+[2026-11-02 14:34:18,346] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-02 14:34:18,982] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 14:34:18,986] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-02 14:34:18,996] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-02 14:34:19,696] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+[2026-11-02 14:34:22,364] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 2.67s (warmed=6 skipped=0)
+[2026-11-02 14:34:23,576] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/users/1/reset-settings
+[2026-11-02 14:34:23,585] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+[2026-11-02 14:34:23,585] ERROR in __init__: ============================================================
+[2026-11-02 14:34:23,585] ERROR in __init__: Unhandled Exception: MethodNotAllowed
+[2026-11-02 14:34:23,585] ERROR in __init__: Message: 405 Method Not Allowed: The method is not allowed for the requested URL.
+[2026-11-02 14:34:23,585] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/users/1/reset-settings
+[2026-11-02 14:34:23,585] ERROR in __init__: Traceback:
+[2026-11-02 14:34:23,586] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 891, in dispatch_request
+    self.raise_routing_exception(req)
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 500, in raise_routing_exception
+    raise request.routing_exception  # type: ignore[misc]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\ctx.py", line 362, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 624, in match
+    raise MethodNotAllowed(valid_methods=list(e.have_match_for)) from None
+werkzeug.exceptions.MethodNotAllowed: 405 Method Not Allowed: The method is not allowed for the requested URL.
+
+[2026-11-02 14:34:23,586] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:34:23] "GET /users/1/reset-settings HTTP/1.1" 405 -
+[2026-11-02 14:34:23,616] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: users_bp.reset_settings, URL: http://127.0.0.1:5000/users/1/reset-settings
+[2026-11-02 14:34:23,616] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 14:34:23] "POST /users/1/reset-settings HTTP/1.1" 302 -
+[2026-11-02 14:34:23,633] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: auth.login, URL: http://127.0.0.1:5000/auth/login?next=/users/1/reset-settings
+[2026-11-02 14:34:23,636] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 14:34:23] "GET /auth/login?next=/users/1/reset-settings HTTP/1.1" 200 -
+[2026-11-02 14:34:37,668] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:34:37,682] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/energy_consumption_live_save.css?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/energy_consumption/demand_summary_entity_borders.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/css/energy_consumption_summary_entity_borders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/energy_consumption/demand_summary_excel_import.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/energy_consumption/demand_summary_client_render.js?v=6 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/energy_consumption/demand_summary_year_period_mode.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/power_demand/demand_summary_row_paste.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/energy_consumption/demand_summary_oes_cascade.js HTTP/1.1" 200 -
+[2026-11-02 14:34:38,667] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes_data, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/data.json?pd_page_size=0&rounding_digits=0&pd_ec_gaes=1&pd_ec_nt=1&pd_ec_compact=1
+[2026-11-02 14:34:38,676] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:38] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:34:43] "GET /energy_consumption/summary/oes/data.json?pd_page_size=0&rounding_digits=0&pd_ec_gaes=1&pd_ec_nt=1&pd_ec_compact=1 HTTP/1.1" 200 -
+[2026-11-02 14:35:00,224] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: users_bp.list_users, URL: http://127.0.0.1:5000/users
+[2026-11-02 14:35:00,227] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /users HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:35:00] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+[2026-11-02 14:37:36,722] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:37:36,733] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:37:36] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/energy_consumption_live_save.css?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/css/energy_consumption_summary_entity_borders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/energy_consumption/demand_summary_entity_borders.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/energy_consumption/demand_summary_year_period_mode.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/energy_consumption/demand_summary_excel_import.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/energy_consumption/demand_summary_client_render.js?v=6 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/power_demand/demand_summary_row_paste.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/energy_consumption/demand_summary_oes_cascade.js HTTP/1.1" 200 -
+[2026-11-02 14:37:37,372] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes_data, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/data.json?pd_page_size=0&rounding_digits=0&pd_ec_gaes=1&pd_ec_nt=1&pd_ec_compact=1
+[2026-11-02 14:37:37,379] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /energy_consumption/summary/oes/data.json?pd_page_size=0&rounding_digits=0&pd_ec_gaes=1&pd_ec_nt=1&pd_ec_compact=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:37:37] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 14:43:29,908] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.hub, URL: http://127.0.0.1:5000/energy_balance/
+[2026-11-02 14:43:29,911] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /energy_balance/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:43:30] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 14:43:31,743] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.ee_balance_table, URL: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 14:43:31,751] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:43:38,000] ERROR in __init__: ============================================================
+[2026-11-02 14:43:38,003] ERROR in __init__: Unhandled Exception: TypeError
+[2026-11-02 14:43:38,004] ERROR in __init__: Message: 'str' object is not callable
+[2026-11-02 14:43:38,004] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 14:43:38,004] ERROR in __init__: Traceback:
+[2026-11-02 14:43:38,006] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_balance\routes\ee_balance_routes.py", line 553, in ee_balance_table
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_balance\ee_balance\ee_balance_table.html", line 1, in top-level template code
+    {% extends 'base.html' %} {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\base.html", line 138, in top-level template code
+    {% include 'energy_balance/_data_refresh.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_balance\_data_refresh.html", line 2, in top-level template code
+    data-csrf-token="{{ csrf_token() }}">
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'str' object is not callable
+
+[2026-11-02 14:43:38,006] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:43:38] "GET /energy_balance/ee_balance/ees-rossii/ HTTP/1.1" 500 -
+[2026-11-02 14:43:38,094] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:43:38,097] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:43:38,098] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/)
+127.0.0.1 - - [02/Nov/2026 14:43:38] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 14:44:53,585] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:44:53,590] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:44:54,040] ERROR in __init__: ============================================================
+[2026-11-02 14:44:54,041] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:44:54,072] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:44:54,072] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:44:54,072] ERROR in __init__: Traceback:
+[2026-11-02 14:44:54,072] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:44:54,072] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:44:54] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:45:27,059] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.ee_balance_table, URL: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 14:45:27,061] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /energy_balance/ee_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/energy_balance/data_refresh.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+[2026-11-02 14:45:30,723] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:45:30,726] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:45:30] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 14:45:50,679] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:45:50,684] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:45:50] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:10,676] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:10,685] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:10] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:30,038] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:30,042] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:30] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:30,241] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:30,244] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:30,708] ERROR in __init__: ============================================================
+[2026-11-02 14:46:30,709] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:46:30,746] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:46:30,747] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:30,747] ERROR in __init__: Traceback:
+[2026-11-02 14:46:30,750] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:46:30,751] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:46:30] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:46:30,823] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:46:30,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:30,827] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 14:46:30] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 14:46:32,448] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:32,452] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:32,569] ERROR in __init__: ============================================================
+[2026-11-02 14:46:32,569] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:46:32,604] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:46:32,604] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:32,604] ERROR in __init__: Traceback:
+[2026-11-02 14:46:32,604] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:46:32,604] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:46:32] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:46:33,894] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:33,894] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:33,994] ERROR in __init__: ============================================================
+[2026-11-02 14:46:33,994] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:46:34,024] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:46:34,029] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:34,029] ERROR in __init__: Traceback:
+[2026-11-02 14:46:34,029] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:46:34,029] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:46:34] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:46:34,110] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:46:34,113] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:34,113] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 14:46:34] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 14:46:35,811] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:35,814] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:35,904] ERROR in __init__: ============================================================
+[2026-11-02 14:46:35,904] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:46:35,937] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:46:35,937] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:46:35,937] ERROR in __init__: Traceback:
+[2026-11-02 14:46:35,937] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:46:35,937] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:46:35] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:46:36,027] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:46:36,030] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:46:36,031] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 14:46:36] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 14:46:43,676] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:43,682] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:43] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:50,685] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:50,685] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:50] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:52,036] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:52,043] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:52] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:54,698] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.power_balance_table, URL: http://127.0.0.1:5000/energy_balance/power_balance/ees-rossii/
+[2026-11-02 14:46:54,707] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /energy_balance/power_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/energy_balance/data_refresh.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 14:46:55,885] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:55,890] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:55] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:46:57,963] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:46:57,967] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:46:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:47:10,685] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:47:10,690] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:47:10] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:47:30,675] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:47:30,684] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:47:30] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:47:49,763] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:47:49,773] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:47:49] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:47:50,286] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:47:50,286] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:47:50,386] ERROR in __init__: ============================================================
+[2026-11-02 14:47:50,386] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:47:50,416] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:47:50,416] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:47:50,416] ERROR in __init__: Traceback:
+[2026-11-02 14:47:50,416] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:47:50,416] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:47:50] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:47:50,504] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:47:50,506] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:47:50,507] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 14:47:50] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 14:50:12,231] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:50:12,235] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:12] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:50:12,648] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.ee_balance_table, URL: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 14:50:12,651] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /energy_balance/ee_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/js/energy_balance/data_refresh.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+[2026-11-02 14:50:18,850] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:50:18,850] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:50:23,620] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:50:23,620] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:23] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:50:24,091] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.power_balance_table, URL: http://127.0.0.1:5000/energy_balance/power_balance/ees-rossii/
+[2026-11-02 14:50:24,094] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /energy_balance/power_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:24] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/js/energy_balance/data_refresh.js?v=1 HTTP/1.1" 200 -
+[2026-11-02 14:50:25,171] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:50:25,182] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:50:25] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:50:29,948] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:50:29,952] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:50:30,047] ERROR in __init__: ============================================================
+[2026-11-02 14:50:30,048] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:50:30,081] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:50:30,081] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:50:30,081] ERROR in __init__: Traceback:
+[2026-11-02 14:50:30,083] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    offset=offset,
+       ^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:50:30,083] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:50:30] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:51:30,370] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:51:30,377] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:51:30] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:51:38,821] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:51:38,825] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:51:38] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:51:58,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:51:58,832] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:51:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:52:18,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:52:18,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:52:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:52:38,809] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:52:38,809] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:52:38] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:52:58,816] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:52:58,816] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:52:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:53:18,821] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:53:18,821] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:53:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:53:38,817] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:53:38,822] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:53:38] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:53:58,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:53:58,828] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:53:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:54:18,827] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:54:18,827] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:54:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:54:38,826] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:54:38,828] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:54:38] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:54:58,868] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:54:58,870] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:54:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:55:18,853] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:55:18,858] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:55:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:55:38,968] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:55:38,968] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:55:39] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:55:58,978] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:55:58,983] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:55:59] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:56:18,861] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:56:18,861] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:56:18] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:56:38,872] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:56:38,875] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:56:38] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:56:58,829] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:56:58,835] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:56:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:57:09,547] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:57:09,554] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:57:09] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 14:57:10,300] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.ee_balance_table, URL: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 14:57:10,307] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /energy_balance/ee_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/energy_balance/data_refresh.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+[2026-11-02 14:57:13,848] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 14:57:13,850] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 14:57:13] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 14:57:17,200] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:57:17,203] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:57:17,300] ERROR in __init__: ============================================================
+[2026-11-02 14:57:17,301] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 14:57:17,334] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 14:57:17,335] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 14:57:17,335] ERROR in __init__: Traceback:
+[2026-11-02 14:57:17,337] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 14:57:17,337] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 14:57:17] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 14:57:17,419] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 14:57:17,422] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 14:57:17,422] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 14:57:17] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 15:06:24,281] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:06:24,283] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:06:24,559] ERROR in __init__: ============================================================
+[2026-11-02 15:06:24,562] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 15:06:24,589] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 15:06:24,589] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:06:24,597] ERROR in __init__: Traceback:
+[2026-11-02 15:06:24,598] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 15:06:24,598] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 15:06:24] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 15:06:26,462] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:06:26,469] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:06:26] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:06:33,919] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:06:33,924] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:06:33] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:06:53,927] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:06:53,927] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:06:53] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:06:58,827] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:06:58,835] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:06:58,841] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:06:58,846] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:06:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:06:58] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:07:04,684] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.power_balance_table, URL: http://127.0.0.1:5000/energy_balance/power_balance/ees-rossii/
+[2026-11-02 15:07:04,686] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:07:05,271] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:05,277] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /energy_balance/power_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:05] "GET /static/js/energy_balance/data_refresh.js?v=2 HTTP/1.1" 200 -
+[2026-11-02 15:07:06,211] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:06,219] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:06] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:07:06] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 15:07:09,035] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:09,039] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:09] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:07:13,895] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:13,895] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:13] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:07:33,901] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:33,901] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:33] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:07:53,905] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:07:53,913] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:07:53] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:08:09,264] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:08:09,270] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:08:09] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:08:13,907] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:08:13,915] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:08:13] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:08:33,908] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:08:33,917] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:08:33] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:08:53,911] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:08:53,915] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:08:53] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:09:13,914] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:09:13,922] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:09:13] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:09:33,915] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:09:33,915] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:09:33] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:09:53,918] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:09:53,919] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:09:53] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:09:57,501] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:09:57,508] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:09:57] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:11:34,466] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_save_cell, URL: http://127.0.0.1:5000/energy_consumption/summary/cell
+[2026-11-02 15:11:34,619] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [02/Nov/2026 15:11:34] "OPTIONS /energy_consumption/summary/cell HTTP/1.1" 200 -
+[2026-11-02 15:11:34,634] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/energy_consumption/summary/note
+[2026-11-02 15:11:34,676] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+[2026-11-02 15:11:34,677] WARNING in __init__: 404 Not Found: OPTIONS http://127.0.0.1:5000/energy_consumption/summary/note (Referer: (none))
+127.0.0.1 - - [02/Nov/2026 15:11:34] "OPTIONS /energy_consumption/summary/note HTTP/1.1" 404 -
+[2026-11-02 15:13:09,406] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:13:09,412] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:13:09] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:13:10,656] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:13:10,660] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:13:10,952] ERROR in __init__: ============================================================
+[2026-11-02 15:13:10,952] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 15:13:10,987] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 15:13:10,987] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:13:10,987] ERROR in __init__: Traceback:
+[2026-11-02 15:13:10,990] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 15:13:10,991] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 15:13:11] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 15:13:11,200] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 15:13:11,206] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:13:11,207] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 15:13:11] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 15:13:16,458] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:13:16,464] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:13:16,574] ERROR in __init__: ============================================================
+[2026-11-02 15:13:16,575] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 15:13:16,611] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 15:13:16,611] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0
+[2026-11-02 15:13:16,611] ERROR in __init__: Traceback:
+[2026-11-02 15:13:16,612] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 15:13:16,612] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 15:13:16] "GET /energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0 HTTP/1.1" 500 -
+[2026-11-02 15:13:16,687] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 15:13:16,690] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:13:16,690] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=0&rounding_digits=0)
+127.0.0.1 - - [02/Nov/2026 15:13:16] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-11-02 15:13:21,905] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: start.index, URL: http://127.0.0.1:5000/
+[2026-11-02 15:13:21,909] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:13:21] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:22] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+[2026-11-02 15:13:23,233] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.hub, URL: http://127.0.0.1:5000/energy_consumption/
+[2026-11-02 15:13:23,237] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /energy_consumption/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/energy_consumption_live_save.css?v=4 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/energy_consumption/consumption_live_save.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:13:23] "GET /static/js/energy_consumption/summary_row_notes.js?v=1 HTTP/1.1" 200 -
+[2026-11-02 15:13:24,545] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/
+[2026-11-02 15:13:24,551] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:13:24,744] ERROR in __init__: ============================================================
+[2026-11-02 15:13:24,745] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 15:13:24,780] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 15:13:24,781] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/
+[2026-11-02 15:13:24,781] ERROR in __init__: Traceback:
+[2026-11-02 15:13:24,782] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 15:13:24,783] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 15:13:24] "GET /energy_consumption/summary/oes/ HTTP/1.1" 500 -
+[2026-11-02 15:14:54,943] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:14:54,950] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:14:54] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:14:55,876] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.ee_balance_table, URL: http://127.0.0.1:5000/energy_balance/ee_balance/ees-rossii/
+[2026-11-02 15:14:55,879] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:15:01] "GET /energy_balance/ee_balance/ees-rossii/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/energy_balance_table_typography.css?v=11 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/js/energy_balance/data_refresh.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+[2026-11-02 15:15:02,480] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:15:02,482] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+127.0.0.1 - - [02/Nov/2026 15:15:02] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -
+[2026-11-02 15:15:03,831] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-02 15:15:03,833] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [02/Nov/2026 15:15:03] "GET /energy_balance/data-revision/ HTTP/1.1" 200 -
+[2026-11-02 15:15:07,585] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/
+[2026-11-02 15:15:07,588] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:15:07,687] ERROR in __init__: ============================================================
+[2026-11-02 15:15:07,687] ERROR in __init__: Unhandled Exception: BuildError
+[2026-11-02 15:15:07,722] ERROR in __init__: Message: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+[2026-11-02 15:15:07,722] ERROR in __init__: Request URL: GET http://127.0.0.1:5000/energy_consumption/summary/oes/
+[2026-11-02 15:15:07,722] ERROR in __init__: Traceback:
+[2026-11-02 15:15:07,722] ERROR in __init__: Traceback (most recent call last):
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 1071, in demand_summary_oes
+    return jsonify(
+           ^^^^^^^^^
+  File "C:\arm_gs\app\energy_consumption\routes\energy_consumption_summary_routes.py", line 118, in _render_ec_summary_page
+    return render_template(template, **finalize_ec_summary_page_context(context))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "C:\arm_gs\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 1, in top-level template code
+    {% extends 'base.html' %}
+  File "C:\arm_gs\app\templates\base.html", line 140, in top-level template code
+    {% block content %}
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes.html", line 6, in block 'content'
+    {% include 'energy_consumption/pages/summary_oes_body.html' %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\app\templates\energy_consumption\pages\summary_oes_body.html", line 835, in top-level template code
+    data-note-save-url="{{ url_for('energy_consumption_bp.demand_summary_save_note') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\arm_gs\.venv\Lib\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'energy_consumption_bp.demand_summary_save_note'. Did you mean 'energy_consumption_bp.demand_summary_save_cell' instead?
+
+[2026-11-02 15:15:07,722] ERROR in __init__: ============================================================
+127.0.0.1 - - [02/Nov/2026 15:15:07] "GET /energy_consumption/summary/oes/ HTTP/1.1" 500 -
+[2026-11-02 15:15:07,803] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/favicon.ico
+[2026-11-02 15:15:07,806] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+[2026-11-02 15:15:07,806] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/favicon.ico (Referer: http://127.0.0.1:5000/energy_consumption/summary/oes/)
+127.0.0.1 - - [02/Nov/2026 15:15:07] "GET /favicon.ico HTTP/1.1" 404 -

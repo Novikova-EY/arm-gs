@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Маршруты расчёта по новым ТЭС."""
+"""Маршруты расчета по новым ТЭС."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 from app.common.services.help_services import parse_decimal_from_display
 from app.ecology.routes.ecology_bp import ecology_bp
 from app.ecology.services.ecology_logging_services import (
+    capacity_label,
     context_lines,
     log_page_visit,
 )
@@ -76,6 +77,7 @@ def new_tes_table(territory_slug: str, sheet_slug: str):
             ("территория", (context.get("territory") or {}).get("sheet_name")),
             ("период", f"{context.get('start_year')}–{context.get('end_year')}"),
             ("год", context.get("view_year")),
+            ("мощность", capacity_label(context.get("capacity_class"))),
         ),
     )
     context["can_edit"] = bool(

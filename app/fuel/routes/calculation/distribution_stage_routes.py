@@ -268,7 +268,7 @@ def run_distribution_stage():
                 return jsonify(
                     {
                         "type": "error",
-                        "message": "Живая таблица ограничений доступна при включённой галочке.",
+                        "message": "Живая таблица ограничений доступна при включенной галочке.",
                     }
                 ), 400
             db.session.commit()

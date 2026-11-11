@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.energy_balance.services import ee_generation_hierarchy_control_services as hierarchy_control_services
 from app.energy_balance.services import station_ee_generation_page_services as page_services
 from app.energy_balance.services.station_ee_generation_page_services import (
     EE_PERIOD_MODE_MONTHS,
@@ -29,6 +30,9 @@ from app.generation.models.station.station_constants import (
 )
 
 
+_REAL_RESOLVE_STATION_PLACEMENT = page_services._resolve_station_placement
+
+
 def _station(station_id: int, *, station_sign=None, sa_id=7):
     return SimpleNamespace(
         id=station_id,
@@ -39,7 +43,7 @@ def _station(station_id: int, *, station_sign=None, sa_id=7):
 
 @pytest.fixture(autouse=True)
 def _mock_station_placement(monkeypatch):
-    def _placement(station):
+    def _placement(station, **kwargs):
         return (1, 10, 5, 100, 0)
 
     monkeypatch.setattr(page_services, "_resolve_station_placement", _placement)
@@ -81,6 +85,73 @@ def test_build_generation_aggregates_sums_all_stations_regardless_of_sign():
     assert aggregates["regional_energy_systems"][5][2024] == Decimal("140")
     assert aggregates["union_energy_systems"][10][2024] == Decimal("140")
     assert aggregates["energy_system_types"][1][2024] == Decimal("140")
+
+
+def test_energy_system_type_filter_controls_hierarchy_and_type_aggregates(monkeypatch):
+    union = SimpleNamespace(id=309, id_energy_system_type=161)
+    res = SimpleNamespace(id=2027, name="не указано", union_energy_system=union)
+    station = SimpleNamespace(
+        id=501,
+        name="Тестовая станция",
+        station_sign=None,
+        is_generation_only=False,
+        regional_district=SimpleNamespace(
+            id=20,
+            id_synchronous_area=7,
+            regional_energy_systems=[res],
+        ),
+        id_regional_district=20,
+        id_energy_unit=None,
+        id_regional_energy_system=res.id,
+        regional_energy_system_obj=res,
+        energy_unit=None,
+        station_type=None,
+        machines=[],
+        kto=None,
+    )
+    monkeypatch.setattr(
+        page_services, "_resolve_station_placement", _REAL_RESOLVE_STATION_PLACEMENT
+    )
+    monkeypatch.setattr(page_services, "is_current_version", lambda row: True)
+    monkeypatch.setattr(page_services, "get_decentralized_zone_energy_system_type_id", lambda: 164)
+    monkeypatch.setattr(
+        page_services,
+        "get_energy_system_type_map",
+        lambda: {161: "не указано", 164: "Децентрализованная зона"},
+    )
+    monkeypatch.setattr(
+        page_services, "get_union_energy_systems_map", lambda: {309: "не указано"}
+    )
+    monkeypatch.setattr(page_services, "get_union_energy_system_display_order_map", lambda: {})
+    monkeypatch.setattr(
+        page_services, "get_regional_energy_systems_name_map", lambda: {2027: "не указано"}
+    )
+    monkeypatch.setattr(page_services, "get_regional_districts_map", lambda: {20: "Тестовый регион"})
+    monkeypatch.setattr(page_services, "format_station_machine_attributes", lambda station: {})
+
+    dz_hierarchy = page_services.build_station_ee_generation_hierarchy(
+        [station], {}, [], energy_system_type_filter=[164]
+    )
+    unspecified_hierarchy = page_services.build_station_ee_generation_hierarchy(
+        [station], {}, [], energy_system_type_filter=[161]
+    )
+    dz_aggregates = build_generation_aggregates(
+        [station], {station.id: {2024: Decimal("10")}}, energy_system_type_filter=[164]
+    )
+    unspecified_aggregates = build_generation_aggregates(
+        [station], {station.id: {2024: Decimal("10")}}, energy_system_type_filter=[161]
+    )
+
+    assert (dz_hierarchy[0]["est_id"], dz_hierarchy[0]["est_name"]) == (
+        164,
+        "Децентрализованная зона",
+    )
+    assert (
+        unspecified_hierarchy[0]["est_id"],
+        unspecified_hierarchy[0]["est_name"],
+    ) == (161, "не указано")
+    assert dz_aggregates["energy_system_types"][164][2024] == Decimal("10")
+    assert unspecified_aggregates["energy_system_types"][161][2024] == Decimal("10")
 
 
 def test_build_generation_aggregates_sums_synchronous_areas():
@@ -289,7 +360,13 @@ def test_build_sign_groups_merges_espp_svod_through_2018_only():
     assert [row["station_name"] for row in espp_group["stations"]] == ["ЭСПП-А", "ЭСПП-Б"]
 
 
-def test_show_totals_uses_station_list_pagination(monkeypatch):
+@pytest.mark.parametrize(
+    ("requested_page", "selected_type_id", "expected_type_headers"),
+    [(1, 161, {161}), (2, 161, set()), (1, 164, {164}), (2, 164, set())],
+)
+def test_show_totals_uses_station_list_pagination_and_selected_type_headers(
+    monkeypatch, requested_page, selected_type_id, expected_type_headers
+):
     """При show_totals пагинация и next_station_info берутся из get_stations_list, как на station_list."""
     page_station = SimpleNamespace(id=1)
     next_info = {"union_energy_system_id": 10, "regional_energy_system_id": 5}
@@ -336,9 +413,9 @@ def test_show_totals_uses_station_list_pagination(monkeypatch):
     monkeypatch.setattr(page_services, "build_res_show_rd_level_map", lambda filters: {})
     monkeypatch.setattr(page_services, "get_cached_page_position", lambda *args, **kwargs: (None, None))
 
-    page_services.get_station_ee_generation_page_data(
-        filters={},
-        page=2,
+    result = page_services.get_station_ee_generation_page_data(
+        filters={"energy_system_type_filter": [selected_type_id]},
+        page=requested_page,
         rounding_digits=1,
         start_year=2024,
         end_year=2024,
@@ -346,6 +423,73 @@ def test_show_totals_uses_station_list_pagination(monkeypatch):
         show_totals=True,
     )
 
-    assert captured["page"] == 2
+    assert captured["page"] == requested_page
     assert captured["per_page"] == 50
     assert captured["next_station_info"] == next_info
+    assert result["show_headers"]["energy_system_types"] == expected_type_headers
+
+
+def test_page_data_builds_decentralized_zone_control_and_verification(monkeypatch):
+    station = SimpleNamespace(id=501)
+    monkeypatch.setattr(
+        page_services,
+        "get_stations_list",
+        lambda **kwargs: {
+            "stations": [station],
+            "total_count": 1,
+            "effective_total_pages": 1,
+            "next_station_info": None,
+        },
+    )
+    monkeypatch.setattr(page_services, "ensure_stations_machines_for_display", lambda stations: None)
+    monkeypatch.setattr(page_services, "load_annual_generation_by_station", lambda *args: {})
+    monkeypatch.setattr(page_services, "load_annual_res_control_generation_by_res", lambda *args: {})
+    monkeypatch.setattr(page_services, "load_annual_espp_generation_by_res", lambda *args: {})
+    monkeypatch.setattr(page_services, "build_station_ee_generation_hierarchy", lambda *args, **kwargs: [])
+    monkeypatch.setattr(page_services, "determine_first_headers", lambda *args: {})
+    monkeypatch.setattr(page_services, "get_cached_page_position", lambda *args: (None, None))
+    monkeypatch.setattr(
+        page_services,
+        "determine_totals_to_show",
+        lambda *args, **kwargs: {
+            "energy_units": {},
+            "regional_districts": {},
+            "regional_energy_systems": {},
+            "union_energy_systems": {},
+            "energy_system_types": {},
+            "total": True,
+            "aggregate_full_dataset": True,
+            "decentralized_zone": True,
+            "decentralized_zone_est_id": 164,
+        },
+    )
+    monkeypatch.setattr(page_services, "get_station_ids_for_aggregation", lambda *args: [station.id])
+    monkeypatch.setattr(page_services, "_load_stations_for_aggregation", lambda ids: [station])
+    monkeypatch.setattr(
+        page_services,
+        "build_generation_aggregates",
+        lambda *args, **kwargs: {"energy_system_types": {164: {2024: Decimal("12")}}},
+    )
+    monkeypatch.setattr(page_services, "build_stations_sum_by_res", lambda *args, **kwargs: {})
+    monkeypatch.setattr(page_services, "build_res_verification_left_by_res", lambda *args, **kwargs: {})
+    monkeypatch.setattr(page_services, "get_decentralized_zone_energy_system_type_id", lambda: 164)
+    monkeypatch.setattr(
+        hierarchy_control_services,
+        "load_hierarchy_control_generation",
+        lambda *args, **kwargs: {"est": {164: {2024: Decimal("10")}}},
+    )
+    monkeypatch.setattr(page_services, "build_res_show_rd_level_map", lambda filters: {})
+
+    page_data = page_services.get_station_ee_generation_page_data(
+        filters={"energy_system_type_filter": [164]},
+        page=1,
+        rounding_digits=1,
+        start_year=2024,
+        end_year=2024,
+        per_page=50,
+        show_totals=True,
+    )
+
+    assert page_data["decentralized_zone_control_by_period"] == {2024: Decimal("10")}
+    assert page_data["decentralized_zone_station_sum_by_period"] == {2024: Decimal("12")}
+    assert page_data["decentralized_zone_verification_by_period"] == {2024: Decimal("2")}

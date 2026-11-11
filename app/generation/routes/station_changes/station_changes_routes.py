@@ -133,7 +133,7 @@ def station_changes_list():
         if isinstance(data, dict):
             data["database_version_id"] = current_db_version_id
 
-        # В кэш экспорта кладём полную иерархию (без пагинации страницы)
+        # В кэш экспорта кладем полную иерархию (без пагинации страницы)
         export_data = data
         if isinstance(data, dict) and data.get("stations_grouped_all") is not None:
             export_data = dict(data)
@@ -399,7 +399,7 @@ def station_changes_list_export_pril_2_russia():
             pass
 
     # Для «Приложение 2 (Россия)» выгрузка должна быть независимой от фильтров на странице:
-    # всегда выгружаем по всей РФ. Режим факт/план берём с текущей страницы.
+    # всегда выгружаем по всей РФ. Режим факт/план берем с текущей страницы.
     filters = {"changes_mode": _resolve_changes_mode_from_request()}
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -410,7 +410,7 @@ def station_changes_list_export_pril_2_russia():
 
     start_year = _clamp_export_start_year(request.args.get('start_year', get_filter_start_year()))
     end_year = int(request.args.get('end_year', get_filter_end_year()))
-    # Форма «Приложение 2» всегда с итогами, как утверждённый файл.
+    # Форма «Приложение 2» всегда с итогами, как утвержденный файл.
     show_totals = True
 
     from app.common.services.database_version_filter import get_current_db_version_id

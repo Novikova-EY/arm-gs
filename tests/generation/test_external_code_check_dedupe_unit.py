@@ -159,7 +159,7 @@ def test_filter_stations_by_company_compatibility():
 
 
 def test_codes_by_version_prefers_anchor_over_same_name_sibling():
-    """Одноимённая СЭС с другим UUID не должна перебивать код искомой записи."""
+    """Одноименная СЭС с другим UUID не должна перебивать код искомой записи."""
     sibling = SimpleNamespace(
         id=7377,
         database_version_id=20,
@@ -208,6 +208,50 @@ def test_codes_by_version_identity_only_family_hides_name_siblings():
     assert record_ids[20] == 7398
     assert codes[7] == ""
     assert codes[22] == ""
+
+
+def test_uuid_search_collapses_station_versions_without_matching_by_name(monkeypatch):
+    rows = [
+        (7524, "station-code", 20, 7, 49),
+        (29560, "station-code", 37, 7, 49),
+        (30000, "other-code", 37, 7, 49),
+    ]
+    monkeypatch.setattr(svc, "_station_company_keys_batch", lambda ids: {})
+
+    def unexpected_name_lookup(*args, **kwargs):
+        raise AssertionError("UUID search must not merge stations by name")
+
+    monkeypatch.setattr(svc, "_station_families_for_dedupe_batch", unexpected_name_lookup)
+    assert svc.dedupe_station_ids_from_rows(
+        rows, preferred_version_id=37, identity_code_only=True,
+    ) == [29560, 30000]
+
+
+def test_uuid_search_preserves_all_stations_with_ambiguous_same_version_code(monkeypatch):
+    rows = [
+        (101, "shared-code", 20, 7, 49),
+        (102, "shared-code", 20, 7, 49),
+        (201, "shared-code", 37, 7, 49),
+        (201, "shared-code", 37, 7, 49),
+    ]
+    monkeypatch.setattr(svc, "_station_company_keys_batch", lambda ids: {})
+    assert svc.dedupe_station_ids_from_rows(
+        rows, preferred_version_id=37, identity_code_only=True,
+    ) == [101, 102, 201]
+
+
+def test_uuid_search_does_not_treat_repeated_query_row_as_database_duplicate(monkeypatch):
+    rows = [
+        (101, "shared-code", 20, 7, 49),
+        (101, "shared-code", 20, 7, 49),
+        (201, "shared-code", 37, 7, 49),
+        (301, "", 37, 7, 49),
+        (302, "", 20, 7, 49),
+    ]
+    monkeypatch.setattr(svc, "_station_company_keys_batch", lambda ids: {})
+    assert svc.dedupe_station_ids_from_rows(
+        rows, preferred_version_id=37, identity_code_only=True,
+    ) == [201, 301, 302]
 
 
 def test_uuid_filter_keeps_matching_machines_only():

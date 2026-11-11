@@ -102,7 +102,7 @@ def is_admin_user(user) -> bool:
 
 
 def identity_columns_for(user) -> list[tuple[str, str, bool]]:
-    """Столбцы-идентификаторы страницы с учётом прав пользователя."""
+    """Столбцы-идентификаторы страницы с учетом прав пользователя."""
     if is_admin_user(user):
         return list(IDENTITY_COLUMNS)
     return [
@@ -112,13 +112,29 @@ def identity_columns_for(user) -> list[tuple[str, str, bool]]:
     ]
 
 
+ECOLOGY_EDIT_ROLE_NAMES = frozenset({
+    "admin",
+    "экология-админ",
+    "экология-редактор",
+    "ecology-admin",
+    "ecology-editor",
+    "ecology_admin",
+    "ecology_editor",
+})
+
+
 def can_edit_ecology(user) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    if getattr(user, "has_admin", False):
-        return True
-    names = [str(n or "") for n in (getattr(user, "role_names", None) or [])]
-    return any("ecology" in n.lower() for n in names)
+
+    names = {
+        str(name or "").strip().casefold()
+        for name in (getattr(user, "role_names", None) or [])
+    }
+    for role in (getattr(user, "roles", None) or []):
+        names.add(str(getattr(role, "name", "") or "").strip().casefold())
+        names.add(str(getattr(role, "name_full", "") or "").strip().casefold())
+    return bool(names & ECOLOGY_EDIT_ROLE_NAMES)
 
 
 def _parse_year(raw, fallback: int | None) -> int | None:
@@ -349,7 +365,7 @@ def station_types_by_equipment_group(
     """Тип станции по VED за год: equipment_group_id -> подпись.
 
     Своя строка «Топливо» за год; у оболочки составной станции своего ved нет
-    (ved=0 – антидубль), поэтому тип берётся у её дочерних групп, если он у них один.
+    (ved=0 – антидубль), поэтому тип берется у ее дочерних групп, если он у них один.
     """
     group_list = [group for group in groups or [] if getattr(group, "id", None) is not None]
     if year is None or not group_list:
@@ -594,7 +610,7 @@ def norm_zv_caption(parts) -> str:
 
 
 def sum_zv_total(metrics: dict | None) -> Decimal | None:
-    """Сумма твёрдых и газообразных/жидких веществ; None, если оба слагаемых пустые."""
+    """Сумма твердых и газообразных/жидких веществ; None, если оба слагаемых пустые."""
     return _sum_parts(metrics, ZV_TOTAL_PARTS)
 
 
@@ -611,7 +627,7 @@ def _sum_parts(metrics: dict | None, attrs: tuple[str, ...]) -> Decimal | None:
 
 
 def apply_zv_derived_metrics(values: dict) -> dict:
-    """Подставляет расчётные столбцы ЗВ (газообразные и жидкие, всего)."""
+    """Подставляет расчетные столбцы ЗВ (газообразные и жидкие, всего)."""
     values = dict(values or {})
     values["gaseous_and_liquid"] = sum_gaseous_and_liquid(values)
     values["total"] = sum_zv_total(values)
@@ -651,7 +667,7 @@ def _row_from_group(
     year: int | None,
     station_type: str = UNKNOWN_STATION_TYPE,
 ) -> dict:
-    """Строка страницы: группа из «Топливо», показатели – из отчёта ГИС ТЭК, если есть."""
+    """Строка страницы: группа из «Топливо», показатели – из отчета ГИС ТЭК, если есть."""
     ues_name, res_name, ues_sort, res_sort = _ues_res_for_group(group)
     version_id = getattr(group, "database_version_id", None)
     if report is not None:
@@ -720,7 +736,7 @@ def build_rows_from_equipment_groups(
     year: int | None,
     station_types: dict[int, str] | None = None,
 ) -> list[dict]:
-    """Все группы оборудования текущей версии + наложение строк отчёта ГИС ТЭК."""
+    """Все группы оборудования текущей версии + наложение строк отчета ГИС ТЭК."""
     types_by_group = station_types or {}
     by_numb: dict[int, object] = {}
     unmatched: list = []
@@ -801,7 +817,7 @@ def metrics_are_empty(metrics: dict | None, kind: str) -> bool:
 
 
 def sum_row_metrics(rows: list[dict], kind: str) -> dict:
-    """Сумма показателей по строкам с пересчётом производных столбцов."""
+    """Сумма показателей по строкам с пересчетом производных столбцов."""
     attrs = [attr for attr, _label in VALUE_COLUMNS[kind]]
     out = {attr: None for attr in attrs}
     for row in rows or []:
@@ -905,7 +921,7 @@ def drop_float_noise_in_hierarchy(hierarchy: list[dict]) -> None:
 
 
 def _data_years(model, version_id: int | None) -> list[int]:
-    """Годы, за которые есть строки отчёта (для выбора года по умолчанию)."""
+    """Годы, за которые есть строки отчета (для выбора года по умолчанию)."""
     query = model.query.with_entities(model.year_number).distinct()
     if version_id is not None:
         query = query.filter(model.database_version_id == version_id)

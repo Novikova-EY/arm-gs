@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Маршруты страницы «Расчёт» (/fuel/calculation): этапы после «Коэфф».
+Маршруты страницы «Расчет» (/fuel/calculation): этапы после «Коэфф».
 
 - distribution_stage_routes – «Распред»
 - fuel_stage_routes – «Топливо»

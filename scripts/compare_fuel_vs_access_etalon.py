@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Сверка расчёта АРМ с эталоном Access (после scripts/fuel_access_etalon.py).
+Сверка расчета АРМ с эталоном Access (после scripts/fuel_access_etalon.py).
 
   python scripts/compare_fuel_vs_access_etalon.py
   python scripts/compare_fuel_vs_access_etalon.py --oes 1 --year 2026

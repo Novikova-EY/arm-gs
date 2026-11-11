@@ -189,10 +189,15 @@ def test_build_gentypes_year_row_mock_key_order():
         "Потребление мощности на час прохождения максимума потребления мощности ЕЭС России, МВт",
         "Максимум потребления мощности ОЗП, МВт",
         "ОЗП. Дата и время прохождения максимума потребления мощности, дд.мм чч:мм",
+        "твердые частицы (зола), млн т",
+        "диоксид серы (SO2), млн т",
+        "оксиды азота (NOx), млн т",
+        "диоксид углерода (CO2), млн т",
         "external_code",
     ]
     assert "Прогнозируемые объемы капитальных вложений" not in "".join(row.keys())
     assert row[svc.KEY_ZONE_CODE] == "00000000-0000-0000-0012-000000000001"
+    assert all(row[key] == 0.0 for key in svc._EMISSION_FIELDS)
 
 
 def test_sheet_external_code_from_territory():
@@ -316,6 +321,10 @@ def _stub_gentypes_loaders(
     monkeypatch.setattr(svc, "_load_ozp_rows_for_years", lambda vid, years: ozp_by_year)
     monkeypatch.setattr(svc, "_load_territory_external_codes", lambda vid: {})
     monkeypatch.setattr(svc, "get_power_balance_sheets", lambda: [])
+    monkeypatch.setattr(
+        svc, "_load_emissions_by_sheet",
+        lambda sheets, years: {sheet["slug"]: {} for sheet in sheets},
+    )
 
 
 def test_ees_combined_uses_without_nt_max_power(monkeypatch):
@@ -505,3 +514,166 @@ def test_tites_east_demand_max_sums_res_from_oes_summary(monkeypatch):
     assert by_zone["ТИТЭС Сибири"][svc.KEY_INSTALLED] == 2289
     assert by_zone["ЭС г. Норильска Красноярского края"][svc.KEY_INSTALLED] == 2289
 
+
+
+
+def test_emissions_use_main_total_table_by_year_and_territory(monkeypatch):
+    from decimal import Decimal
+
+    sheets = [
+        {"slug": svc.EES_RUSSIA_WITH_TITES_SLUG, "group": "ees", "sheet_name": "ЭЭС России"},
+        {"slug": "ees-rossii", "group": "ees", "sheet_name": "ЕЭС России"},
+        {"slug": "centr", "group": "oes", "sheet_name": "Центр"},
+        {"slug": "2-sz-ees-vostok", "group": "sz", "sheet_name": "2-я СЗ ЕЭС (ОЭС Востока)"},
+        {"slug": "1-sz-ees", "group": "sz", "source_slugs": ("centr", "sibir")},
+        {"slug": "sibir", "group": "oes", "sheet_name": "Сибирь"},
+        {"slug": "oes-317", "group": "oes", "sheet_name": "ТИТЭС Востока"},
+        {"slug": "oes-318", "group": "oes", "sheet_name": "ТИТЭС Сибири"},
+        {"slug": "res-1", "group": "res", "sheet_name": "ЭС Камчатского края"},
+        {"slug": "eu-1", "group": "eu", "sheet_name": "Николаевский энергорайон"},
+    ]
+    calls = []
+
+    def context(territory, tab, **filters):
+        calls.append((territory, tab, filters))
+        year = filters["view_year"]
+        factor = Decimal(year - 2023)
+        base = {
+            "vsego": Decimal("99999.987654"), "centr": Decimal("1234.567891"),
+            "sibir": Decimal("2000"), "vostok": Decimal("3000"),
+            "norilsk": Decimal("4000"), "isolated-dv": Decimal("5000"),
+            "minen": Decimal("80000"), "prompred": Decimal("90000"),
+        }
+        return {
+            "view_year": year,
+            "value_columns": [
+                {"slug": f"{slug}:{year}", "territory_slug": slug, "year": year}
+                for slug in base
+            ],
+            "rows": [
+                {"key": metric, "col_values_raw": {
+                    f"{slug}:{year}": str(value * factor * multiplier)
+                    for slug, value in base.items()
+                }}
+                for multiplier, metric in enumerate(svc._EMISSION_FIELDS.values(), 1)
+            ],
+            "summary_volume_tables": [{"rows": []}],
+        }
+
+    monkeypatch.setattr(svc, "build_calculation_summary_context", context)
+    result = svc._load_emissions_by_sheet(sheets, [2024, 2025])
+    for multiplier, key in enumerate(svc._EMISSION_FIELDS, 1):
+        assert result[svc.EES_RUSSIA_WITH_TITES_SLUG][2024][key] == float(Decimal("99.999987654") * multiplier)
+        assert result["ees-rossii"][2024][key] == float(Decimal("6.234567891") * multiplier)
+        assert result["1-sz-ees"][2024][key] == float(Decimal("3.234567891") * multiplier)
+        assert result["2-sz-ees-vostok"][2024][key] == 3 * multiplier
+        assert result["centr"][2024][key] == float(Decimal("1.234567891") * multiplier)
+        assert result["oes-317"][2024][key] == 5 * multiplier
+        assert result["oes-318"][2024][key] == 4 * multiplier
+        assert result["centr"][2025][key] == float(Decimal("2.469135782") * multiplier)
+        assert result["res-1"][2024][key] == 0.0
+        assert result["eu-1"][2024][key] == 0.0
+    assert calls == [
+        ("vsego", "russia", {"start_year": year, "end_year": year, "view_year": year})
+        for year in (2024, 2025)
+    ]
+
+
+def test_emissions_do_not_substitute_another_year(monkeypatch):
+    monkeypatch.setattr(
+        svc, "build_calculation_summary_context",
+        lambda *args, **kwargs: {"view_year": 2024},
+    )
+    assert svc._load_emissions_by_sheet([{"slug": "ees-rossii"}], [2020]) == {"ees-rossii": {}}
+
+
+def test_emissions_are_passed_to_dataset_rows(monkeypatch):
+    _stub_gentypes_loaders(monkeypatch, extras={}, demand_max={}, ozp_by_year={})
+    emissions = {key: 0.123456789 for key in svc._EMISSION_FIELDS}
+    monkeypatch.setattr(
+        svc, "_load_emissions_by_sheet", lambda sheets, years: {"centr": {2024: emissions}},
+    )
+    rows = svc.build_gentypes_info_rows(
+        years=[2024, 2025], sheets=[{"slug": "centr", "sheet_name": "Центр"}], version_id=37,
+    )
+    for key in svc._EMISSION_FIELDS:
+        assert rows[0][key] == emissions[key]
+        assert rows[1][key] == 0.0
+
+
+
+def test_ees_russia_uses_existing_balance_totals(monkeypatch):
+    def table(values):
+        return {"rows": [
+            {"key": key, "year_values_raw": {2024: str(value)}}
+            for key, value in values.items()
+        ]}
+
+    power = table({
+        "installed_total": 500100.4, "demand_max": 220000, "export": 123.6,
+        "constraints": 1200.2, "commissioning_after_max": 55.5, "flow_total": -700,
+    })
+    energy = table({"consumption": 1100000, "gaes_charge": 1000, "ee_export": 32.123})
+    calls = []
+
+    def load_power(slug, **filters):
+        calls.append((slug, filters))
+        return power
+
+    monkeypatch.setattr(svc, "build_power_balance_table_context", load_power)
+    monkeypatch.setattr(svc, "build_ee_balance_table_context", lambda *args, **kwargs: energy)
+    emissions = {key: 0.123456789 for key in svc._EMISSION_FIELDS}
+    rows = svc._build_ees_russia_rows(
+        [2024], {2024: emissions},
+        [
+            {svc.KEY_YEAR: 2024, svc.KEY_ZONE: "ees", svc.KEY_COMBINED: 200000},
+            {svc.KEY_YEAR: 2024, svc.KEY_ZONE: "tites", svc.KEY_COMBINED: 300},
+            {svc.KEY_YEAR: 2024, svc.KEY_ZONE: "child", svc.KEY_COMBINED: 999},
+        ],
+        ("ees-rossii", "tites"),
+        [{"slug": "ees-rossii", "sheet_name": "ees"}, {"slug": "tites", "sheet_name": "tites"}],
+    )
+    row = rows[0]
+    assert row[svc.KEY_ZONE] == svc.EES_RUSSIA_WITH_TITES_NAME
+    assert row[svc.KEY_INSTALLED] == 500100
+    assert row[svc.KEY_DEMAND_MAX] == 220000
+    assert row[svc.KEY_POWER_EXPORT] == 124
+    assert row[svc.KEY_CONSTRAINTS] == 1200
+    assert row[svc.KEY_Q4] == 56
+    assert row[svc.KEY_FLOW] == -700
+    assert row[svc.KEY_GAES] == 1000
+    assert row[svc.KEY_EE_EXPORT] == 32.12
+    assert row[svc.KEY_CONSUMPTION] == 1100
+    assert row[svc.KEY_CHI] == svc._chi(1100000, 1000, 220000)
+    assert row[svc.KEY_COMBINED] == 200300
+    assert row[svc.KEY_PEAK_DT] == row[svc.KEY_TEMP] == row[svc.KEY_OZP_MAX] == row[svc.KEY_OZP_PEAK_DT] == 0
+    assert row[svc.KEY_ZONE_CODE] == ""
+    assert all(row[key] == emissions[key] for key in emissions)
+    assert calls == [(svc.EES_RUSSIA_WITH_TITES_SLUG, {"start_year": 2024, "end_year": 2024})]
+
+
+def test_dataset_adds_ees_before_ees_and_restores_version(app, monkeypatch):
+    from flask import g
+
+    base = [{"slug": "ees-rossii", "sheet_name": "ees", "group": "ees"}]
+    aggregate = {"slug": svc.EES_RUSSIA_WITH_TITES_SLUG, "source_slugs": ("ees-rossii",)}
+    monkeypatch.setattr(svc, "resolve_database_version", lambda version_id: (version_id, "test"))
+    monkeypatch.setattr(svc, "load_gentypes_years", lambda version_id: [2024, 2025])
+    monkeypatch.setattr(svc, "get_power_balance_sheets", lambda: base)
+    monkeypatch.setattr(svc, "append_tites_res_sheets", lambda sheets: list(sheets))
+    monkeypatch.setattr(svc, "_ees_russia_with_tites_sheet", lambda sheets: aggregate)
+
+    def rows(**kwargs):
+        assert g.current_db_version == 37
+        assert kwargs["years"] == [2024]
+        assert kwargs["sheets"] == [aggregate, *base]
+        return [{svc.KEY_YEAR: 2024}]
+
+    monkeypatch.setattr(svc, "build_gentypes_info_rows", rows)
+    with app.app_context():
+        g.current_db_version = 38
+        payload = svc.load_gentypes_info_dataset(version_id=37, year=2024)
+        assert g.current_db_version == 38
+    assert payload["rows"] == [{svc.KEY_YEAR: 2024}]
+    assert payload["database_version"] == 37
+    assert payload["comment"] == ""

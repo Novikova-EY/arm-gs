@@ -104,7 +104,7 @@
           <div class="col-12 col-md-6 col-xl-4">
             <div class="mb-3">
               <label class="form-label fw-semibold mb-1" for="batchYear"
-                >Год расчёта</label
+                >Год расчета</label
               >
               <select class="form-select" id="batchYear">
                 {% for y in years %}
@@ -247,7 +247,7 @@
           <strong>группа + год расчета</strong>. На вход берутся уже сохраненные
           <strong>удельный расход</strong> (строка с <strong>наибольшим</strong>
           <code>year_number</code> среди записей группы, у которых
-          <code>year_number</code> ≤ году расчёта; это
+          <code>year_number</code> ≤ году расчета; это
           <strong>не</strong> означает обязательный выбор «предыдущего
           календарного года»: если, например, для 2032 в таблице нет строки за
           2031, подставится последняя имеющаяся по году – за 2030, 2025 и т.д.),
@@ -263,15 +263,15 @@
           Кратко: строка
           <strong>удельных показателей</strong>
           (<code>EquipmentGroupSpecificFuelConsumption</code>) выбирается как
-          последняя запись с <code>year_number</code> ≤ году расчёта; строка
+          последняя запись с <code>year_number</code> ≤ году расчета; строка
           <strong>формулы</strong> (<code>EquipmentGroupFuelFormula</code>) –
-          как последняя с <code>year_number</code> ≤ году расчёта для выбранного
-          <code>variant_number</code> (с учётом версии БД). Сам расчёт
+          как последняя с <code>year_number</code> ≤ году расчета для выбранного
+          <code>variant_number</code> (с учетом версии БД). Сам расчет
           выполняется через
           <code>EquipmentGroupFuelCalculationService.calculate_group_year</code
-          >. По умолчанию в этом интерфейсе включён
+          >. По умолчанию в этом интерфейсе включен
           <code>commit_each</code> (коммит после каждой группы); ошибка по одной
-          группе не останавливает остальные, пока не включён
+          группе не останавливает остальные, пока не включен
           <code>stop_on_error</code>.
         </p>
         <div class="table-responsive">
@@ -290,21 +290,21 @@
                 <td>Энергетический блок</td>
                 <td>
                   <p class="mb-2">
-                    Берётся строка удельного расхода
+                    Берется строка удельного расхода
                     (<code>EquipmentGroupSpecificFuelConsumption</code>) с
                     <strong>максимальным</strong> <code>year_number</code> среди
                     строк этой группы, где <code>year_number</code> ≤ году
-                    расчёта (в коде –
+                    расчета (в коде –
                     <code>ORDER BY year_number DESC LIMIT 1</code>; это не
-                    «всегда год расчёта минус один», а фактически последняя
-                    заведённая строка, не превышающая год расчёта). Поля из неё:
+                    «всегда год расчета минус один», а фактически последняя
+                    заведенная строка, не превышающая год расчета). Поля из нее:
                     <code>y</code> (удельная выработка ЭЭ на тепловом
                     потреблении, кВтч/⁠Гкал), <code>snk</code> (СН на выработку ЭЭ, %), <code>sntp</code> (коэффициент отпуска ЭЭ
                     в теплофикационном режиме),
                     <code>bk</code> (УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч), <code>btp</code> (УРУТ на отпуск ЭЭ
                     в теплофикационном режиме, г у.т./кВтч) – те же
                     подписи, что в шапке таблицы «Удельные показатели групп
-                    оборудования». И уже сохранённые поля энергобаланса из
+                    оборудования». И уже сохраненные поля энергобаланса из
                     параметров топлива для этого года: <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал),
                     <code>e</code> (Выработка ЭЭ, млн кВтч),
                     <code>q</code> (Отпуск ТЭ, тыс.Гкал), <code>turt</code> (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал).
@@ -360,7 +360,7 @@
                     <code>EquipmentGroupFuelParam</code> (перезапись
                     рассчитанными значениями) – в строку с тем же
                     <code>year_number</code>, что и
-                    <strong>год расчёта</strong> в форме пакета (колонка
+                    <strong>год расчета</strong> в форме пакета (колонка
                     <code>year_number</code> в
                     <code>gs_fue_equipment_group_fuel_param</code>: одна запись
                     на пару «группа оборудования + этот год»).
@@ -390,9 +390,9 @@
                     <code>UGLI1</code>).
                   </p>
                   <p class="mb-2">
-                    Строка <code>formtxt</code> берётся из подходящей записи
-                    <code>EquipmentGroupFuelFormula</code> (год ≤ году расчёта,
-                    нужный <code>variant_number</code>, учёт версии БД при
+                    Строка <code>formtxt</code> берется из подходящей записи
+                    <code>EquipmentGroupFuelFormula</code> (год ≤ году расчета,
+                    нужный <code>variant_number</code>, учет версии БД при
                     выборе строки формулы). Разбор –
                     <code>_parse_formtxt</code>:
                   </p>
@@ -425,8 +425,8 @@
                       rel="noopener"
                       >формул топлива</a
                     >
-                    задаётся тот же <code>formtxt</code>, что участвует в
-                    расчёте.
+                    задается тот же <code>formtxt</code>, что участвует в
+                    расчете.
                   </p>
                 </td>
                 <td>
@@ -478,7 +478,7 @@
                     таблицы доп.&nbsp;параметров).
                   </p>
                   <p class="mb-2">
-                    Поле <code>ugol</code> (Уголь) на основной записи задаётся
+                    Поле <code>ugol</code> (Уголь) на основной записи задается
                     отдельно: это сумма всех полей из набора
                     <code>UGLI</code> на <code>EquipmentGroupFuelParam</code>,
                     <strong>кроме</strong> самого <code>ugol</code> (все
@@ -540,16 +540,16 @@
         style="background: transparent; border: none"
       >
         <h4 class="card-title text-decoration-underline mb-3">
-          <strong>Сверка с карточкой группы и разделом «Расчёт»</strong>
+          <strong>Сверка с карточкой группы и разделом «Расчет»</strong>
         </h4>
         <ul class="mb-0 ps-3">
           <li class="mb-2">
-            <strong>Пакетный расчёт на этой странице</strong> обновляет строки
+            <strong>Пакетный расчет на этой странице</strong> обновляет строки
             <code>EquipmentGroupFuelParam</code> и
             <code>EquipmentGroupExtraFuelParam</code> для выбранного
-            <strong>года расчёта</strong> по формуле <code>formtxt</code> и
+            <strong>года расчета</strong> по формуле <code>formtxt</code> и
             энергобалансу (см. таблицу выше). Он <strong>не</strong> подменяет
-            вручную введённые на карточке группы поля удельных показателей
+            вручную введенные на карточке группы поля удельных показателей
             <code>y</code>, <code>btp</code>, <code>sntp</code>,
             <code>bk</code>, <code>snk</code>, <code>k</code> – они задаются на
             странице
@@ -562,8 +562,8 @@
             / редактирование группы.
           </li>
           <li class="mb-2">
-            Расчётные поля удельных <code>*_calc</code> на карточке группы
-            <strong>только для просмотра</strong>; их пересчёт выполняется
+            Расчетные поля удельных <code>*_calc</code> на карточке группы
+            <strong>только для просмотра</strong>; их пересчет выполняется
             сервисом после сохранения (по параметрам топлива и вводимым
             удельным), а не этим пакетом.
           </li>
@@ -574,7 +574,7 @@
             странице.
           </li>
           <li class="mb-0">
-            Предпросмотр таблиц ниже (основные / доп. параметры после расчёта)
+            Предпросмотр таблиц ниже (основные / доп. параметры после расчета)
             соответствует данным, которые пакет записал в БД для выбранных групп
             и года.
           </li>
@@ -703,12 +703,12 @@
           const mount = document.getElementById('batchParamTablesMount');
           if (!mount) return;
           if (!lastEquipmentGroupIds || !lastEquipmentGroupIds.length) {
-              showTableErr('Нет списка групп: сначала успешно выполните расчёт по кнопке выше.');
+              showTableErr('Нет списка групп: сначала успешно выполните расчет по кнопке выше.');
               return;
           }
           const years = selectedPreviewYears();
           if (!years.length) {
-              showTableErr('Выберите год расчёта в списке «Год расчета».');
+              showTableErr('Выберите год расчета в списке «Год расчета».');
               return;
           }
           const loadingWrap = document.getElementById('batchParamTablesLoading');

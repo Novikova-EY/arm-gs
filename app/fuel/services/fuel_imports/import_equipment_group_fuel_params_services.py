@@ -97,7 +97,7 @@ COLUMN_ALIASES = {
         "сн на отпуск тепловой энергии, тыс. квт·ч",
     ],
     "sn_t": ["sn_t", "snt", "sn t"],
-    # В выгрузках БД Топливо столбец часто без подчёркивания: NTsum → ntsum
+    # В выгрузках БД Топливо столбец часто без подчеркивания: NTsum → ntsum
     "nt_sum": ["nt_sum", "ntsum", "nt sum", "n_t_sum"],
     "snk": ["snk"],
     # Старые подписи экспорта / Access («Отпуск ээ», «Отпуск эл.эн.»).
@@ -144,7 +144,7 @@ _SN_FILE_SCALE_FIELDS = frozenset({"sn_ee", "sn_te"})
 def _basename_lower(filename: str | None) -> str:
     name = (filename or "").strip().replace("\\", "/")
     name = name.rsplit("/", 1)[-1]
-    return name.lower().replace("ё", "е")
+    return name.lower().replace("\u0451", "е")
 
 
 def _filename_looks_like_otet_svodnaya(filename: str | None) -> bool:
@@ -201,7 +201,7 @@ def detect_fuel_params_excel_import_kind(filename: str | None, file=None) -> str
     - «stations» → EquipmentGroupFuelParam (Станции*.xlsx)
     - «extra» → EquipmentGroupExtraFuelParam (Доп_угли*.xlsx)
     - «otet_svodnaya» → только sn_ee / sn_te из «Сводная таблица для ОТЭТ»
-    - None → файл не похож ни на один из разрешённых типов
+    - None → файл не похож ни на один из разрешенных типов
 
     Сначала по имени файла, при неоднозначности – по заголовкам листа (если передан file).
     """
@@ -311,7 +311,7 @@ def fuel_params_import_year_mismatch_message(
 ) -> str | None:
     """
     Текст предупреждения, если год в имени файла не совпадает с годом фильтра.
-    Импорт по кнопке больше не блокирует такое расхождение: год берётся из имени.
+    Импорт по кнопке больше не блокирует такое расхождение: год берется из имени.
     Нет года в имени или годы совпадают – None.
     """
     file_year = extract_year_from_fuel_params_import_filename(filename)
@@ -499,9 +499,8 @@ def _access_code_as_str(raw) -> str | None:
     return s
 
 
-# Входы Коэфф / Распред / Топливо из «Станции(Схема)». Не берём DEP (ломает FK),
-# не берём рассчитанные B/GAZ/EURT/EUST/TUST – их пишет этап «Топливо».
-# TURT – вход TUST = Q·TURT/1000, не результат Топливо.
+# Импортируем входы расчета и показатели, явно переданные в свежей выгрузке.
+# DEP не загружаем: это поле связано с FK, которого может не быть в справочнике.
 _STATIONS_SCHEMA_CALC_FIELDS: tuple[str, ...] = (
     "name",
     "ved",
@@ -520,6 +519,10 @@ _STATIONS_SCHEMA_CALC_FIELDS: tuple[str, ...] = (
     "nt_sum",
     "e",
     "ewtp",
+    "eotp",
+    "eust",
+    "eurt",
+    "sn_ee",
     "snk",
 )
 _STATIONS_SCHEMA_INT_FIELDS = frozenset({"ved", "ved_cyrillic", "obor", "hfix"})
@@ -537,13 +540,24 @@ def _stations_schema_field_value(field: str, raw):
 
 
 def _stations_schema_row_values(row, columns) -> dict:
-    """Поля расчёта из строки файла. Пустая ячейка → None (как в Access). DEP игнорируется."""
+    """Поля из строки файла; пустые переданные ячейки очищают соответствующие значения."""
     col_set = set(columns)
     out = {}
     for field in _STATIONS_SCHEMA_CALC_FIELDS:
         if field not in col_set:
             continue
         out[field] = _stations_schema_field_value(field, _extract_cell_value(row, field))
+
+    # Свежая выгрузка содержит SNK (%), а в FuelParam хранится числитель SN_EE.
+    # Используем ту же формулу, что и отображение SNK: SNK = SN_EE / E * 100.
+    if "sn_ee" not in col_set and "snk" in col_set:
+        energy = out.get("e")
+        snk = _safe_decimal(_extract_cell_value(row, "snk"))
+        if energy is not None and snk is not None:
+            out["sn_ee"] = energy * snk / Decimal("100")
+        else:
+            out["sn_ee"] = None
+
     return out
 
 
@@ -581,7 +595,7 @@ def _resolve_equipment_groups_from_row(row):
     """
     Возвращает список (equipment_group_id, database_version_id) для строки.
     Сопоставление по numb1120 и копиям с тем же external_code во всех версиях БД.
-    equipment_group_id обязателен – строки без ГО не создаём.
+    equipment_group_id обязателен – строки без ГО не создаем.
     """
     from app.fuel.services.fuel_imports.fuel_import_all_versions import (
         resolve_equipment_group_import_targets,
@@ -644,14 +658,15 @@ def _get_or_create_equipment_group_fuel_param(
 
 def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) -> dict:
     """
-    Access «Станции(Схема)»: входы расчёта по NUMB1120 и году.
+    Выгрузка Access «Станции»: входы и переданные значения по NUMB1120 и году.
 
-    Пишет: ved, obor, oes, obl, nust, nr, h, hfix, q, qotr, turt, nt, nt_sum, e, ewtp, snk, name.
+    Помимо входов расчета, обновляет EOTP, EUST, EURT и SN_EE из файла, если они там есть.
+    Если абсолютный SN_EE не передан, он рассчитывается из E и SNK по формуле страницы ТЭП.
     Пустая ячейка в файле очищает поле в ТЭП (чтобы QOTR с базового года не оставался).
     Не пишет DEP и виды топлива (B/GAZ/TUST/…) – DEP ломает справочник, топливо считает этап.
 
     Год – из столбца Year, иначе из имени файла / фильтра страницы.
-    Нет строки ТЭП – создаётся.
+    Нет строки ТЭП – создается.
     """
     logger = get_fuel_import_logger(__name__)
     t0 = time.perf_counter()
@@ -723,7 +738,7 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
     elapsed = time.perf_counter() - t0
     fields_label = ", ".join(_STATIONS_SCHEMA_CALC_FIELDS)
     message = (
-        "Из «Станции(Схема)» загружены входы расчёта ({fields}) по NUMB1120 и году. "
+        "Из «Станции» загружены значения ({fields}) по NUMB1120 и году. "
         "Создано: {created}, обновлено: {updated}, "
         "пропущено (нет numb): {skipped_no_match}."
     ).format(
@@ -737,7 +752,7 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
         "created=%s updated=%s skipped=%s skipped_no_year=%s elapsed=%.2fs",
         created, updated, skipped_no_match, skipped_no_year, elapsed,
     )
-    log_to_db(user, "Загрузка входов расчёта из Станции(Схема)", message)
+    log_to_db(user, "Загрузка входов расчета из Станции(Схема)", message)
     return {
         "message": message,
         "created": created,

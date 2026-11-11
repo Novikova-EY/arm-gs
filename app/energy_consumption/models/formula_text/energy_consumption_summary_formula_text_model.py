@@ -9,7 +9,7 @@ from config import SCHEMA_ENERGY_CONSUMPTION
 
 
 class EnergyConsumptionSummaryFormulaText(db.Model, AuditMixin):
-    """Только текст формулы; расчёт значений ячеек не меняется."""
+    """Только текст формулы; расчет значений ячеек не меняется."""
 
     __tablename__ = "gs_ec_summary_formula_texts"
     __table_args__ = (

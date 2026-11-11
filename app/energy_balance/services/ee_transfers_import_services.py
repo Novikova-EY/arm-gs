@@ -432,7 +432,7 @@ def import_ee_transfers_from_excel(file, user: str) -> dict[str, Any]:
     changed = inserted + updated
     version_label = f"версия БД {version_id}" if version_id is not None else "без версии БД"
     message = (
-        f"Импорт перетоков ЭЭ за {parsed.year_number} г. ({source_label}) завершён. "
+        f"Импорт перетоков ЭЭ за {parsed.year_number} г. ({source_label}) завершен. "
         f"Добавлено: {inserted}, обновлено: {updated}, без изменений: {unchanged}. "
         f"Загружено в {version_label}."
     )

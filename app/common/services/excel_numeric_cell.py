@@ -2,7 +2,7 @@
 """Числовые ячейки Excel: полное значение + number_format для отображения.
 
 Паттерн как на выгрузке «Выработка ЭЭ»: в ячейке float без округления,
-формат задаёт число знаков (пользователь может сменить его в Excel).
+формат задает число знаков (пользователь может сменить его в Excel).
 """
 from __future__ import annotations
 
@@ -22,6 +22,15 @@ def excel_number_format(rounding_digits: int) -> str:
     if rounding_digits >= 1:
         return "#,##0." + ("0" * rounding_digits)
     return "#,##0.##########"
+
+
+def excel_number_format_trimmed(rounding_digits: int) -> str:
+    """Формат с верхней границей дробных знаков без обязательных нулей в конце."""
+    if rounding_digits == -1:
+        return "#,##0"
+    if rounding_digits == 0:
+        return "#,##0.###############"
+    return "#,##0." + ("#" * max(0, rounding_digits))
 
 
 def parse_excel_numeric(value: Any) -> float | None:
@@ -44,7 +53,7 @@ def parse_excel_numeric(value: Any) -> float | None:
     negative = s.startswith("-")
     if negative:
         s = s[1:].strip()
-    s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
+    s = "".join(s.split()).replace(",", ".")
     try:
         x = float(s)
     except ValueError:

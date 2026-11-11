@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Южный ФО с НТ: расчётный max = без НТ (сумма РЭС) + combined_on_fo субъектов НТ."""
+"""Южный ФО с НТ: расчетный max = без НТ (сумма РЭС) + combined_on_fo субъектов НТ."""
 
 from __future__ import annotations
 

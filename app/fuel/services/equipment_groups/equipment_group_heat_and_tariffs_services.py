@@ -318,7 +318,7 @@ def refresh_heat_and_tariffs_year_summaries(hierarchy_flat, years):
                 for station_block in res_block.get("station_blocks") or []:
                     station_rows = []
                     for gb in station_block.get("group_blocks") or []:
-                        # На случай, если блок ещё не схлопнут (старый формат)
+                        # На случай, если блок еще не схлопнут (старый формат)
                         if "metric_rows" not in gb:
                             pivoted = _pivot_heat_and_tariffs_group_block(
                                 gb.get("rows") or [], years

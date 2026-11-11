@@ -8,7 +8,7 @@
 Цель:     gs_pd.gs_pd_centralized_zone_demand_params
 
 Перед записью таблица CentralizedZoneDemandParameter полностью очищается,
-затем в неё копируются срезы из RussiaFederationDemandParameter
+затем в нее копируются срезы из RussiaFederationDemandParameter
 (год / исторический максимум, database_version_id, perimeter_variant_code).
 Дубликаты по уникальному ключу цели схлопываются (оставляется более
 заполненная / свежая строка). После записи RussiaFederationDemandParameter
@@ -155,7 +155,7 @@ def _print_plan(
         for w in warnings[:40]:
             print(f"  - {w}")
         if len(warnings) > 40:
-            print(f"  ... и ещё {len(warnings) - 40}")
+            print(f"  ... и еще {len(warnings) - 40}")
 
 
 def _apply(moves: list[dict[str, Any]]) -> None:

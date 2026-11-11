@@ -70,6 +70,46 @@ def test_reject_by_filename():
         )
 
 
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "Новые ТГО! Станции_и_турбины_по_NUMB_ОЭС Северо-Запада_для загрузки_27_05_26.xlsx",
+        "Станции.xlsx",
+        "stancii_groups.xlsx",
+    ],
+)
+def test_fuel_db_template_headers_override_stations_filename(filename):
+    buf = _xlsx_bytes(
+        pd.DataFrame(
+            [
+                {"id_station": 6373, "equipment_group": "ТЭЦ-130 ата", "id_machine": None},
+                {"id_station": 6373, "equipment_group": "ТЭЦ-130 ата", "id_machine": 22308},
+            ]
+        )
+    )
+    reject_access_stations_or_extra_fuel_excel(filename, file=buf, context="fuel_db")
+    reject_imena_stanciy_on_fuel_db_import(filename, file=buf)
+    assert buf.tell() == 0
+    assert len(pd.read_excel(buf)) == 2
+
+
+@pytest.mark.parametrize(
+    "columns, context",
+    [
+        (["id_station"], "fuel_db"),
+        (["equipment_group"], "fuel_db"),
+        (["id_station", "equipment_group", "NUST"], "fuel_db"),
+        (["id_station", "equipment_group", "GAZ_PRIR"], "fuel_db"),
+        (["id_station", "equipment_group"], "soft_import"),
+    ],
+)
+def test_stations_filename_still_rejected_without_unambiguous_fuel_db_template(columns, context):
+    buf = _xlsx_bytes(pd.DataFrame(columns=columns))
+    with pytest.raises(ValueError, match="Сведения о работе ТЭС"):
+        reject_access_stations_or_extra_fuel_excel("Станции.xlsx", file=buf, context=context)
+    assert buf.tell() == 0
+
+
 def test_reject_by_headers_even_without_stations_filename():
     buf = _xlsx_bytes(
         pd.DataFrame([{"NUMB": 1, "NAME": "X", "NUST": 100, "EOTP": 1, "COMP": 1}])

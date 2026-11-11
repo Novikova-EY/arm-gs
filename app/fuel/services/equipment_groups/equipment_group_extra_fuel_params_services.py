@@ -99,7 +99,7 @@ def sum_extra_fuel_attrs_for_rows(
     attr_names: list[str],
     children_by_parent: dict | None = None,
 ) -> dict:
-    """Суммы по атрибутам (с учётом родительских столбцов-агрегатов) для строк (eg, param)."""
+    """Суммы по атрибутам (с учетом родительских столбцов-агрегатов) для строк (eg, param)."""
     summary: dict[str, Decimal] = {}
     for attr in attr_names:
         total = Decimal(0)

@@ -1,0 +1,5 @@
+{% if current_user.is_admin %}
+<a class="btn btn-outline-primary" href="{{ url_for('fuel_bp.equipment_group_binding_transfer_page') }}" target="_blank" rel="noopener">
+    <i class="bi bi-link-45deg" aria-hidden="true"></i> Перенос связей из другой версии базы данных
+</a>
+{% endif %}

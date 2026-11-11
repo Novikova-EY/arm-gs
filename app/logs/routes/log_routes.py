@@ -26,6 +26,7 @@ def _parse_date_arg(raw: str):
 def view_logs():
     username_filter = request.args.get('username', '').strip()
     action_filter = request.args.get('action', '').strip()
+    module_filter = request.args.get('module', '').strip()
     details_filter = request.args.get('details', '').strip()
     date_from_raw = request.args.get('date_from', '').strip()
     date_to_raw = request.args.get('date_to', '').strip()
@@ -48,18 +49,19 @@ def view_logs():
     sort_by = request.args.get('sort_by', 'timestamp')
     sort_dir = request.args.get('sort_dir', 'desc')
     per_page = request.args.get('per_page', 25, type=int)
-    show_page_events = request.args.get('show_page_events', 'false').lower() == 'true'
+    show_page_events = request.args.get('show_page_events', 'true').lower() == 'true'
     
     if per_page not in [10, 25, 50, 100]:
         per_page = 25
 
     query = Log.query
     
-    # Исключаем события типа "Открыта страница..." для более чистого отображения
-    # Показываем их только если явно запрошено через параметр show_page_events=true
+    # Посещения видны по умолчанию; скрываем их только по выбору пользователя.
     if not show_page_events:
         query = query.filter(~Log.action.ilike("Открыта страница%"))
     
+    if module_filter:
+        query = query.filter(Log.module == module_filter)
     if username_filter:
         query = query.filter(Log.username.ilike(f"%{username_filter}%"))
     if action_filter:
@@ -82,12 +84,16 @@ def view_logs():
         end_exclusive_msk = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=MOSCOW)
         query = query.filter(Log.timestamp < end_exclusive_msk.astimezone(timezone.utc))
 
-    if hasattr(Log, sort_by):
-        column = getattr(Log, sort_by)
-        query = query.order_by(db.desc(column) if sort_dir == 'desc' else db.asc(column))
+    if sort_by not in {'timestamp', 'username', 'module', 'database_version_id', 'action', 'details'}:
+        sort_by = 'timestamp'
+    column = getattr(Log, sort_by)
+    query = query.order_by(db.desc(column) if sort_dir == 'desc' else db.asc(column))
+    query = query.order_by(Log.timestamp.desc(), Log.id.desc())
 
     page = request.args.get('page', 1, type=int)
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    modules = [row[0] for row in db.session.query(Log.module).distinct().order_by(Log.module).all()]
 
     versions_map = {}
     database_versions = []
@@ -134,6 +140,8 @@ def view_logs():
         logs=logs,
         username_filter=username_filter,
         action_filter=action_filter,
+        module_filter=module_filter,
+        modules=modules,
         details_filter=details_filter,
         date_from=date_from_raw if date_from else '',
         date_to=date_to_raw if date_to else '',

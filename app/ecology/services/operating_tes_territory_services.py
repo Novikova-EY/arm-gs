@@ -1,4 +1,4 @@
-"""Названия и порядок территорий расчёта ТЭС из справочника текущей версии."""
+"""Названия и порядок территорий расчета ТЭС из справочника текущей версии."""
 from app.common.services.get_services.energy_systems import union_energy_system_get_services
 from app.ecology.services.operating_tes_constants import TERRITORIES
 from app.ecology.services.operating_tes_fuel_input_services import match_ues_slug

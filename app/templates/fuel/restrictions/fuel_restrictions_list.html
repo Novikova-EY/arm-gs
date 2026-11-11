@@ -415,7 +415,7 @@ content %} {% if current_user.is_authenticated %}
     <a
       href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}"
       class="btn btn-secondary fs-5"
-      >Расчёт</a
+      >Расчет</a
     >
     <a
       href="{{ url_for('fuel_bp.distribution_parameters_list') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}"

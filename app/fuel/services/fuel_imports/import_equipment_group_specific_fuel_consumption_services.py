@@ -12,6 +12,7 @@ import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import pandas as pd
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -374,26 +375,12 @@ def _numb1120_for_match(value) -> str | None:
     return None
 
 
-def _resolve_equipment_groups_for_calc(row):
-    """Цели записи во все версии БД (numb + external_code; без ГО – (None, version))."""
-    from app.fuel.services.fuel_imports.fuel_import_all_versions import (
-        resolve_equipment_group_import_targets,
-    )
-
-    return resolve_equipment_group_import_targets(
-        _extract_cell_value(row, "numb1120"),
-        fill_missing_versions=True,
-        require_group_match=True,
-    )
-
-
 def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
     file, user: str, year: int | None = None
 ) -> dict:
     """
-    Загружает расчетные значения удельных показателей (name, year_number, y, btp, sntp, bk, snk)
-    из Excel в EquipmentGroupSpecificFuelConsumption.
-    Связь по столбцу numb1120 = EquipmentGroup.numb.
+    Синхронизирует данные выбранного года и текущей версии БД со снимком из Excel.
+    Связь по столбцу numb1120 = EquipmentGroup.numb. Пустые ячейки импортируются как NULL.
     Ожидаемые столбцы: NUMB1120, NAME, Year, Y, BTP, SNTP, BK, SNK.
     """
     logger = get_fuel_import_logger(__name__)
@@ -421,140 +408,109 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
             "Ожидаются столбцы: NUMB1120, NAME, Year, K (опц.), Y, BTP, SNTP, BK, SNK."
         )
 
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.fuel.services.fuel_imports.fuel_import_all_versions import lookup_imported_row
+
+    version_id = get_current_db_version_id()
+    group_query = EquipmentGroup.query
+    if version_id is None:
+        group_query = group_query.filter(EquipmentGroup.database_version_id.is_(None))
+    else:
+        group_query = group_query.filter_by(database_version_id=version_id)
+    groups_by_numb = {}
+    for group in group_query.all():
+        group_numb = _numb1120_for_match(getattr(group, "numb", None))
+        if group_numb:
+            groups_by_numb.setdefault(group_numb, []).append(group)
+
     created = 0
     updated = 0
     skipped_no_match = 0
+    provided_numbs = set()
 
-    for index, row in df.iterrows():
-        if row.isnull().all():
+    for _, row in df.iterrows():
+        numb_str = _numb1120_for_match(_extract_cell_value(row, "numb1120"))
+        if not numb_str:
+            skipped_no_match += 1
             continue
 
-        equipment_groups = _resolve_equipment_groups_for_calc(row)
+        numb1120_val = _safe_int(numb_str)
+        if numb1120_val is not None:
+            provided_numbs.add(numb1120_val)
+
+        equipment_groups = groups_by_numb.get(numb_str, [])
         if not equipment_groups:
             skipped_no_match += 1
             continue
 
-        row_year = _safe_int(_extract_cell_value(row, "year_number")) or default_year
+        # Страница загружает снимок для одного выбранного года. Значение Year из
+        # Excel не должно переносить строку в другой год.
+        row_year = default_year
         name_val = _extract_cell_value(row, "name")
         if name_val is None or (isinstance(name_val, float) and pd.isna(name_val)):
             name_str = None
         else:
             name_str = str(name_val).strip()[:512] or None
 
-        k_val = _safe_decimal(_extract_cell_value(row, "k"))
+        values = {
+            "name": name_str,
+            "k": _safe_decimal(_extract_cell_value(row, "k")),
+            "y": _safe_decimal(_extract_cell_value(row, "y")),
+            "btp": _safe_decimal(_extract_cell_value(row, "btp")),
+            "sntp": _safe_decimal(_extract_cell_value(row, "sntp")),
+            "bk": _safe_decimal(_extract_cell_value(row, "bk")),
+            "snk": _safe_decimal(_extract_cell_value(row, "snk")),
+            "snbas": _safe_decimal(_extract_cell_value(row, "snbas")),
+            "ksn": _safe_decimal(_extract_cell_value(row, "ksn")),
+            "bbas": _safe_decimal(_extract_cell_value(row, "bbas")),
+            "kh": _safe_decimal(_extract_cell_value(row, "kh")),
+        }
 
-        y_val = _safe_decimal(_extract_cell_value(row, "y"))
-        btp_val = _safe_decimal(_extract_cell_value(row, "btp"))
-        sntp_val = _safe_decimal(_extract_cell_value(row, "sntp"))
-        bk_val = _safe_decimal(_extract_cell_value(row, "bk"))
-        snk_val = _safe_decimal(_extract_cell_value(row, "snk"))
-        snbas_val = _safe_decimal(_extract_cell_value(row, "snbas"))
-        ksn_val = _safe_decimal(_extract_cell_value(row, "ksn"))
-        bbas_val = _safe_decimal(_extract_cell_value(row, "bbas"))
-        kh_val = _safe_decimal(_extract_cell_value(row, "kh"))
-
-        if (
-            k_val is None
-            and y_val is None
-            and btp_val is None
-            and sntp_val is None
-            and bk_val is None
-            and snk_val is None
-            and snbas_val is None
-            and ksn_val is None
-            and bbas_val is None
-            and kh_val is None
-        ):
-            continue
-
-        numb1120_val = _safe_int(_extract_cell_value(row, "numb1120"))
-
-        from app.fuel.services.fuel_imports.fuel_import_all_versions import (
-            lookup_imported_row,
-        )
-
-        for equipment_group_id, eg_database_version_id in equipment_groups:
-            eg = (
-                db.session.get(EquipmentGroup, equipment_group_id)
-                if equipment_group_id is not None
-                else None
-            )
-            # Всегда берём numb из группы; Excel – только запасной вариант
-            eg_numb = _safe_int(getattr(eg, "numb", None)) if eg is not None else None
-            resolved_numb1120 = eg_numb if eg_numb is not None else numb1120_val
-
+        for group in equipment_groups:
             param = lookup_imported_row(
                 EquipmentGroupSpecificFuelConsumption,
-                equipment_group_id=equipment_group_id,
+                equipment_group_id=group.id,
                 year_number=row_year,
-                database_version_id=eg_database_version_id,
+                database_version_id=version_id,
             )
 
             if param is None:
                 param = EquipmentGroupSpecificFuelConsumption(
-                    equipment_group_id=equipment_group_id,
+                    equipment_group_id=group.id,
                     year_number=row_year,
-                    database_version_id=eg_database_version_id,
-                    numb1120=resolved_numb1120,
-                    name=name_str,
-                    k=k_val,
-                    y=y_val,
-                    btp=btp_val,
-                    sntp=sntp_val,
-                    bk=bk_val,
-                    snk=snk_val,
-                    snbas=snbas_val,
-                    ksn=ksn_val,
-                    bbas=bbas_val,
-                    kh=kh_val,
+                    database_version_id=version_id,
+                    numb1120=_safe_int(group.numb),
+                    **values,
                 )
                 db.session.add(param)
                 db.session.flush()
                 created += 1
-            else:
-                changed = False
-                if name_str is not None and param.name != name_str:
-                    param.name = name_str
-                    changed = True
-                if k_val is not None and param.k != k_val:
-                    param.k = k_val
-                    changed = True
-                if y_val is not None and param.y != y_val:
-                    param.y = y_val
-                    changed = True
-                if btp_val is not None and param.btp != btp_val:
-                    param.btp = btp_val
-                    changed = True
-                if sntp_val is not None and param.sntp != sntp_val:
-                    param.sntp = sntp_val
-                    changed = True
-                if bk_val is not None and param.bk != bk_val:
-                    param.bk = bk_val
-                    changed = True
-                if snk_val is not None and param.snk != snk_val:
-                    param.snk = snk_val
-                    changed = True
-                if snbas_val is not None and param.snbas != snbas_val:
-                    param.snbas = snbas_val
-                    changed = True
-                if ksn_val is not None and param.ksn != ksn_val:
-                    param.ksn = ksn_val
-                    changed = True
-                if bbas_val is not None and param.bbas != bbas_val:
-                    param.bbas = bbas_val
-                    changed = True
-                if kh_val is not None and param.kh != kh_val:
-                    param.kh = kh_val
-                    changed = True
-                if resolved_numb1120 is not None and param.numb1120 != resolved_numb1120:
-                    param.numb1120 = resolved_numb1120
-                    changed = True
+                continue
 
-                if changed:
-                    updated += 1
+            changed = False
+            for attr, new_value in values.items():
+                if getattr(param, attr) != new_value:
+                    setattr(param, attr, new_value)
+                    changed = True
+            group_numb = _safe_int(group.numb)
+            if group_numb is not None and param.numb1120 != group_numb:
+                param.numb1120 = group_numb
+                changed = True
+            if changed:
+                updated += 1
 
+    cleanup_query = EquipmentGroupSpecificFuelConsumption.query.filter_by(
+        year_number=default_year,
+        database_version_id=version_id,
+    )
+    absent_numbs = or_(
+        EquipmentGroupSpecificFuelConsumption.numb1120.is_(None),
+        EquipmentGroupSpecificFuelConsumption.numb1120.notin_(sorted(provided_numbs)),
+    )
+    deleted = 0
     try:
-        if created or updated:
+        deleted = cleanup_query.filter(absent_numbs).delete(synchronize_session=False)
+        if created or updated or deleted:
             db.session.commit()
     except IntegrityError as exc:
         db.session.rollback()
@@ -563,22 +519,26 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
 
     elapsed = time.perf_counter() - t0
     message = (
-        "Загрузка расчетных значений удельных показателей завершена (во все версии БД). "
-        "Создано: {created}, обновлено: {updated}, "
+        "Загрузка расчетных значений удельных показателей завершена "
+        "(год {year}, текущая версия БД). Создано: {created}, обновлено: {updated}, "
+        "удалено отсутствующих NUMB: {deleted}, "
         "пропущено (нет совпадения по NUMB1120): {skipped_no_match}."
     ).format(
+        year=default_year,
         created=created,
         updated=updated,
+        deleted=deleted,
         skipped_no_match=skipped_no_match,
     )
     logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_CALC] done created=%s updated=%s skipped=%s elapsed=%.2fs",
-        created, updated, skipped_no_match, elapsed,
+        "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_CALC] done year=%s version=%s created=%s updated=%s deleted=%s skipped=%s elapsed=%.2fs",
+        default_year, version_id, created, updated, deleted, skipped_no_match, elapsed,
     )
     log_to_db(user, "Загрузка расчетных значений удельных показателей", message)
     return {
         "message": message,
         "created": created,
         "updated": updated,
+        "deleted": deleted,
         "skipped": skipped_no_match,
     }

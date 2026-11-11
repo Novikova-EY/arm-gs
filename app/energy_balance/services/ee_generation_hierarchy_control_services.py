@@ -55,6 +55,9 @@ def _normalize_entity_id(level: str, entity_id) -> int | None:
 def load_hierarchy_control_generation(
     start_year: int,
     end_year: int,
+    *,
+    period_mode: str = "years",
+    selected_year: int | None = None,
 ) -> dict[str, Any]:
     """Значения параметра: russia / est / sa / ues."""
     result: dict[str, Any] = {
@@ -65,11 +68,20 @@ def load_hierarchy_control_generation(
     }
     _ensure_tables()
     try:
-        q = EnergySystemEnergyGenerationControl.query.filter(
-            EnergySystemEnergyGenerationControl.year_number >= start_year,
-            EnergySystemEnergyGenerationControl.year_number <= end_year,
-            EnergySystemEnergyGenerationControl.month_number == HIERARCHY_CONTROL_PERIOD_YEAR,
-        )
+        q = EnergySystemEnergyGenerationControl.query
+        if period_mode == "months":
+            control_year = int(selected_year if selected_year is not None else start_year)
+            q = q.filter(
+                EnergySystemEnergyGenerationControl.year_number == control_year,
+                EnergySystemEnergyGenerationControl.month_number.between(1, 12),
+            )
+        else:
+            q = q.filter(
+                EnergySystemEnergyGenerationControl.year_number >= start_year,
+                EnergySystemEnergyGenerationControl.year_number <= end_year,
+                EnergySystemEnergyGenerationControl.month_number
+                == HIERARCHY_CONTROL_PERIOD_YEAR,
+            )
         q = filter_by_db_version(q, EnergySystemEnergyGenerationControl)
         rows = q.all()
     except (ProgrammingError, OperationalError):
@@ -92,14 +104,16 @@ def load_hierarchy_control_generation(
         level = (row.level or "").strip().lower()
         if level not in HIERARCHY_CONTROL_LEVELS or row.year_number is None:
             continue
-        year = int(row.year_number)
+        period_key = (
+            int(row.month_number) if period_mode == "months" else int(row.year_number)
+        )
         value = row.electricity_generation
         if level == "russia":
-            result["russia"][year] = value
+            result["russia"][period_key] = value
             continue
         if row.entity_id in (None, 0, -1):
             continue
-        result[level][int(row.entity_id)][year] = value
+        result[level][int(row.entity_id)][period_key] = value
     return {
         "russia": result["russia"],
         "est": dict(result["est"]),
@@ -112,7 +126,7 @@ def overlay_hierarchy_control(
     aggregates: dict[str, Any],
     stored: dict[str, Any],
 ) -> dict[str, Any]:
-    """Подставляет сохранённый параметр поверх сумм по РЭС."""
+    """Подставляет сохраненный параметр поверх сумм по РЭС."""
     if not stored:
         return aggregates
     russia = stored.get("russia") or {}

@@ -67,10 +67,6 @@ KEY_MACHINE_ZONE = "Зона агрегата"
 KEY_MACHINE_GENERATION = "Производство агрегатом электроэнергии в году, МВт*ч"
 KEY_MACHINE_TYPE = "Тип агрегата"
 KEY_MACHINE_PLANNED = "Блок является планируемым"
-KEY_ASH = "твердые частицы (зола), млн т"
-KEY_SO2 = "диоксид серы (SO2), млн т"
-KEY_NOX = "оксиды азота (NOx), млн т"
-KEY_CO2 = "диоксид углерода (CO2), млн т"
 KEY_DECOMMISSION = "Год вывода из эксплуатации"
 KEY_COMMISSION_FACT_DATE = "Дата ввода блока (фактическая)"
 KEY_DECOMMISSION_DATE = "Дата вывода блока"
@@ -78,9 +74,6 @@ KEY_MODERNIZATION_DATE = "Дата модернизации блока"
 KEY_MODERNIZATION_ADVISABLE = "Модернизация целесообразна"
 MISSING_DATE = "-"
 GENERATION_MACHINES_COMMENT = (
-    "Поля «твердые частицы (зола), млн т», «диоксид серы (SO2), млн т», "
-    "«оксиды азота (NOx), млн т», «диоксид углерода (CO2), млн т» пока всегда 0: "
-    "данных по выбросам в разрезе агрегата нет.\n\n"
     "Поле «Производство агрегатом электроэнергии в году, МВт*ч» всегда 0: "
     "выработки по агрегату в АРМ нет, есть только по станции в целом (generation_stations).\n\n"
     "Поле «Модернизация целесообразна» всегда false: такого признака в АРМ нет; "
@@ -433,10 +426,6 @@ def build_machine_year_row(
         KEY_MACHINE_GENERATION: 0.0,
         KEY_MACHINE_TYPE: machine_type,
         KEY_MACHINE_PLANNED: bool(planned),
-        KEY_ASH: 0.0,
-        KEY_SO2: 0.0,
-        KEY_NOX: 0.0,
-        KEY_CO2: 0.0,
         KEY_DECOMMISSION: decommission,
         KEY_ENERGY_ZONE: energy_zone_number(energy_zone),
         KEY_COMMISSION_FACT_DATE: json_date_or_dash(commission_fact_date),

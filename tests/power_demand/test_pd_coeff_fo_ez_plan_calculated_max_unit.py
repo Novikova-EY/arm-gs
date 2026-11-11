@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Coeff ФО/ЭЗ: расчётный максимум плановых (среднесрочных) лет = сумма совмещённых РЭС."""
+"""Coeff ФО/ЭЗ: расчетный максимум плановых (среднесрочных) лет = сумма совмещенных РЭС."""
 
 from __future__ import annotations
 
@@ -197,7 +197,7 @@ def _rep5(v: str) -> list[str]:
 def test_fo_coeff_plan_year_calculated_max_from_gs5_when_res_combined_empty(
     _far_east_mock, _south_mock, _ues_mock
 ) -> None:
-    """Плановый combined_on_fo пуст: k = СиПР (5 лет), МВт = k×max, сумма → расчётный max ФО."""
+    """Плановый combined_on_fo пуст: k = СиПР (5 лет), МВт = k×max, сумма → расчетный max ФО."""
     years = [2021, 2022, 2023, 2024, 2025, 2026]
     plan = {y: y == 2026 for y in years}
     rows = [

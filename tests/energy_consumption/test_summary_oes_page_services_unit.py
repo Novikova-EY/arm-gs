@@ -1,7 +1,37 @@
 """Unit-тесты страницы /energy_consumption/summary/oes/."""
 
 from app.energy_consumption.pages import _summary_page_transforms as transforms
+from app.energy_consumption.pages import summary_oes_page_services as page_services
 from app.energy_consumption.services import energy_consumption_summary_services as service
+
+
+def test_russia_with_nt_electricity_parameter_uses_billion_kwh_label():
+    rows = [
+        {
+            "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
+            "perimeter_variant_code": "with_nt_with_gaes",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "parameter_label": "Потребление электрической энергии, млн кВтч",
+        },
+        {
+            "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
+            "perimeter_variant_code": "without_nt",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "parameter_label": "Потребление электрической энергии, млн кВтч",
+        },
+        {
+            "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
+            "perimeter_variant_code": "with_nt_with_gaes",
+            "parameter_key": "energy_consumption_sipr_mln_kvt_ch",
+            "parameter_label": "Потребление электрической энергии (СиПР), млн кВтч",
+        },
+    ]
+
+    page_services._set_russia_with_nt_electricity_parameter_label(rows)
+
+    assert rows[0]["parameter_label"] == "Потребление электрической энергии, млрд кВтч"
+    assert rows[1]["parameter_label"] == "Потребление электрической энергии, млн кВтч"
+    assert rows[2]["parameter_label"] == "Потребление электрической энергии (СиПР), млн кВтч"
 
 
 def test_tag_summary_table_energy_zone_footer_rows_for_compact():
@@ -155,6 +185,11 @@ def test_apply_max_skips_oes_ees_unified_formula_when_flag_set(monkeypatch):
         "_mark_summary_table_nt_on_gaes_off_variant_row_rules",
         lambda *_a, **_k: None,
     )
+    monkeypatch.setattr(
+        transforms,
+        "_reapply_first_synchronous_area_gaes_variant_formulas",
+        lambda *_a, **_k: None,
+    )
 
     context = {
         "active_summary": "oes",
@@ -210,6 +245,7 @@ def test_apply_max_fo_and_ez_inject_shared_top_verification(monkeypatch):
         "tag_energy_consumption_summary_rows_for_territory_compact",
         "keep_centralized_zone_rows_in_territory_compact",
         "apply_summary_page_shared_top_aggregate_values_from_summary_table_hub",
+        "_reapply_first_synchronous_area_gaes_variant_formulas",
         "_mark_summary_table_collapsed_nt_gaes_variant_row_rules",
         "_mark_summary_table_nt_on_gaes_off_variant_row_rules",
     ):

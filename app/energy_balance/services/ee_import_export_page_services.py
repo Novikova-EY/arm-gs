@@ -116,7 +116,7 @@ def get_ee_import_export_page_data(
                 country_totals[key].get(period_key, Decimal(0)) + Decimal(str(value))
             )
 
-    # Введённые по ОЭС значения важнее рассчитанной суммы исходных перетоков.
+    # Введенные по ОЭС значения важнее рассчитанной суммы исходных перетоков.
     years = [year for year, _label in period_columns]
     raw_ues_filter = (filters or {}).get("union_energy_system_filter")
     if raw_ues_filter is not None and not isinstance(raw_ues_filter, (list, tuple, set)):

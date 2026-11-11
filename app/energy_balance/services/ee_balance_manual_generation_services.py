@@ -24,8 +24,6 @@ from app.energy_balance.models.ee_balance_manual_generation_value_model import (
     EeBalanceManualGenerationValue,
 )
 from app.energy_balance.services.ee_balance_generation_services import (
-    GENERATION_GAES_KEY,
-    GENERATION_GES_KEY,
     GENERATION_TES_KEY,
     classify_ee_balance_generation_years,
 )
@@ -38,6 +36,7 @@ from app.extensions import db
 
 __all__ = [
     "MANUAL_PLAN_GENERATION_KEYS",
+    "current_ee_balance_generation_years",
     "is_manual_plan_generation_row_key",
     "overlay_manual_generation_inputs",
     "load_ee_balance_manual_generation_inputs",
@@ -45,43 +44,36 @@ __all__ = [
     "update_ee_balance_manual_generation_value",
 ]
 
-MANUAL_PLAN_GENERATION_KEYS = frozenset(
+MANUAL_PLAN_GENERATION_KEYS = frozenset()
+READ_ONLY_GENERATION_KEYS = frozenset(
     {
+        "generation_aes",
+        "generation_ges",
+        "generation_gaes",
         "generation_snee",
-    }
-)
-_AUTO_SES_VES_GENERATION_KEYS = frozenset(
-    {
         "generation_ses_ves",
         "generation_ses",
         "generation_ves",
     }
 )
-_OES_MANUAL_GENERATION_KEYS = frozenset(
-    {GENERATION_TES_KEY, GENERATION_GES_KEY, GENERATION_GAES_KEY}
-)
+_OES_MANUAL_GENERATION_KEYS = frozenset({GENERATION_TES_KEY})
 
 _tables_ready = False
 URAL_WITHOUT_TYUMEN_SLUG = "ural-without-tyumen"
 
 
 def _norm_label(raw: Any) -> str:
-    return " ".join(str(raw or "").split()).casefold().replace("ё", "е")
+    return " ".join(str(raw or "").split()).casefold().replace("\u0451", "е")
 
 
 def is_manual_plan_generation_row_key(key: Any, label: Any = None) -> bool:
     raw = str(key or "").strip()
-    if raw in _AUTO_SES_VES_GENERATION_KEYS:
+    if raw in READ_ONLY_GENERATION_KEYS:
         return False
     if raw in MANUAL_PLAN_GENERATION_KEYS:
         return True
     if raw.startswith(("installed_", "available_", "chiim_")):
         return False
-    label_n = _norm_label(label)
-    if "сэс" in label_n or "вэс" in label_n:
-        return False
-    if "снээ" in label_n:
-        return True
     return False
 
 
@@ -122,16 +114,39 @@ def _is_manual_plan_generation_row_for_sheet(
     )
 
 
+def current_ee_balance_generation_years(years: list[int]) -> list[int]:
+    """Возвращает только годы с признаком «текущий» из запрошенного периода."""
+    from app.common.services.get_services.years.year_feature_services import (
+        get_year_feature_dict,
+    )
+
+    try:
+        features = get_year_feature_dict() or {}
+    except Exception:
+        _logger.exception("ee balance manual generation: current year lookup failed")
+        return []
+    current_years: list[int] = []
+    for year in years:
+        year_int = int(year)
+        feature = features.get(year_int, features.get(str(year_int)))
+        if _norm_label(feature).startswith("текущий"):
+            current_years.append(year_int)
+    return current_years
+
+
 def overlay_manual_generation_inputs(
     generation_inputs: dict[str, dict[str, dict[int, Any]]] | None,
     manual_inputs: dict[str, dict[str, dict[int, Decimal]]] | None,
     *,
     sheets: list[dict[str, Any]],
     plan_years: list[int],
+    current_years: list[int] | None = None,
 ) -> dict[str, dict[str, dict[int, Any]]]:
-    """Плановые ТЭС/ГЭС/ГАЭС ОЭС используют только ручные значения, без автоподстановки."""
+    """Ручные значения ТЭС перекрывают источник в текущем и плановых годах."""
     result = generation_inputs if generation_inputs is not None else {}
-    plan_set = set(plan_years)
+    plan_set = {int(year) for year in plan_years}
+    current_set = {int(year) for year in (current_years or [])}
+    editable_set = plan_set | current_set
     sheets_by_slug = {sheet["slug"]: sheet for sheet in sheets}
     for slug, sheet in sheets_by_slug.items():
         rows = result.get(slug, {})
@@ -139,9 +154,15 @@ def overlay_manual_generation_inputs(
             if not _is_manual_plan_generation_row_for_sheet(slug, row_key, sheet=sheet):
                 continue
             if row_key in rows:
+                stored_years = (manual_inputs or {}).get(slug, {}).get(row_key, {})
                 rows[row_key] = {
-                    year: amount for year, amount in rows[row_key].items()
+                    year: amount
+                    for year, amount in rows[row_key].items()
                     if int(year) not in plan_set
+                    and not (
+                        int(year) in current_set
+                        and int(year) in stored_years
+                    )
                 }
     for slug, rows in (manual_inputs or {}).items():
         if slug not in sheets_by_slug:
@@ -154,7 +175,7 @@ def overlay_manual_generation_inputs(
                 continue
             dest_row = dest_sheet.setdefault(row_key, {})
             for year, amount in (year_map or {}).items():
-                if int(year) in plan_set:
+                if int(year) in editable_set:
                     dest_row[int(year)] = amount
     return result
 
@@ -242,17 +263,18 @@ def mark_manual_plan_generation_rows(
     tables: dict[str, dict[str, Any]],
     years: list[int] | None,
 ) -> None:
-    """Поля ввода плановой выработки на листах без формулы строки."""
+    """Поля ввода выработки ТЭС в текущем и плановых годах без формулы строки."""
     if not tables or not years:
         return
     try:
         _fact_current, plan_years = classify_ee_balance_generation_years(list(years))
+        current_years = current_ee_balance_generation_years(list(years))
     except Exception:
         _logger.exception("ee balance manual generation: generation year classification failed")
-        plan_years = []
-    if not plan_years:
+        plan_years, current_years = [], []
+    editable_years = sorted({int(year) for year in plan_years} | set(current_years))
+    if not editable_years:
         return
-    plan_list = [int(year) for year in plan_years]
     for slug, payload in tables.items():
         for row in payload.get("rows") or []:
             if row.get("formula"):
@@ -262,7 +284,7 @@ def mark_manual_plan_generation_rows(
             ):
                 continue
             row["editable_values"] = True
-            row["editable_years"] = list(plan_list)
+            row["editable_years"] = list(editable_years)
             row["value_save_kind"] = "generation"
             if row.get("key") in _OES_MANUAL_GENERATION_KEYS:
                 row.pop("formula_tooltip", None)
@@ -281,15 +303,18 @@ def update_ee_balance_manual_generation_value(
     if not slug:
         raise ValueError("Не указан лист баланса")
     key = str(row_key or "").strip()
+    if key in READ_ONLY_GENERATION_KEYS:
+        raise ValueError("Выработка АЭС, ГЭС, ГАЭС, СНЭЭ, СЭС и ВЭС берется со страниц выработки и не редактируется в балансе")
     if not _is_manual_plan_generation_row_for_sheet(slug, key):
-        raise ValueError("Ручной ввод доступен для СНЭЭ и выработки ТЭС, ГЭС, ГАЭС на листах ОЭС")
+        raise ValueError("Ручной ввод в балансе доступен только для выработки ТЭС на листах ОЭС")
     try:
         year_int = int(year)
     except (TypeError, ValueError) as exc:
         raise ValueError("Неверный год") from exc
     _fact_current, plan_years = classify_ee_balance_generation_years([year_int])
-    if year_int not in set(plan_years):
-        raise ValueError("Ручной ввод доступен только для плановых годов")
+    current_years = current_ee_balance_generation_years([year_int])
+    if year_int not in set(plan_years) | set(current_years):
+        raise ValueError("Ручной ввод доступен только для текущего или планового года")
     try:
         parsed = parse_decimal_from_display(raw_value)
     except InvalidOperation as exc:

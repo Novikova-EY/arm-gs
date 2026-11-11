@@ -5,7 +5,7 @@ Read/query/display для страницы «Удельные показател
 
 Запись в EquipmentGroupSpecificFuelConsumption – в
 equipment_group_specific_fuel_consumption_write_services.py
-(пересчёт *_calc – в equipment_group_specific_fuel_consumption_recalc_services.py).
+(пересчет *_calc – в equipment_group_specific_fuel_consumption_recalc_services.py).
 """
 
 from collections import defaultdict
@@ -15,12 +15,18 @@ from sqlalchemy import or_, and_
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
+    calculate_specific_fuel_consumption_calc,
+)
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.fuel.services.equipment_groups.composite_display_cluster_services import (
-    apply_simple_station_summaries,
     build_station_blocks_from_group_items,
+)
+from app.fuel.services.equipment_groups.composite_station_semantics import (
+    is_composite_parent_group,
 )
 from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
     resolve_composite_parents_by_numb,
@@ -31,7 +37,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     restrict_equipment_group_query_to_current_version,
 )
 
-# Пары загруженное / расчётное для временного фильтра расхождений
+# Пары загруженное / расчетное для временного фильтра расхождений
 CALC_MISMATCH_FIELD_PAIRS = (
     ("y", "y_calc"),
     ("btp", "btp_calc"),
@@ -40,7 +46,7 @@ CALC_MISMATCH_FIELD_PAIRS = (
     ("snk", "snk_calc"),
 )
 
-# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчёт)
+# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчет)
 CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
 
 
@@ -127,59 +133,93 @@ SPECIFIC_FUEL_CONSUMPTION_SUMMARY_NUMERIC_ATTRS = [
 ]
 
 
-def overlay_snk_calc_from_fuel_params(rows) -> None:
-    """
-    В таблице удельных snk_calc = SNK топливных параметров
-    (формула sn_ee / e · 100 или сохранённый FuelParam.snk).
+def specific_fuel_consumption_source_query():
+    """Параметры своей группы (NUMB) и версии, без перехода к родителю/детям."""
+    return EquipmentGroupFuelParam.query.join(
+        EquipmentGroup,
+        EquipmentGroupFuelParam.equipment_group_id == EquipmentGroup.id,
+    ).filter(
+        EquipmentGroupFuelParam.database_version_id.is_not_distinct_from(
+            EquipmentGroup.database_version_id
+        ),
+        # В старых данных NUMB1120 бывает пустым; группу тогда определяет FK.
+        or_(
+            EquipmentGroupFuelParam.numb1120.is_(None),
+            EquipmentGroup.numb.is_(None),
+            EquipmentGroupFuelParam.numb1120 == EquipmentGroup.numb,
+        ),
+    )
 
-    Только для реальных строк удельников. Год без записи (плейсхолдер
-    интервала) не заполняем – иначе Seek-годы 2027–2031 показывают чужой SNK.
 
-    Подставляет значение в загруженные строки без пометки session dirty.
+def overlay_specific_fuel_consumption_calc_from_fuel_params(rows) -> None:
+    """Пересчитывает *_calc по своей группе, году и версии без записи в БД.
+
+    Пустые годы интервала без записи удельных не заполняются.
+    Сохраненные *_calc не используются как источник расчета.
     """
     from sqlalchemy.orm.attributes import set_committed_value
 
-    from app.fuel.models.fue_equipment_group_fuel_param_model import (
-        EquipmentGroupFuelParam,
-    )
-    from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
-        calc_snk_calc,
-    )
-
     pairs = []
     for eg, cons in rows or []:
-        # Пустой год интервала (нет строки удельников) – не подставляем SNK из ТЭП,
-        # иначе 2027–2031 выглядят заполненными при Seek-логике без копирования.
         if not cons:
             continue
-        gid = cons.equipment_group_id or (getattr(eg, "id", None) if eg else None)
-        year = getattr(cons, "year_number", None)
+        gid = cons.equipment_group_id
+        year = cons.year_number
         if gid is None or year is None:
             continue
-        pairs.append((cons, int(gid), int(year)))
+        key = (gid, year, cons.database_version_id)
+        pairs.append((cons, key))
     if not pairs:
         return
 
-    gids = {gid for _, gid, _ in pairs}
-    years = {year for _, _, year in pairs}
-    params = EquipmentGroupFuelParam.query.filter(
+    gids = {key[0] for _, key in pairs}
+    years = {key[1] for _, key in pairs}
+    params = specific_fuel_consumption_source_query().filter(
         EquipmentGroupFuelParam.equipment_group_id.in_(gids),
         EquipmentGroupFuelParam.year_number.in_(years),
     ).all()
     by_key = {
-        (int(p.equipment_group_id), int(p.year_number)): p
+        (p.equipment_group_id, p.year_number, p.database_version_id): p
         for p in params
-        if p.equipment_group_id is not None and p.year_number is not None
     }
-    for cons, gid, year in pairs:
-        value = calc_snk_calc(by_key.get((gid, year)))
-        try:
-            set_committed_value(cons, "snk_calc", value)
-        except Exception:
-            try:
-                cons.snk_calc = value
-            except Exception:
-                object.__setattr__(cons, "snk_calc", value)
+    for cons, key in pairs:
+        values = calculate_specific_fuel_consumption_calc(by_key.get(key), cons.k)
+        for attr, value in values.items():
+            set_committed_value(cons, attr, value)
+
+
+def filter_specific_consumption_composite_parent_rows(rows, start_year, end_year):
+    """Убирает итог станции за годы, когда параметры ведутся по ее детям."""
+    parent_numbs = {
+        eg.numb for eg, _ in rows
+        if is_composite_parent_group(eg) and eg.numb is not None
+    }
+    if not parent_numbs:
+        return rows
+
+    # Дети могут не попасть в пользовательский фильтр; состав проверяем в БД.
+    child_years = specific_fuel_consumption_source_query().filter(
+        EquipmentGroup.main.in_(parent_numbs),
+        EquipmentGroupFuelParam.year_number >= start_year,
+        EquipmentGroupFuelParam.year_number <= end_year,
+        EquipmentGroupFuelParam.ved > 0,
+    ).with_entities(
+        EquipmentGroup.main,
+        EquipmentGroupFuelParam.year_number,
+        EquipmentGroup.database_version_id,
+    ).all()
+    active_keys = set(child_years)
+    active_parents = {(numb, version) for numb, _, version in active_keys}
+    result = []
+    for eg, cons in rows:
+        if is_composite_parent_group(eg):
+            if cons is None:
+                if (eg.numb, eg.database_version_id) in active_parents:
+                    continue
+            elif (eg.numb, cons.year_number, eg.database_version_id) in active_keys:
+                continue
+        result.append((eg, cons))
+    return result
 
 
 def get_equipment_groups_with_specific_fuel_consumption_data(
@@ -291,11 +331,12 @@ def get_equipment_groups_with_specific_fuel_consumption_data(
         apply_numb1120_filter_to_eg_param_rows,
     )
 
+    rows = filter_specific_consumption_composite_parent_rows(rows, _start, _end)
     rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
         rows, _filters
     )
     total_count = len(rows)
-    overlay_snk_calc_from_fuel_params(rows)
+    overlay_specific_fuel_consumption_calc_from_fuel_params(rows)
 
     return {
         "rows": rows,
@@ -426,11 +467,7 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
                     should_suppress_summary=should_suppress_fuel_params_station_summary_row,
                     parent_by_numb=parent_by_numb,
                 )
-                apply_simple_station_summaries(
-                    station_blocks,
-                    _compute_summary,
-                    parent_by_numb=parent_by_numb,
-                )
+                # ТЭП – удельные величины: синтетический итог по детям не нужен.
 
                 res_list.append(
                     {

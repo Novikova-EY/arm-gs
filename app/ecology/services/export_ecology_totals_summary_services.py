@@ -9,6 +9,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import (
+    excel_number_format_trimmed,
+    parse_excel_numeric,
+)
+
 
 _HEADER_FILL = PatternFill(start_color="D1E7DD", end_color="D1E7DD", fill_type="solid")
 _ROW_FILLS = {
@@ -34,7 +39,7 @@ def export_ecology_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
     ws.title = "Итоговые суммы"
 
     col_count = len(columns) or 1
-    # Упрощённая шапка: последняя неключевая строка с подписями столбцов,
+    # Упрощенная шапка: последняя неключевая строка с подписями столбцов,
     # либо по ключам/лейблам visible columns.
     label_by_key = {c.get("key"): (c.get("label") or c.get("key") or "") for c in columns}
     header_labels: list[str] = []
@@ -45,7 +50,7 @@ def export_ecology_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
             continue
         header_labels.append(str(label_by_key.get(key) or key or ""))
 
-    # Если есть header_rows – берём текст из последней строки с column_key
+    # Если есть header_rows – берем текст из последней строки с column_key
     if header_rows:
         by_key_text: dict[str, str] = {}
         for row in header_rows:
@@ -69,6 +74,7 @@ def export_ecology_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
         cell.fill = _HEADER_FILL
         cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
+    rounding_digits = context.get("rounding_digits", 1)
     for block in blocks:
         fill = _ROW_FILLS.get(block.get("row_class") or "")
         for row in block.get("rows") or []:
@@ -84,6 +90,12 @@ def export_ecology_totals_summary_to_excel(context: dict[str, Any]) -> BytesIO:
                 cell = ws.cell(row=excel_row, column=col_idx)
                 key = column.get("key")
                 is_station = key in _STATION_KEYS
+                if column.get("numeric"):
+                    numeric_value = parse_excel_numeric(cell.value)
+                    if numeric_value is not None:
+                        cell.value = numeric_value
+                        digits = -1 if key in {"Year", "numb1120"} else rounding_digits
+                        cell.number_format = excel_number_format_trimmed(digits)
                 cell.alignment = Alignment(
                     horizontal="left" if is_station else "center",
                     vertical="center",

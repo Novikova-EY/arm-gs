@@ -14,7 +14,7 @@ def text_contains(
     reject_empty_needle: bool = False,
     blank_as_empty: bool = False,
 ) -> bool:
-    """Подстрока needle в haystack без учёта регистра (casefold)."""
+    """Подстрока needle в haystack без учета регистра (casefold)."""
     if blank_as_empty:
         if haystack is None:
             text = ""

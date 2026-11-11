@@ -119,7 +119,7 @@ def fuel_query(
 
 
 def _assert_valid_fuel_parent(fuel_id, parent_id):
-    """Проверяет, что parent_id существует и не создаёт цикл."""
+    """Проверяет, что parent_id существует и не создает цикл."""
     if parent_id is None:
         return
 
@@ -205,7 +205,7 @@ def get_fuel_hierarchy_tree():
             roots.append(node)
 
     def _sort_nodes(items):
-        # Агрегации и дочерние узлы – по названию (без учёта регистра)
+        # Агрегации и дочерние узлы – по названию (без учета регистра)
         items.sort(key=lambda n: (n.get("name") or "").casefold())
         for child in items:
             _sort_nodes(child.get("children") or [])
@@ -577,7 +577,7 @@ def delete_fuel_service(ids, user):
 
 def _normalize_fuel_match_text(value) -> str:
     """Нормализация строки для сопоставления Excel ↔ Вид топлива."""
-    text = str(value or "").strip().casefold().replace("ё", "е")
+    text = str(value or "").strip().casefold().replace("\u0451", "е")
     text = re.sub(r"\s+", " ", text)
     text = text.replace(" ,", ",").replace(", ", ",")
     return text.strip(" ,")
@@ -922,7 +922,7 @@ def import_fuel_service(file, user):
         ]
         created_kinds = len(created_rows)
         msg = (
-            f"Импорт завершён: обновлено записей {total_updated}, "
+            f"Импорт завершен: обновлено записей {total_updated}, "
             f"добавлено новых видов {created_kinds} "
             f"в {versions_touched} версиях БД."
         )
@@ -976,7 +976,7 @@ def build_fuel_import_payload(result) -> dict:
     unmatched = result.get("unmatched_names") or []
     created_names = result.get("created_names") or []
     message = result.get("message") or (
-        f"Импорт завершён: обновлено записей {updated}"
+        f"Импорт завершен: обновлено записей {updated}"
         + (f", добавлено новых {created}" if created else "")
         + f" в {versions} версиях БД."
     )

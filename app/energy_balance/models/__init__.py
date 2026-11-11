@@ -2,6 +2,7 @@
 # Регистрация таблиц баланса электроэнергии (схема gs_bem).
 from . import (  # noqa: F401
     balance_sheet_note_model,
+    ee_balance_station_group_value_model,
     ee_balance_custom_flow_model,
     ee_import_export_oes_value_model,
     ee_receive_transfer_oes_value_model,

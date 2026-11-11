@@ -209,7 +209,7 @@ def _sa_child_period_maps(
     res_to_sa_map: dict,
     regional_energy_system_names: dict[int, str],
 ) -> list[dict]:
-    """ОЭС, целиком входящие в СЗ, иначе РЭС этой СЗ (без двойного счёта)."""
+    """ОЭС, целиком входящие в СЗ, иначе РЭС этой СЗ (без двойного счета)."""
     child_maps: list[dict] = []
     for ues_id in sorted_union_energy_system_ids:
         if ues_id in (None, -1, 0):

@@ -5,6 +5,7 @@
 <thead class="table-success">
   <tr class="text-center align-middle">
     <th class="ot-label-col" rowspan="3" scope="col">Вид топлива
+      {% include 'ecology/operating_tes/_fuel_filter.html' %}
       {% include 'ecology/operating_tes/_territory_filter.html' %}
     </th>
     {% for terr in territory_columns %}

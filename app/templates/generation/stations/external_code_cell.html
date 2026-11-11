@@ -1,8 +1,12 @@
-{% macro external_code_cell(entity_type, version, code, record_id, mismatch, rowspan=1) %}
+{% macro external_code_cell(entity_type, version, code, record_id, reference_code, rowspan=1) %}
     {% set record_id_val = record_id if record_id is not none else '' %}
-    {% set code_val = code if code else '' %}
-    <td class="text-center align-middle small external-code-cell {% if mismatch %}table-warning{% endif %}"
+    {% set code_val = (code or '') | trim %}
+    {% set reference_code_val = (reference_code or '') | trim %}
+    {% set differs = record_id_val and code_val and reference_code_val and code_val != reference_code_val %}
+    <td class="text-center align-middle small external-code-cell{% if differs %} table-warning external-code-different{% elif not record_id_val %} external-code-missing-cell{% endif %}"
+        {% if differs %}title="Код отличается от кода записи, открываемой по ссылке в строке: {{ reference_code_val }}"{% endif %}
         {% if rowspan and rowspan > 1 %}rowspan="{{ rowspan }}"{% endif %}
+        data-external-code-version="{{ version.id if version.id is not none else 'legacy' }}"
         style="word-break: break-all;">
         {% if record_id_val %}
             <input type="text"
@@ -10,14 +14,17 @@
                    value="{{ code_val }}"
                    data-entity-type="{{ entity_type }}"
                    data-record-id="{{ record_id_val }}"
-                   data-version-id="{{ version.id }}"
+                   data-version-id="{{ version.id if version.id is not none else '' }}"
                    data-original-value="{{ code_val }}"
                    maxlength="36"
                    spellcheck="false"
                    autocomplete="off"
                    title="external_code, версия {{ version.version_number }}">
+            {% if not code_val %}
+                <span class="small text-danger external-code-empty">Код не задан</span>
+            {% endif %}
         {% else %}
-            <span class="text-muted">–</span>
+            <span class="badge bg-secondary external-code-missing" title="{{ 'Нет записи без версии БД' if version.id is none else 'Нет записи в этой версии БД' }}">– нет записи</span>
         {% endif %}
     </td>
 {% endmacro %}

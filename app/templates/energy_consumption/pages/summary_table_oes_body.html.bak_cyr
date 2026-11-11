@@ -5591,7 +5591,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (!pResp.ok || !pData || !pData.ok) {
                     const pMsg = (pData && pData.error)
                         ? pData.error
-                        : "Не удалось записать расчётные значения в БД.";
+                        : "Не удалось записать расчетные значения в БД.";
                     alert(pMsg);
                     saveBtn.innerHTML = originalHtml;
                     saveBtn.disabled = false;

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Журнал изменений таблицы электроёмкости."""
+"""Журнал изменений таблицы электроемкости."""
 
 from __future__ import annotations
 
@@ -17,11 +17,10 @@ from app.logs.services.logging_service import (
     MAX_USERNAME,
     _safe_trim,
     _to_username,
-    log_to_db,
 )
 
 ENTITY_TYPE = "long_term_electrical_intensity"
-ACTION_TITLE = "электроёмкость (долгосрочный прогноз)"
+ACTION_TITLE = "электроемкость (долгосрочный прогноз)"
 
 
 def _fmt_log_value(value: Any) -> str:
@@ -80,16 +79,24 @@ def queue_electrical_intensity_cell_change(
     """Поставить запись журнала в основную сессию (один commit вместе с данными)."""
     if not detail_chunks:
         return
+    _queue_electrical_intensity_log(
+        user,
+        action=f"Изменение: {ACTION_TITLE}",
+        details="; ".join(detail_chunks),
+        database_version_id=database_version_id,
+    )
+
+
+def _queue_electrical_intensity_log(user, *, action, details, database_version_id):
     username = _safe_trim(_to_username(user) or "Неизвестный пользователь", MAX_USERNAME)
-    action = _safe_trim(f"Изменение: {ACTION_TITLE}", MAX_ACTION)
-    details = "; ".join(detail_chunks)
     db_version_id = database_version_id
     if db_version_id is None:
         db_version_id = _electrical_intensity_log_database_version_id()
     db.session.add(
         Log(
             username=username,
-            action=action,
+            module="Долгосрочный прогноз потребления",
+            action=_safe_trim(action, MAX_ACTION),
             details=details,
             entity_type=_safe_trim(ENTITY_TYPE, MAX_ENTITY_TYPE),
             entity_id=database_version_id,
@@ -104,16 +111,10 @@ def log_electrical_intensity_cell_change(
     detail_chunks: list[str],
     database_version_id: Optional[int],
 ) -> None:
-    if not detail_chunks:
-        return
-    action = f"Изменение: {ACTION_TITLE}"
-    details = "; ".join(detail_chunks)
-    log_to_db(
+    queue_electrical_intensity_cell_change(
         user,
-        action,
-        details,
-        entity_type=ENTITY_TYPE,
-        entity_id=database_version_id,
+        detail_chunks=detail_chunks,
+        database_version_id=database_version_id,
     )
 
 
@@ -133,10 +134,9 @@ def log_electrical_intensity_excel_import(
     if warnings:
         parts.append(f"предупреждений={len(warnings)}")
     details = "; ".join(parts)
-    log_to_db(
+    _queue_electrical_intensity_log(
         user,
-        f"Импорт: {ACTION_TITLE} из Excel",
-        details,
-        entity_type=ENTITY_TYPE,
-        entity_id=database_version_id,
+        action=f"Импорт: {ACTION_TITLE} из Excel",
+        details=details,
+        database_version_id=database_version_id,
     )

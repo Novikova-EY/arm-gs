@@ -39,16 +39,17 @@ def page_data(monkeypatch):
     })
 
 
-def render_page(context):
+def render_page(context, can_edit=True):
     env = Environment(loader=ChoiceLoader([
         DictLoader({"base.html": "{% block content %}{% endblock %}"}),
         FileSystemLoader(Path(__file__).parents[2] / "app" / "templates"),
     ]))
+    env.globals["get_reference_years"] = lambda: [2026, 2027]
     def url_for(endpoint, **values):
         return "/" + endpoint + "?" + urlencode({key: value for key, value in values.items() if value is not None})
     with Flask(__name__).test_request_context("/?capacity_class=gt100"):
         return env.get_template("ecology/operating_tes/operating_tes_table.html").render(
-            **context, can_edit=True, current_user=SimpleNamespace(is_authenticated=True),
+            **context, can_edit=can_edit, current_user=SimpleNamespace(is_authenticated=True),
             csrf_token="test", request=request, url_for=url_for,
         )
 
@@ -76,7 +77,8 @@ def test_category_has_own_fuel_norms_and_volumes(page_data, capacity, fuel, ash)
         assert label in thead
     assert "A<sup>р</sup>" not in thead
     assert 'data-field="k_co2"' in html
-    assert f'capacity_class={capacity}"' in html.split('data-update-url="')[1].split('data-can-edit')[0]
+    table_html = next(table for table in html.split('<table')[1:] if f'capacity_class={capacity}"' in table.split('data-can-edit')[0])
+    assert 'data-field="ash"' in table_html.split('</table>', 1)[0]
     assert 'data-field="co"' not in html
 
     context = services.build_new_tes_table_context("vsego", "obemy", view_year=2026, capacity_class=capacity)
@@ -105,6 +107,32 @@ def test_category_has_own_fuel_norms_and_volumes(page_data, capacity, fuel, ash)
         assert thead.count(label) == len(territories)
     assert 'data-row-key="mazut"' in html
     assert 'data-row-key="vsego"' not in html
+
+
+@pytest.mark.parametrize("selected_capacity", ["le100", "gt100"])
+@pytest.mark.parametrize("year,kco2", [(2026, "4"), (2027, "5")])
+def test_norms_show_both_capacity_tables_for_selected_year(page_data, selected_capacity, year, kco2):
+    context = services.build_new_tes_table_context(
+        "vsego", "spravochnik", view_year=year, capacity_class=selected_capacity,
+    )
+    html = render_page(context)
+    assert 'aria-label="Категории новых ТЭС"' not in html
+    assert html.count('<table\n') == 2
+    assert html.index('id="ot-norm-le100-title"') < html.index('id="ot-norm-gt100-title"')
+    assert html.count('id="operatingTesTable"') == 1
+    assert html.count('id="operatingTesTable-gt100"') == 1
+    for capacity, title, ash in [("le100", "до 100 МВт", "2"), ("gt100", "100 МВт и более", "3")]:
+        table = next(item for item in context["new_tes_norm_tables"] if item["capacity_class"] == capacity)
+        assert table["title"] == title
+        mazut = next(row for row in table["rows"] if row["key"] == "mazut")
+        assert mazut["char_values"][year]["k_co2"] == kco2
+        if year == 2026:
+            assert mazut["char_values"][year]["ash"] == ash
+        table_html = next(part for part in html.split('<table')[1:] if f'capacity_class={capacity}"' in part.split('data-can-edit')[0])
+        assert f'data-year="{year}"' in table_html.split('</table>', 1)[0]
+    readonly_html = render_page(context, can_edit=False)
+    assert readonly_html.count('<table\n') == 2
+    assert 'class="form-control form-control-sm ot-edit-value"' not in readonly_html
 
 
 def test_total_remains_first_and_visible_without_accepted_fuel(page_data, monkeypatch):

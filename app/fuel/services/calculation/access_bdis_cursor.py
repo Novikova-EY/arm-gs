@@ -105,7 +105,7 @@ def sort_equipment_group_ids_access_findnext(
     *,
     year_number: int,
 ) -> list[int]:
-    """Порядок Кнопка49 FindNext по numb1 для строк расчётного года."""
+    """Порядок Кнопка49 FindNext по numb1 для строк расчетного года."""
     ids = [int(g) for g in group_ids if g is not None]
     if not ids:
         return []
@@ -148,11 +148,11 @@ def walk_access_bdis_cursor(
 ) -> Iterable[tuple[str, Any, AccessBdisCursorState]]:
     """
     Как VBA: на каждой строке фильтра обновляет hb/nustb/bnust1 при year=byear
-    и отдаёт расчётные строки year=cyear с текущим состоянием курсора.
+    и отдает расчетные строки year=cyear с текущим состоянием курсора.
 
     z(h): NULL/пусто → 0, без синтеза E/NUST.
     hb Dim на уровне Кнопка27 – не обнуляется на again:/BDis, только FindFirst
-    с начала. Если первая строка cyear, берётся hb с конца прошлого прохода.
+    с начала. Если первая строка cyear, берется hb с конца прошлого прохода.
     """
     if state is None:
         state = AccessBdisCursorState()

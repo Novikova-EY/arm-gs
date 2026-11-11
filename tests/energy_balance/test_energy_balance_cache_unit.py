@@ -4,6 +4,7 @@
 from unittest.mock import patch
 
 from app.energy_balance.services.energy_balance_cache import (
+    ENERGY_BALANCE_CACHE_KEY_VERSION,
     cached_load,
     clear_energy_balance_cache,
     make_energy_balance_cache_key,
@@ -17,7 +18,7 @@ def test_make_energy_balance_cache_key_includes_version():
     ):
         key = make_energy_balance_cache_key("transfer_pairs", "years", 2024, 2024, 2026)
     assert "db7" in key
-    assert key.startswith("eb:v1:")
+    assert key.startswith(f"eb:v{ENERGY_BALANCE_CACHE_KEY_VERSION}:")
 
 
 def test_cached_load_reuses_value_until_cleared():

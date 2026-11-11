@@ -1,10 +1,12 @@
 ﻿# -*- coding: utf-8 -*-
-"""Тесты расчёта строки «Характерные точки графика»."""
+"""Тесты расчета строки «Характерные точки графика»."""
 
+import math
 from decimal import Decimal
 
 from werkzeug.datastructures import ImmutableMultiDict
 
+from app.common.services.economics_fd_data_cache import ElectricalIntensityYearValues
 from app.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
@@ -17,7 +19,12 @@ from app.electrical_intensity.services.electrical_intensity_constants import (
 from app.electrical_intensity.services.electrical_intensity_services import (
     _compute_ei_graph_point,
     _compute_household_from_population_and_per_capita,
+    _force_compute_graph_points_for_rows,
+    _graph_point_source_year,
     _compute_pop_per_capita_consumption,
+    _enrich_ei_computed_rows,
+    _graph_point_db_years_from_kind_year_map,
+    _graph_point_excluded_years_from_kind_year_map,
     _enrich_population_household_plan_years,
     _should_autofill_graph_point_cell,
     compute_graph_points_for_row,
@@ -39,6 +46,102 @@ def test_population_graph_point_formula_matches_excel_log():
     )
     assert result is not None
     assert abs(result - Decimal("0.136424785064")) < Decimal("0.000000001")
+
+
+def test_only_explicit_exclusion_marker_suppresses_a_null_graph_point():
+    deleted = ElectricalIntensityYearValues({(ROW_KIND_GRAPH_POINT, 2023): None})
+    excluded = ElectricalIntensityYearValues(
+        {(ROW_KIND_GRAPH_POINT, 2023): None}, excluded_years={2023}
+    )
+
+    deleted_db_years = _graph_point_db_years_from_kind_year_map(deleted)
+    excluded_db_years = _graph_point_db_years_from_kind_year_map(excluded)
+    assert deleted_db_years == frozenset()
+    assert _graph_point_excluded_years_from_kind_year_map(deleted) == frozenset()
+    assert excluded_db_years == frozenset({2023})
+    assert _graph_point_excluded_years_from_kind_year_map(excluded) == frozenset({2023})
+    assert _should_autofill_graph_point_cell(
+        {"cells": {2023: None}, "db_years": deleted_db_years}, 2023
+    )
+    assert not _should_autofill_graph_point_cell(
+        {"cells": {2023: None}, "db_years": excluded_db_years}, 2023
+    )
+
+
+def test_graph_point_source_year_uses_y_minus_one_or_skips_excluded_year():
+    excluded_row = {
+        "row_kind": ROW_KIND_GRAPH_POINT,
+        "cells": {2023: None},
+        "db_years": frozenset({2023}),
+        "excluded_years": frozenset({2023}),
+    }
+
+    assert _graph_point_source_year(2024, None) == 2023
+    assert _graph_point_source_year(2024, excluded_row) == 2022
+
+
+def test_force_graph_point_calculation_skips_excluded_year():
+    row = {
+        "row_kind": ROW_KIND_GRAPH_POINT,
+        "cells": {2023: None, 2024: None},
+        "db_years": frozenset({2023}),
+        "excluded_years": frozenset({2023}),
+        "cell_tooltips": {},
+        "cells_display": {},
+    }
+    consumption = {(1, 2022): Decimal("10"), (1, 2024): Decimal("20")}
+    product_output = {(1, year): Decimal("1000") for year in (2022, 2024)}
+    investments = {(1, 2022): Decimal("100"), (1, 2024): Decimal("400")}
+
+    written = _force_compute_graph_points_for_rows(
+        [row],
+        ved_id=1,
+        consumption_by_ved_year=consumption,
+        product_output_by_ved_year=product_output,
+        accum_by_ved_year=investments,
+        display_years=[2023, 2024],
+        rounding_digits=6,
+        current_year=2024,
+    )
+
+    expected = Decimal(
+        str(math.log(Decimal("20") / Decimal("10"), Decimal("400") / Decimal("100")))
+    )
+    assert [year for year, _ in written] == [2024]
+    assert abs(row["cells"][2024] - expected) < Decimal("0.000000001")
+
+
+def test_page_formula_skips_excluded_graph_point_year():
+    row = {
+        "row_kind": ROW_KIND_GRAPH_POINT,
+        "cells": {2023: None, 2024: None},
+        "db_years": frozenset({2023}),
+        "excluded_years": frozenset({2023}),
+        "cell_tooltips": {},
+        "cells_display": {},
+    }
+    consumption = {(1, 2022): Decimal("10"), (1, 2024): Decimal("20")}
+    product_output = {(1, year): Decimal("1000") for year in (2022, 2024)}
+    investments = {(1, 2022): Decimal("100"), (1, 2024): Decimal("400")}
+
+    _enrich_ei_computed_rows(
+        [row],
+        ved_id=1,
+        consumption_by_ved_year=consumption,
+        product_output_by_ved_year=product_output,
+        accum_by_ved_year=investments,
+        coef_a=None,
+        coef_x=None,
+        display_years=[2023, 2024],
+        rounding_digits=6,
+        current_year=2024,
+    )
+
+    expected = Decimal(
+        str(math.log(Decimal("20") / Decimal("10"), Decimal("400") / Decimal("100")))
+    )
+    assert row["cells"][2023] is None
+    assert abs(row["cells"][2024] - expected) < Decimal("0.000000001")
 
 
 def test_pop_per_capita_consumption_is_household_over_population():
@@ -154,12 +257,13 @@ def test_should_not_autofill_graph_point_when_db_row_exists_with_null():
     assert _should_autofill_graph_point_cell(row, 2024) is True
 
 
-def test_save_graph_point_clear_persisted_when_orig_had_value(app, monkeypatch):
-    """Очистка отображаемого graph_point создаёт NULL в БД."""
+def test_save_graph_point_exclusion_persists_null_marker(app, monkeypatch):
+    """Явное исключение коэффициента сохраняется как пустая строка в БД."""
     class _Row:
         def __init__(self):
             self.parameter_value = None
             self.modified_by = None
+            self.is_excluded_from_calculation = False
 
     saved_row = _Row()
 
@@ -172,11 +276,16 @@ def test_save_graph_point_clear_persisted_when_orig_had_value(app, monkeypatch):
     monkeypatch.setattr(eis, "_refdata_ved_ids", lambda version_id: frozenset({5}))
     monkeypatch.setattr(eis, "_refdata_ved_types_for_version", lambda version_id: [])
     monkeypatch.setattr(eis, "_preload_rf_year_row_cache", lambda version_id: {})
-    monkeypatch.setattr(eis, "_preload_fd_year_row_cache", lambda version_id: {})
+    monkeypatch.setattr(
+        eis,
+        "_preload_fd_year_row_cache",
+        lambda version_id: {(88, 5, "graph_point", 2023): saved_row},
+    )
     monkeypatch.setattr(eis, "_preload_population_year_row_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_preload_rf_coef_row", lambda version_id: None)
     monkeypatch.setattr(eis, "_preload_fd_coef_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_preload_population_coef_cache", lambda version_id: {})
+    monkeypatch.setattr(eis, "_preload_fd_total_k_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_resolve_fd_year_row", _capture_fd_row)
     monkeypatch.setattr(
         eis,
@@ -201,8 +310,9 @@ def test_save_graph_point_clear_persisted_when_orig_had_value(app, monkeypatch):
             ("cell_ved_id[]", "5"),
             ("row_kind[]", "graph_point"),
             ("cell_year[]", "2023"),
-            ("cell_value[]", ""),
+            ("cell_value[]", "1.2"),
             ("cell_orig_value[]", "1.2"),
+            ("cell_exclude[]", "1"),
         ]
     )
 
@@ -213,11 +323,13 @@ def test_save_graph_point_clear_persisted_when_orig_had_value(app, monkeypatch):
     assert updated == 1
     assert skipped == 0
     assert saved_row.parameter_value is None
+    assert saved_row.is_excluded_from_calculation is True
 
 
-def test_save_graph_point_clear_computed_without_orig(app, monkeypatch):
-    """Очистка вычисленного graph_point без cell_orig_value, но с маркером отображения."""
-    saved_row = type("Row", (), {"parameter_value": None, "modified_by": None})()
+def test_save_graph_point_clear_deletes_saved_row(app, monkeypatch):
+    """Обычное удаление очищает запись, не помечая год исключенным."""
+    saved_row = type("Row", (), {"parameter_value": Decimal("1.2"), "modified_by": None})()
+    deleted_rows = []
 
     monkeypatch.setattr(eis, "get_current_version", lambda: 20)
     monkeypatch.setattr(eis, "_ei_current_year_number", lambda: 2025)
@@ -225,16 +337,16 @@ def test_save_graph_point_clear_computed_without_orig(app, monkeypatch):
     monkeypatch.setattr(eis, "_refdata_ved_ids", lambda version_id: frozenset({1}))
     monkeypatch.setattr(eis, "_refdata_ved_types_for_version", lambda version_id: [])
     monkeypatch.setattr(eis, "_preload_rf_year_row_cache", lambda version_id: {})
-    monkeypatch.setattr(eis, "_preload_fd_year_row_cache", lambda version_id: {})
+    monkeypatch.setattr(
+        eis,
+        "_preload_fd_year_row_cache",
+        lambda version_id: {(88, 1, "graph_point", 2023): saved_row},
+    )
     monkeypatch.setattr(eis, "_preload_population_year_row_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_preload_rf_coef_row", lambda version_id: None)
     monkeypatch.setattr(eis, "_preload_fd_coef_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_preload_population_coef_cache", lambda version_id: {})
-    monkeypatch.setattr(
-        eis,
-        "_resolve_fd_year_row",
-        lambda cache, version_id, fd_id, ved_id, row_kind, year_n, user: saved_row,
-    )
+    monkeypatch.setattr(eis, "_preload_fd_total_k_cache", lambda version_id: {})
     monkeypatch.setattr(
         eis,
         "queue_electrical_intensity_cell_change",
@@ -264,12 +376,15 @@ def test_save_graph_point_clear_computed_without_orig(app, monkeypatch):
     )
 
     with app.app_context():
+        monkeypatch.setattr(
+            eis.db.session, "delete", deleted_rows.append, raising=False
+        )
         with app.test_request_context():
             updated, skipped = save_electrical_intensity_from_post(form)
 
     assert updated == 1
     assert skipped == 0
-    assert saved_row.parameter_value is None
+    assert deleted_rows == [saved_row]
 
 
 def test_save_graph_point_not_skipped_when_ved_missing_from_cache(app, monkeypatch):
@@ -297,6 +412,7 @@ def test_save_graph_point_not_skipped_when_ved_missing_from_cache(app, monkeypat
     monkeypatch.setattr(eis, "_preload_rf_coef_row", lambda version_id: None)
     monkeypatch.setattr(eis, "_preload_fd_coef_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_preload_population_coef_cache", lambda version_id: {})
+    monkeypatch.setattr(eis, "_preload_fd_total_k_cache", lambda version_id: {})
     monkeypatch.setattr(eis, "_resolve_fd_year_row", _capture_fd_row)
     monkeypatch.setattr(
         eis,

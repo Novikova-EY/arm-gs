@@ -72,7 +72,7 @@ def test_ez_res_fully_in_zone_ignores_placeholder_outside_district() -> None:
         regional_districts=[arkhangelsk, nenets],
         energy_units=[],
     )
-    # Минимально мокаем builder-зависимости через прямой расчёт флага как в коде.
+    # Минимально мокаем builder-зависимости через прямой расчет флага как в коде.
     in_zone_ids = {638}
     placeholder_names = dss.PLACEHOLDER_NAMES
 

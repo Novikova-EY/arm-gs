@@ -64,7 +64,7 @@ block content %}
             {% endif %}
             {% else %}
             {% include 'ecology/operating_tes/_sheet_nav.html' %}
-            {% if new_tes_capacity_tabs %}
+            {% if new_tes_capacity_tabs and not new_tes_norm_tables %}
             <nav class="d-flex flex-wrap gap-2" aria-label="Категории новых ТЭС">
               {% for capacity_key, capacity_label in new_tes_capacity_tabs %}
               <a class="btn {{ 'btn-primary' if capacity_class == capacity_key else 'btn-outline-primary' }}"
@@ -85,9 +85,6 @@ block content %}
           <ul class="mb-0 mt-2 overflow-auto" style="max-height: 12rem">{% for error in fuel_summary_errors %}<li>{{ error }}</li>{% endfor %}</ul>
         </details>
       </div>
-      {% endif %}
-      {% if sheet.layout == 'chars' and not new_tes_capacity_tabs %}
-      <p class="text-muted mb-2">Характеристики топлива едины для всех уровней: всего, ОЭС и принадлежностей. Данные различаются только по годам.</p>
       {% endif %}
 
       <div class="col-12 mb-2 text-center">
@@ -117,6 +114,8 @@ block content %}
 
       {% if sheet.layout == 'coeff' %}
       {% include 'ecology/operating_tes/_coefficient_filters.html' %}
+      {% elif sheet.layout in ('chars', 'emission', 'emission_tj', 'volumes') or (sheet.layout == 'fuel' and not fuel_exchange_source) %}
+      {% include 'ecology/operating_tes/_level_filters.html' %}
       {% endif %}
 
       <div class="col-12 mb-2">
@@ -134,7 +133,7 @@ block content %}
             {% endfor %} {% endif %} {% endfor %} {% if view_year and not year_columns_mode %}
             <input type="hidden" name="view_year" value="{{ view_year }}" />
             {% endif %}
-            {% if sheet.layout == 'coeff' %}
+            {% if sheet.layout in ('coeff', 'chars', 'fuel', 'emission', 'emission_tj', 'volumes') %}
             <input type="hidden" name="affiliation" value="{{ affiliation }}" />
             {% endif %}
             <label for="start_year" class="mb-0" style="white-space: nowrap"
@@ -146,7 +145,7 @@ block content %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               {% if start_year == year %}
               <option value="{{ year }}" selected>{{ year }}</option>
               {% else %}
@@ -163,7 +162,7 @@ block content %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               {% if end_year == year %}
               <option value="{{ year }}" selected>{{ year }}</option>
               {% else %}
@@ -196,7 +195,7 @@ block content %}
             >
             {% else %}
             <a
-              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), view_year=year, scope=fuel_scope|default(none), capacity_class=capacity_class|default(none), affiliation=affiliation if sheet.layout == 'coeff' else none) }}"
+              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), specific_rounding_digits=specific_rounding_digits|default(none), view_year=year, scope=fuel_scope|default(none), capacity_class=capacity_class|default(none), affiliation=affiliation if sheet.layout in ('coeff', 'chars', 'fuel', 'emission', 'emission_tj', 'volumes') else none) }}"
               class="btn btn-outline-success text-nowrap"
               title="Показать данные за {{ year }} год"
               >{{ year_btn_label }}{% if fuel_pending_by_year is defined and year in fuel_pending_by_year %} <span class="badge bg-warning text-dark">Новые данные</span>{% endif %}</a
@@ -225,6 +224,14 @@ block content %}
               Пустые строки
             </button>
             {% endif %}
+            {% if table_endpoint in ('ecology_bp.operating_tes_table', 'ecology_bp.calculation_summary') %}
+            <button type="button" id="otExportExcelBtn"
+                    class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                    data-export-url="{{ url_for('ecology_bp.calculation_summary_export' if table_endpoint == 'ecology_bp.calculation_summary' else 'ecology_bp.operating_tes_export', territory_slug=territory.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), specific_rounding_digits=specific_rounding_digits|default(none), affiliation=affiliation|default(none)) }}"
+                    title="Выгрузить все вкладки и все годы выбранного периода">
+              <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+            </button>
+            {% endif %}
             {% if new_fuel_pending is defined %}
               {% for pending in new_fuel_pending %}
               <a href="{{ url_for('ecology_bp.operating_tes_fuel_review', submission_id=pending.id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
@@ -251,7 +258,12 @@ block content %}
             {% if sheet.layout in ('emission', 'emission_tj') and coefficient_rounding_digits is defined %}
             {{ rounding_control('coefficient_rounding_digits', 'Округл (КПД/КП)', coefficient_rounding_digits) }}
             {% endif %}
+            {% if table_endpoint == 'ecology_bp.calculation_summary' and sheet.slug in ('specific', 'dynamics-specific') and specific_rounding_digits is defined %}
+            {{ rounding_control('specific_rounding_digits', 'Округл (удельные)', specific_rounding_digits) }}
+            {% endif %}
+            {% if not (table_endpoint == 'ecology_bp.calculation_summary' and sheet.slug in ('specific', 'dynamics-specific')) %}
             {{ rounding_control('rounding_digits', 'Округл', rounding_digits) }}
+            {% endif %}
           </div>
         </div>
       </div>
@@ -266,7 +278,7 @@ block content %}
         left: 0;
       }
       /* Горизонтальный скролл перекрывает последнюю строку; padding на wrapper
-         не схлопывается (в отличие от margin у table) и даёт доскроллить строку. */
+         не схлопывается (в отличие от margin у table) и дает доскроллить строку. */
       .page-table-scroll:has(.ot-calculation-table) {
         --page-table-scroll-bottom-gap: 1.5rem;
         max-width: 100%;
@@ -274,7 +286,8 @@ block content %}
         padding-bottom: 2rem;
       }
       .ot-calculation-table.power-demand-summary-table {
-        width: max-content;
+        --ot-value-col-width: 8.5rem;
+        width: 100%;
         min-width: 100%;
         max-width: none;
         table-layout: fixed;
@@ -378,6 +391,26 @@ block content %}
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
+      .ot-calculation-table tr.fw-bold input.ot-edit-value {
+        font-weight: inherit;
+      }
+      .ot-char-note-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      .ot-char-note-input {
+        display: block;
+        width: 100%;
+        min-height: 2.25rem;
+        height: auto;
+        box-sizing: border-box;
+        resize: none;
+        overflow: hidden;
+        text-align: left;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
       .ot-calculation-table td.is-save-success {
         box-shadow: inset 0 0 0 2px var(--bs-success);
       }
@@ -386,6 +419,15 @@ block content %}
       }
       .page-table-scroll .ot-table-scroll-end-spacer {
         height: 2.5rem;
+      }
+      .ot-new-tes-norm-tables {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(40rem, 1fr));
+        align-items: start;
+        gap: 1.5rem;
+      }
+      .ot-new-tes-norm-tables > section {
+        min-width: 0;
       }
       .ot-calculation-table.ot-chars-table {
         --ot-label-col-w: 14rem;
@@ -421,7 +463,7 @@ block content %}
         --ot-label-col-w: 14rem;
         table-layout: fixed;
         width: max-content;
-        min-width: 100%;
+        min-width: 0;
         max-width: none;
       }
       .page-table-scroll .ot-calculation-table.ot-emission-pair-table thead th,
@@ -437,8 +479,8 @@ block content %}
       }
       .ot-calculation-table.ot-emission-pair-table th.ot-pair-sub {
         white-space: normal;
-        width: calc(var(--ot-terr-col-min) / 2);
-        min-width: calc(var(--ot-terr-col-min) / 2);
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
         overflow: hidden;
         overflow-wrap: normal;
         word-break: normal;
@@ -451,21 +493,51 @@ block content %}
       }
       .ot-calculation-table.ot-emission-pair-table td.ot-pair-cell {
         white-space: nowrap;
-        width: calc(var(--ot-terr-col-min) / 2);
-        min-width: calc(var(--ot-terr-col-min) / 2);
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
         overflow: hidden;
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
+      .ot-calculation-table.ot-uniform-value-columns {
+        --ot-label-col-w: 14rem;
+        width: 100%;
+        min-width: 100%;
+        max-width: none;
+        table-layout: fixed;
+      }
+      .ot-calculation-table.ot-uniform-value-columns.ot-emission-pair-table {
+        --ot-terr-col-min: calc(var(--ot-value-col-width) + var(--ot-value-col-width));
+      }
+      .ot-calculation-table.ot-uniform-value-columns.ot-emission-pair-table th.ot-terr-col {
+        width: var(--ot-terr-col-min);
+        min-width: var(--ot-terr-col-min);
+      }
+      .ot-calculation-table.ot-uniform-value-columns col.ot-col-terr,
+      .ot-calculation-table.ot-uniform-value-columns col.ot-col-year,
+      .ot-calculation-table.ot-uniform-value-columns col.ot-col-terr-half,
+      .ot-calculation-table.ot-uniform-value-columns th.ot-terr-col,
+      .ot-calculation-table.ot-uniform-value-columns th.ot-year-col,
+      .ot-calculation-table.ot-uniform-value-columns th.ot-pair-sub,
+      .ot-calculation-table.ot-uniform-value-columns td.ot-year-cell,
+      .ot-calculation-table.ot-uniform-value-columns td.ot-pair-cell {
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
+      }
+      .ot-calculation-table.ot-uniform-value-columns.ot-affiliation-volume-table thead tr:first-child th.ot-terr-col,
+      .ot-calculation-table.ot-uniform-value-columns.ot-new-tes-volumes-table thead th.ot-terr-col {
+        width: auto;
+        min-width: 0;
+      }
       .ot-calculation-table.ot-fit-table {
         width: 100%;
-        min-width: 56rem;
-        --ot-label-col-w: clamp(11rem, 20vw, 15rem);
-        --ot-terr-col-min: 0;
+        min-width: 100%;
+        --ot-label-col-w: 14rem;
+        --ot-terr-col-min: 8.5rem;
       }
       .ot-calculation-table.ot-fit-table col.ot-col-terr,
       .ot-calculation-table.ot-fit-table col.ot-col-year {
-        width: auto;
+        width: var(--ot-value-col-width);
       }
       .ot-calculation-table.ot-fit-table th.ot-label-col,
       .ot-calculation-table.ot-fit-table td.ot-row-label {
@@ -473,10 +545,10 @@ block content %}
         overflow-wrap: break-word;
       }
       .ot-calculation-table.ot-fit-table td.ot-year-cell {
-        width: auto;
-        min-width: 0;
-        overflow: visible;
-        white-space: normal;
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
+        overflow: hidden;
+        white-space: nowrap;
         overflow-wrap: normal;
       }
       .page-table-scroll .ot-calculation-table.ot-fit-table thead th {
@@ -484,31 +556,64 @@ block content %}
       }
       .page-table-scroll .ot-calculation-table.ot-fit-table thead th.ot-terr-col,
       .page-table-scroll .ot-calculation-table.ot-fit-table thead th.ot-year-col {
-        width: auto;
-        min-width: 0;
-        overflow: visible;
-        overflow-wrap: anywhere;
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
+        overflow: hidden;
+        overflow-wrap: normal;
       }
       .ot-calculation-table.ot-new-tes-volumes-table td.ot-year-cell,
       .page-table-scroll .ot-calculation-table.ot-new-tes-volumes-table thead th.ot-year-col {
         min-width: 8.5rem;
         white-space: normal;
       }
+      .page-table-scroll .ot-calculation-table.ot-affiliation-volume-table {
+        width: 100%;
+        min-width: 100%;
+        max-width: none;
+        table-layout: fixed;
+      }
+      .ot-calculation-table.ot-affiliation-volume-table col.ot-col-terr,
+      .ot-calculation-table.ot-affiliation-volume-table th.ot-terr-col,
+      .ot-calculation-table.ot-affiliation-volume-table td.ot-year-cell {
+        width: var(--ot-value-col-width);
+        min-width: var(--ot-value-col-width);
+      }
+      .ot-calculation-table.ot-affiliation-volume-table thead tr:first-child th.ot-terr-col {
+        width: auto;
+        min-width: 0;
+      }
+      .ot-calculation-table.ot-affiliation-volume-table td.ot-year-cell {
+        white-space: nowrap;
+        overflow: visible;
+      }
     </style>
 
+    {% if not specific_emissions_only %}
+    {% if main_table_title %}
+    <h2 class="h3 fw-bold mt-4 mb-3">{{ main_table_title }}</h2>
+    {% endif %}
+    {% if new_tes_norm_tables %}<div class="ot-new-tes-norm-tables">{% endif %}
+    {% for norm_table in new_tes_norm_tables|default([]) or [{'rows': rows, 'capacity_class': capacity_class|default(none)}] %}
+    {% with rows=norm_table.rows, capacity_class=norm_table.capacity_class %}
+    {% if norm_table.title %}
+    <section aria-labelledby="ot-norm-{{ capacity_class }}-title">
+    <h2 class="h3 fw-bold mt-4 mb-3" id="ot-norm-{{ capacity_class }}-title">{{ norm_table.title }}</h2>
+    {% endif %}
     <table
-      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table{% if new_tes_volume_columns %} ot-new-tes-volumes-table{% endif %}{% if sheet.layout not in ('fuel', 'coeff') %} ot-hide-empty{% endif %}{% if sheet.layout in ('fuel', 'coeff', 'volumes') %} ot-fit-table{% elif sheet.layout == 'chars' %} ot-chars-table{% elif emission_view and emission_view.kind == 'pair' %} ot-emission-pair-table{% elif emission_view %} ot-emission-single-table{% endif %}"
-      id="operatingTesTable"
-      {% if new_tes_volume_columns %}style="min-width: {{ 15 + value_columns|length * 8.5 }}rem;"{% endif %}
+      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table ot-uniform-value-columns{% if new_tes_volume_columns %} ot-new-tes-volumes-table{% endif %}{% if show_affiliation_columns %} ot-affiliation-volume-table{% endif %}{% if sheet.layout not in ('fuel', 'coeff') %} ot-hide-empty{% endif %}{% if sheet.layout in ('fuel', 'coeff') %} ot-fit-table{% elif sheet.layout == 'chars' %} ot-chars-table{% elif emission_view and emission_view.kind == 'pair' %} ot-emission-pair-table{% elif emission_view %} ot-emission-single-table{% endif %}"
+      id="{{ 'operatingTesTable' if loop.first else 'operatingTesTable-' ~ capacity_class }}"
+      {% if norm_table.title %}aria-labelledby="ot-norm-{{ capacity_class }}-title"{% endif %}
       data-update-url="{{ url_for(value_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, capacity_class=capacity_class|default(none)) }}"
       data-can-edit="{{ 1 if can_edit else 0 }}"
       data-affiliation="{{ affiliation|default('all') }}"
-      data-autosave="{{ 1 if sheet.layout in ('coeff', 'chars', 'emission', 'emission_tj') or year_columns_mode else 0 }}"
+      data-autosave="{{ 1 if sheet.layout in ('coeff', 'chars', 'fuel', 'emission', 'emission_tj') or year_columns_mode else 0 }}"
       data-rounding-digits="{{ rounding_digits }}"
       data-coefficient-rounding-digits="{{ coefficient_rounding_digits|default(0) }}"
     >
       {% if new_tes_volume_columns %}
       {% include 'ecology/operating_tes/_new_tes_volume_table.html' %}
+      {% elif dynamics_territories %}
+      {% include 'ecology/operating_tes/_volume_table_content.html' %}
       {% elif year_columns_mode %}
       {% include 'ecology/operating_tes/_range_table.html' %}
       {% elif sheet.layout == 'chars' %}
@@ -517,11 +622,13 @@ block content %}
         {% for col in char_columns %}
         <col />
         {% endfor %}
+        <col class="ot-char-note-col" />
       </colgroup>
       <thead class="table-success">
         <tr class="text-center align-middle">
           <th rowspan="2" scope="col" class="text-center align-middle ot-label-col">
             Вид топлива
+            {% include 'ecology/operating_tes/_fuel_filter.html' %}
           </th>
           {% for group in char_header_groups %}
           <th colspan="{{ group['keys']|length }}" scope="{{ 'colgroup' if group['keys']|length > 1 else 'col' }}"{% if group.rowspan %} rowspan="{{ group.rowspan }}"{% endif %} class="text-center align-middle ot-char-title">
@@ -536,6 +643,7 @@ block content %}
             {% endif %}
           </th>
           {% endfor %}
+          <th rowspan="2" scope="col" class="text-center align-middle ot-char-title">Примечание</th>
         </tr>
         <tr class="text-center align-middle">
           {% set char_symbols = {
@@ -585,6 +693,16 @@ block content %}
             {% else %} {{ row.char_values[view_year][col.key] }} {% endif %}
           </td>
           {% endfor %}
+          <td class="ot-char-cell ot-char-note-cell" style="min-width: 16rem;">
+            {% if row.editable_values and can_edit %}
+            <textarea
+              rows="1"
+              class="form-control form-control-sm ot-edit-value ot-char-note-input"
+              data-year="{{ view_year }}"
+              data-field="note"
+              aria-label="Примечание: {{ row.label }}">{{ row.char_values[view_year]['note'] }}</textarea>
+            {% else %}{{ row.char_values[view_year]['note'] }}{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -600,6 +718,7 @@ block content %}
         <tr class="text-center align-middle">
           <th rowspan="2" class="text-center align-middle ot-label-col">
             Вид топлива
+            {% include 'ecology/operating_tes/_fuel_filter.html' %}
             {% include 'ecology/operating_tes/_territory_filter.html' %}
           </th>
           {% for col in territory_columns %}
@@ -695,6 +814,7 @@ block content %}
         <tr class="text-center align-middle">
           <th class="text-center align-middle ot-label-col">
             Вид топлива
+            {% include 'ecology/operating_tes/_fuel_filter.html' %}
             {% include 'ecology/operating_tes/_territory_filter.html' %}
           </th>
           {% for col in territory_columns %}
@@ -741,15 +861,46 @@ block content %}
       {% else %}
       <colgroup>
         <col class="ot-col-label" />
-        {% for col in territory_columns %}
+        {% if affiliation_columns %}
+          {% for territory_col in territory_columns %}
+            {% for affiliation_col in affiliation_columns %}
         <col class="ot-col-terr" />
-        {% endfor %}
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          {% for col in territory_columns %}
+        <col class="ot-col-terr" />
+          {% endfor %}
+        {% endif %}
       </colgroup>
       <thead class="table-success">
+        {% if affiliation_columns %}
+        <tr class="text-center align-middle">
+          <th rowspan="2" class="text-center align-middle ot-label-col">Наименование
+            {% if territory_filter_storage_key %}
+            {% include 'ecology/operating_tes/_territory_filter.html' %}
+            {% endif %}
+            {% if sheet.layout in ('fuel', 'coeff') %}
+            {% include 'ecology/operating_tes/_fuel_filter.html' %}
+            {% endif %}
+          </th>
+          {% for territory_col in territory_columns %}
+          <th colspan="{{ affiliation_columns|length }}" class="text-center align-middle ot-terr-col">{{ 'Россия' if territory_col.slug == 'vsego' else territory_col.sheet_name }}</th>
+          {% endfor %}
+        </tr>
+        <tr class="text-center align-middle">
+          {% for col in value_columns %}
+          <th class="text-center align-middle ot-terr-col">{% if col.affiliation == 'all' %}Всего{% elif col.affiliation == 'prompred' %}Пром<wbr>предприятия{% else %}{{ col.affiliation_label }}{% endif %}</th>
+          {% endfor %}
+        </tr>
+        {% else %}
         <tr class="text-center align-middle">
           <th class="text-center align-middle ot-label-col">Наименование
             {% if territory_filter_storage_key %}
             {% include 'ecology/operating_tes/_territory_filter.html' %}
+            {% endif %}
+            {% if sheet.layout in ('fuel', 'coeff') %}
+            {% include 'ecology/operating_tes/_fuel_filter.html' %}
             {% endif %}
           </th>
           {% for col in territory_columns %}
@@ -760,6 +911,7 @@ block content %}
           </th>
           {% endfor %}
         </tr>
+        {% endif %}
       </thead>
       <tbody>
         {% for row in rows %}
@@ -805,12 +957,33 @@ block content %}
       </tbody>
       {% endif %}
     </table>
-    {% for specific_table in specific_emission_tables %}
-    <h2 class="h3 fw-bold mt-4 mb-3" id="ot-specific-{{ specific_table.key }}-title">
-      {{ specific_table.title }}
+    {% if norm_table.title %}</section>{% endif %}
+    {% endwith %}
+    {% endfor %}
+    {% if new_tes_norm_tables %}</div>{% endif %}
+    {% endif %}
+    {% for volume_table in summary_volume_tables %}
+    <h2 class="h3 fw-bold mt-4 mb-3" id="ot-summary-{{ volume_table.key }}-title">
+      {{ volume_table.title }}
     </h2>
-    <table class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table ot-fit-table ot-specific-table ot-hide-empty"
-           id="ot-specific-{{ specific_table.key }}" aria-labelledby="ot-specific-{{ specific_table.key }}-title">
+    <table class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table ot-uniform-value-columns ot-hide-empty"
+           id="ot-summary-{{ volume_table.key }}" aria-labelledby="ot-summary-{{ volume_table.key }}-title" data-can-edit="0">
+      {% with rows = volume_table.rows %}
+      {% include 'ecology/operating_tes/_volume_table_content.html' %}
+      {% endwith %}
+    </table>
+    {% endfor %}
+    {% for specific_table in specific_emission_tables %}
+    <div class="d-flex align-items-center justify-content-between gap-2 mt-4 mb-3">
+      <h2 class="h3 fw-bold mb-0 flex-grow-1" id="ot-specific-{{ specific_table.key }}-title">
+        {{ specific_table.title }}
+      </h2>
+      {% if loop.first and not (table_endpoint == 'ecology_bp.calculation_summary' and sheet.slug in ('specific', 'dynamics-specific')) %}
+      {{ rounding_control('specific_rounding_digits', 'Округл (удельные)', specific_rounding_digits) }}
+      {% endif %}
+    </div>
+    <table class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-calculation-table ot-uniform-value-columns ot-specific-table ot-hide-empty"
+           id="ot-specific-{{ specific_table.key }}" aria-labelledby="ot-specific-{{ specific_table.key }}-title" data-can-edit="0">
       {% with rows = specific_table.rows %}
       {% include 'ecology/operating_tes/_volume_table_content.html' %}
       {% endwith %}
@@ -821,23 +994,29 @@ block content %}
 </div>
 {% if emission_view or new_tes_volume_columns or territory_filter_storage_key %}
 {% include 'ecology/operating_tes/_territory_filter_menu.html' %}
+{% endif %}
+{% include 'ecology/operating_tes/_fuel_filter_menu.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ecology_territory_filter.css') }}">
 <script src="{{ url_for('static', filename='js/ecology/tes_territory_filter.js') }}"></script>
+{% if table_endpoint in ('ecology_bp.operating_tes_table', 'ecology_bp.calculation_summary') and not fuel_exchange_source %}
+<script src="{{ url_for('static', filename='js/common/excel_export_fetch.js') }}?v=1"></script>
 {% endif %}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    const exportButton = document.getElementById('otExportExcelBtn');
+    exportButton?.addEventListener('click', function () {
+      window.armGsExportExcel(exportButton, exportButton.dataset.exportUrl);
+    });
     document.querySelectorAll('.page-table-scroll [data-bs-toggle="tooltip"]').forEach(function (el) {
       new bootstrap.Tooltip(el);
     });
-    ['rounding_digits', 'coefficient_rounding_digits'].forEach(function (id) {
+    ['rounding_digits', 'coefficient_rounding_digits', 'specific_rounding_digits'].forEach(function (id) {
       document.getElementById(id)?.addEventListener('change', function () {
         const url = new URL(window.location.href);
         url.searchParams.set(id, this.value);
         window.location.href = url.toString();
       });
     });
-    const table = document.getElementById('operatingTesTable');
-    const labelTh = table?.querySelector('thead th.ot-label-col');
     const measureNowrapWidth = function (sourceEl, html) {
       const cs = getComputedStyle(sourceEl);
       const probe = document.createElement('div');
@@ -877,13 +1056,21 @@ block content %}
       });
       return width;
     };
-    const measureFitColumns = function () {
+    const measureTableColumns = function (table) {
+      const labelTh = table?.querySelector('thead th.ot-label-col');
       if (!table || !labelTh || table.classList.contains('ot-fit-table')) return;
       let labelW = 0;
       table.querySelectorAll('th.ot-label-col, td.ot-row-label').forEach(function (el) {
         labelW = Math.max(labelW, measureNowrapWidth(el, el.innerHTML));
       });
       const labelPx = labelW > 0 ? Math.ceil(labelW + 4) : 0;
+      if (table.classList.contains('ot-uniform-value-columns')) {
+        table.style.removeProperty('--ot-label-col-w');
+        table.style.width = '100%';
+        table.style.minWidth = '100%';
+        table.style.maxWidth = 'none';
+        return;
+      }
       if (labelPx > 0) {
         table.style.setProperty('--ot-label-col-w', labelPx + 'px');
       }
@@ -936,6 +1123,9 @@ block content %}
         window.armGsUpdateHorizontalScrollFlags();
       }
     };
+    const measureFitColumns = function () {
+      document.querySelectorAll('.ot-calculation-table[data-update-url]').forEach(measureTableColumns);
+    };
     measureFitColumns();
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(measureFitColumns);
@@ -943,11 +1133,10 @@ block content %}
     window.addEventListener('resize', measureFitColumns);
     const emptyBtn = document.getElementById('otShowEmptyRowsToggle');
     emptyBtn?.addEventListener('click', function () {
-      const hide = table.classList.toggle('ot-hide-empty');
-      document.querySelectorAll('.ot-specific-table').forEach(function (specificTable) {
-        specificTable.classList.toggle('ot-hide-empty', hide);
+      const shown = emptyBtn.getAttribute('aria-pressed') !== 'true';
+      document.querySelectorAll('.page-table-scroll .ot-calculation-table').forEach(function (calculationTable) {
+        calculationTable.classList.toggle('ot-hide-empty', !shown);
       });
-      const shown = !hide;
       emptyBtn.setAttribute('aria-pressed', shown ? 'true' : 'false');
       emptyBtn.classList.toggle('btn-primary', shown);
       emptyBtn.classList.toggle('btn-outline-primary', !shown);
@@ -963,6 +1152,7 @@ block content %}
     };
     const recalculateEmitted = function (field) {
       if (!field.dataset.emittedKey) return;
+      const table = field.closest('table');
       const target = table.querySelector(
         'tr[data-row-key="' + field.dataset.emittedKey + '"] td[data-column="' + field.dataset.column + '"]'
       );
@@ -977,104 +1167,117 @@ block content %}
       const digits = Number(table.dataset.roundingDigits);
       target.textContent = formatNumber(Number(total) * (1 - coefficient), digits);
     };
-    const updateUrl = table?.dataset.updateUrl;
-    const canEdit = table?.dataset.canEdit === '1';
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
-    if (canEdit && updateUrl) {
-      const clearSaveState = function (el) {
-        const cell = el.closest('td');
-        cell?.classList.remove('is-save-success', 'is-save-error');
-        if (cell) cell.removeAttribute('title');
-        el.classList.remove('is-invalid');
-        el.removeAttribute('aria-invalid');
-      };
-      const saveStates = new WeakMap();
-      const saveField = async function (el) {
-        const state = saveStates.get(el);
-        if (state.saving || getFieldValue(el) === state.savedValue) return;
-        const value = getFieldValue(el);
-        const tr = el.closest('tr');
-        const cell = el.closest('td');
-        clearSaveState(el);
-        state.saving = true;
-        try {
-          const response = await fetch(el.dataset.updateUrl || updateUrl, {
-            method: 'PATCH',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              'X-CSRFToken': CSRF || ''
-            },
-            body: JSON.stringify({
-              year: el.dataset.year,
-              territory: el.dataset.territory,
-              affiliation: el.dataset.affiliation || table.dataset.affiliation,
-              row_key: tr?.dataset.rowKey,
-              field: el.dataset.field || tr?.dataset.editableField,
-              value: value
-            })
-          });
-          const data = await response.json();
-          if (!response.ok || !data.ok) {
-            throw new Error(data.error || 'Не удалось сохранить значение');
-          }
-          state.savedValue = value;
-          if (getFieldValue(el) !== value) return;
+    document.querySelectorAll('.ot-calculation-table[data-update-url]').forEach(function (table) {
+      const updateUrl = table.dataset.updateUrl;
+      const canEdit = table.dataset.canEdit === '1';
+      if (canEdit && updateUrl) {
+        const clearSaveState = function (el) {
+          const cell = el.closest('td');
+          cell?.classList.remove('is-save-success', 'is-save-error');
+          if (cell) cell.removeAttribute('title');
           el.classList.remove('is-invalid');
           el.removeAttribute('aria-invalid');
-          if (cell) {
-            cell.classList.add('is-save-success');
-            cell.title = 'Сохранено';
-          }
-        } catch (error) {
-          if (getFieldValue(el) !== value) return;
-          el.classList.add('is-invalid');
-          el.setAttribute('aria-invalid', 'true');
-          if (cell) {
-            cell.classList.add('is-save-error');
-            cell.title = error.message || 'Не удалось сохранить значение';
-          }
-        } finally {
-          state.saving = false;
-          if (getFieldValue(el) !== value) saveField(el);
-        }
-      };
-      table.querySelectorAll('.ot-edit-value').forEach(function (field) {
-        const state = { saving: false, savedValue: getFieldValue(field), timer: null };
-        saveStates.set(field, state);
-        const coefficientField = field.dataset.rawValue !== undefined;
-        const updateRawValue = function () {
-          if (coefficientField) field.dataset.rawValue = field.value;
         };
-        if (coefficientField) {
-          field.addEventListener('focus', function () {
-            field.value = field.dataset.rawValue;
-          });
-          field.addEventListener('blur', function () {
-            const raw = field.dataset.rawValue.replace(/\s/g, '').replace(',', '.');
-            const digits = Number(table.dataset.coefficientRoundingDigits);
-            field.value = raw !== '' && Number.isFinite(Number(raw)) && digits !== 0
-              ? formatNumber(Number(raw), digits) : field.dataset.rawValue;
-          });
-        }
-        field.addEventListener('input', function () {
-          updateRawValue();
-          clearSaveState(field);
-          recalculateEmitted(field);
-          clearTimeout(state.timer);
-          if (table.dataset.autosave === '1') {
-            state.timer = setTimeout(function () { saveField(field); }, 400);
+        const saveStates = new WeakMap();
+        const saveField = async function (el) {
+          const state = saveStates.get(el);
+          if (state.saving || getFieldValue(el) === state.savedValue) return;
+          const value = getFieldValue(el);
+          const tr = el.closest('tr');
+          const cell = el.closest('td');
+          clearSaveState(el);
+          state.saving = true;
+          try {
+            const response = await fetch(el.dataset.updateUrl || updateUrl, {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF || ''
+              },
+              body: JSON.stringify({
+                year: el.dataset.year,
+                territory: el.dataset.territory,
+                affiliation: el.dataset.affiliation || table.dataset.affiliation,
+                row_key: tr?.dataset.rowKey,
+                field: el.dataset.field || tr?.dataset.editableField,
+                value: value
+              })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+              throw new Error(data.error || 'Не удалось сохранить значение');
+            }
+            state.savedValue = value;
+            if (getFieldValue(el) !== value) return;
+            el.classList.remove('is-invalid');
+            el.removeAttribute('aria-invalid');
+            if (cell) {
+              cell.classList.add('is-save-success');
+              cell.title = 'Сохранено';
+            }
+          } catch (error) {
+            if (getFieldValue(el) !== value) return;
+            el.classList.add('is-invalid');
+            el.setAttribute('aria-invalid', 'true');
+            if (cell) {
+              cell.classList.add('is-save-error');
+              cell.title = error.message || 'Не удалось сохранить значение';
+            }
+          } finally {
+            state.saving = false;
+            if (getFieldValue(el) !== value) saveField(el);
           }
+        };
+        const formatCoefficientValue = function (field) {
+          const raw = field.dataset.rawValue.replace(/\s/g, '').replace(',', '.');
+          const digits = Number(table.dataset.coefficientRoundingDigits);
+          field.value = raw !== '' && Number.isFinite(Number(raw)) && digits !== 0
+            ? formatNumber(Number(raw), digits) : field.dataset.rawValue;
+        };
+        table.querySelectorAll('.ot-edit-value').forEach(function (field) {
+          const state = { saving: false, savedValue: getFieldValue(field), timer: null };
+          saveStates.set(field, state);
+          const coefficientField = field.dataset.rawValue !== undefined;
+          const noteField = field.classList.contains('ot-char-note-input');
+          const resizeNoteField = function () {
+            if (!noteField) return;
+            field.style.height = 'auto';
+            field.style.height = `${field.scrollHeight}px`;
+          };
+          resizeNoteField();
+          const updateRawValue = function () {
+            if (coefficientField) field.dataset.rawValue = field.value;
+          };
+          if (coefficientField) {
+            field.addEventListener('focus', function () {
+              field.value = field.dataset.rawValue;
+            });
+            field.addEventListener('blur', function () {
+              formatCoefficientValue(field);
+            });
+          }
+          field.addEventListener('input', function () {
+            resizeNoteField();
+            updateRawValue();
+            clearSaveState(field);
+            recalculateEmitted(field);
+            clearTimeout(state.timer);
+            if (table.dataset.autosave === '1') {
+              state.timer = setTimeout(function () { saveField(field); }, 400);
+            }
+          });
+          field.addEventListener('change', function () {
+            updateRawValue();
+            recalculateEmitted(field);
+            clearTimeout(state.timer);
+            saveField(field);
+          });
         });
-        field.addEventListener('change', function () {
-          updateRawValue();
-          recalculateEmitted(field);
-          clearTimeout(state.timer);
-          saveField(field);
-        });
-      });
-    }
+      }
+    });
   });
 </script>
 {% endif %} {% endblock %}

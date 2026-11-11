@@ -1,0 +1,55 @@
+{% extends 'rational_structure/calculation_page.html' %}
+{% set page_title = 'Расчет замыкающей цены' %}
+{% block calculation_version %}{% endblock %}
+{% block calculation_source %}{% endblock %}
+{% block calculation_import %}
+<div class="d-flex flex-wrap align-items-center gap-2 rs-data-controls mb-2">
+    {% if can_import %}
+    <button type="button" class="btn btn-outline-secondary text-body" data-bs-toggle="collapse" data-bs-target="#marginal-price-import" aria-expanded="false" aria-controls="marginal-price-import">📁 Импорт из Excel</button>
+    {% endif %}
+    <a class="btn btn-outline-success{% if not version or not workbook %} disabled{% endif %}" {% if version and workbook %}href="{{ url_for('rational_structure_module_bp.export_marginal_price_excel') }}"{% else %}aria-disabled="true"{% endif %} download><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Выгрузить в Excel</a>
+</div>
+{% if can_import %}
+<div class="collapse mb-3" id="marginal-price-import">
+    <form method="post" action="{{ url_for('rational_structure_module_bp.import_marginal_price_excel') }}" enctype="multipart/form-data" class="d-flex align-items-center flex-wrap gap-2">
+        {{ import_form.hidden_tag() }}
+        <input type="hidden" name="database_version_id" value="{{ version_id }}">
+        <input class="form-control w-auto" type="file" name="file" id="marginal-price-file" accept=".xlsx" aria-label="Исходные данные Excel" required {% if not version %}disabled{% endif %}>
+        <button class="btn btn-outline-primary" type="submit" {% if not version %}disabled{% endif %}>Загрузить в выбранную версию</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+{% block calculation_navigation %}
+<nav class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1" aria-label="Территории расчета замыкающей цены">
+    {% for slug, label in territories.items() %}
+    <a class="btn {{ 'btn-primary' if territory == slug else 'btn-outline-primary' }} fs-5 text-nowrap flex-shrink-0" {% if territory == slug %}aria-current="page"{% endif %} href="{{ url_for('rational_structure_module_bp.marginal_price', territory=slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, price_rounding_digits=price_rounding_digits) }}">{{ 'Европейская часть' if slug == 'europe' else label }}</a>
+    {% endfor %}
+</nav>
+{% endblock %}
+{% block calculation_filters %}
+<p class="text-center mb-2">{{ table.title }}</p>
+{% endblock %}
+{% block calculation_extra_rounding %}
+<label for="price-rounding">Округл. цены:</label>
+<select class="form-select w-auto" id="price-rounding" name="price_rounding_digits" form="calculation-filter-form" aria-label="Округление цены 1 кВт·ч, руб." onchange="this.form.requestSubmit()">
+    {% for digits, label in ((0, 'Не округлять'), (-1, 'Целое число'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (6, '6 знаков')) %}
+    <option value="{{ digits }}" {% if price_rounding_digits == digits %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>
+{% endblock %}
+{% block calculation_period %}
+<form method="get" id="calculation-filter-form" class="d-flex flex-wrap align-items-center gap-2">
+    <input type="hidden" name="territory" value="{{ territory }}">
+    <label for="start_year" class="mb-0 flex-shrink-0 text-nowrap">Год начала:</label>
+    <select class="form-select w-auto flex-shrink-0" name="start_year" id="start_year">
+        {% for year in years %}<option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+    </select>
+    <label for="end_year" class="mb-0 flex-shrink-0 text-nowrap">Год конца:</label>
+    <select class="form-select w-auto flex-shrink-0" name="end_year" id="end_year">
+        {% for year in years %}<option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-outline-success flex-shrink-0" type="submit">Применить</button>
+    <a class="btn btn-outline-danger flex-shrink-0" href="{{ url_for('rational_structure_module_bp.marginal_price', territory=territory) }}">Сбросить</a>
+</form>
+{% endblock %}

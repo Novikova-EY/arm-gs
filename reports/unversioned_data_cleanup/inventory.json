@@ -1,0 +1,500 @@
+[
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_ee_import_export_oes_values",
+    "unversioned": 180,
+    "versioned": 1260
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_ee_receive_transfer_oes_values",
+    "unversioned": 354,
+    "versioned": 1260
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_espp_energy_generations",
+    "unversioned": 12584,
+    "versioned": 43225
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_power_balance_custom_flow_rows",
+    "unversioned": 4,
+    "versioned": 27
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_regional_energy_system_energy_generations",
+    "unversioned": 16848,
+    "versioned": 58149
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_regional_energy_system_transfers",
+    "unversioned": 80184,
+    "versioned": 296387
+  },
+  {
+    "schema": "gs_bem",
+    "table": "gs_bem_station_energy_generations",
+    "unversioned": 84165,
+    "versioned": 519698
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_centralized_zone_consumption_params",
+    "unversioned": 26,
+    "versioned": 206
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_ees_russia_consumption_params",
+    "unversioned": 50,
+    "versioned": 658
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_energy_system_type_consumption_params",
+    "unversioned": 80,
+    "versioned": 885
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_energy_unit_consumption_params",
+    "unversioned": 166,
+    "versioned": 3323
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_energy_zone_consumption_params",
+    "unversioned": 458,
+    "versioned": 4305
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_federal_district_consumption_params",
+    "unversioned": 315,
+    "versioned": 3241
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_regional_district_consumption_params",
+    "unversioned": 2710,
+    "versioned": 25401
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_regional_energy_system_consumption_params",
+    "unversioned": 2456,
+    "versioned": 23147
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_russia_federation_consumption_params",
+    "unversioned": 16,
+    "versioned": 232
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_synchronous_area_consumption_params",
+    "unversioned": 102,
+    "versioned": 833
+  },
+  {
+    "schema": "gs_ec",
+    "table": "gs_ec_union_energy_system_consumption_params",
+    "unversioned": 300,
+    "versioned": 2671
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_federal_district_accum_fixed_capital_params",
+    "unversioned": 5544,
+    "versioned": 38808
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_federal_district_accum_monetary_income_params",
+    "unversioned": 528,
+    "versioned": 3696
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_federal_district_eat_consumption_params",
+    "unversioned": 3840,
+    "versioned": 26880
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_federal_district_population_params",
+    "unversioned": 528,
+    "versioned": 3696
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_federal_district_product_output_params",
+    "unversioned": 7392,
+    "versioned": 51744
+  },
+  {
+    "schema": "gs_ekp",
+    "table": "gs_ekp_russia_federation_consumption_params",
+    "unversioned": 160,
+    "versioned": 1120
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_distribution_parameters",
+    "unversioned": 54,
+    "versioned": 378
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_electricity_production_cost",
+    "unversioned": 5239,
+    "versioned": 29172
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_extra_fuel_param",
+    "unversioned": 10835,
+    "versioned": 92127
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_fuel_formula",
+    "unversioned": 2983,
+    "versioned": 24056
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_fuel_param",
+    "unversioned": 4441,
+    "versioned": 126353
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_heat_and_tariffs",
+    "unversioned": 32135,
+    "versioned": 195838
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_natural_fuel",
+    "unversioned": 7557,
+    "versioned": 54559
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_specific_fuel_consumption",
+    "unversioned": 3441,
+    "versioned": 45112
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_specific_fuel_cost",
+    "unversioned": 4508,
+    "versioned": 29219
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_specific_fuel_price",
+    "unversioned": 598,
+    "versioned": 6920
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_group_type_stations",
+    "unversioned": 861,
+    "versioned": 6518
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_equipment_groups",
+    "unversioned": 1163,
+    "versioned": 8088
+  },
+  {
+    "schema": "gs_fue",
+    "table": "gs_fue_restrictions",
+    "unversioned": 132,
+    "versioned": 924
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_gaes_tep_source_project_indicators",
+    "unversioned": 14,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_ges_tep_source_project_indicators",
+    "unversioned": 42,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machine_fuels",
+    "unversioned": 8,
+    "versioned": 333617
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machine_names",
+    "unversioned": 5278,
+    "versioned": 393352
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machine_powers",
+    "unversioned": 5214,
+    "versioned": 458332
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machine_prospective_place_aes",
+    "unversioned": 73,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machine_tes_types",
+    "unversioned": 5214,
+    "versioned": 458332
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_machines",
+    "unversioned": 474,
+    "versioned": 30702
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_station_gaes_charge_consumptions",
+    "unversioned": 62,
+    "versioned": 497
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_station_prospective_place_aes",
+    "unversioned": 33,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_station_prospective_place_gaes",
+    "unversioned": 14,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_station_prospective_place_ges",
+    "unversioned": 42,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_gen",
+    "table": "gs_gen_stations",
+    "unversioned": 1355,
+    "versioned": 8713
+  },
+  {
+    "schema": "gs_logs",
+    "table": "logs",
+    "unversioned": 1330621,
+    "versioned": 804664
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_centralized_zone_demand_params",
+    "unversioned": 17,
+    "versioned": 119
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_ees_russia_demand_params",
+    "unversioned": 2,
+    "versioned": 14
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_energy_system_type_demand_params",
+    "unversioned": 15,
+    "versioned": 105
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_energy_unit_demand_params",
+    "unversioned": 211,
+    "versioned": 1687
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_energy_zone_demand_params",
+    "unversioned": 147,
+    "versioned": 1029
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_federal_district_demand_params",
+    "unversioned": 84,
+    "versioned": 1540
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_regional_district_demand_params",
+    "unversioned": 1516,
+    "versioned": 16499
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_regional_energy_system_demand_params",
+    "unversioned": 1353,
+    "versioned": 14777
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_synchronous_area_demand_params",
+    "unversioned": 37,
+    "versioned": 259
+  },
+  {
+    "schema": "gs_pd",
+    "table": "gs_pd_union_energy_system_demand_params",
+    "unversioned": 141,
+    "versioned": 1407
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_companies",
+    "unversioned": 1033,
+    "versioned": 4140
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_condition_types",
+    "unversioned": 10,
+    "versioned": 35
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_economic_activity_types",
+    "unversioned": 10,
+    "versioned": 70
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_energy_system_types",
+    "unversioned": 30,
+    "versioned": 35
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_energy_units",
+    "unversioned": 17,
+    "versioned": 119
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_energy_zones",
+    "unversioned": 15,
+    "versioned": 105
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_entity_perimeter_bindings",
+    "unversioned": 31,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_equipment_groups",
+    "unversioned": 116,
+    "versioned": 272
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_federal_districts",
+    "unversioned": 60,
+    "versioned": 70
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_foreign_border_countries",
+    "unversioned": 15,
+    "versioned": 105
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_fuel_types",
+    "unversioned": 55,
+    "versioned": 77
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_perimeter_variants",
+    "unversioned": 13,
+    "versioned": 0
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_regional_district_regional_energy_system",
+    "unversioned": 1,
+    "versioned": 622
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_regional_districts",
+    "unversioned": 540,
+    "versioned": 630
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_regional_energy_systems",
+    "unversioned": 486,
+    "versioned": 567
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_station_types",
+    "unversioned": 16,
+    "versioned": 56
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_synchronous_areas",
+    "unversioned": 4,
+    "versioned": 28
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_tes_machine_types",
+    "unversioned": 6,
+    "versioned": 42
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_tes_types",
+    "unversioned": 4,
+    "versioned": 35
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_union_energy_systems",
+    "unversioned": 66,
+    "versioned": 77
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_year_features",
+    "unversioned": 18,
+    "versioned": 21
+  },
+  {
+    "schema": "gs_sys",
+    "table": "gs_sys_years",
+    "unversioned": 71,
+    "versioned": 261
+  }
+]

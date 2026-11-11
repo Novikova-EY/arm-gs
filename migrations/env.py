@@ -5,6 +5,8 @@ from importlib import import_module
 
 from flask import current_app
 from alembic import context
+from sqlalchemy import inspect
+from sqlalchemy.schema import CreateSchema
 
 # Alembic config + логирование
 config = context.config
@@ -176,6 +178,7 @@ def run_migrations_offline():
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
         include_schemas=True,
         compare_type=True,
         compare_server_default=True,
@@ -185,6 +188,7 @@ def run_migrations_offline():
         transaction_per_migration=True,
     )
     with context.begin_transaction():
+        context.execute(CreateSchema(version_schema, if_not_exists=True))
         context.run_migrations()
 
 # ---- Online ----
@@ -203,10 +207,12 @@ def run_migrations_online():
             version_table='alembic_version',
             version_table_schema=version_schema,
             # Иначе весь `flask db upgrade` в одной транзакции: любой сбой откатывает
-            # даже успешно применённые миграции в этой сессии.
+            # даже успешно примененные миграции в этой сессии.
             transaction_per_migration=True,
         )
         with context.begin_transaction():
+            if not inspect(connection).has_schema(version_schema):
+                connection.execute(CreateSchema(version_schema, if_not_exists=True))
             context.run_migrations()
 
 if context.is_offline_mode():

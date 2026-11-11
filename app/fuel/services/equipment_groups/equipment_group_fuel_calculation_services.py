@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Расчёт топливной и энергетической части для одной группы оборудования на один год.
+Расчет топливной и энергетической части для одной группы оборудования на один год.
 
 Зона ответственности (и только она): выбрать актуальные исходные строки; посчитать
 EWTP, EOTP, EUST, EURT, TUST, B; разобрать formtxt; записать значения в
@@ -302,7 +302,7 @@ class EquipmentGroupFuelCalculationService:
 
     @staticmethod
     def _copy_missing_attrs(target, source, attrs: tuple[str, ...]) -> None:
-        """.. deprecated:: Вместе с переносом полей между годами; не используется в расчёте."""
+        """.. deprecated:: Вместе с переносом полей между годами; не используется в расчете."""
         if target is None or source is None:
             return
         for attr in attrs:
@@ -343,7 +343,7 @@ class EquipmentGroupFuelCalculationService:
         formula_database_version_id: int | None,
     ) -> None:
         """
-        После расчёта фиксирует database_version_id у строк параметров
+        После расчета фиксирует database_version_id у строк параметров
         по единому правилу (_resolve_db_version_for_fuel_rows).
         """
         vid = self._resolve_db_version_for_fuel_rows(equipment_group_id, formula_database_version_id)
@@ -369,7 +369,7 @@ class EquipmentGroupFuelCalculationService:
 
         ВАЖНО:
         - не копирует payload из прошлых лет;
-        - использует только текущую строку fuel_param на год расчёта;
+        - использует только текущую строку fuel_param на год расчета;
         - удельник и формула топлива – тот же Seek, что Access:
           окно [base_year, year]; пустое окно при не-NoMatch – Bookmark
           предыдущей станции цикла (Кнопка49 ``bm`` / ``bm1``).
@@ -519,7 +519,7 @@ class EquipmentGroupFuelCalculationService:
         """
         .. deprecated::
             Не вызывается из calculate_group_year. Перенос полей между годами –
-            отдельная подготовка данных, не расчёт топлива. Оставлено для возможного
+            отдельная подготовка данных, не расчет топлива. Оставлено для возможного
             вынесения в отдельный сервис.
         """
         warnings.warn(
@@ -716,7 +716,7 @@ class EquipmentGroupFuelCalculationService:
         Энергетический блок расчета.
         Порт логики Access-модуля: расчет EOTP, EUST, EURT, TUST и B
         по текущей строке параметров группы и актуальной строке удельных показателей.
-        EWTP = QOTR·y/1000 как Кнопка49 (всегда пересчёт, не «оставить импорт»).
+        EWTP = QOTR·y/1000 как Кнопка49 (всегда пересчет, не «оставить импорт»).
         Ветвь VED∈{1,4}: snbas/Ksn для ekotp и bbas/Kh для EUST.
         """
         qotr = d0(fuel_param.qotr)

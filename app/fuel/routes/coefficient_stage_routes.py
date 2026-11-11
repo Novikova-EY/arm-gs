@@ -74,7 +74,7 @@ def _ph_for_psu_hd_column(summary: DistributionCoefficientSummary | None):
 def coeff_tech_type_table(summary: DistributionCoefficientSummary | None):
     """
     Строки ПСУ / ГТУ / ПГУ для второй таблицы этапа «Коэфф».
-    N_нов – cnustn*; в колонке «ЧЧИУМ» вводятся hnps/hngt/hnpg; K_нов – knps/kngt/knpg (hn/ch после расчёта).
+    N_нов – cnustn*; в колонке «ЧЧИУМ» вводятся hnps/hngt/hnpg; K_нов – knps/kngt/knpg (hn/ch после расчета).
     """
     if summary is None:
         return []
@@ -186,7 +186,7 @@ def _parse_optional_decimal(raw) -> Decimal | None:
 @fuel_bp.route("/calculation/update_tech_hn", methods=["POST"])
 @login_required
 def fuel_calculation_update_tech_hn():
-    """Сохранение hnps/hngt/hnpg из столбца «ЧЧИУМ» и пересчёт этапа «Коэфф» (kn = hn/ch)."""
+    """Сохранение hnps/hngt/hnpg из столбца «ЧЧИУМ» и пересчет этапа «Коэфф» (kn = hn/ch)."""
     if not _csrf_ok():
         flash("Недействительный CSRF-токен.", "danger")
         return redirect_back_after_post()
@@ -224,7 +224,7 @@ def fuel_calculation_update_tech_hn():
         res = FuelCoefficientCalculationService().run_for_distribution_parameter(dp_id)
         _store_coeff_last_run_in_session(row, res, trigger="update_tech_hn")
         flash(
-            f"Сохранено поле {h_field}. Этап «Коэфф» обновлён: групп {res.total_groups}, "
+            f"Сохранено поле {h_field}. Этап «Коэфф» обновлен: групп {res.total_groups}, "
             f"строк топлива {res.updated_fuel_rows}.",
             "success",
         )
@@ -233,6 +233,6 @@ def fuel_calculation_update_tech_hn():
         flash(str(e), "danger")
     except Exception as e:
         db.session.rollback()
-        flash(f"Ошибка при сохранении hn и пересчёте «Коэфф»: {e}", "danger")
+        flash(f"Ошибка при сохранении hn и пересчете «Коэфф»: {e}", "danger")
 
     return redirect_back_after_post()

@@ -1,0 +1,23 @@
+<nav class="d-flex flex-wrap gap-2 mb-2" aria-label="Энергозоны">
+    {% if territory_active_sheet in ('years', 'equipment') %}
+        <a class="btn {{ 'btn-primary' if is_ees else 'btn-outline-primary' }} text-nowrap"
+           {% if is_ees %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_inputs', sheet=sheet, energy_zone_id=0, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">ЕЭС России</a>
+        {% for zone in zones if zone.id > 0 and zone.name|trim|lower != 'не указано' and zone.number|trim|lower != 'не указано' %}
+        <a class="btn {{ 'btn-primary' if selected_zone and selected_zone.id == zone.id else 'btn-outline-primary' }} text-nowrap"
+           title="{{ zone.number }} – {{ zone.name }}"
+           {% if selected_zone and selected_zone.id == zone.id %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_inputs', sheet=sheet, energy_zone_id=zone.id, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits) }}">{{ zone.number }}</a>
+        {% endfor %}
+    {% else %}
+        <a class="btn {{ 'btn-primary' if not selected_zone else 'btn-outline-primary' }} text-nowrap"
+           {% if not selected_zone %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_technologies', sheet=sheet, rounding_digits=rounding_digits) }}">Все энергозоны</a>
+        {% for zone in zones if zone.id > 0 and zone.name|trim|lower != 'не указано' and zone.number|trim|lower != 'не указано' %}
+        <a class="btn {{ 'btn-primary' if selected_zone == zone.id|string else 'btn-outline-primary' }} text-nowrap"
+           title="{{ zone.number }} – {{ zone.name }}"
+           {% if selected_zone == zone.id|string %}aria-current="page"{% endif %}
+           href="{{ url_for('rational_structure_module_bp.territory_technologies', sheet=sheet, energy_zone=zone.id, rounding_digits=rounding_digits) }}">{{ zone.number }}</a>
+        {% endfor %}
+    {% endif %}
+</nav>

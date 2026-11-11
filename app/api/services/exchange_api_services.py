@@ -43,6 +43,10 @@ from app.api.services.hour_info_exchange_services import (
     DATASET_HOUR_INFO,
     load_hour_info_dataset,
 )
+from app.api.services.import_gs_to_ee_zam_cena_exchange_services import (
+    DATASET_IMPORT_GS_TO_EE_ZAM_CENA,
+    load_import_gs_to_ee_zam_cena_dataset,
+)
 from app.api.services.line_capital_investments_exchange_services import (
     DATASET_LINE_CAPITAL_INVESTMENTS,
     load_line_capital_investments_dataset,
@@ -66,6 +70,10 @@ from app.api.services.power_energy_export_import_country_exchange_services impor
 from app.api.services.rational_struct_base_exchange_services import (
     DATASET_RATIONAL_STRUCT_BASE,
     load_rational_struct_base_dataset,
+)
+from app.api.services.rational_struct_import_to_java_exchange_services import (
+    DATASET_RATIONAL_STRUCT_IMPORT_TO_JAVA,
+    load_rational_struct_import_to_java_dataset,
 )
 from app.api.services.substations_customers_info_exchange_services import (
     DATASET_SUBSTATIONS_CUSTOMERS_INFO,
@@ -107,6 +115,8 @@ DATASET_LOADERS: dict[str, DatasetLoader] = {
     DATASET_SUBSTATIONS_TRANSFORMER_INFO: load_substations_transformer_info_dataset,
     DATASET_LOAD_FORECAST: load_load_forecast_dataset,
     DATASET_RATIONAL_STRUCT_BASE: load_rational_struct_base_dataset,
+    DATASET_RATIONAL_STRUCT_IMPORT_TO_JAVA: load_rational_struct_import_to_java_dataset,
+    DATASET_IMPORT_GS_TO_EE_ZAM_CENA: load_import_gs_to_ee_zam_cena_dataset,
     # equipment_group_params временно скрыт из /api/datasets
 }
 
@@ -116,7 +126,7 @@ class UnknownDatasetError(LookupError):
 
 
 def list_exchange_datasets() -> dict[str, Any]:
-    """Имена наборов, которые отдаёт АРМ (для справки)."""
+    """Имена наборов, которые отдает АРМ (для справки)."""
     return {"datasets": list(DATASET_LOADERS.keys())}
 
 

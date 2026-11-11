@@ -1,0 +1,31 @@
+<div class="d-flex flex-wrap align-items-center gap-2 rs-data-controls rs-year-controls">
+    <form method="get" class="d-flex flex-wrap align-items-center gap-2" id="territory-year-form">
+        <input type="hidden" name="sheet" value="{{ sheet }}">
+        <input type="hidden" name="energy_zone_id" value="{{ territory_zone_id }}">
+        <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+        <label for="start_year" class="mb-0 text-nowrap">Год начала:</label>
+        <select name="start_year" id="start_year" class="form-select w-auto">
+            {% for year in reference_years %}<option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+        </select>
+        <label for="end_year" class="mb-0 text-nowrap">Год конца:</label>
+        <select name="end_year" id="end_year" class="form-select w-auto">
+            {% for year in reference_years %}<option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-success rounded-pill" type="submit">Применить</button>
+        <a class="btn btn-outline-danger rounded-pill" href="{{ url_for('rational_structure_module_bp.territory_inputs', sheet=sheet, energy_zone_id=territory_zone_id) }}">Сбросить</a>
+    </form>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+        <button type="button" id="territory-empty-rows" class="btn btn-outline-primary rounded-pill text-nowrap" aria-pressed="true">Пустые строки</button>
+        {% if sheet == 'equipment' %}<button type="button" id="territory-equipment-counts" class="btn btn-outline-primary rounded-pill text-nowrap" aria-pressed="false" title="Показать строки с количеством агрегатов">+ шт</button>{% endif %}
+        <label for="territory-rounding" class="mb-0">Округл:</label>
+        <select id="territory-rounding" name="rounding_digits" class="form-select w-auto" data-rounding-control>
+            {% for digits, label in ((0, 'Не округлять'), (-1, 'Целое число'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (6, '6 знаков')) %}
+            <option value="{{ digits }}" {% if rounding_digits == digits %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        {% if sheet == 'equipment' %}
+        <button type="button" id="territory-equipment-verification" class="btn btn-outline-info text-nowrap flex-shrink-0" aria-pressed="false" title="Показать проверочный раздел">Проверка</button>
+        <a data-territory-export class="btn btn-outline-success d-inline-flex align-items-center gap-2 text-nowrap" href="{{ url_for('rational_structure_module_bp.export_territory_inputs_excel', energy_zone_id=territory_zone_id, sheet=sheet, start_year=start_year, end_year=end_year, view_year=view_year) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel</a>
+        {% endif %}
+    </div>
+</div>

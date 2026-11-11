@@ -16,7 +16,7 @@ from app.generation.services.station_changes_services.station_changes_services i
 # Порядок типов станций в итоговых блоках Excel (включая СНЭЭ).
 STATION_TYPE_ORDER_FOR_TOTALS = ["АЭС", "ГЭС", "ГАЭС", "ТЭС", "ВЭС", "СЭС", "СНЭЭ"]
 
-# Короткое тире утверждённой формы Приложения 2 (не длинное «–»).
+# Короткое тире утвержденной формы Приложения 2 (не длинное «–»).
 PRIL2_DASH = "–"
 
 PRIL2_FOOTNOTES: list[tuple[str, float]] = [
@@ -153,7 +153,7 @@ def _is_unspecified_ref_name(value: str | None) -> bool:
     """Технические значения справочников «не указано» / пустые подписи итогов."""
     if value is None:
         return True
-    n = str(value).strip().lower().replace("ё", "е")
+    n = str(value).strip().lower().replace("\u0451", "е")
     if n.startswith("итого по "):
         n = n[len("итого по ") :]
     if n.endswith(", всего"):
@@ -166,7 +166,7 @@ def _is_unspecified_ref_name(value: str | None) -> bool:
 
 def _synchronous_area_total_label(sa_name: str | None, sa_number: str | int | None = None) -> str:
     """Подпись итога по синхронной зоне (без ложных срабатываний на '1' внутри id=148 и т.п.)."""
-    sa_l = str(sa_name or "").strip().lower().replace("ё", "е")
+    sa_l = str(sa_name or "").strip().lower().replace("\u0451", "е")
     num = str(sa_number or "").strip().lower()
 
     # Технический ярлык orphan-id (СЗ из другой версии БД) – не печатаем «Итого по id=N»
@@ -247,7 +247,7 @@ def _pril2_empty_text(value) -> str:
 
 
 def _write_pril2_footnotes(worksheet, start_row: int, last_col_name: str, workbook) -> int:
-    """Примечания 1)–6) после таблицы, как в утверждённом Приложении 2."""
+    """Примечания 1)–6) после таблицы, как в утвержденном Приложении 2."""
     title_format = workbook.add_format({
         "font_name": "Times New Roman",
         "font_size": 24,
@@ -1793,7 +1793,7 @@ def export_station_changes_pril_2_russia_to_excel(
     show_totals: bool,
     data: dict | None = None,
 ):
-    """Приложение 2 (Россия): форма утверждённого перечня изменений мощности.
+    """Приложение 2 (Россия): форма утвержденного перечня изменений мощности.
 
     Итоги, примечания, шапка и преамбула не зависят от переключателей на странице.
     """
@@ -1897,7 +1897,7 @@ def export_station_changes_pril_2_russia_to_excel(
         "изолированных территориальных электроэнергетических системах\n"
         f"на период {period_start}–{period_end} годов"
     )
-    # Строка 4 Excel – отступ перед «ПЕРЕЧЕНЬ...» (как в утверждённом файле)
+    # Строка 4 Excel – отступ перед «ПЕРЕЧЕНЬ...» (как в утвержденном файле)
     worksheet.set_row(3, 33.75)
 
     # «ПЕРЕЧЕНЬ...» – строка 5 Excel, на всю ширину до колонки «Итого»

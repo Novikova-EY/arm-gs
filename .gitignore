@@ -7,3 +7,4 @@ _*/
 *.py[cod]
 .cursor/
 .pytest_cache/
+/uploads/gs_gen_schema.sql

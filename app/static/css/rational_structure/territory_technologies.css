@@ -1,0 +1,60 @@
+.rs-territory-scroll {
+    max-height: 72vh;
+    overflow: auto;
+}
+.rs-territory-table {
+    width: max-content;
+    min-width: 100%;
+}
+.rs-territory-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.rs-territory-table thead th {
+    background: var(--bs-success-bg-subtle, #d1e7dd);
+    vertical-align: middle;
+    text-align: center;
+    min-width: 95px;
+    max-width: 180px;
+}
+.rs-territory-table tbody th,
+.rs-territory-table tbody td:nth-child(2) {
+    min-width: 180px;
+    max-width: 300px;
+}
+.rs-territory-table td.text-center {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.rs-territory-page .rs-territory-table .rs-number-input {
+    text-align: center;
+}
+.rs-territory-page #territory-zone {
+    max-width: min(720px, 100%);
+}
+
+.rs-transfer-matrices {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    width: max-content;
+    min-width: 100%;
+}
+.rs-data-page .rs-data-table.rs-transfer-matrix {
+    min-width: 0;
+}
+.rs-data-page .rs-transfer-matrix th,
+.rs-data-page .rs-transfer-matrix td {
+    min-width: 3rem;
+    max-width: none;
+    white-space: nowrap;
+}
+.rs-data-page .rs-transfer-matrix .rs-number-input {
+    min-width: 2.5rem;
+    width: 3rem;
+    text-align: center;
+}
+.rs-data-page .rs-transfer-matrix .rs-transfer-limit .rs-number-input {
+    width: 7.5rem;
+}

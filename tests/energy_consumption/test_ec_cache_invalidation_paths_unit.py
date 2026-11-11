@@ -90,7 +90,7 @@ def test_ec_persist_computed_for_all_versions_loops_versions():
     src = inspect.getsource(
         import_svc.persist_all_energy_consumption_summary_computed_rows_for_all_versions
     )
-    assert "_database_version_ids_for_energy_consumption_import" in src
+    assert "_database_version_ids_ordered" in src
     assert "persist_all_energy_consumption_summary_computed_rows(" in src
 
 

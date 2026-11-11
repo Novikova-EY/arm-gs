@@ -95,7 +95,7 @@ def _excel_hide_plan_year_cell(
     year_is_plan: dict[int, bool] | None,
     coeff_base_year: int | None,
 ) -> bool:
-    """Пустые «план»-столбцы для всех строк, кроме max_power, РЭС «Совмещенный максимум…» и расчётных строк УЭС."""
+    """Пустые «план»-столбцы для всех строк, кроме max_power, РЭС «Совмещенный максимум…» и расчетных строк УЭС."""
     if not year_is_plan or not year_is_plan.get(y):
         return False
     pk = str(pk or "")

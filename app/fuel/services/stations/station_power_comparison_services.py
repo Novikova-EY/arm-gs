@@ -105,6 +105,29 @@ def _hierarchy_sort_key(item):
         key if key is not None else -1,
     )
 
+
+def _energy_system_type_sort_key(item):
+    """Put ЕЭС first, ТИТЭС second and the decentralized zone third."""
+    from app.generation.services.station_services.station_access_services import (
+        DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME,
+    )
+
+    key, node = item
+    name = (node["name"] or "").strip()
+    normalized_name = name.casefold()
+    if normalized_name.startswith("еэс"):
+        priority = 0
+    elif normalized_name.startswith("титэс"):
+        priority = 1
+    elif normalized_name == DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME.casefold():
+        priority = 2
+    elif key in (None, -1):
+        priority = 4
+    else:
+        priority = 3
+    return priority, normalized_name, key if key is not None else -1
+
+
 def _empty_group_node(name, key):
     return {"name": name, "key": key, "totals": _new_totals(), "children": {}}
 
@@ -126,7 +149,7 @@ def _ved0_parts_check(parent_row, child_rows, *, show_p_rasp=False):
 
 
 def _without_ved0_rows(rows):
-    """Прячет строки-оболочки ved=0, пока не включён переключатель VED=0."""
+    """Прячет строки-оболочки ved=0, пока не включен переключатель VED=0."""
     return [row for row in rows if row.get("ved") != 0]
 
 
@@ -393,7 +416,7 @@ def _collapse_shared_equipment_group(
 
 
 def _rounded_for_comparison(value, rounding_digits):
-    """Значение или его округлённый показ, чтобы сравнение шло по видимым числам."""
+    """Значение или его округленный показ, чтобы сравнение шло по видимым числам."""
     return format_decimal_trim_for_display(value, digits=rounding_digits)
 
 
@@ -638,6 +661,14 @@ def _rows_with_numb_subtotals(
     return result
 
 
+def _is_decentralized_zone_station(station):
+    from app.generation.services.station_services.station_access_services import (
+        is_decentralized_zone_station,
+    )
+
+    return is_decentralized_zone_station(station)
+
+
 def _tpp_station_ids(version_id):
     """Stations shown on /fuel/stations_equipment_groups (StationType 'ТЭС')."""
     from app.refdata.models.refdata_for_stations.station.station_type_model import (
@@ -687,8 +718,8 @@ def build_station_power_comparison(
     котельные группы – только при show_boilers=True. Итоги топлива включают
     все строки ved>0 по территории группы, как на /fuel/totals_summary.
     Котельные агрегаты генерации исключены из Руст/Ррасп.
-    rounding_digits задаёт
-    только показ чисел: сравнение Руст с NUST идёт по округлённым значениям,
+    rounding_digits задает
+    только показ чисел: сравнение Руст с NUST идет по округленным значениям,
     которые видит пользователь. paginate=False возвращает все строки для Excel.
     """
     version_id = get_current_db_version_id()
@@ -969,7 +1000,25 @@ def build_station_power_comparison(
         )
         fuel_path = _equipment_group_path(group, parent_by_numb)
         if target_station_id is not None and station_data[target_station_id]["path"] != fuel_path:
-            target_station_id = None
+            station_path = station_data[target_station_id]["path"]
+            if _is_decentralized_zone_station(stations_by_id[target_station_id]):
+                # У ДЭЗ в иерархии синтетические UES/RES, поэтому путь группы
+                # со значением «не указано» не совпадает с путем станции.
+                fuel_path = station_path
+            else:
+                target_station_id = None
+        elif all_station_ids and all_station_ids == target_station_ids:
+            linked_stations = [stations_by_id[station_id] for station_id in sorted(target_station_ids)]
+            station_paths = {station_data[station.id]["path"] for station in linked_stations}
+            if (
+                linked_stations
+                and len(station_paths) == 1
+                and all(_is_decentralized_zone_station(station) for station in linked_stations)
+            ):
+                # Общая группа ДЭЗ связана с несколькими станциями. Приводим ее
+                # путь к общей синтетической иерархии станций, чтобы NUST
+                # попал в агрегированную строку группы, а не в отдельный регион.
+                fuel_path = next(iter(station_paths))
         for param in params:
             has_param = param is not None
             ambiguous_names = sorted(
@@ -1011,7 +1060,7 @@ def build_station_power_comparison(
                     else (
                         "Несколько станций: " + ", ".join(ambiguous_names)
                         if all_station_ids
-                        else "Без связи со станцией – тип ТЭС не подтверждён"
+                        else "Без связи со станцией – тип ТЭС не подтвержден"
                     )
                 ),
                 "ambiguous_stations": ambiguous_names if len(all_station_ids) > 1 else [],
@@ -1181,7 +1230,7 @@ def build_station_power_comparison(
         )
 
     comparison_items = []
-    for est_key, est_node in sorted(hierarchy.items(), key=_hierarchy_sort_key):
+    for est_key, est_node in sorted(hierarchy.items(), key=_energy_system_type_sort_key):
         for ues_key, ues_node in sorted(est_node["children"].items(), key=_ues_sort_key):
             for res_key, res_node in sorted(ues_node["children"].items(), key=_hierarchy_sort_key):
                 regional_path = (est_key, ues_key, res_key)
@@ -1285,7 +1334,7 @@ def build_station_power_comparison(
     if unclassified_display_rows:
         global_rows = [{
             "kind": "unclassified",
-            "label": "Топливные группы без связи с ТЭС и без определённой территории",
+            "label": "Топливные группы без связи с ТЭС и без определенной территории",
             **unclassified_fuel_totals,
         }]
         global_rows.extend(_rows_with_numb_subtotals(

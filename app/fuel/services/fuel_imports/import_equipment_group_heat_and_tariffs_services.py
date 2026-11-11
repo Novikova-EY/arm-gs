@@ -305,7 +305,7 @@ def _unpivot_wide_access_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _orm_session():
-    """Реальная Session: Flask-SQLAlchemy отдаёт scoped_session без expire_on_commit."""
+    """Реальная Session: Flask-SQLAlchemy отдает scoped_session без expire_on_commit."""
     sess = db.session
     if not hasattr(sess, "expire_on_commit") and callable(sess):
         return sess()
@@ -472,7 +472,7 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     Загружает тепло/тарифы из Excel в EquipmentGroupHeatAndTariffs.
     Годы берутся только из файла (столбец year / Year или столбцы-годы широкого формата Access).
     Выбранный на странице год на импорт не влияет.
-    Для каждой строки создаётся/обновляется запись во всех версиях БД
+    Для каждой строки создается/обновляется запись во всех версиях БД
     (по группам с тем же numb1120 или по всем database_version_id без EG).
     """
     from app.refdata.services.refdata_all_versions_common import (

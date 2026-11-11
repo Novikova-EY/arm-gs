@@ -1,0 +1,252 @@
+[
+  [
+    "gs_fue.gs_fue_distribution_coefficient_summaries",
+    "gs_fue.gs_fue_distribution_parameters",
+    "FOREIGN KEY (distribution_parameter_id) REFERENCES gs_fue.gs_fue_distribution_parameters(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_coefficient_results",
+    "gs_fue.gs_fue_distribution_parameters",
+    "FOREIGN KEY (distribution_parameter_id) REFERENCES gs_fue.gs_fue_distribution_parameters(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_eco.gs_eco_gis_tek_greenhouse_gas_params",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_eco.gs_eco_gis_tek_pollutant_params",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_coefficient_results",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_electricity_production_cost",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_extra_fuel_param",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_fuel_formula",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_fuel_param",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_heat_and_tariffs",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_natural_fuel",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_sets",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_specific_fuel_consumption",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_specific_fuel_cost",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_specific_fuel_price",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_machine_fuel_param",
+    "gs_fue.gs_fue_equipment_groups",
+    "FOREIGN KEY (equipment_group_id) REFERENCES gs_fue.gs_fue_equipment_groups(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_sets",
+    "gs_fue.gs_fue_equipment_group_type_stations",
+    "FOREIGN KEY (equipment_group_set_station_id) REFERENCES gs_fue.gs_fue_equipment_group_type_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_machine_fuel_param",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (machine_id) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_fue.gs_fue_machine_fuel_param",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (machine_id) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_machine_fuels",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (id_machine) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_machine_names",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (id_machine) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_machine_powers",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (id_machine) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_machine_tes_types",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (id_machine) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_pgu_machines",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (id_parent_machine) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_rs.gs_rs_equipment_technical_characteristics",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (machine_id) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_rs.gs_rs_technical_inspection_codes",
+    "gs_gen.gs_gen_machines",
+    "FOREIGN KEY (machine_id) REFERENCES gs_gen.gs_gen_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_pgu_machine_names",
+    "gs_gen.gs_gen_pgu_machines",
+    "FOREIGN KEY (id_pgu_machine) REFERENCES gs_gen.gs_gen_pgu_machines(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_pgu_machine_powers",
+    "gs_gen.gs_gen_pgu_machines",
+    "FOREIGN KEY (id_pgu_machine) REFERENCES gs_gen.gs_gen_pgu_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_rs.gs_rs_equipment_technical_characteristics",
+    "gs_gen.gs_gen_pgu_machines",
+    "FOREIGN KEY (pgu_machine_id) REFERENCES gs_gen.gs_gen_pgu_machines(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_rs.gs_rs_technical_inspection_codes",
+    "gs_gen.gs_gen_pgu_machines",
+    "FOREIGN KEY (pgu_machine_id) REFERENCES gs_gen.gs_gen_pgu_machines(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_machine_prospective_place_aes",
+    "gs_gen.gs_gen_prospective_place_types",
+    "FOREIGN KEY (id_prospective_place_type) REFERENCES gs_gen.gs_gen_prospective_place_types(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_gaes_tep_source_project_indicators",
+    "gs_gen.gs_gen_prospective_place_types_gaes",
+    "FOREIGN KEY (id_prospective_place_type_gaes) REFERENCES gs_gen.gs_gen_prospective_place_types_gaes(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_prospective_place_gaes",
+    "gs_gen.gs_gen_prospective_place_types_gaes",
+    "FOREIGN KEY (id_prospective_place_type_gaes) REFERENCES gs_gen.gs_gen_prospective_place_types_gaes(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_gen.gs_gen_ges_tep_source_project_indicators",
+    "gs_gen.gs_gen_prospective_place_types_ges",
+    "FOREIGN KEY (id_prospective_place_type_ges) REFERENCES gs_gen.gs_gen_prospective_place_types_ges(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_prospective_place_ges",
+    "gs_gen.gs_gen_prospective_place_types_ges",
+    "FOREIGN KEY (id_prospective_place_type_ges) REFERENCES gs_gen.gs_gen_prospective_place_types_ges(id) ON DELETE SET NULL"
+  ],
+  [
+    "gs_bem.gs_bem_ee_balance_station_group_values",
+    "gs_gen.gs_gen_station_groups",
+    "FOREIGN KEY (id_station_group) REFERENCES gs_gen.gs_gen_station_groups(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_stations",
+    "gs_gen.gs_gen_station_groups",
+    "FOREIGN KEY (id_station_group) REFERENCES gs_gen.gs_gen_station_groups(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_machine_prospective_place_aes",
+    "gs_gen.gs_gen_station_prospective_place_aes",
+    "FOREIGN KEY (id_station_prospective_place_aes) REFERENCES gs_gen.gs_gen_station_prospective_place_aes(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_gaes_tep_source_project_indicators",
+    "gs_gen.gs_gen_station_prospective_place_gaes",
+    "FOREIGN KEY (id_station_prospective_place_gaes) REFERENCES gs_gen.gs_gen_station_prospective_place_gaes(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_gen.gs_gen_ges_tep_source_project_indicators",
+    "gs_gen.gs_gen_station_prospective_place_ges",
+    "FOREIGN KEY (id_station_prospective_place_ges) REFERENCES gs_gen.gs_gen_station_prospective_place_ges(id) ON DELETE CASCADE"
+  ],
+  [
+    "gs_bem.gs_bem_ee_balance_station_own_needs_coefficients",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_bem.gs_bem_station_energy_generations",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_type_stations",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (station_id) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_fue.gs_fue_equipment_group_type_stations",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (station_id) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_boilers",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_machines",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_gaes_charge_consumptions",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_owner_energy_generations",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_snee_efficiencies",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ],
+  [
+    "gs_gen.gs_gen_station_snee_energy_consumptions",
+    "gs_gen.gs_gen_stations",
+    "FOREIGN KEY (id_station) REFERENCES gs_gen.gs_gen_stations(id) ON DELETE RESTRICT"
+  ]
+]

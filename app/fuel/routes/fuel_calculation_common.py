@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Общие хелперы страницы «Расчёт» (параметры распределения / этапы Коэфф–Распред–Топливо)."""
+"""Общие хелперы страницы «Расчет» (параметры распределения / этапы Коэфф–Распред–Топливо)."""
 from urllib.parse import urlencode, urlparse
 
 from flask import redirect, request, url_for
@@ -26,10 +26,10 @@ FUEL_CALCULATION_FORM_QUERY_KEYS = (
 
 def fuel_calculation_form_query_string(args=None) -> str:
     """
-    Query string только с фильтрами страницы «Расчёт».
+    Query string только с фильтрами страницы «Расчет».
 
     Не тащит equipment_group_ids / show_empty_rows / per_page со страниц edit_data
-    (ссылка «Без удельника»), иначе «Назад к расчёту» и кнопка «ТЭП» снова открывают
+    (ссылка «Без удельника»), иначе «Назад к расчету» и кнопка «ТЭП» снова открывают
     ту же узкую выборку.
     """
     src = args if args is not None else request.args
@@ -53,8 +53,8 @@ def fuel_calculation_tep_edit_query_string(
     """
     Query для кнопок «Сведения о работе ТЭС», «ТЭП…», «Структура топливного баланса».
 
-    На целевых страницах: Год начала = базовый, Год конца = расчётный.
-    base_year сохраняется в query для «Назад к расчёту».
+    На целевых страницах: Год начала = базовый, Год конца = расчетный.
+    base_year сохраняется в query для «Назад к расчету».
     «Пустые строки» по умолчанию включены (кнопка нажата; show_empty_rows не обязателен).
     """
     src = args if args is not None else request.args
@@ -82,9 +82,9 @@ def fuel_calculation_tep_edit_query_string(
 
 def fuel_calculation_form_url_from_tep_edit_args(args=None) -> str:
     """
-    «Назад к расчёту» со страницы ТЭП edit_data.
+    «Назад к расчету» со страницы ТЭП edit_data.
 
-    Расчётный год (start_year на форме расчёта) = end_year интервала ТЭП,
+    Расчетный год (start_year на форме расчета) = end_year интервала ТЭП,
     базовый = base_year (или start_year интервала, если base_year нет).
     """
     src = args if args is not None else request.args
@@ -133,7 +133,7 @@ def fuel_calculation_form_url(args=None) -> str:
 
 
 def redirect_back_after_post():
-    """После POST сохраняем query string страницы расчёта (фильтры), если referrer локальный."""
+    """После POST сохраняем query string страницы расчета (фильтры), если referrer локальный."""
     ref = (request.referrer or "").strip()
     if ref:
         try:

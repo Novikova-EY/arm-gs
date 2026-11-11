@@ -1,4 +1,6 @@
-{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+{% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+ {% block title %}{{ page_title }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %} {% set
 can_edit_energy_consumption = can_edit_energy_consumption | default(false) %} {%
 set view_ncols_readonly = 5 if show_perimeter_variant_column else 4 %} {% set rd
@@ -27,7 +29,8 @@ defined and fk_column == 'id_energy_zone' %}
   </div>
   {% endif %}
 
-  <div class="d-flex justify-content-end mb-2 align-items-center">
+  <div class="d-flex justify-content-end mb-2 align-items-center gap-2">
+    {% include 'energy_consumption/_growth_rounding.html' %}
     <div class="d-inline-flex align-items-center flex-nowrap gap-2">
       <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
       <select
@@ -36,17 +39,17 @@ defined and fk_column == 'id_energy_zone' %}
         class="form-select"
         style="min-width: 150px; width: auto"
       >
-        <option value="0" {% if rd="" ="0" %}selected{% endif %}>
+        <option value="0" {% if rd == 0 %}selected{% endif %}>
           Не округлять
         </option>
-        <option value="1" {% if rd="" ="1" %}selected{% endif %}>1 знак</option>
-        <option value="2" {% if rd="" ="2" %}selected{% endif %}>
+        <option value="1" {% if rd == 1 %}selected{% endif %}>1 знак</option>
+        <option value="2" {% if rd == 2 %}selected{% endif %}>
           2 знака
         </option>
-        <option value="3" {% if rd="" ="3" %}selected{% endif %}>
+        <option value="3" {% if rd == 3 %}selected{% endif %}>
           3 знака
         </option>
-        <option value="-1" {% if rd="" ="-1" %}selected{% endif %}>
+        <option value="-1" {% if rd == -1 %}selected{% endif %}>
           Целое число
         </option>
       </select>
@@ -145,8 +148,7 @@ defined and fk_column == 'id_energy_zone' %}
                   not
                   none
                   and
-                  row.year_number=""
-                  ="yn"
+                  row.year_number == yn
                   %}selected{%
                   endif
                   %}
@@ -464,16 +466,10 @@ defined and fk_column == 'id_energy_zone' %}
 
 <script src="{{ url_for('static', filename='js/energy_consumption/table_sort.js') }}"></script>
 <script src="{{ url_for('static', filename='js/energy_consumption/slice_year_exclusive.js') }}"></script>
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_save_validate.js') }}"></script>
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_detail_live_save.js') }}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    document
-      .getElementById("rounding_digits")
-      ?.addEventListener("change", function () {
-        const url = new URL(window.location.href);
-        url.searchParams.set("rounding_digits", this.value);
-        window.location.href = url.toString();
-      });
+
     const editTable = document.getElementById("power-demand-edit-table");
     if (editTable && typeof initPowerDemandTableSort === "function") {
       initPowerDemandTableSort(editTable, {
@@ -487,9 +483,7 @@ defined and fk_column == 'id_energy_zone' %}
     if (typeof initSliceYearExclusive === "function") {
       initSliceYearExclusive();
     }
-    if (typeof initDemandSaveValidate === "function") {
-      initDemandSaveValidate(document.getElementById("demand-params-form"));
-    }
+
   });
 </script>
 {% endif %} {% endblock %}

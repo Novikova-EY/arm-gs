@@ -52,7 +52,7 @@ def _print_section(title: str, count: int, rows: list[dict]) -> None:
             f"{item['old_uuid']} -> {item['new_uuid']}"
         )
     if count > 8:
-        print(f"  ... ещё {count - 8}")
+        print(f"  ... еще {count - 8}")
     print()
 
 
@@ -159,7 +159,7 @@ def main() -> None:
             print("Дублирующих UUID в пределах версии не найдено.")
             return
         if not apply_changes:
-            print("Dry-run завершён. Для записи: python scripts/fix_duplicate_identity_uuids.py --yes")
+            print("Dry-run завершен. Для записи: python scripts/fix_duplicate_identity_uuids.py --yes")
             print("JSON того же плана: GET /api/duplicate_identity_uuids")
             return
 

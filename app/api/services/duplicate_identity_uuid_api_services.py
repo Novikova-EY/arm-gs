@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""JSON-отчёт о дублирующих identity-UUID (dry-run скрипта)."""
+"""JSON-отчет о дублирующих identity-UUID (dry-run скрипта)."""
 from __future__ import annotations
 
 from typing import Any

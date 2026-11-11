@@ -318,7 +318,7 @@ def _parse_structured_upload_sheet(
 
         if current_fd_id is None:
             stats["warnings"].append(
-                f"Строка {row_idx}: не определён федеральный округ для показателя."
+                f"Строка {row_idx}: не определен федеральный округ для показателя."
             )
             continue
 

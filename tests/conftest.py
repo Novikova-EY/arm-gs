@@ -11,6 +11,27 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from unittest.mock import patch
 
 
+@pytest.fixture
+def legacy_migration():
+    """Load an archived revision without adding it to Alembic's active graph."""
+    from importlib.util import module_from_spec
+    from pathlib import Path
+    from zipimport import zipimporter
+
+    archive = Path(__file__).resolve().parents[1] / "migrations" / "legacy_gs26102702.zip"
+    importer = zipimporter(str(archive))
+
+    def load(name):
+        spec = importer.find_spec(name)
+        if spec is None:
+            raise ImportError(f"Archived migration not found: {name}")
+        module = module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    return load
+
+
 @pytest.fixture(autouse=True)
 def _patch_infrastructure():
     """Глобальные моки: транзакции, логирование, choices_cache, чтобы не дергать БД."""
@@ -71,6 +92,10 @@ def app():
     # Регистрируем только refdata blueprint, чтобы не тянуть весь app factory
     from app.refdata.routes import refdata_bp
     app.register_blueprint(refdata_bp, url_prefix="/refdata")
+
+    # Модели связей Machine/PGUMachine должны быть зарегистрированы до настройки мапперов.
+    import importlib
+    importlib.import_module("app.rational_structure.models")
 
     # Заглушка блюпринта станций для ссылок в base.html
     from flask import Blueprint

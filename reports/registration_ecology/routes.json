@@ -1,0 +1,343 @@
+[
+  {
+    "url": "/ecology/calculation_summary/",
+    "methods": [
+      "GET"
+    ],
+    "function": "calculation_summary_index",
+    "path": "app/ecology/routes/calculation_summary_routes.py",
+    "first": 11,
+    "last": 17
+  },
+  {
+    "url": "/ecology/calculation_summary/<territory_slug>/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "function": "calculation_summary_export",
+    "path": "app/ecology/routes/calculation_summary_routes.py",
+    "first": 20,
+    "last": 31
+  },
+  {
+    "url": "/ecology/calculation_summary/<territory_slug>/<sheet_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "calculation_summary",
+    "path": "app/ecology/routes/calculation_summary_routes.py",
+    "first": 34,
+    "last": 54
+  },
+  {
+    "url": "/ecology/",
+    "methods": [
+      "GET"
+    ],
+    "function": "hub",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 141,
+    "last": 149
+  },
+  {
+    "url": "/ecology/formulas/",
+    "methods": [
+      "GET"
+    ],
+    "function": "operating_tes_formulas",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 152,
+    "last": 163
+  },
+  {
+    "url": "/ecology/formulas/save",
+    "methods": [
+      "POST"
+    ],
+    "function": "operating_tes_formulas_save",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 166,
+    "last": 193
+  },
+  {
+    "url": "/ecology/formulas/reset",
+    "methods": [
+      "POST"
+    ],
+    "function": "operating_tes_formulas_reset",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 196,
+    "last": 216
+  },
+  {
+    "url": "/ecology/gis_tek/pg/",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tek_pg",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 219,
+    "last": 222
+  },
+  {
+    "url": "/ecology/gis_tek/pg/import",
+    "methods": [
+      "POST"
+    ],
+    "function": "gis_tek_pg_import",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 225,
+    "last": 228
+  },
+  {
+    "url": "/ecology/gis_tek/pg/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tek_pg_export",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 231,
+    "last": 234
+  },
+  {
+    "url": "/ecology/gis_tek/pollutants/",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tek_pollutants",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 237,
+    "last": 240
+  },
+  {
+    "url": "/ecology/gis_tek/pollutants/import",
+    "methods": [
+      "POST"
+    ],
+    "function": "gis_tek_pollutants_import",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 243,
+    "last": 246
+  },
+  {
+    "url": "/ecology/gis_tek/pollutants/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tek_pollutants_export",
+    "path": "app/ecology/routes/ecology_routes.py",
+    "first": 249,
+    "last": 252
+  },
+  {
+    "url": "/ecology/totals_summary",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_index",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 53,
+    "last": 61
+  },
+  {
+    "url": "/ecology/totals_summary/",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_index",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 53,
+    "last": 61
+  },
+  {
+    "url": "/ecology/totals_summary/<sheet_slug>",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 64,
+    "last": 80
+  },
+  {
+    "url": "/ecology/totals_summary/<sheet_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 64,
+    "last": 80
+  },
+  {
+    "url": "/ecology/totals_summary_export",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_export_index",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 83,
+    "last": 94
+  },
+  {
+    "url": "/ecology/totals_summary_export/",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_export_index",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 83,
+    "last": 94
+  },
+  {
+    "url": "/ecology/totals_summary/<sheet_slug>/export",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_export",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 97,
+    "last": 130
+  },
+  {
+    "url": "/ecology/totals_summary/<sheet_slug>/export/",
+    "methods": [
+      "GET"
+    ],
+    "function": "totals_summary_export",
+    "path": "app/ecology/routes/ecology_totals_summary_routes.py",
+    "first": 97,
+    "last": 130
+  },
+  {
+    "url": "/ecology/analysis/<sheet_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tes_fuel_comparison",
+    "path": "app/ecology/routes/gis_tes_fuel_comparison_routes.py",
+    "first": 43,
+    "last": 115
+  },
+  {
+    "url": "/ecology/analysis/<sheet_slug>/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "function": "gis_tes_fuel_comparison_export",
+    "path": "app/ecology/routes/gis_tes_fuel_comparison_routes.py",
+    "first": 118,
+    "last": 150
+  },
+  {
+    "url": "/ecology/analysis/<sheet_slug>/value/",
+    "methods": [
+      "PATCH"
+    ],
+    "function": "gis_tes_fuel_comparison_update_value",
+    "path": "app/ecology/routes/gis_tes_fuel_comparison_routes.py",
+    "first": 153,
+    "last": 198
+  },
+  {
+    "url": "/ecology/new_tes/",
+    "methods": [
+      "GET"
+    ],
+    "function": "new_tes_hub",
+    "path": "app/ecology/routes/new_tes_routes.py",
+    "first": 31,
+    "last": 40
+  },
+  {
+    "url": "/ecology/new_tes/<territory_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "new_tes_territory",
+    "path": "app/ecology/routes/new_tes_routes.py",
+    "first": 43,
+    "last": 55
+  },
+  {
+    "url": "/ecology/new_tes/<territory_slug>/<sheet_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "new_tes_table",
+    "path": "app/ecology/routes/new_tes_routes.py",
+    "first": 58,
+    "last": 98
+  },
+  {
+    "url": "/ecology/new_tes/<territory_slug>/<sheet_slug>/value/",
+    "methods": [
+      "PATCH"
+    ],
+    "function": "new_tes_update_value",
+    "path": "app/ecology/routes/new_tes_routes.py",
+    "first": 101,
+    "last": 139
+  },
+  {
+    "url": "/ecology/operating_tes/",
+    "methods": [
+      "GET"
+    ],
+    "function": "operating_tes_hub",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 34,
+    "last": 43
+  },
+  {
+    "url": "/ecology/operating_tes/<territory_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "operating_tes_territory",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 46,
+    "last": 58
+  },
+  {
+    "url": "/ecology/operating_tes/<territory_slug>/<sheet_slug>/",
+    "methods": [
+      "GET"
+    ],
+    "function": "operating_tes_table",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 61,
+    "last": 105
+  },
+  {
+    "url": "/ecology/operating_tes/<territory_slug>/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "function": "operating_tes_export",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 108,
+    "last": 122
+  },
+  {
+    "url": "/ecology/operating_tes/fuel_submissions/<int:submission_id>/",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "function": "operating_tes_fuel_review",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 125,
+    "last": 185
+  },
+  {
+    "url": "/ecology/operating_tes/<territory_slug>/<sheet_slug>/value/",
+    "methods": [
+      "PATCH"
+    ],
+    "function": "operating_tes_update_value",
+    "path": "app/ecology/routes/operating_tes_routes.py",
+    "first": 188,
+    "last": 230
+  }
+]

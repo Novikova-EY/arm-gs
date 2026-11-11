@@ -29,7 +29,7 @@ class EconomicActivityType(db.Model, AuditMixin, VersionedModelMixin, RefdataUui
     # Полное наименование (страницы «Экономики»)
     name = db.Column(db.String(255), nullable=True, index=True)
 
-    # Краткое наименование (страницы «Электроёмкости»)
+    # Краткое наименование (страницы «Электроемкости»)
     name_2 = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

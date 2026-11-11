@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Сервисы страницы электроёмкости."""
+"""Сервисы страницы электроемкости."""
 
 from __future__ import annotations
 
@@ -263,7 +263,7 @@ def _ei_current_year_number() -> int | None:
 def _ei_years_through_current(
     display_years: list[int], current_year: int | None
 ) -> frozenset[int]:
-    """Годы, для которых электроёмкость и связанные строки считаются по формулам."""
+    """Годы, для которых электроемкость и связанные строки считаются по формулам."""
     if current_year is None:
         return frozenset(display_years)
     return frozenset(y for y in display_years if y <= current_year)
@@ -353,7 +353,7 @@ def _effective_coef_a(
     coef_a_manual: Decimal | None,
     coef_a_computed: Decimal | None,
 ) -> Decimal | None:
-    """A для расчётов: вручную введённый, иначе «Арасч»."""
+    """A для расчетов: вручную введенный, иначе «Арасч»."""
     return coef_a_manual if coef_a_manual is not None else coef_a_computed
 
 
@@ -369,7 +369,7 @@ def _resolve_effective_coef_a_for_ved(
     display_years: list[int],
     current_year: int | None,
 ) -> Decimal | None:
-    """A из БД или «Арасч» по фактической электроёмкости и накопленным инвестициям."""
+    """A из БД или «Арасч» по фактической электроемкости и накопленным инвестициям."""
     if db_coef_a is not None:
         return db_coef_a
     effective_x = _resolve_effective_coef_x_for_ved(
@@ -437,7 +437,7 @@ def _enrich_ved_consumption_plan_years(
     rounding_digits: int,
     current_year: int | None,
 ) -> None:
-    """Потребление по ВЭД для годов «план»: выпуск × электроёмкость (расчётная)."""
+    """Потребление по ВЭД для годов «план»: выпуск × электроемкость (расчетная)."""
     consumption_row = next(
         (r for r in reference_rows if r.get("row_kind") == REF_ROW_CONSUMPTION),
         None,
@@ -644,7 +644,7 @@ def _compute_ei_graph_point(
     accum_curr: Decimal | None,
     accum_prev: Decimal | None,
 ) -> Decimal | None:
-    """LOG(Электроёмкость_Y/Электроёмкость_{Y-1}; Накопленные_Y/Накопленные_{Y-1})."""
+    """LOG(отношение электроемкости; отношение накопленных инвестиций)."""
     if (
         intensity_curr is None
         or intensity_prev is None
@@ -699,7 +699,7 @@ def _attach_rf_section_scatter_chart(
     current_year: int | None,
     calculated_cells: dict[int, Decimal | None] | None = None,
 ) -> None:
-    """График секции РФ: факт ≤ текущего года, расчётная кривая – с текущего."""
+    """График секции РФ: факт ≤ текущего года, расчетная кривая – с текущего."""
     ref_rows = section.get("reference_rows") or []
     accum_row = _find_ref_row_in_list(ref_rows, REF_ROW_ACCUM_FIXED_CAPITAL)
     if accum_row is None:
@@ -741,7 +741,7 @@ def _compute_ved_calculated_cells_for_fd(
     rounding_digits: int,
     current_year: int | None,
 ) -> dict[int, Decimal | None] | None:
-    """Расчётная электроёмкость по ВЭД на ФО (A×I^X), для суммирования на уровне РФ."""
+    """Расчетная электроемкость по ВЭД на ФО (A×I^X), для суммирования на уровне РФ."""
     _, has_ei_model_block, ei_row_kinds = _ei_row_kinds_for_ved(
         ved, refdata_ids=refdata_ved_ids
     )
@@ -772,6 +772,13 @@ def _compute_ved_calculated_cells_for_fd(
             rounding_digits,
             graph_point_db_years=(
                 ved_graph_point_db_years
+                if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                else None
+            ),
+            graph_point_excluded_years=(
+                _graph_point_excluded_years_from_fd_ved_map(
+                    ved_id, ei_year_by_ved_kind_year
+                )
                 if rd["row_kind"] == ROW_KIND_GRAPH_POINT
                 else None
             ),
@@ -924,7 +931,7 @@ def _compute_fd_territory_summary_intensity_cells(
     coeff_base_year: int,
     year_features: dict[int, str] | None = None,
 ) -> dict[int, Decimal | None]:
-    """Электроёмкость сводного блока ФО (для суммирования на графике РФ)."""
+    """Электроемкость сводного блока ФО (для суммирования на графике РФ)."""
     fd_filter = FederalDistrictProductOutputParameter.id_federal_district == fd_id
     product_by_ved = _load_product_output_values_map(
         version_id=version_id,
@@ -980,7 +987,7 @@ def _aggregate_rf_summary_chart_intensity_cells(
     fd_filter_ids: frozenset[int],
     year_features: dict[int, str] | None = None,
 ) -> dict[int, Decimal | None]:
-    """Сумма сводных электроёмкостей ФО для расчётной кривой графика РФ."""
+    """Сумма сводных электроемкостей ФО для расчетной кривой графика РФ."""
     parts: list[dict[int, Decimal | None]] = []
     for fd in _federal_districts_for_page():
         if fd_filter_ids and fd.id not in fd_filter_ids:
@@ -1069,6 +1076,30 @@ def _compute_coef_a_from_intensity(
     return _natural_exp(sum(terms) / Decimal(len(terms)))
 
 
+def _graph_point_excluded_years(
+    graph_point_row: dict[str, Any] | None,
+) -> frozenset[int]:
+    if graph_point_row is None:
+        return frozenset()
+    excluded_years = graph_point_row.get("excluded_years")
+    if excluded_years is not None:
+        return frozenset(excluded_years)
+    return frozenset(
+        year
+        for year in graph_point_row.get("db_years", ())
+        if graph_point_row.get("cells", {}).get(year) is None
+    )
+
+
+def _graph_point_source_year(year: int, graph_point_row: dict[str, Any] | None) -> int:
+    """Берет Y−1, пропуская год, коэффициент которого исключен из расчета."""
+    excluded_years = _graph_point_excluded_years(graph_point_row)
+    source_year = year - 1
+    while source_year in excluded_years:
+        source_year -= 1
+    return source_year
+
+
 def _force_compute_graph_points_for_rows(
     rows: list[dict[str, Any]],
     *,
@@ -1086,20 +1117,24 @@ def _force_compute_graph_points_for_rows(
         return []
     computed_years = _ei_years_through_current(display_years, current_year)
     written: list[tuple[int, Decimal]] = []
+    excluded_years = _graph_point_excluded_years(graph_point_row)
     for year in computed_years:
+        if year in excluded_years:
+            continue
+        source_year = _graph_point_source_year(year, graph_point_row)
         consumption = consumption_by_ved_year.get((ved_id, year))
         product_output = product_output_by_ved_year.get((ved_id, year))
         accum = accum_by_ved_year.get((ved_id, year))
         intensity_curr = _compute_ei_intensity(consumption, product_output)
         intensity_prev = _compute_ei_intensity(
-            consumption_by_ved_year.get((ved_id, year - 1)),
-            product_output_by_ved_year.get((ved_id, year - 1)),
+            consumption_by_ved_year.get((ved_id, source_year)),
+            product_output_by_ved_year.get((ved_id, source_year)),
         )
         raw_gp = _compute_ei_graph_point(
             intensity_curr,
             intensity_prev,
             accum,
-            accum_by_ved_year.get((ved_id, year - 1)),
+            accum_by_ved_year.get((ved_id, source_year)),
         )
         if raw_gp is None:
             continue
@@ -1139,9 +1174,10 @@ def _enrich_ei_computed_rows(
         product_output = product_output_by_ved_year.get((ved_id, year))
         accum = accum_by_ved_year.get((ved_id, year))
         intensity_curr = _compute_ei_intensity(consumption, product_output)
+        source_year = _graph_point_source_year(year, graph_point_row)
         intensity_prev = _compute_ei_intensity(
-            consumption_by_ved_year.get((ved_id, year - 1)),
-            product_output_by_ved_year.get((ved_id, year - 1)),
+            consumption_by_ved_year.get((ved_id, source_year)),
+            product_output_by_ved_year.get((ved_id, source_year)),
         )
 
         if auto_fill_graph_points and _should_autofill_graph_point_cell(
@@ -1151,7 +1187,7 @@ def _enrich_ei_computed_rows(
                 intensity_curr,
                 intensity_prev,
                 accum,
-                accum_by_ved_year.get((ved_id, year - 1)),
+                accum_by_ved_year.get((ved_id, source_year)),
             )
             if raw_gp is not None:
                 _set_row_cell_value(
@@ -1267,7 +1303,7 @@ def _enrich_population_household_plan_years(
     rounding_digits: int,
     current_year: int | None,
 ) -> None:
-    """Потребление в домашних хозяйствах для годов «план»: численность × расчёт на душу."""
+    """Потребление в домашних хозяйствах для годов «план»: численность × расчет на душу."""
     household_row = next(
         (r for r in reference_rows if r.get("row_kind") == REF_ROW_HOUSEHOLD_CONSUMPTION),
         None,
@@ -1761,7 +1797,7 @@ def _build_population_section_for_fd(
 
 
 def _ved_section_display_name(ved: EconomicActivityType) -> str | None:
-    """Заголовок секции ВЭД на странице электроёмкости (поле name_2 справочника /refdata/ved)."""
+    """Заголовок секции ВЭД на странице электроемкости (поле name_2 справочника /refdata/ved)."""
     name_2 = (getattr(ved, "name_2", None) or "").strip()
     return name_2 or None
 
@@ -1795,7 +1831,7 @@ def _refdata_ved_ids(version_id: int | None) -> frozenset[int]:
 def _ei_row_kinds_for_ved(
     ved: EconomicActivityType, *, refdata_ids: frozenset[int]
 ) -> tuple[bool, bool, frozenset[str]]:
-    """(intensity_block, model_block, row_kinds) для секции ВЭД на странице электроёмкости."""
+    """(intensity_block, model_block, row_kinds) для секции ВЭД на странице электроемкости."""
     if _is_total_consumption_ved(ved):
         return False, False, frozenset()
     intensity_block = True
@@ -1937,22 +1973,67 @@ def _coef_display_fields(
     }
 
 
+def _apply_coefficient_rounding(
+    territory_blocks: list[dict[str, Any]], rounding_digits: int
+) -> None:
+    """Переоформить только отображение коэффициентов, не меняя точность расчетов."""
+    def apply_fields(item: dict[str, Any]) -> None:
+        if "coefficient_a_manual" in item or "coefficient_a" in item:
+            coef_a = item.get("coefficient_a_manual", item.get("coefficient_a"))
+            item["coefficient_a_manual_display"] = _format_cell_display(
+                coef_a, rounding_digits
+            )
+            item["coefficient_a_display"] = _format_cell_display(
+                coef_a, rounding_digits
+            )
+        if "coefficient_a_computed" in item:
+            item["coefficient_a_computed_display"] = _format_cell_display(
+                item.get("coefficient_a_computed"), rounding_digits
+            )
+        if "coefficient_x" in item:
+            item["coefficient_x_display"] = _format_cell_display(
+                item.get("coefficient_x"), rounding_digits
+            )
+        if item.get("has_coefficient_k"):
+            item["coefficient_k_display"] = _format_cell_display(
+                item.get("coefficient_k"), rounding_digits
+            )
+
+    for block in territory_blocks:
+        apply_fields(block)
+        for section in block.get("ved_sections") or []:
+            apply_fields(section)
+        summary = block.get("fd_summary") or {}
+        for row in summary.get("reference_rows") or []:
+            apply_fields(row)
+
+
 def _load_year_values_map(
     *,
     version_id: int | None,
     model: type,
     territory_filter: Any | None = None,
 ) -> dict[tuple[str, int], Decimal | None]:
+    from app.common.services.economics_fd_data_cache import ElectricalIntensityYearValues
+
     q = model.query
     if version_id is not None:
         q = q.filter(model.database_version_id == version_id)
     if territory_filter is not None:
         q = q.filter(territory_filter)
-    result: dict[tuple[str, int], Decimal | None] = {}
+    excluded_years: set[int] = set()
+    result = ElectricalIntensityYearValues()
     for row in q.all():
         if row.year_number is None or not row.row_kind:
             continue
-        result[(str(row.row_kind), int(row.year_number))] = row.parameter_value
+        year = int(row.year_number)
+        row_kind = str(row.row_kind)
+        result[(row_kind, year)] = row.parameter_value
+        if row_kind == ROW_KIND_GRAPH_POINT and getattr(
+            row, "is_excluded_from_calculation", False
+        ):
+            excluded_years.add(year)
+    result.excluded_years = frozenset(excluded_years)
     return result
 
 
@@ -2002,22 +2083,44 @@ def _graph_point_db_years_from_fd_ved_map(
     ved_id: int,
     ei_year_by_ved: dict[tuple[int, str, int], Decimal | None],
 ) -> frozenset[int]:
-    """Годы graph_point, для которых в БД есть запись (в т.ч. с NULL)."""
+    excluded_keys = getattr(ei_year_by_ved, "excluded_years", frozenset())
     return frozenset(
         year
-        for (v_id, rk, year) in ei_year_by_ved.keys()
-        if v_id == ved_id and rk == ROW_KIND_GRAPH_POINT
+        for (v_id, row_kind, year), value in ei_year_by_ved.items()
+        if v_id == ved_id
+        and row_kind == ROW_KIND_GRAPH_POINT
+        and (value is not None or (ved_id, year) in excluded_keys)
     )
 
 
 def _graph_point_db_years_from_kind_year_map(
     values_by_kind_year: dict[tuple[str, int], Decimal | None],
 ) -> frozenset[int]:
-    """Годы graph_point с записью в БД (карта (row_kind, year) → value)."""
+    excluded_years = getattr(values_by_kind_year, "excluded_years", frozenset())
     return frozenset(
         year
-        for (rk, year) in values_by_kind_year.keys()
-        if rk == ROW_KIND_GRAPH_POINT
+        for (row_kind, year), value in values_by_kind_year.items()
+        if row_kind == ROW_KIND_GRAPH_POINT
+        and (value is not None or year in excluded_years)
+    )
+
+
+def _graph_point_excluded_years_from_kind_year_map(
+    values_by_kind_year: dict[tuple[str, int], Decimal | None],
+) -> frozenset[int]:
+    return frozenset(getattr(values_by_kind_year, "excluded_years", frozenset()))
+
+
+def _graph_point_excluded_years_from_fd_ved_map(
+    ved_id: int,
+    values_by_ved_kind_year: dict[tuple[int, str, int], Decimal | None],
+) -> frozenset[int]:
+    return frozenset(
+        year
+        for excluded_ved_id, year in getattr(
+            values_by_ved_kind_year, "excluded_years", frozenset()
+        )
+        if excluded_ved_id == ved_id
     )
 
 
@@ -2039,14 +2142,18 @@ def _attach_row_cells(
     rounding_digits: int,
     *,
     graph_point_db_years: frozenset[int] | None = None,
+    graph_point_excluded_years: frozenset[int] | None = None,
 ) -> dict[str, Any]:
     cells: dict[int, Any] = {}
     for year in display_years:
         cells[year] = values_by_kind_year.get((row_def["row_kind"], year))
     out = {**row_def, "cells": cells}
     row_kind = row_def.get("row_kind")
-    if row_kind == ROW_KIND_GRAPH_POINT and graph_point_db_years is not None:
-        out["db_years"] = graph_point_db_years
+    if row_kind == ROW_KIND_GRAPH_POINT:
+        if graph_point_db_years is not None:
+            out["db_years"] = graph_point_db_years
+        if graph_point_excluded_years is not None:
+            out["excluded_years"] = graph_point_excluded_years
     out["cell_tooltips"] = {
         year: _format_cell_tooltip(cells.get(year), row_kind=row_kind)
         for year in display_years
@@ -2065,31 +2172,49 @@ def _resolve_price_year_for_ref_labels(
     coeff_base_year: int,
 ) -> int:
     """Год цен для подписей выпуска/инвестиций (из product-output или базовый год периода)."""
-    q = (
-        FederalDistrictProductOutputParameter.query.join(
-            Year,
-            FederalDistrictProductOutputParameter.id_year_specific_product_output
-            == Year.id,
+    return _resolve_price_years_for_ref_labels(
+        version_id, [fd_id], coeff_base_year
+    )[fd_id]
+
+
+def _resolve_price_years_for_ref_labels(
+    version_id: int | None,
+    fd_ids: list[int],
+    coeff_base_year: int,
+) -> dict[int, int]:
+    """Получить годы цен для всех ФО одним запросом вместо отдельного запроса на ФО."""
+    fallback_year = get_ges_tep_current_price_year_number()
+    if fallback_year is None:
+        fallback_year = coeff_base_year
+    result = {fd_id: int(fallback_year) for fd_id in fd_ids}
+    if not fd_ids:
+        return result
+
+    model = FederalDistrictProductOutputParameter
+    query = (
+        db.session.query(
+            model.id_federal_district,
+            Year.number,
+            func.min(model.id).label("first_parameter_id"),
         )
+        .join(Year, model.id_year_specific_product_output == Year.id)
         .filter(
-            FederalDistrictProductOutputParameter.id_federal_district == fd_id,
-            FederalDistrictProductOutputParameter.id_year_specific_product_output.isnot(
-                None
-            ),
+            model.id_federal_district.in_(fd_ids),
+            model.id_year_specific_product_output.isnot(None),
         )
     )
     if version_id is not None:
-        q = q.filter(
-            FederalDistrictProductOutputParameter.database_version_id
-            == version_id
-        )
-    row = q.with_entities(Year.number).first()
-    if row is not None and row[0] is not None:
-        return int(row[0])
-    ges_year = get_ges_tep_current_price_year_number()
-    if ges_year is not None:
-        return int(ges_year)
-    return int(coeff_base_year)
+        query = query.filter(model.database_version_id == version_id)
+    rows = query.group_by(model.id_federal_district, Year.number).order_by(
+        func.min(model.id)
+    ).all()
+    resolved: set[int] = set()
+    for fd_id, year_number, _first_parameter_id in rows:
+        fd_id = int(fd_id)
+        if year_number is not None and fd_id in result and fd_id not in resolved:
+            result[fd_id] = int(year_number)
+            resolved.add(fd_id)
+    return result
 
 
 def _find_industrial_component_veds(
@@ -2208,7 +2333,7 @@ def _consumption_cells_for_ved_with_forecast(
     display_years: list[int],
     anchor_year: int | None,
 ) -> dict[int, Decimal | None]:
-    """Потребление по ВЭД: факт из БД или прогноз (расчётная электроёмкость × выпуск)."""
+    """Потребление по ВЭД: факт из БД или прогноз (расчетная электроемкость × выпуск)."""
     anchor_intensity: Decimal | None = None
     if anchor_year is not None:
         anchor_intensity = _compute_ei_intensity(
@@ -2918,7 +3043,7 @@ def _sum_fd_summary_reference_cells(
     row_kind: str,
     display_years: list[int],
 ) -> dict[int, Decimal | None]:
-    """Сумма одноимённых строк сводки «всего» по ФО (с прогнозом на плановые годы)."""
+    """Сумма одноименных строк сводки «всего» по ФО (с прогнозом на плановые годы)."""
     parts: list[dict[int, Decimal | None]] = []
     for summary in fd_summaries:
         ref_by_kind = {
@@ -3408,6 +3533,13 @@ def _build_ved_sections_for_fd(
                         if rd["row_kind"] == ROW_KIND_GRAPH_POINT
                         else None
                     ),
+                    graph_point_excluded_years=(
+                        _graph_point_excluded_years_from_fd_ved_map(
+                            ved.id, ei_year_by_ved_kind_year
+                        )
+                        if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                        else None
+                    ),
                 )
                 for rd in active_row_defs
             ]
@@ -3576,7 +3708,7 @@ def _compute_rf_ved_intensity_cells_for_fd(
     display_years: list[int],
     rounding_digits: int,
 ) -> dict[int, Decimal | None]:
-    """Электроёмкость по ВЭД для агрегата РФ: все отображаемые годы (сумма по ФО)."""
+    """Электроемкость по ВЭД для агрегата РФ: все отображаемые годы (сумма по ФО)."""
     return _compute_ved_intensity_cells_for_fd(
         ved_id=ved_id,
         consumption_by_ved_year=consumption_by_ved_year,
@@ -3642,7 +3774,7 @@ def _aggregate_fd_maps_for_rf(
     dict[int, dict[int, Decimal | None]],
     dict[int, Decimal | None] | None,
 ]:
-    """Суммы потребления/выпуска/инвестиций и электроёмкости по ВЭД, агрегированные по ФО."""
+    """Суммы потребления/выпуска/инвестиций и электроемкости по ВЭД, агрегированные по ФО."""
     agg_consumption: dict[tuple[int, int], Decimal | None] = {}
     agg_product: dict[tuple[int, int], Decimal | None] = {}
     agg_accum: dict[tuple[int, int], Decimal | None] = {}
@@ -4244,6 +4376,11 @@ def _territory_block(
                 if rd["row_kind"] == ROW_KIND_GRAPH_POINT
                 else None
             ),
+            graph_point_excluded_years=(
+                _graph_point_excluded_years_from_kind_year_map(values_by_kind_year)
+                if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                else None
+            ),
         )
         for rd in row_defs
     ]
@@ -4264,6 +4401,7 @@ def _territory_block(
 def build_electrical_intensity_page_context(
     *,
     rounding_digits: int = 1,
+    coefficient_rounding_digits: int = 2,
     start_year: int,
     end_year: int,
     display_years: list[int],
@@ -4294,10 +4432,17 @@ def build_electrical_intensity_page_context(
     fd_summaries_for_rf: list[dict[str, Any]] = []
 
     show_rf_block = show_ved_sections or show_population_section
+    federal_districts = [
+        fd
+        for fd in _federal_districts_for_page()
+        if not fd_filter_ids or fd.id in fd_filter_ids
+    ]
+    price_year_by_fd = _resolve_price_years_for_ref_labels(
+        version_id, [fd.id for fd in federal_districts], coeff_base_year
+    )
+    year_features = get_year_feature_dict() or {}
 
-    for fd in _federal_districts_for_page():
-        if fd_filter_ids and fd.id not in fd_filter_ids:
-            continue
+    for fd in federal_districts:
         ei_year_by_ved = _load_fd_ei_year_values_map(version_id=version_id, fd_id=fd.id)
         coef_by_ved = _load_fd_ei_coef_map(version_id=version_id, fd_id=fd.id)
         fd_filter = (
@@ -4324,9 +4469,7 @@ def build_electrical_intensity_page_context(
             territory_filter=FederalDistrictAccumFixedCapitalParameter.id_federal_district
             == fd.id,
         )
-        price_year = _resolve_price_year_for_ref_labels(
-            version_id, fd.id, coeff_base_year
-        )
+        price_year = price_year_by_fd[fd.id]
         ved_sections: list[dict[str, Any]] = []
         if show_ved_sections:
             ved_sections = _build_ved_sections_for_fd(
@@ -4367,7 +4510,7 @@ def build_electrical_intensity_page_context(
                 rounding_digits=rounding_digits,
                 price_year=price_year,
                 current_year=current_year,
-                year_features=get_year_feature_dict() or {},
+                year_features=year_features,
                 ved_sections=ved_sections,
             )
             if show_ved_sections
@@ -4461,6 +4604,8 @@ def build_electrical_intensity_page_context(
         {"id": POPULATION_SECTION_MARKER, "name": POPULATION_SECTION_LABEL}
     )
 
+    _apply_coefficient_rounding(territory_blocks, coefficient_rounding_digits)
+
     from app.electrical_intensity.services.electrical_intensity_diagnostic_services import (
         attach_electrical_intensity_diagnostics_to_blocks,
     )
@@ -4488,6 +4633,7 @@ def build_electrical_intensity_page_context(
         "economic_activity_type_list": economic_activity_type_list,
         "has_active_filters": has_active_filters,
         "rounding_digits": rounding_digits,
+        "coefficient_rounding_digits": coefficient_rounding_digits,
         "ei_current_year": current_year,
         "formula_hints": {
             "coefficient_a": ei_formula_text("ei_coefficient_a"),
@@ -4849,8 +4995,26 @@ def compute_graph_points_for_row(
             model=RussiaFederationElectricalIntensityYearParameter,
         )
         rf_row_defs = _build_row_defs()
+        rf_graph_point_db_years = _graph_point_db_years_from_kind_year_map(
+            rf_values
+        )
         rows = [
-            _attach_row_cells(rd, rf_values, display_years, rounding_digits)
+            _attach_row_cells(
+                rd,
+                rf_values,
+                display_years,
+                rounding_digits,
+                graph_point_db_years=(
+                    rf_graph_point_db_years
+                    if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                    else None
+                ),
+                graph_point_excluded_years=(
+                    _graph_point_excluded_years_from_kind_year_map(rf_values)
+                    if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                    else None
+                ),
+            )
             for rd in rf_row_defs
         ]
         _force_compute_graph_points_for_rows(
@@ -4981,8 +5145,28 @@ def compute_graph_points_for_row(
         }
         row_defs = _build_row_defs()
         active_row_defs = [rd for rd in row_defs if rd["row_kind"] in ei_row_kinds]
+        fd_graph_point_db_years = _graph_point_db_years_from_fd_ved_map(
+            ved_id_int, ei_year_by_ved
+        )
         rows = [
-            _attach_row_cells(rd, values_by_kind_year, display_years, rounding_digits)
+            _attach_row_cells(
+                rd,
+                values_by_kind_year,
+                display_years,
+                rounding_digits,
+                graph_point_db_years=(
+                    fd_graph_point_db_years
+                    if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                    else None
+                ),
+                graph_point_excluded_years=(
+                    _graph_point_excluded_years_from_fd_ved_map(
+                        ved_id_int, ei_year_by_ved
+                    )
+                    if rd["row_kind"] == ROW_KIND_GRAPH_POINT
+                    else None
+                ),
+            )
             for rd in active_row_defs
         ]
         _force_compute_graph_points_for_rows(
@@ -5357,6 +5541,7 @@ def save_electrical_intensity_from_post(form_data: Any) -> tuple[int, int]:
     values = form_data.getlist("cell_value[]")
     orig_values = form_data.getlist("cell_orig_value[]")
     gp_had_display_flags = form_data.getlist("cell_gp_had_display[]")
+    graph_point_excluded_flags = form_data.getlist("cell_exclude[]")
 
     n = min(
         len(kinds),
@@ -5377,6 +5562,15 @@ def save_electrical_intensity_from_post(form_data: Any) -> tuple[int, int]:
         gp_had_display = (
             str(gp_had_display_flags[i] if i < len(gp_had_display_flags) else "")
             .strip()
+            == "1"
+        )
+        graph_point_excluded = (
+            rk == ROW_KIND_GRAPH_POINT
+            and str(
+                graph_point_excluded_flags[i]
+                if i < len(graph_point_excluded_flags)
+                else ""
+            ).strip()
             == "1"
         )
 
@@ -5471,19 +5665,46 @@ def save_electrical_intensity_from_post(form_data: Any) -> tuple[int, int]:
             skipped += 1
             continue
 
+        graph_point_excluded = graph_point_excluded and not is_population_cell
+        if graph_point_excluded:
+            dec = None
         old_val = existing_row.parameter_value if existing_row is not None else None
-        graph_point_cleared = (
-            rk == ROW_KIND_GRAPH_POINT
+        old_graph_point_excluded = bool(
+            getattr(existing_row, "is_excluded_from_calculation", False)
+        )
+        clear_population_graph_point = (
+            is_population_cell
+            and rk == ROW_KIND_GRAPH_POINT
             and dec is None
             and (orig_dec is not None or gp_had_display)
         )
-        if not graph_point_cleared and is_same_decimal(
-            to_decimal(old_val), to_decimal(dec)
+        delete_graph_point = (
+            rk == ROW_KIND_GRAPH_POINT
+            and not is_population_cell
+            and dec is None
+            and not graph_point_excluded
+        )
+        if delete_graph_point:
+            if existing_row is None:
+                continue
+        elif (
+            not clear_population_graph_point
+            and not (graph_point_excluded and existing_row is None)
+            and graph_point_excluded == old_graph_point_excluded
+            and is_same_decimal(to_decimal(old_val), to_decimal(dec))
         ):
+            if dec is None:
+                continue
             skipped += 1
             continue
 
-        if kind == "rf":
+        if delete_graph_point:
+            db.session.delete(existing_row)
+            if kind == "rf":
+                rf_year_cache.pop((rk, year_n), None)
+            else:
+                fd_year_cache.pop((fd_id, ved_id, rk, year_n), None)
+        elif kind == "rf":
             row = _resolve_rf_year_row(
                 rf_year_cache, version_id, rk, year_n, user
             )
@@ -5496,8 +5717,11 @@ def save_electrical_intensity_from_post(form_data: Any) -> tuple[int, int]:
                 fd_year_cache, version_id, fd_id, ved_id, rk, year_n, user
             )
 
-        row.parameter_value = dec
-        row.modified_by = user
+        if not delete_graph_point:
+            row.parameter_value = dec
+            row.modified_by = user
+            if rk == ROW_KIND_GRAPH_POINT and not is_population_cell:
+                row.is_excluded_from_calculation = graph_point_excluded
         terr_key = (kind, fd_id, ved_id)
         if terr_key not in territory_cache:
             parts = [_territory_label_for_log(kind, fd_id)]

@@ -1,0 +1,18 @@
+{
+  "database": "gs_gen",
+  "address": "10.31.205.27/32",
+  "port": 5432,
+  "characteristic_rows": 10291,
+  "characteristic_business_md5": "8111b6fe9195770e509a4c83d8a3d6a9",
+  "codes_by_version": {
+    "20": 1001,
+    "22": 1001,
+    "37": 1152,
+    "39": 1001,
+    "40": 1001,
+    "41": 1001,
+    "46": 998
+  },
+  "code_rows": 7155,
+  "invalid_code_links": 0
+}

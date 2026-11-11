@@ -9,6 +9,8 @@ def _station():
         database_version_id=4,
         name="Старая станция",
         id_station_group=2,
+        group=SimpleNamespace(id=2, name="Исходная группа"),
+        regional_district=None,
         id_condition_type=3,
         id_station_type=5,
         station_sign=None,
@@ -24,6 +26,8 @@ def _station():
 
 def _request_endpoint(monkeypatch, payload, *, roles):
     import app.generation.routes.stations.station_details_routes as routes
+    import app.rational_structure.models
+    import app.electrical_intensity.models
 
     station = _station()
     user = SimpleNamespace(
@@ -102,3 +106,132 @@ def test_station_meta_autosave_checks_field_permissions(monkeypatch):
 
     assert status == 403
     assert body == {"ok": False, "error": "Недостаточно прав"}
+
+
+def test_station_group_text_autosave_creates_group_in_station_version(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import app.generation.services.station_services.station_services as services
+
+    session = MagicMock()
+    session.query.return_value.filter_by.return_value.first.return_value = None
+    monkeypatch.setattr(services.db, "session", session)
+    monkeypatch.setattr(services, "_commit_with_retry", lambda: None)
+    monkeypatch.setattr(services, "clear_station_aggregation_cache", lambda *_args: None)
+    monkeypatch.setattr(services, "log_to_db", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(services, "current_user", SimpleNamespace(is_authenticated=False))
+
+    body, status, station = _request_endpoint(
+        monkeypatch,
+        {"field": "station_group_name", "value": "  Новая группа  "},
+        roles={"generation-editor"},
+    )
+
+    assert status == 200
+    assert body == {"ok": True, "changed": True, "value": "Новая группа"}
+    assert station.group.name == "Новая группа"
+    assert station.group.database_version_id == 4
+    assert station.name == _station().name
+    session.query.return_value.filter_by.assert_called_once_with(
+        name="Новая группа", database_version_id=4
+    )
+
+
+def test_station_group_text_autosave_reuses_existing_group(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import app.generation.services.station_services.station_services as services
+
+    existing_group = SimpleNamespace(id=10, name="Другая группа", database_version_id=4)
+    session = MagicMock()
+    session.query.return_value.filter_by.return_value.first.return_value = existing_group
+    monkeypatch.setattr(services.db, "session", session)
+    monkeypatch.setattr(services, "_commit_with_retry", lambda: None)
+    monkeypatch.setattr(services, "clear_station_aggregation_cache", lambda *_args: None)
+    monkeypatch.setattr(services, "log_to_db", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(services, "current_user", SimpleNamespace(is_authenticated=False))
+
+    body, status, station = _request_endpoint(
+        monkeypatch,
+        {"field": "station_group_name", "value": "Другая группа"},
+        roles={"generation-editor"},
+    )
+
+    assert status == 200
+    assert body["value"] == existing_group.name
+    assert station.group is existing_group
+    session.add.assert_not_called()
+
+
+def test_station_group_text_autosave_clears_group(monkeypatch):
+    import app.generation.services.station_services.station_services as services
+
+    monkeypatch.setattr(services, "_commit_with_retry", lambda: None)
+    monkeypatch.setattr(services, "clear_station_aggregation_cache", lambda *_args: None)
+    monkeypatch.setattr(services, "log_to_db", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(services, "current_user", SimpleNamespace(is_authenticated=False))
+
+    body, status, station = _request_endpoint(
+        monkeypatch,
+        {"field": "station_group_name", "value": "   "},
+        roles={"generation-editor"},
+    )
+
+    assert status == 200
+    assert body == {"ok": True, "changed": True, "value": ""}
+    assert station.group is None
+
+
+def test_station_group_text_autosave_rejects_long_names(monkeypatch):
+    body, status, station = _request_endpoint(
+        monkeypatch,
+        {"field": "station_group_name", "value": "я" * 81},
+        roles={"generation-editor"},
+    )
+
+    assert status == 400
+    assert body["ok"] is False
+    assert station.group.name == _station().group.name
+
+
+def test_station_group_text_autosave_requires_edit_permission(monkeypatch):
+    body, status, station = _request_endpoint(
+        monkeypatch,
+        {"field": "station_group_name", "value": "Новая группа"},
+        roles=set(),
+    )
+
+    assert status == 403
+    assert body["ok"] is False
+    assert station.group.name == _station().group.name
+
+
+def test_generation_only_switch_is_not_autosaved(monkeypatch):
+    body, status, _ = _request_endpoint(
+        monkeypatch, {"field": "is_generation_only", "value": "0"},
+        roles={"generation-editor"},
+    )
+    assert status == 400
+    assert not body["ok"]
+
+
+def test_generation_only_switch_is_passed_only_by_explicit_page_save(monkeypatch):
+    import app.generation.routes.stations.station_details_routes as routes
+    from werkzeug.datastructures import MultiDict
+    monkeypatch.setattr(routes, "current_user", SimpleNamespace(is_authenticated=False))
+    received = []
+    monkeypatch.setattr(routes, "update_station_from_form_service", lambda *a, **kw: received.append(kw))
+    form = SimpleNamespace(process=lambda **kw: None, validate=lambda: True)
+    app = Flask(__name__)
+    app.secret_key = "test"
+    for data, expected in [
+        ({"station_details_unified_save": "1", "generation_only_toggle_present": "1"}, False),
+        ({"station_details_unified_save": "1", "generation_only_toggle_present": "1", "is_generation_only": "1"}, True),
+        ({"station_details_unified_save": "1"}, None),
+        ({"generation_only_toggle_present": "1"}, None),
+    ]:
+        with app.test_request_context("/station", method="POST", data=MultiDict(data)):
+            routes._save_station_meta_from_form(
+                "test", _station(), form, [], can_edit=True, can_edit_fuel=False,
+            )
+        assert received[-1].get("is_generation_only") == expected

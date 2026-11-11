@@ -95,7 +95,7 @@ def _choose_primary_group(groups: list[EquipmentGroup]) -> Optional[EquipmentGro
 
 
 def equipment_groups_must_not_merge(left, right) -> bool:
-    """Разные Access-строки (numb) и пара родитель/ребёнок составной станции – не дубликаты."""
+    """Разные Access-строки (numb) и пара родитель/ребенок составной станции – не дубликаты."""
     if left is None or right is None:
         return False
     from app.fuel.services.equipment_groups.composite_station_semantics import _as_int
@@ -208,12 +208,16 @@ def _reassign_model_rows_to_primary(
     group_ids: list[int],
     primary_id: int,
     identity_fields: list[str],
+    *,
+    overwrite_existing: bool = False,
 ) -> None:
     """
     Переназначает строки model с group_ids на primary_id.
 
     Если у primary уже есть строка с тем же логическим ключом (identity_fields),
     дополняем пустые поля и удаляем дубликат, иначе просто переносим FK.
+    overwrite_existing заменяет значения целевой записи исходными; NUMB1120
+    сохраняется целевым, чтобы не нарушить уникальный ключ до удаления источника.
     """
     if not group_ids:
         return
@@ -232,7 +236,12 @@ def _reassign_model_rows_to_primary(
         row_key = _identity_key(row)
         duplicate = primary_by_key.get(row_key)
         if duplicate:
-            _merge_missing_model_fields(duplicate, row)
+            if overwrite_existing:
+                for attr in model.__mapper__.column_attrs:
+                    if attr.key not in {"id", "equipment_group_id", "numb1120", "created_at", "updated_at"}:
+                        setattr(duplicate, attr.key, getattr(row, attr.key))
+            else:
+                _merge_missing_model_fields(duplicate, row)
             db.session.execute(
                 sa_delete(model).where(model.id == row.id)
             )
@@ -627,7 +636,7 @@ def _clone_equipment_group_into_version(
     source: EquipmentGroup,
     version_id: Optional[int],
 ) -> EquipmentGroup:
-    """Создаёт копию группы в указанной версии БД с тем же external_code."""
+    """Создает копию группы в указанной версии БД с тем же external_code."""
     skip = {"id", "created_at", "updated_at"}
     values = {}
     for column in EquipmentGroup.__table__.columns:
@@ -742,7 +751,7 @@ def _localize_linked_groups_to_version(
     station_ids: list[int],
 ) -> list[EquipmentGroup]:
     """
-    Если связь версии V указывает на группу другой версии – клонирует её в V
+    Если связь версии V указывает на группу другой версии – клонирует ее в V
     и переносит связи/агрегаты этой версии (всех станций, не только текущей).
     Исходная группа других версий не удаляется.
     """
@@ -784,7 +793,7 @@ def rename_or_merge_equipment_group_all_versions(
 
     В каждой версии БД отдельно:
     - находим группу этой станции/типа;
-    - если связь указывает на карточку другой версии – клонируем её в текущую;
+    - если связь указывает на карточку другой версии – клонируем ее в текущую;
     - переименовываем;
     - объединяем только дубликаты с тем же именем в ЭТОЙ версии
       (две станции → одна группа этой версии).
@@ -1057,7 +1066,7 @@ def _equipment_group_type_skip_message(version_id: Optional[int]) -> str:
     """Пояснение при «Сохранить во всех версиях», если тип не сопоставился со справочником."""
     scope = _database_version_label(version_id)
     return (
-        f"Режим «Сохранить во всех версиях»: тип группы оборудования не обновлён для {scope}. "
+        f"Режим «Сохранить во всех версиях»: тип группы оборудования не обновлен для {scope}. "
         "В справочнике «Типы групп оборудования» нет строки с тем же типом (по коду/имени) "
         "и с той же версией БД, что ожидается для этих групп. "
         "Остальные поля могли сохраниться. Если нужна только текущая версия – нажмите «Сохранить», "
@@ -1207,6 +1216,7 @@ def update_equipment_group_all_versions(
         grouping_station_ids_from_form,
         persist_equipment_group_grouping_station_if_in_form,
         resolve_equipment_group_energy_unit,
+        validate_equipment_group_external_code,
     )
     from app.fuel.services.equipment_groups.equipment_group_set_services import (
         apply_auto_equipment_group_name,
@@ -1299,7 +1309,7 @@ def update_equipment_group_all_versions(
         if raw_egt is not None and str(raw_egt).strip():
             new_egt_anchor_id = _parse_int_form_val(raw_egt)
 
-    if not values and not egt_in_form:
+    if not values and not egt_in_form and "external_code" not in form_data:
         if not grouping_sync and "grouping_station_id" not in form_data:
             return {"versions_touched": 0, "updated_count": 0}
 
@@ -1444,6 +1454,20 @@ def update_equipment_group_all_versions(
         if unit_error:
             return {"versions_touched": 0, "updated_count": 0, "error": unit_error}
     external_code = (current_group.external_code or "").strip()
+    if "external_code" in form_data:
+        new_code = (form_data.get("external_code") or "").strip()
+        # Проверяем все версии до изменений; поиск семьи идет по прежнему коду.
+        code_groups = [current_group]
+        if external_code:
+            code_groups.extend(
+                EquipmentGroup.query.filter_by(external_code=external_code)
+                .filter(EquipmentGroup.id != current_group.id).all()
+            )
+        for code_group in code_groups:
+            code_error = validate_equipment_group_external_code(code_group, new_code)
+            if code_error:
+                return {"versions_touched": 0, "updated_count": 0, "error": code_error}
+        values["external_code"] = new_code
     if not external_code:
         # Fallback: обновить только текущую группу
         name_before_fb, suggested_before_fb = _snapshot_name_state(current_group)

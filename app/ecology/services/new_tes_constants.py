@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Константы расчёта по новым ТЭС (макет «Воздух новые»: М = В × У)."""
+"""Константы расчета по новым ТЭС (макет «Воздух новые»: М = В × У)."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ DEFAULT_TERRITORY_SLUG = "vsego"
 DEFAULT_SHEET_SLUG = "obemy"
 
 CAPACITY_LE100 = Decimal("100")
-# Ключи сохранены для совместимости с уже введёнными нормативами.
+# Ключи сохранены для совместимости с уже введенными нормативами.
 CAPACITY_LE100_KEY = "le100"
 CAPACITY_GT100_KEY = "gt100"
 CAPACITY_CLASSES = (CAPACITY_LE100_KEY, CAPACITY_GT100_KEY)

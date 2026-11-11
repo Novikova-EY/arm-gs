@@ -1,4 +1,6 @@
-{% extends 'base.html' %} {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
+{% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+ {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
@@ -96,7 +98,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>
                 {{ year }}
               </option>
@@ -111,7 +113,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>
                 {{ year }}
               </option>
@@ -127,6 +129,9 @@ block content %} {% if current_user.is_authenticated %}
             >
           </form>
           <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            {% if energy_balance_refresh %}
+            {% include 'energy_balance/_data_refresh.html' %}
+            {% endif %}
             <label
               for="rounding_digits"
               class="mb-0"
@@ -165,7 +170,8 @@ block content %} {% if current_user.is_authenticated %}
     {% set owner_year_count = owner_years|length %}
     {% set tail_col_count = (0 if is_station_focus else 2) + owner_year_count %}
     {% set table_colspan = (2 if is_station_focus else 3) + year_count + tail_col_count %}
-    {% set station_focus_rowspan = 2 if is_snee_focus else (6 if show_gaes_charge or is_aes_focus else 5) %}
+    {% set split_hydro_own_needs = station_focus_key == 'ges' %}
+    {% set station_focus_rowspan = 2 if is_snee_focus else (6 if show_gaes_charge or is_aes_focus or split_hydro_own_needs else 5) %}
     {% set exploitation_date_label = exploitation_date_label or 'Ожидаемая дата ввода в эксплуатацию' %}
     {% macro ves_raw_attrs(raw_text) -%}
       {%- if raw_text -%} title="{{ raw_text|e }}" data-raw="{{ raw_text|e }}"{%- endif -%}
@@ -188,21 +194,60 @@ block content %} {% if current_user.is_authenticated %}
             <i
               class="bi bi-info-circle text-primary ms-1 ves-ses-formula-tip"
               title="{{ chiim_formula|e }}"
-              aria-label="Формула расчёта ЧЧИУМ"
+              aria-label="Формула расчета ЧЧИУМ"
             ></i>
     {% endmacro %}
+    {% macro ves_coefficient_control(row, year=none) %}
+              {% set coefficient_display = row.own_needs_coefficient_by_year_display.get(year) if year is not none else row.own_needs_coefficient_display %}
+              {% set coefficient_raw = row.own_needs_coefficient_by_year_raw.get(year) if year is not none else row.own_needs_coefficient_raw %}
+              {% if row.kind == 'station' %}
+                {% if can_edit %}
+                {% if year is not none %}
+                {{ ves_deferred_control('coefficient', coefficient_display or '', orig=coefficient_display or '', raw=coefficient_raw or '', year=year) }}
+                {% else %}
+                <span class="ves-ses-own-needs-coefficient">
+                  {% if not split_hydro_own_needs %}<span class="ves-ses-own-needs-coefficient-label">СН, % =</span>{% endif %}
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="%"
+                    class="form-control form-control-sm text-center ves-ses-value ves-ses-coefficient-input"
+                    data-kind="coefficient"
+                    {% if year is not none %}data-year="{{ year }}"{% endif %}
+                    data-orig="{{ coefficient_display|e }}"
+                    {% if coefficient_raw %}data-raw="{{ coefficient_raw|e }}"{% endif %}
+                    value="{{ coefficient_display|e }}"
+                    aria-label="СН, % для {{ row.name|e }}"
+                    title="СН, %"
+                  />
+                </span>
+                {% endif %}
+                {% else %}
+                {% if year is not none %}{{ coefficient_display or '–' }}{% else %}<span class="small">СН, %: {{ coefficient_display or '–' }}</span>{% endif %}
+                {% endif %}
+              {% endif %}
+    {% endmacro %}
     {% macro focus_extra_rows(row) %}
+          {% if row.is_group %}
+          {% set is_aes_focus = true %}
+          {% set is_coefficient_focus = false %}
+          {% set split_hydro_own_needs = false %}
+          {% set focus_own_needs_formula = 'СН, % = СН, млн.кВт·ч / Выработка электроэнергии × 100' %}
+          {% set focus_delivery_formula = 'Отпуск = Выработка электроэнергии − СН, млн.кВт·ч' %}
+          {% endif %}
           {% if is_aes_focus %}
-          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs_energy">
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs_energy">
             <td class="ves-ses-dtype-cell">СН, млн.кВт·ч</td>
             {% for year in years %}
             {% set own_needs_raw = row.own_needs_energy_raw.get(year) %}
-            <td class="text-center ves-ses-equal-cell" data-ves-col="own-needs-energy" data-year="{{ year }}"{{ ves_raw_attrs(own_needs_raw) }}>
+            {% set group_own_needs_calculated = row.is_group and not row.own_needs_percent_calculated.get(year) %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="own-needs-energy" data-year="{{ year }}"{% if group_own_needs_calculated %} data-own-needs-calculated="1"{% endif %}{{ ves_raw_attrs(own_needs_raw) }}>
               {% if can_edit and row.kind == 'station' %}
               {{ ves_deferred_control(
                 'own_needs',
                 row.own_needs_energy_display.get(year) or '',
-                orig=row.own_needs_energy_display.get(year) or '',
+                orig='' if group_own_needs_calculated else (row.own_needs_energy_display.get(year) or ''),
                 raw=own_needs_raw or '',
                 year=year
               ) }}
@@ -213,32 +258,11 @@ block content %} {% if current_user.is_authenticated %}
           </tr>
           {% endif %}
           {% if not is_snee_focus %}
-          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs">
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs">
             <td class="ves-ses-dtype-cell ves-ses-own-needs-cell">
               <span class="ves-ses-own-needs-label">{{ 'СН, %' if is_aes_focus else 'СН, млн.кВт·ч' }}</span>
-              {% if is_coefficient_focus and row.kind == 'station' %}
-                {% if can_edit %}
-                <span class="ves-ses-own-needs-coefficient">
-                  <span class="ves-ses-own-needs-coefficient-label">СН, % =</span>
-                  <input
-                    type="text"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    placeholder="%"
-                    class="form-control form-control-sm text-center ves-ses-value ves-ses-coefficient-input"
-                    data-kind="coefficient"
-                    data-orig="{{ row.own_needs_coefficient_display|e }}"
-                    {% if row.own_needs_coefficient_raw %}data-raw="{{ row.own_needs_coefficient_raw|e }}"{% endif %}
-                    value="{{ row.own_needs_coefficient_display|e }}"
-                    aria-label="СН, % для {{ row.name|e }}"
-                    title="СН, %"
-                  />
-                </span>
-                {% else %}
-                <span class="small">СН, %: {{ row.own_needs_coefficient_display or '–' }}</span>
-                {% endif %}
-              {% endif %}
-              <i class="bi bi-info-circle text-primary mx-1 ves-ses-formula-tip" title="{{ focus_own_needs_formula|e }}" aria-label="Формула расчёта {{ 'СН, %' if is_aes_focus else 'СН, млн.кВт·ч' }}"></i>
+              {% if is_coefficient_focus and not split_hydro_own_needs %}{{ ves_coefficient_control(row) }}{% endif %}
+              <i class="bi bi-info-circle text-primary mx-1 ves-ses-formula-tip" title="{{ focus_own_needs_formula|e }}" aria-label="Формула расчета {{ 'СН, %' if is_aes_focus else 'СН, млн.кВт·ч' }}"></i>
             </td>
             {% for year in years %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="own-needs" data-year="{{ year }}"{{ ves_raw_attrs(row.own_needs_raw.get(year)) }}>
@@ -256,10 +280,21 @@ block content %} {% if current_user.is_authenticated %}
             {% endfor %}
             {{ ves_blank_date_min_owner() }}
           </tr>
-          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="delivery">
+          {% if split_hydro_own_needs %}
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs_coefficient">
+            <td class="ves-ses-dtype-cell">СН, %</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-year="{{ year }}" data-ves-col="own-needs-coefficient"{% if row.kind == 'station' %}{{ ves_raw_attrs(row.own_needs_coefficient_by_year_raw.get(year)) }}{% endif %}>
+              {{ ves_coefficient_control(row, year) if row.kind == 'station' else '–' }}
+            </td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% endif %}
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="delivery">
             <td class="ves-ses-dtype-cell">
               Отпуск электроэнергии, млн.кВт·ч
-              <i class="bi bi-info-circle text-primary ms-1 ves-ses-formula-tip" title="{{ focus_delivery_formula|e }}" aria-label="Формула расчёта отпуска электроэнергии"></i>
+              <i class="bi bi-info-circle text-primary ms-1 ves-ses-formula-tip" title="{{ focus_delivery_formula|e }}" aria-label="Формула расчета отпуска электроэнергии"></i>
             </td>
             {% for year in years %}<td class="text-center ves-ses-equal-cell" data-ves-col="delivery" data-year="{{ year }}"{{ ves_raw_attrs(row.delivery_raw.get(year)) }}>{{ row.delivery_display.get(year) or '–' }}</td>{% endfor %}
             {{ ves_blank_date_min_owner() }}
@@ -275,7 +310,7 @@ block content %} {% if current_user.is_authenticated %}
             <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}">–</td>
             {% endfor %}
     {% endmacro %}
-    {# Лёгкая ячейка вместо <input>: инпут создаётся при клике (см. JS). #}
+    {# Легкая ячейка вместо <input>: инпут создается при клике (см. JS). #}
     {% macro ves_deferred_control(kind, display, orig='', raw='', title='', plan_rule='', year=none, is_calc=false, is_date=false, read_only=false) -%}
       <span
         class="ves-ses-deferred{% if is_date %} ves-ses-date-value{% else %} ves-ses-value{% endif %}{% if is_calc %} ves-ses-plan-calc-input{% endif %}"
@@ -287,7 +322,7 @@ block content %} {% if current_user.is_authenticated %}
         {% if year is not none %}data-year="{{ year }}"{% endif %}
         data-orig="{{ orig|e }}"
         {% if raw %}data-raw="{{ raw|e }}"{% endif %}
-        {% if plan_rule %}data-plan-rule="{{ plan_rule|e }}" title="{{ plan_rule|e }}"{% elif title %}title="{{ title|e }}"{% elif is_calc %}title="Расчётное значение (можно изменить)"{% elif raw %}title="{{ raw|e }}"{% endif %}
+        {% if plan_rule %}data-plan-rule="{{ plan_rule|e }}" title="{{ plan_rule|e }}"{% elif title %}title="{{ title|e }}"{% elif is_calc %}title="Расчетное значение (можно изменить)"{% elif raw %}title="{{ raw|e }}"{% endif %}
       >{{ display }}</span>
     {%- endmacro %}
     <style>
@@ -340,7 +375,7 @@ block content %} {% if current_user.is_authenticated %}
         z-index: 49;
       }
       /* Годы ниже левых колонок шапки. Не поднимать z-index у Наименование/Тип –
-         иначе Chrome с rowspan перестаёт держать шапку при вертикальном скролле. */
+         иначе Chrome с rowspan перестает держать шапку при вертикальном скролле. */
       .page-table-scroll #vesSesTable thead tr:nth-child(1) th.ves-ses-equal-col,
       .page-table-scroll #vesSesTable thead tr:nth-child(1) th.ves-ses-owner-title {
         z-index: 40;
@@ -526,7 +561,7 @@ block content %} {% if current_user.is_authenticated %}
         line-height: inherit;
         font-weight: inherit;
       }
-      /* Компактное поле коэффициента СН, % (идёт после общего правила .ves-ses-value). */
+      /* Компактное поле коэффициента СН, % (идет после общего правила .ves-ses-value). */
       #vesSesTable input.ves-ses-coefficient-input {
         width: 2.6rem;
         min-width: 2.6rem;
@@ -535,7 +570,7 @@ block content %} {% if current_user.is_authenticated %}
         padding: 0.05rem 0.15rem;
         font-size: 0.9rem;
       }
-      /* Строка СН в ячейке «Тип данных» – всё в одну строку, включая кнопку i. */
+      /* Строка СН в ячейке «Тип данных» – все в одну строку, включая кнопку i. */
       #vesSesTable td.ves-ses-own-needs-cell {
         white-space: nowrap;
       }
@@ -543,11 +578,22 @@ block content %} {% if current_user.is_authenticated %}
       #vesSesTable td.ves-ses-own-needs-cell .ves-ses-formula-tip {
         vertical-align: middle;
       }
+      /* Keep the save marker visible over sticky-cell shadows and table styles. */
       #vesSesTable td.is-save-success {
-        box-shadow: inset 0 0 0 2px var(--bs-success);
+        box-shadow: inset 0 0 0 2px var(--bs-success, #198754) !important;
+      }
+      #vesSesTable td.ves-ses-dtype-cell.is-save-success {
+        box-shadow:
+          inset 0 0 0 2px var(--bs-success, #198754),
+          4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
       }
       #vesSesTable td.is-save-error {
-        box-shadow: inset 0 0 0 2px var(--bs-danger);
+        box-shadow: inset 0 0 0 2px var(--bs-danger, #dc3545) !important;
+      }
+      #vesSesTable td.ves-ses-dtype-cell.is-save-error {
+        box-shadow:
+          inset 0 0 0 2px var(--bs-danger, #dc3545),
+          4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
       }
       #vesSesTable .ves-ses-deferred {
         display: block;
@@ -760,7 +806,7 @@ block content %} {% if current_user.is_authenticated %}
           </tr>
           {% elif row.kind == 'station' %}
           <tr
-            data-station-id="{{ row.id }}"
+            data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}
             data-ves-station="1"
             data-ves-metric="capacity"
             data-type-key="{{ row.type_key }}"
@@ -773,14 +819,19 @@ block content %} {% if current_user.is_authenticated %}
             data-sample-energy="{{ row.sample_energy | tojson }}"
             data-owner-energy="{{ row.owner_energy | tojson }}"
           >
-            <td class="ves-ses-name-cell" rowspan="{{ station_focus_rowspan if is_station_focus else 3 }}">
+            <td class="ves-ses-name-cell" rowspan="{{ 6 if row.is_group else (station_focus_rowspan if is_station_focus else 3) }}">
+              {% if row.is_group %}
+              <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-toggle-station-group="{{ row.id }}" aria-expanded="false" aria-label="Раскрыть состав группы {{ row.name }}">+</button>
+              <strong>{{ row.name }}</strong>
+              {% else %}
               <a
                 href="{{ url_for('station_bp.station_details', station_id=row.id, start_year=start_year, end_year=end_year) }}"
                 class="text-decoration-none"
                 >{{ row.name }}</a
               >
+              {% endif %}
             </td>
-            {% if not is_station_focus %}<td class="text-center ves-ses-type-cell" rowspan="3">{{ row.type_name }}</td>{% endif %}
+            {% if not is_station_focus %}<td class="text-center ves-ses-type-cell" rowspan="{{ 6 if row.is_group else 3 }}">{{ row.type_name }}</td>{% endif %}
             <td class="ves-ses-dtype-cell">{{ row.capacity_label }}</td>
             {% for year in years %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="capacity" data-year="{{ year }}"{{ ves_raw_attrs(row.capacity_raw.get(year)) }}>
@@ -790,7 +841,7 @@ block content %} {% if current_user.is_authenticated %}
             {{ ves_blank_date_min_owner() }}
           </tr>
           <tr
-            data-station-id="{{ row.id }}"
+            data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}
             data-ves-metric="energy"
             data-type-key="{{ row.type_key }}"
             data-est-id="{{ row.est_id or '' }}"
@@ -819,7 +870,7 @@ block content %} {% if current_user.is_authenticated %}
             {% endfor %}
             {% if not is_station_focus %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">
-              {% if can_edit %}
+              {% if can_edit and not row.is_group %}
               {{ ves_deferred_control(
                 'exploitation_date',
                 row.exploitation_date_expected or '',
@@ -837,7 +888,7 @@ block content %} {% if current_user.is_authenticated %}
             {% for year in owner_years %}
             {% set owner_raw = row.owner_raw.get(year) %}
             <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}"{{ ves_raw_attrs(owner_raw) }}>
-              {% if can_edit %}
+              {% if can_edit and not row.is_group %}
               {{ ves_deferred_control(
                 'owner',
                 row.owner_display.get(year) or '',
@@ -850,7 +901,7 @@ block content %} {% if current_user.is_authenticated %}
             {% endfor %}
           </tr>
           {% if show_gaes_charge %}
-          <tr data-station-id="{{ row.id }}" data-ves-metric="gaes_charge">
+          <tr data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %} data-ves-metric="gaes_charge">
             <td class="ves-ses-dtype-cell">{{ row.gaes_charge_label }}</td>
             {% for year in years %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="gaes-charge" data-year="{{ year }}"{{ ves_raw_attrs(row.gaes_charge_raw.get(year)) }}>{{ row.gaes_charge_display.get(year) or '–' }}</td>
@@ -860,7 +911,7 @@ block content %} {% if current_user.is_authenticated %}
           {% endif %}
           {% if not is_snee_focus %}
           <tr
-            data-station-id="{{ row.id }}"
+            data-station-id="{{ row.id }}"{% if row.parent_group %} data-parent-group="{{ row.parent_group }}" hidden{% endif %}{% if row.is_group %} data-is-group="1"{% endif %}
             data-ves-metric="chiim"
             data-type-key="{{ row.type_key }}"
             data-est-id="{{ row.est_id or '' }}"
@@ -877,7 +928,7 @@ block content %} {% if current_user.is_authenticated %}
             {{ ves_blank_date_min_owner() }}
           </tr>
           {% endif %}
-          {% if is_station_focus %}{{ focus_extra_rows(row) }}{% endif %}
+          {% if is_station_focus or row.is_group %}{{ focus_extra_rows(row) }}{% endif %}
           {% else %}
           <tr
             class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
@@ -962,7 +1013,7 @@ block content %} {% if current_user.is_authenticated %}
             {{ ves_blank_date_min_owner() }}
           </tr>
           {% endif %}
-          {% if is_station_focus %}{{ focus_extra_rows(row) }}{% endif %}
+          {% if is_station_focus or row.is_group %}{{ focus_extra_rows(row) }}{% endif %}
           {% endif %} {% endfor %}
         </tbody>
       </table>
@@ -973,7 +1024,7 @@ block content %} {% if current_user.is_authenticated %}
 
 {% if can_edit %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}?v=3"></script>
-<script src="{{ url_for('static', filename='js/energy_balance/ee_balance_ves_ses_live.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='js/energy_balance/ee_balance_ves_ses_live.js') }}?v=11"></script>
 <script>
   (function () {
     const SAVE_URL = {{ url_for('energy_balance_bp.ee_balance_ves_ses_value')|tojson }};
@@ -1013,13 +1064,51 @@ block content %} {% if current_user.is_authenticated %}
       });
     }
 
+    function extendHydroCoefficient(input) {
+      const kind = input.getAttribute('data-kind');
+      const row = input.closest('tr');
+      const isGroupPercent = kind === 'own_needs_percent' && row && row.getAttribute('data-is-group') === '1';
+      if ((kind !== 'coefficient' && !isGroupPercent) || !input.hasAttribute('data-year') || window.__armGsTableRowPasteActive) return;
+      const value = input.value.trim();
+      if (!value || value === '–') {
+        restoreHydroCoefficient(input);
+        return;
+      }
+      const year = Number(input.getAttribute('data-year'));
+      row.querySelectorAll('[data-kind="' + kind + '"][data-year]').forEach(function (target) {
+        if (Number(target.getAttribute('data-year')) <= year || target.readOnly || target.disabled || target.getAttribute('data-readonly') === '1') return;
+        if (target.tagName === 'INPUT') target.value = input.value;
+        else target.textContent = input.value;
+        target.setAttribute('data-dirty', '1');
+        input.setAttribute('data-coefficient-extended', '1');
+      });
+    }
+
+    function restoreHydroCoefficient(input) {
+      if (!input.hasAttribute('data-coefficient-extended')) return;
+      const year = Number(input.getAttribute('data-year'));
+      const kind = input.getAttribute('data-kind');
+      input.closest('tr').querySelectorAll('[data-kind="' + kind + '"][data-year]').forEach(function (target) {
+        if (Number(target.getAttribute('data-year')) <= year || target.readOnly || target.disabled || target.getAttribute('data-readonly') === '1') return;
+        const original = target.getAttribute('data-orig') || '';
+        if (target.tagName === 'INPUT') target.value = original;
+        else target.textContent = original;
+        target.removeAttribute('data-dirty');
+      });
+      input.removeAttribute('data-coefficient-extended');
+    }
+
     function bindMaterializedInput(input) {
       if (!input || input.dataset.vesBound === '1') return input;
       input.dataset.vesBound = '1';
       if (input.classList.contains('ves-ses-date-value')) {
         autoFormatDateDots(input);
       }
-      input.addEventListener('change', function () { saveInput(input); });
+      input.addEventListener('input', function () { extendHydroCoefficient(input); });
+      input.addEventListener('change', function () {
+        extendHydroCoefficient(input);
+        saveInput(input);
+      });
       input.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
@@ -1058,6 +1147,10 @@ block content %} {% if current_user.is_authenticated %}
         }
       });
       input.value = (el.textContent || '').replace(/\u00a0/g, ' ').trim();
+      if (el.getAttribute('data-kind') === 'own_needs' && td.getAttribute('data-own-needs-calculated') === '1') {
+        input.placeholder = input.value;
+        input.value = '';
+      }
       td.replaceChild(input, el);
       const stationRec =
         typeof window.armGsRefreshVesSesStationControl === 'function'
@@ -1102,7 +1195,7 @@ block content %} {% if current_user.is_authenticated %}
       const kind = input.getAttribute('data-kind');
       const value = input.value;
       const orig = input.getAttribute('data-orig') || '';
-      if (value === orig) return;
+      if (value === orig && !input.hasAttribute('data-coefficient-extended')) return;
       const cell = input.closest('td');
       if (cell) cell.classList.remove('is-save-success', 'is-save-error');
       const payload = {
@@ -1114,10 +1207,16 @@ block content %} {% if current_user.is_authenticated %}
         start_year: START_YEAR,
         end_year: END_YEAR
       };
-      if (kind !== 'exploitation_date' && kind !== 'coefficient') {
+      if (kind !== 'exploitation_date' && (kind !== 'coefficient' || input.hasAttribute('data-year'))) {
         payload.year = Number(input.getAttribute('data-year'));
       }
-      fetch(SAVE_URL, {
+      const isGroup = row.getAttribute('data-is-group') === '1';
+      if (isGroup) {
+        payload.group_id = Number(stationId.slice(1));
+        payload.page_key = {{ ('aes' if is_aes_focus else ('ges' if station_focus_key == 'ges' else 'ses-ves'))|tojson }};
+        if (kind === 'own_needs_percent' && window.__armGsTableRowPasteActive) payload.end_year = payload.year;
+      }
+      fetch(isGroup ? {{ url_for('energy_balance_bp.ee_balance_station_group_value')|tojson }} : SAVE_URL, {
         method: 'PATCH',
         headers: headers,
         body: JSON.stringify(payload)
@@ -1126,10 +1225,11 @@ block content %} {% if current_user.is_authenticated %}
       }); }).then(function (result) {
         const data = result.data;
         if (!data || !data.ok) {
+          restoreHydroCoefficient(input);
           input.value = orig;
           if (cell) cell.classList.add('is-save-error');
           input.removeAttribute('data-dirty');
-          if ((kind === 'own_needs' || kind === 'own_needs_percent') && typeof window.armGsRecalcVesSesLive === 'function') {
+          if ((kind === 'own_needs' || kind === 'own_needs_percent' || kind === 'coefficient') && typeof window.armGsRecalcVesSesLive === 'function') {
             window.armGsRecalcVesSesLive(stationId);
           }
           if (data && data.error) {
@@ -1217,7 +1317,24 @@ block content %} {% if current_user.is_authenticated %}
         }
       input.removeAttribute('data-dirty');
       input.classList.remove('ves-ses-plan-calc-input');
-      if (kind === 'coefficient') {
+      if (kind === 'coefficient' || (isGroup && kind === 'own_needs_percent')) {
+        const rateUpdates = kind === 'coefficient' ? data.coefficient_updates : data.own_needs_percent_updates;
+        Object.keys(rateUpdates || {}).forEach(function (year) {
+          const target = row.querySelector('[data-kind="' + kind + '"][data-year="' + year + '"]');
+          if (!target) return;
+          const update = rateUpdates[year];
+          if (target.tagName === 'INPUT') target.value = update.display;
+          else target.textContent = update.display;
+          target.setAttribute('data-orig', update.display);
+          target.setAttribute('data-raw', update.raw || '');
+          target.removeAttribute('data-dirty');
+          const targetCell = target.closest('td');
+          if (targetCell) {
+            targetCell.setAttribute('data-raw', update.raw || '');
+            targetCell.setAttribute('title', update.raw || '');
+          }
+        });
+        input.removeAttribute('data-coefficient-extended');
         if (typeof window.armGsRecalcVesSesLive === 'function') {
           window.armGsRecalcVesSesLive(stationId);
         }
@@ -1270,10 +1387,11 @@ block content %} {% if current_user.is_authenticated %}
           window.armGsRecalcVesSesLive(stationId);
         }
       }).catch(function () {
+        restoreHydroCoefficient(input);
         input.value = orig;
         if (cell) cell.classList.add('is-save-error');
         input.removeAttribute('data-dirty');
-        if ((kind === 'own_needs' || kind === 'own_needs_percent') && typeof window.armGsRecalcVesSesLive === 'function') {
+        if ((kind === 'own_needs' || kind === 'own_needs_percent' || kind === 'coefficient') && typeof window.armGsRecalcVesSesLive === 'function') {
           window.armGsRecalcVesSesLive(stationId);
         }
       });
@@ -1281,7 +1399,7 @@ block content %} {% if current_user.is_authenticated %}
 
     function isVesSesPasteable(inp) {
       if (!inp || inp.readOnly || inp.disabled || inp.getAttribute('data-readonly') === '1') return false;
-      if (inp.matches && inp.matches('input.ves-ses-coefficient-input')) return false;
+      if (inp.getAttribute('data-kind') === 'coefficient') return false;
       if (inp.matches && inp.matches('input.ves-ses-value')) return true;
       return !!(inp.matches && inp.matches('[data-ves-deferred="1"].ves-ses-value'));
     }
@@ -1324,6 +1442,18 @@ block content %} {% if current_user.is_authenticated %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const vesSesTable = document.getElementById("vesSesTable");
+    if (vesSesTable) vesSesTable.addEventListener("click", function (event) {
+      const button = event.target.closest("[data-toggle-station-group]");
+      if (!button) return;
+      const groupId = button.getAttribute("data-toggle-station-group");
+      const expanded = button.getAttribute("aria-expanded") !== "true";
+      button.setAttribute("aria-expanded", String(expanded));
+      button.textContent = expanded ? "−" : "+";
+      button.setAttribute("aria-label", expanded ? "Свернуть состав группы" : "Раскрыть состав группы");
+      vesSesTable.querySelectorAll('[data-parent-group="' + groupId + '"]').forEach(function (row) {
+        row.hidden = !expanded;
+      });
+    });
     const vesSesNameTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-name-col");
     const vesSesTypeTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-type-col");
     function syncVesSesStickyColumns() {

@@ -14,7 +14,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import (
+    excel_number_format_trimmed,
+    parse_excel_numeric,
+)
 from app.ecology.services.gis_tes_fuel_comparison_constants import KEY_LABELS
+from app.ecology.services.gis_tes_fuel_comparison_services import column_rounding_digits
 
 _STATION_KEYS = frozenset({"NAME", "Stancia"})
 _SPAN_KEYS = frozenset({"NAME", "Stancia", "numb1120"})
@@ -100,6 +105,9 @@ def _write_summary(
     res_name: str,
     *,
     show_empty_rows: bool,
+    rounding_digits: int,
+    emission_rounding_digits: int | None,
+    specific_rounding_digits: int | None,
 ) -> int:
     if not summary:
         return row_idx
@@ -111,10 +119,40 @@ def _write_summary(
             cells[index] if index < len(cells) else "" for index in range(len(columns))
         ]
         for col, value in enumerate(values, start=1):
-            cell = ws.cell(row_idx, col, value)
+            cell = ws.cell(row_idx, col)
+            if col >= 3:
+                _write_numeric_value(
+                    cell, value, columns[col - 3], rounding_digits,
+                    emission_rounding_digits, specific_rounding_digits,
+                )
+            else:
+                cell.value = value
             cell.fill = _SUMMARY_FILL
         row_idx += 1
     return row_idx
+
+
+def _write_numeric_value(
+    cell,
+    value: Any,
+    column: dict[str, Any],
+    rounding_digits: int,
+    emission_rounding_digits: int | None,
+    specific_rounding_digits: int | None,
+) -> None:
+    if not column.get("numeric"):
+        cell.value = value
+        return
+    numeric_value = parse_excel_numeric(value)
+    if numeric_value is None:
+        cell.value = value
+        return
+    key = str(column.get("key") or "")
+    digits = -1 if key in {"Year", "numb1120"} else column_rounding_digits(
+        column, rounding_digits, emission_rounding_digits, specific_rounding_digits,
+    )
+    cell.value = numeric_value
+    cell.number_format = excel_number_format_trimmed(digits)
 
 
 def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
@@ -124,6 +162,9 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
     page_title = str(context.get("page_title") or sheet.get("page_title") or "Данные")
     hierarchy = list(context.get("hierarchy") or [])
     labels = _column_labels(columns, _header_labels(context))
+    rounding_digits = context.get("rounding_digits", 1)
+    emission_rounding_digits = context.get("emission_rounding_digits")
+    specific_rounding_digits = context.get("specific_rounding_digits")
     if "norm_zv_selected" in context:
         selected = context["norm_zv_selected"]
         parts = [label for attr, label in context.get("norm_zv_options", []) if attr in selected]
@@ -185,7 +226,14 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
                             row, group, columns, cells
                         )
                         for col, value in enumerate(values, start=1):
-                            ws.cell(row_idx, col, value)
+                            cell = ws.cell(row_idx, col)
+                            if col >= 3:
+                                _write_numeric_value(
+                                    cell, value, columns[col - 3], rounding_digits,
+                                    emission_rounding_digits, specific_rounding_digits,
+                                )
+                            else:
+                                cell.value = value
                         row_idx += 1
                 row_idx = _write_summary(
                     ws,
@@ -195,6 +243,9 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
                     ues_name,
                     res_name,
                     show_empty_rows=show_empty_rows,
+                    rounding_digits=rounding_digits,
+                    emission_rounding_digits=emission_rounding_digits,
+                    specific_rounding_digits=specific_rounding_digits,
                 )
             row_idx = _write_summary(
                 ws,
@@ -204,6 +255,9 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
                 ues_name,
                 "",
                 show_empty_rows=show_empty_rows,
+                rounding_digits=rounding_digits,
+                emission_rounding_digits=emission_rounding_digits,
+                specific_rounding_digits=specific_rounding_digits,
             )
         row_idx = _write_summary(
             ws,
@@ -213,6 +267,9 @@ def export_comparison_table_to_excel(context: dict[str, Any]) -> BytesIO:
             "",
             "",
             show_empty_rows=show_empty_rows,
+            rounding_digits=rounding_digits,
+            emission_rounding_digits=emission_rounding_digits,
+            specific_rounding_digits=specific_rounding_digits,
         )
 
     ws.freeze_panes = f"C{header_row + 1}"

@@ -130,7 +130,7 @@ function finishPowerDemandSummaryInitialRenderNow() {
                                 hScrollEl: powerDemandSummaryScrollWrap,
                                 vScrollEl: pdVScrollEl || undefined,
                                 // Не consume здесь: optional-сегменты и финальная
-                                // видимость ещё могут сдвинуть layout (см. pd-summary-ui-settled).
+                                // видимость еще могут сдвинуть layout (см. pd-summary-ui-settled).
                                 consume: false
                             }
                         );
@@ -358,7 +358,7 @@ if (summaryTable) {
             }
             /**
              * Rerender uses last core payload and rebuilds tbody, so optional
-             * segments (ЧЧИ / ЭЭ / проверка / расчётные макс.) must be loaded
+             * segments (ЧЧИ / ЭЭ / проверка / расчетные макс.) must be loaded
              * again after rerender – otherwise toggle buttons stay pressed
              * but their rows are missing until the user re-clicks them.
              */
@@ -760,7 +760,7 @@ if (summaryTable) {
             return null;
         }
         var nx = mwTr.nextElementSibling;
-        // На coeff «Проверка …» стоит сразу после расчётной строки, перед k.
+        // На coeff «Проверка …» стоит сразу после расчетной строки, перед k.
         while (
             nx &&
             nx.classList.contains("summary-row-param") &&
@@ -903,7 +903,7 @@ if (summaryTable) {
 
     /**
      * Строки блока для rowspan – в порядке DOM (показатель, «Проверка …», k).
-     * Логическая пара «показатель + k» даёт неверный firstVis, если между ними
+     * Логическая пара «показатель + k» дает неверный firstVis, если между ними
      * вставлена проверка: ячейка «Энергосистема» не покрывает эту строку.
      */
     function pdSummaryCollectEntityBlockLayoutRows(startTr) {
@@ -1216,7 +1216,7 @@ if (summaryTable) {
             if (!tbody) {
                 return;
             }
-            // До смены rowspan убрать px-высоты примечаний, иначе блок не сожмётся.
+            // До смены rowspan убрать px-высоты примечаний, иначе блок не сожмется.
             clearSummaryNoteFieldHeights();
             var startRows = tbody.querySelectorAll(
                 'tr.summary-row-param[data-is-block-start="1"]'
@@ -1649,7 +1649,7 @@ if (summaryTable) {
             ];
         }
         if (view === "fo") {
-            // Как на /summary/federal_districts/: расчётные ФО/ЦЗ + префикс ЕЭС/ЭЭС/СЗ.
+            // Как на /summary/federal_districts/: расчетные ФО/ЦЗ + префикс ЕЭС/ЭЭС/СЗ.
             return [
                 "calculated_max_power_mw",
                 "calculated_max_power_consumption_mw",

@@ -18,11 +18,15 @@ from app.energy_consumption.services.energy_consumption_summary_logging import (
 )
 
 
-def finalize_ec_summary_page_context(context: dict[str, Any]) -> dict[str, Any]:
+def finalize_ec_summary_page_context(
+    context: dict[str, Any], *, growth_rounding_digits: int = 2,
+) -> dict[str, Any]:
     """Подставить редактируемые тексты формул в контекст и строки сводки."""
     context = dict(context)
     from app.energy_consumption.services.energy_consumption_summary_services import (
         ensure_first_sa_variant_formula_tooltips,
+        apply_summary_growth_rounding,
+        mask_with_nt_summary_year_display,
     )
 
     # Иконки «i» у Первой СЗ – до подстановки переопределений текстов формул.
@@ -31,6 +35,14 @@ def finalize_ec_summary_page_context(context: dict[str, Any]) -> dict[str, Any]:
     context["ec_formula_texts"] = formula_texts
     inject_ec_formula_template_variables(context, formula_texts)
     apply_row_formula_text_overrides(context.get("summary_rows"))
+    from app.energy_consumption.services.summary_row_note_services import attach_summary_row_notes
+
+    attach_summary_row_notes(context)
+    from app.energy_consumption.services.summary_formula_presentation import attach_summary_formula_tooltips
+
+    attach_summary_formula_tooltips(context)
+    apply_summary_growth_rounding(context, growth_rounding_digits)
+    mask_with_nt_summary_year_display(context)
     return context
 
 

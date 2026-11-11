@@ -22,7 +22,7 @@ class AccessFilterAdapter:
 
     Поля справочника EquipmentGroup: dep, er, fo, main, numb.
     Поля рабочей таблицы Access «Станции(Схема)» → EquipmentGroupFuelParam
-    (год задаётся вызывающим кодом через join/exists): oes, obl, ved.
+    (год задается вызывающим кодом через join/exists): oes, obl, ved.
     Не EquipmentGroup.oes / EquipmentGroup.obl / EquipmentGroup.vedomstvo:
     у промстанций справочник часто пуст, а строка года заполнена.
 
@@ -204,7 +204,7 @@ class AccessFilterAdapter:
     def _lhs_for_value(column, value):
         """
         PostgreSQL: при фактическом VARCHAR в колонке (наследие Access/импорта) сравнение
-        ``column > 0`` даёт «оператор не найден». Числовые литералы приводим к тому же типу
+        ``column > 0`` дает «оператор не найден». Числовые литералы приводим к тому же типу
         через cast на стороне колонки.
         """
         if isinstance(value, bool):

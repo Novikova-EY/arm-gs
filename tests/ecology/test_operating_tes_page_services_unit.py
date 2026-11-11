@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Юнит-тесты каталога вкладок расчёта по действующим ТЭС."""
+"""Юнит-тесты каталога вкладок расчета по действующим ТЭС."""
 
 from app.ecology.services.operating_tes_constants import (
     CALC_SHEETS,
@@ -56,7 +56,7 @@ def test_territory_tabs_keep_default_order_without_reference_entries():
     slugs = [item["slug"] for item in sheets]
     assert slugs == [item["slug"] for item in TERRITORIES]
     assert slugs[0:3] == ["vsego", "minen", "prompred"]
-    assert slugs[-3:] == ["norilsk", "isolated-dv", "nikolaevsky"]
+    assert slugs[-3:] == ["norilsk", "isolated-dv", "decentralized-zone"]
 
 
 def test_fuel_tree_has_coal_children():

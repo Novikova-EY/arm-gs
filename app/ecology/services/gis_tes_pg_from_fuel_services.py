@@ -61,7 +61,7 @@ def _as_int_or_none(value: Any) -> int | None:
 
 
 def _composite_parent_numb(group: dict[str, Any]) -> int | None:
-    """NUMB головы составной станции, если группа – её подгруппа (MAIN > 0)."""
+    """NUMB головы составной станции, если группа – ее подгруппа (MAIN > 0)."""
     numb = _as_int_or_none(group.get("numb"))
     eg = group.get("equipment_group")
     if numb is None or eg is None or not is_composite_child_group(eg):
@@ -102,7 +102,7 @@ def _equipment_groups_by_numb(
 
 
 def _composite_member(eg: Any, numb: int | None, param: Any = None) -> dict[str, Any]:
-    """Участник сводной строки: группа оборудования, её NUMB и её строка «Топлива»."""
+    """Участник сводной строки: группа оборудования, ее NUMB и ее строка «Топлива»."""
     return {"numb": numb, "equipment_group": eg, "param": param}
 
 
@@ -213,14 +213,14 @@ def _groups_without_boilers(
     """
     Убирает группы котельных с указанными NUMB1120.
 
-    Иерархия Топливо возвращает блок станции с её EG, даже когда строки этой
+    Иерархия Топливо возвращает блок станции с ее EG, даже когда строки этой
     станции отфильтрованы, поэтому одного отбора строк недостаточно.
     """
     return [group for group in groups if group.get("numb") not in boiler_numbs]
 
 
 def _group_numbs(group: dict[str, Any]) -> list[int]:
-    """NUMB группы и её подгрупп (у сводной строки составной станции – все участники)."""
+    """NUMB группы и ее подгрупп (у сводной строки составной станции – все участники)."""
     return [
         numb
         for numb in (group.get("member_numbs") or [group.get("numb")])
@@ -306,7 +306,7 @@ def merge_composite_groups(
     Подгруппы составных станций складываются в одну строку головы (MAIN = NUMB головы).
 
     В «Код группы оборудования (numb1120)» попадает группа с признаком родителя,
-    а показатели её подгрупп суммируются при заполнении строк (см. `_composite_filled_row`).
+    а показатели ее подгрупп суммируются при заполнении строк (см. `_composite_filled_row`).
     Группы, у которых нет головы составной станции, возвращаются как есть.
     """
     listed = list(groups or [])
@@ -601,7 +601,7 @@ def _composite_filled_row(
     Код/год/станционные столбцы («Генерация») остаются у головы (иначе – у первой
     подгруппы); числовые столбцы – сумма подгрупп, а если у подгрупп значения нет –
     значение головы (у оболочки составной станции своих параметров обычно нет).
-    Расчётные столбцы (d_*/K_*/CO2/UD_*) пересчитываются позже по итогам.
+    Расчетные столбцы (d_*/K_*/CO2/UD_*) пересчитываются позже по итогам.
     """
     from app.ecology.services.gis_tes_fuel_comparison_services import _is_blank
 
@@ -1022,9 +1022,9 @@ def collect_pg_groups_from_fuel(
 ) -> tuple[list[dict[str, Any]], list[int]]:
     """
     Состав отображаемых групп – из модуля Топливо (как edit_data).
-    К строкам подтягиваются ТЭП и параметры/отчёт ПГ либо отчётные ЗВ.
+    К строкам подтягиваются ТЭП и параметры/отчет ПГ либо отчетные ЗВ.
 
-    hydrate=False – только состав/иерархия без расчёта ячеек (для пагинации).
+    hydrate=False – только состав/иерархия без расчета ячеек (для пагинации).
     """
     groups, numb1120_filter_choices = _list_pg_groups_from_fuel(
         sheet_slug,

@@ -76,7 +76,7 @@ class BatchCalculationItemResult:
     equipment_group_id: int
     success: bool
     error: str | None = None
-    calculated: dict[str, Any] | None = None  # снимок полей после расчёта (при success)
+    calculated: dict[str, Any] | None = None  # снимок полей после расчета (при success)
 
 
 @dataclass

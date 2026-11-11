@@ -387,9 +387,9 @@
 
     /**
      * На PD client-render не снимаем sessionStorage, пока:
-     * - shell ещё не ready, или
-     * - ещё грузятся optional-сегменты / финальная видимость, или
-     * - якорь строки задан, но строка ещё не в DOM.
+     * - shell еще не ready, или
+     * - еще грузятся optional-сегменты / финальная видимость, или
+     * - якорь строки задан, но строка еще не в DOM.
      * Иначе restore «успешен» по scrollTop=0 у .page-table-scroll (coeff)
      * и позиция после save теряется.
      */
@@ -456,7 +456,7 @@
         if (typeof window.refreshPowerDemandSummaryLayout === "function") {
             window.refreshPowerDemandSummaryLayout();
         }
-        // Если цель – конкретная строка, «успех» только при её нахождении.
+        // Если цель – конкретная строка, «успех» только при ее нахождении.
         // Иначе scrollTop (часто 0 на coeff) раньше считался успехом и consume
         // убивал состояние до появления строки в DOM.
         var success = state.rowAnchor ? rowFound : (rowFound || scrollApplied);

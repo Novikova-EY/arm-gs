@@ -60,7 +60,7 @@
         <h2 class="home-outline__section-title">Прогноз и территории</h2>
         <div class="home-outline__tiles">
             {{ home_tile(url_for('long_term_consumption_bp.electrical_intensity_start'), 'Долгосрочный прогноз потребления', 'bi-calendar3') }}
-            {{ home_tile_soon('Рациональная структура', 'bi-diagram-3') }}
+            {{ home_tile(url_for('rational_structure_module_bp.hub'), 'Рациональная структура', 'bi-diagram-3') }}
             {{ home_tile(url_for('territories_bp.territories_start'), 'Характеристики территорий', 'bi-geo-alt') }}
         </div>
     </section>

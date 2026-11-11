@@ -438,13 +438,13 @@
                 <input type="hidden" name="rounding_digits_gen" id="aes_rounding_digits_gen_hidden" value="{{ rounding_digits_gen }}">
                 <label for="aes_start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                 <select name="start_year" id="aes_start_year" class="form-select" style="width: auto;">
-                    {% for year in (filter_year_list|default([])) %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
                 <label for="aes_end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                 <select name="end_year" id="aes_end_year" class="form-select" style="width: auto;">
-                    {% for year in (filter_year_list|default([])) %}
+                    {% for year in get_reference_years() %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>

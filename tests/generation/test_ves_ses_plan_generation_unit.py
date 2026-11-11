@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Расчёт плановой выработки ВЭС/СЭС: 7-летний минимум и сравнение с собственником."""
+"""Расчет плановой выработки ВЭС/СЭС: 7-летний минимум и сравнение с собственником."""
 from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
@@ -424,7 +424,7 @@ def test_ves_ses_rows_empty_without_types(monkeypatch):
 
 
 def _plan_after_owner_edit(calculated, rules, **overrides):
-    """План-расчёт в том виде, в каком его отдаёт station_plan_generation."""
+    """План-расчет в том виде, в каком его отдает station_plan_generation."""
     plan = {
         "current_year": 2025,
         "plan_years": [2026, 2027, 2028],
@@ -471,7 +471,7 @@ def test_owner_edit_fills_empty_plan_cell_for_station_commissioned_in_plan(monke
 
 
 def test_owner_edit_skips_plan_cell_with_manual_value(monkeypatch):
-    """Значение, введённое прямо в таблице выработки, правкой собственника не трогаем."""
+    """Значение, введенное прямо в таблице выработки, правкой собственника не трогаем."""
     plan = _plan_after_owner_edit(
         {2028: Decimal("112.74")},
         {2028: PLAN_RULE_OWNER_IN_PLAN},
@@ -493,8 +493,8 @@ def test_owner_edit_skips_plan_cell_with_manual_value(monkeypatch):
 
 
 def test_owner_edit_keeps_sync_when_stored_value_is_rounded_calc(monkeypatch):
-    """В БД расчёт лежит с точностью Numeric(25, 16): хвост дроби не мешает синхронизации."""
-    # Расчёт до правки: 1,5 × 72 × 31/366 (ввод 01.12.2028) = 9,147540983606557377...
+    """В БД расчет лежит с точностью Numeric(25, 16): хвост дроби не мешает синхронизации."""
+    # Расчет до правки: 1,5 × 72 × 31/366 (ввод 01.12.2028) = 9,147540983606557377...
     calc_before = Decimal(72) * Decimal("1.5") * Decimal(31) / Decimal(366)
     stored = Decimal("9.1475409836065574")
     plan = _plan_after_owner_edit(
@@ -522,7 +522,7 @@ def test_owner_edit_keeps_sync_when_stored_value_is_rounded_calc(monkeypatch):
 
 
 def test_owner_edit_syncs_plan_cell_of_long_operating_station(monkeypatch):
-    """Ячейка показывала минимум из собственника и выборки: остаётся расчётной."""
+    """Ячейка показывала минимум из собственника и выборки: остается расчетной."""
     plan = _plan_after_owner_edit(
         {2027: Decimal("7")},
         {2027: PLAN_RULE_MIN_OWNER_SAMPLE_OWNER},

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Пересчёт строки родителя составной станции как Σ детей.
+Пересчет строки родителя составной станции как Σ детей.
 
 Access: кнопка «Сумма» формы «Редактирование» (Сумма_Click) + запрос
 «Сумма_частей(выборка)»: GROUP BY MAIN, YEAR; Sum(Nz(поле,0));
 EURT = IIf(EOTP>0, EUST/EOTP*1000, 0); TURT = IIf(Q>0, TUST/Q*1000, 0).
-Доп. угли (sd) тоже суммируются; строка доп. параметров создаётся, если есть
+Доп. угли (sd) тоже суммируются; строка доп. параметров создается, если есть
 значение > 0 (bdop).
 """
 from __future__ import annotations
@@ -40,7 +40,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     fill_missing_hours_on_fuel_param,
 )
 
-# Access «Сумма_частей(выборка)» Sum(...) + объёмные поля АРМ (isk_gaz, sn_ee, sn_te, nt_sum).
+# Access «Сумма_частей(выборка)» Sum(...) + объемные поля АРМ (isk_gaz, sn_ee, sn_te, nt_sum).
 COMPOSITE_PARTS_RECALC_SUM_ATTRS: tuple[str, ...] = (
     "nust",
     "nr",
@@ -125,7 +125,7 @@ def build_parent_sums_from_children(
     attrs: Iterable[str] = COMPOSITE_PARTS_RECALC_SUM_ATTRS,
 ) -> dict[str, Decimal]:
     """
-    Суммы объёмных полей и Access-удельные EURT/TURT по уже отобранным детям.
+    Суммы объемных полей и Access-удельные EURT/TURT по уже отобранным детям.
     """
     children = [p for p in child_params if p is not None]
     sums: dict[str, Decimal] = {
@@ -312,7 +312,7 @@ def recalculate_composite_parent_from_children(
     if not is_composite_parent_group(parent):
         return {
             "ok": False,
-            "error": "Пересчёт доступен только для составной станции (признак comp=1).",
+            "error": "Пересчет доступен только для составной станции (признак comp=1).",
         }
 
     children = _load_composite_child_groups(parent)

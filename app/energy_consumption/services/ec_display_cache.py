@@ -4,9 +4,10 @@
 
 Сводки Спроса:
 - Redis/memory JSON data.json (как у Нагрузок);
-- LRU заряда ГАЭС;
+- LRU заряда ГАЭС для сводок и исходных данных «Рациональной структуры»;
 - request-кэш текстов формул;
-- индекс потребления для ЧЧИ/ЭЭ на сводках «Нагрузки» (pd_ec_consumption_index).
+- индекс потребления для ЧЧИ/ЭЭ на сводках «Нагрузки» (pd_ec_consumption_index);
+- страницы энергобаланса, использующие потребление ЭЭ.
 """
 
 from __future__ import annotations
@@ -36,6 +37,9 @@ def invalidate_energy_consumption_display_caches(
         invalidate_pd_ec_consumption_index_cache,
     )
 
+    from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+
+    clear_energy_balance_cache()
     clear_ec_summary_page_cache()
     clear_energy_consumption_rows_bulk_cache()
     clear_gaes_charge_summary_cache()

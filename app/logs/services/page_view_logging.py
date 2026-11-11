@@ -16,6 +16,7 @@ from flask_login import current_user
 
 from app.logs.services import logging_service as logging_service_mod
 from app.logs.services.logging_service import PAGE_VIEW_ACTION_PREFIX
+from app.logs.services.module_labels import MODULE_LABELS, module_label_for_endpoint
 
 # Заголовок из base.html, если страница не задала свой {% block title %}
 _DEFAULT_DOCUMENT_TITLES = frozenset({"АРМ ГС", "АРМ ГС –"})
@@ -43,31 +44,6 @@ SKIP_PATH_PREFIXES = (
     "/api/",
     "/.well-known/",
 )
-
-MODULE_LABELS = {
-    "start": "Главная",
-    "auth": "Авторизация",
-    "users_bp": "Пользователи",
-    "refdata_bp": "Справочники",
-    "generation_bp": "Генерация",
-    "station_bp": "Генерация",
-    "station_changes_bp": "Генерация",
-    "prospective_places_bp": "Генерация",
-    "rational_structure_bp": "Рациональная структура",
-    "fuel_bp": "Топливо",
-    "power_demand_bp": "Нагрузки",
-    "energy_consumption_bp": "Спрос",
-    "long_term_consumption_bp": "Долгосрочный прогноз потребления",
-    "electrical_intensity_root_bp": "Долгосрочный прогноз потребления",
-    "energy_balance_bp": "Балансы электрической энергии и мощности",
-    "ecology_bp": "Экология",
-    "economics_bp": "Экономика",
-    "territories_bp": "Характеристики территорий",
-    "logs": "Журнал",
-    "history_bp": "История",
-    "perimeter_variant_bp": "Варианты сценариев",
-    "year_management": "Справочники",
-}
 
 
 def init_page_view_logging(app) -> None:
@@ -130,14 +106,6 @@ def should_log_page_view(req, response) -> bool:
     if not _looks_like_full_html_page(response):
         return False
     return True
-
-
-def module_label_for_endpoint(endpoint: Optional[str]) -> str:
-    if not endpoint or "." not in endpoint:
-        blueprint = (endpoint or "").strip()
-    else:
-        blueprint = endpoint.rsplit(".", 1)[0]
-    return MODULE_LABELS.get(blueprint, "")
 
 
 def extract_html_title(markup: str) -> str:

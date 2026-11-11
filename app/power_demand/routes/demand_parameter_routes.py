@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import asc, not_
 
@@ -88,8 +88,40 @@ def _csrf():
 
 
 def _deny_power_demand_edit_html():
+    if _is_live_save():
+        return jsonify(ok=False, error="Недостаточно прав"), 403
     flash("Недостаточно прав для редактирования модуля «Нагрузки».", "danger")
     return redirect(url_for("power_demand_bp.hub"))
+
+
+def _is_live_save() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _save_demand_rows_from_post(model, fk_column, parent_id, form_data, **kwargs):
+    dps.save_demand_rows_from_post(model, fk_column, parent_id, form_data, **kwargs)
+    if not _is_live_save():
+        return None
+    rows = dps.get_demand_rows(
+        model, fk_column, parent_id,
+        perimeter_variant_code=kwargs.get("perimeter_variant_code"),
+    )
+    return jsonify(ok=True, rows=[{
+        "id": row.id,
+        "year": "hist" if row.is_historical_maximum else str(row.year_number),
+        "p_max": str(row.max_power_consumption_mw) if row.max_power_consumption_mw is not None else "",
+    } for row in rows])
+
+
+def _handle_demand_save_error(error):
+    db.session.rollback()
+    if not _is_live_save():
+        flash(f"Ошибка сохранения: {error}", "danger")
+        return None
+    if isinstance(error, ValueError):
+        return jsonify(ok=False, error=str(error)), 400
+    current_app.logger.exception("Power demand live save failed")
+    return jsonify(ok=False, error="Не удалось сохранить данные."), 500
 
 
 def _parse_power_demand_rounding_digits() -> int:
@@ -203,10 +235,12 @@ def russia_demand():
         if not can_edit_power_demand(current_user):
             return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 RussiaFederationDemandParameter,
                 None,
                 None,
@@ -214,9 +248,13 @@ def russia_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITHOUT_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("power_demand_bp.russia_demand")
 
     rows = dps.get_demand_rows(
@@ -252,10 +290,12 @@ def russia_with_nt_demand():
         if not can_edit_power_demand(current_user):
             return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 RussiaFederationDemandParameter,
                 None,
                 None,
@@ -263,9 +303,13 @@ def russia_with_nt_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITH_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("power_demand_bp.russia_with_nt_demand")
 
     rows = dps.get_demand_rows(
@@ -349,10 +393,12 @@ def ees_demand():
         if not can_edit_power_demand(current_user):
             return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 EesRussiaDemandParameter,
                 None,
                 None,
@@ -360,9 +406,13 @@ def ees_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITHOUT_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("power_demand_bp.ees_demand")
 
     rows = dps.get_demand_rows(
@@ -398,10 +448,12 @@ def ees_with_nt_demand():
         if not can_edit_power_demand(current_user):
             return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 EesRussiaDemandParameter,
                 None,
                 None,
@@ -409,9 +461,13 @@ def ees_with_nt_demand():
                 require_combined_oe_ees=False,
                 perimeter_variant_code=CODE_WITH_NT,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         return _redirect_preserving_rounding("power_demand_bp.ees_with_nt_demand")
 
     rows = dps.get_demand_rows(
@@ -504,10 +560,12 @@ def _demand_detail(
         if not can_edit_power_demand(current_user):
             return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
+            if _is_live_save():
+                return jsonify(ok=False, error="Ошибка CSRF. Обновите страницу."), 400
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
         try:
-            dps.save_demand_rows_from_post(
+            result = _save_demand_rows_from_post(
                 demand_model,
                 fk_column,
                 parent_id,
@@ -517,9 +575,13 @@ def _demand_detail(
                 require_combined_on_ez=show_combined_on_ez,
                 perimeter_variant_code=perimeter_variant_code,
             )
+            if _is_live_save():
+                return result
             flash("Данные сохранены.", "success")
         except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
+            result = _handle_demand_save_error(e)
+            if result is not None:
+                return result
         extra: dict[str, Any] = {}
         if perimeter_variant_code:
             extra["perimeter_variant"] = perimeter_variant_code
@@ -802,7 +864,7 @@ def synchronous_area_with_nt_demand(parent_id: int):
 def union_energy_system_list():
     return _parent_list(
         UnionEnergySystem,
-        "Нагрузки: объединённые энергосистемы (ОЭС)",
+        "Нагрузки: объединенные энергосистемы (ОЭС)",
         "power_demand_bp.union_energy_system_list",
         "power_demand_bp.union_energy_system_demand",
         lambda o: o.name,

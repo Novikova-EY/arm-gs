@@ -55,7 +55,7 @@ class _DummySession:
 
 
 class _FakeStation:
-    """Лёгкий double вместо ORM Station – unit-тесты не поднимают полный реестр mapper'ов."""
+    """Легкий double вместо ORM Station – unit-тесты не поднимают полный реестр mapper'ов."""
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -742,7 +742,7 @@ def test_handle_station_creates_new_station_for_duplicate_name_with_other_machin
         if model is service.Station:
             return _ListQuery([existing_station])
         if model is service.Machine:
-            # У существующей станции уже есть другой агрегат → создаём новую станцию-слот
+            # У существующей станции уже есть другой агрегат → создаем новую станцию-слот
             return _ListQuery(
                 [
                     SimpleNamespace(

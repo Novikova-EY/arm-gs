@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Поиск и удаление станций-дубликатов без субъекта РФ.
 
-Дубликат: в той же версии БД есть одноимённая станция с заполненным субъектом,
+Дубликат: в той же версии БД есть одноименная станция с заполненным субъектом,
 а у этой записи id_regional_district IS NULL. Такие «призраки» попадают
-в семейство на странице проверки external_code и дают ложный жёлтый.
+в семейство на странице проверки external_code и дают ложный желтый.
 
 Станции с агрегатами или котлами не удаляются.
 Связанные выработки / заряд ГАЭС / связи типов ГО переносятся на «живую»
-станцию той же версии или удаляются, если у неё уже есть такая строка.
+станцию той же версии или удаляются, если у нее уже есть такая строка.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ class DuplicateStation:
         if self.boilers:
             return "есть котлы"
         if len(self.keeper_ids) != 1 and self.has_movable_children:
-            return "несколько одноимённых станций с субъектом в той же версии"
+            return "несколько одноименных станций с субъектом в той же версии"
         return None
 
     @property
@@ -130,6 +130,7 @@ def find_null_district_name_duplicates(
                 s.kto
             FROM {schemas.gen}.gs_gen_stations s
             WHERE s.id_regional_district IS NULL
+              AND s.is_generation_only IS FALSE
               AND btrim(COALESCE(s.name, '')) <> ''
         ),
         keepers AS (
@@ -141,6 +142,7 @@ def find_null_district_name_duplicates(
                 s.id_regional_district
             FROM {schemas.gen}.gs_gen_stations s
             WHERE s.id_regional_district IS NOT NULL
+              AND s.is_generation_only IS FALSE
               AND btrim(COALESCE(s.name, '')) <> ''
         )
         SELECT

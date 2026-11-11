@@ -15,9 +15,10 @@ class EeBalanceStationOwnNeedsCoefficient(db.Model, AuditMixin):
         Index("ix_ee_bal_own_needs_type", "station_type_key"),
         Index("ix_ee_bal_own_needs_dbver", "database_version_id"),
         Index(
-            "uq_ee_bal_own_needs_station_type_ver",
+            "uq_ee_bal_own_needs_station_type_year_ver",
             "id_station",
             "station_type_key",
+            text("COALESCE(year_number, -1)"),
             text("COALESCE(database_version_id, -1)"),
             unique=True,
         ),
@@ -31,7 +32,8 @@ class EeBalanceStationOwnNeedsCoefficient(db.Model, AuditMixin):
         nullable=False,
     )
     station_type_key = db.Column(db.String(8), nullable=False)
-    coefficient = db.Column(Numeric(25, 16), nullable=False)
+    year_number = db.Column(db.Integer, nullable=True)
+    coefficient = db.Column(Numeric(25, 16), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True),

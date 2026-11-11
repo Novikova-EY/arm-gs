@@ -59,9 +59,7 @@ from app.fuel.services.fuel_exports.export_stations_equipment_groups_services im
 from app.fuel.services.fuel_exports.export_stations_equipment_group_fuel_params_services import (
     export_stations_equipment_group_fuel_params_to_excel,
 )
-from app.fuel.services.fuel_imports.import_fuel_db_equipment_groups_services import (
-    import_fuel_db_equipment_groups_from_excel,
-)
+from app.fuel.routes.fuel_db_import_routes import start_fuel_db_import
 from app.fuel.services.fuel_imports.soft_import_composite_flags_services import (
     soft_import_composite_flags_from_imena_excel,
 )
@@ -675,7 +673,7 @@ def _export_year_range_for_station_fuel_lists():
     Диапазон года для экспорта Excel со страниц списков топлива: один выбранный год,
     по той же логике, что и у таблицы (см. _get_single_year_filter_options).
     Не использовать сырой start_year/end_year из глобальных фильтров – иначе в выгрузку
-    попадёт несколько лет и строки групп задвоятся.
+    попадет несколько лет и строки групп задвоятся.
     """
     selected_year, _ = _get_single_year_filter_options()
     return selected_year, selected_year
@@ -688,7 +686,7 @@ _SPECIFIC_FUEL_CONSUMPTION_PAGE_ENDPOINTS = (
 
 
 def _specific_fuel_consumption_page_redirect(values):
-    """Куда вернуться после импорта/экспорта ТЭП: справочник или страница редактирования из расчёта."""
+    """Куда вернуться после импорта/экспорта ТЭП: справочник или страница редактирования из расчета."""
     default = "fuel_bp.stations_equipment_group_specific_fuel_consumption"
     redirect_to = values.get("redirect_to", default)
     if redirect_to not in _SPECIFIC_FUEL_CONSUMPTION_PAGE_ENDPOINTS:
@@ -696,7 +694,7 @@ def _specific_fuel_consumption_page_redirect(values):
     skip = {"file", "csrf_token", "redirect_to"}
     redirect_args = {k: v for k, v in values.items() if k not in skip}
     if redirect_to == "fuel_bp.equipment_group_specific_fuel_consumption_edit_data":
-        # Страница расчёта живёт на start_year/end_year; служебный year импорта не тащим в URL.
+        # Страница расчета живет на start_year/end_year; служебный year импорта не тащим в URL.
         redirect_args.pop("year", None)
     return redirect_to, redirect_args
 
@@ -2723,7 +2721,7 @@ def stations_without_equipment_group_auto_assign():
     ) or "anonymous"
     log_details = "; ".join(details[:50])
     if len(details) > 50:
-        log_details += f"; … ещё {len(details) - 50}"
+        log_details += f"; … еще {len(details) - 50}"
     log_to_db(
         user,
         (
@@ -2757,7 +2755,7 @@ def stations_without_equipment_group_auto_assign():
 
 
 def _build_toggle_url(flag_name, is_on):
-    """URL текущей страницы групп оборудования с переключённым флагом-переключателем.
+    """URL текущей страницы групп оборудования с переключенным флагом-переключателем.
 
     Сохраняет остальные query-параметры (фильтры), сбрасывает только пагинацию.
     """
@@ -2940,6 +2938,83 @@ def stations_equipment_groups():
         composite_only_toggle_url=composite_only_toggle_url,
         duplicate_numb_ids=duplicate_numb_ids,
         **context,
+    )
+
+
+_EQUIPMENT_GROUP_INLINE_FIELDS = (
+    "numb", "d", "r", "name_ext", "vedomstvo", "be", "gk", "gkf", "er",
+    "n1", "n2", "p1", "p2", "addr", "codegor", "note",
+)
+_EQUIPMENT_GROUP_INLINE_SELECT_FIELDS = (
+    "d", "r", "vedomstvo", "be", "gk", "gkf", "er", "codegor",
+)
+
+
+@fuel_bp.route("/equipment_group/<int:equipment_group_id>/inline", methods=["GET", "POST"])
+@login_required
+def equipment_group_inline_edit(equipment_group_id):
+    """Редактирование полей модуля «Топливо» из словаря групп."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import load_by_id_with_version_or_anchor
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    if not current_user.has_admin:
+        return jsonify(success=False, message="Недостаточно прав для редактирования."), 403
+    if request.method == "POST" and not _csrf_ok():
+        return jsonify(success=False, message="Ошибка проверки CSRF. Обновите страницу."), 400
+
+    group = load_by_id_with_version_or_anchor(
+        EquipmentGroup, equipment_group_id, get_current_db_version_id()
+    )
+    if group is None:
+        return jsonify(success=False, message="Группа оборудования не найдена."), 404
+
+    if request.method == "GET":
+        ctx = get_equipment_group_edit_context(group.id)
+        return jsonify(success=True, choices={
+            field: ctx[f"{field}_choices"] for field in _EQUIPMENT_GROUP_INLINE_SELECT_FIELDS
+        })
+
+    field = request.form.get("field")
+    if field not in _EQUIPMENT_GROUP_INLINE_FIELDS or "value" not in request.form:
+        return jsonify(success=False, message="Недопустимое поле или не указано значение."), 400
+    value = request.form["value"].strip()
+    if value and (field == "numb" or field in _EQUIPMENT_GROUP_INLINE_SELECT_FIELDS):
+        try:
+            int(value)
+        except ValueError:
+            return jsonify(success=False, message="Необходимо указать целое число."), 400
+
+    # Частичная форма не меняет остальные поля и привязки группы.
+    try:
+        success, message, changes, target_id = update_equipment_group_from_form(
+            group.id, {field: value}
+        )
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("[equipment_group_inline_edit] save failed group_id=%s", group.id)
+        return jsonify(success=False, message="Ошибка сохранения. Повторите попытку."), 500
+    if not success:
+        db.session.rollback()
+        return jsonify(success=False, message=message), 400
+
+    saved_group = db.session.get(EquipmentGroup, target_id)
+    saved_value = getattr(saved_group, field)
+    log_to_db(
+        current_user,
+        "Редактирование группы оборудования (EquipmentGroup)",
+        details="\n".join([
+            "Редактирование из таблицы станций и групп оборудования (текущая версия БД).",
+            *[f"  {label}: было {old} → стало {new}" for label, old, new in changes],
+        ]),
+        entity_type="equipment_group",
+        entity_id=target_id,
+    )
+    return jsonify(
+        success=True,
+        message=message,
+        group_id=target_id,
+        value="" if saved_value is None else str(saved_value),
     )
 
 
@@ -3135,6 +3210,16 @@ def stations_equipment_group_fuel_params():
     full_columns, fuel_extra_column_attrs = assemble_fuel_edit_data_param_columns()
     # На этой странице столбцы «Часы» (h, hfix) и «Тип ТЭС (VED)» не показываем
     full_columns = [c for c in full_columns if c[0] not in ("h", "hfix", "ved")]
+    # EURT (УРУТ на отпуск ЭЭ) показываем перед EUST (расход топлива на ЭЭ) –
+    # обратный порядок к базовому FUEL_EDIT_DATA_PARAM_COLUMNS.
+    _column_attrs = [attr for attr, _label, _is_numeric in full_columns]
+    if "eurt" in _column_attrs and "eust" in _column_attrs:
+        _i_eurt = _column_attrs.index("eurt")
+        _i_eust = _column_attrs.index("eust")
+        full_columns[_i_eurt], full_columns[_i_eust] = (
+            full_columns[_i_eust],
+            full_columns[_i_eurt],
+        )
     fuel_param_column_hierarchy = build_fuel_param_columns_hierarchy(full_columns)
     # Нижние панели «Детализация топлива»: кроме «Уголь, в т.ч.» / только «Уголь, в т.ч.»
     _fuel_detail_metric_attrs = {
@@ -3266,7 +3351,7 @@ def _redirect_stations_equipment_group_fuel_params_after_bulk_save():
 @fuel_bp.route("/stations_equipment_group_fuel_params/save", methods=["POST"])
 @login_required
 def stations_equipment_group_fuel_params_save():
-    """Массовое сохранение топливных параметров (как на странице расчётного модуля)."""
+    """Массовое сохранение топливных параметров (как на странице расчетного модуля)."""
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для сохранения.", "danger")
         return _redirect_stations_equipment_group_fuel_params_after_bulk_save()
@@ -3345,7 +3430,7 @@ def stations_equipment_group_fuel_params_save():
             for msg in errs[:25]:
                 flash(msg, "danger")
             if len(errs) > 25:
-                flash(f"… и ещё ошибок: {len(errs) - 25}.", "danger")
+                flash(f"… и еще ошибок: {len(errs) - 25}.", "danger")
         else:
             recalc_n = 0
             if changed > 0:
@@ -3395,7 +3480,7 @@ def stations_equipment_group_fuel_params_save():
             else:
                 msg = f"Данные успешно сохранены. Изменения по группам оборудования: {changed}."
                 if recalc_n:
-                    msg += f" Пересчитаны расчётные удельные показатели: {recalc_n}."
+                    msg += f" Пересчитаны расчетные удельные показатели: {recalc_n}."
                 flash(msg, "success")
     except Exception as exc:
         db.session.rollback()
@@ -4353,7 +4438,7 @@ def recalculate_specific_fuel_price():
             )
         else:
             flash(
-                f"Пересчитано: 0. Для года {year} нет стоимости / объёмов топлива "
+                f"Пересчитано: 0. Для года {year} нет стоимости / объемов топлива "
                 "или строки цены. Импортируйте стоимость и топливные параметры.",
                 "info",
             )
@@ -4422,7 +4507,7 @@ def equipment_group_edit(equipment_group_id):
     can_edit = current_user.is_authenticated and current_user.has_admin
 
     # Группа из другой версии БД (legacy-оболочка) открывается своей же карточкой,
-    # а не 404: в текущей версии для неё может не быть строки с тем же external_code.
+    # а не 404: в текущей версии для нее может не быть строки с тем же external_code.
     resolved_group = load_by_id_with_version_or_anchor(
         EquipmentGroup,
         equipment_group_id,
@@ -4651,12 +4736,24 @@ def equipment_group_edit(equipment_group_id):
                         f"Группа {target_label} связана со станцией. Агрегатов для переноса не было.",
                         "info",
                     )
+                moved_rows = result.get("moved_parameter_rows")
+                if moved_rows is not None:
+                    flash(
+                        "Параметры за все годы перенесены. У исходной группы "
+                        "параметры очищены, VED=0, тип группы – прочерк.",
+                        "success",
+                    )
                 log_lines = [
                     f"Перенос привязки с группы id={equipment_group_id} "
                     f"({result.get('source_label') or '–'}) "
                     f"на {target_label} (id={result.get('target_id')}).",
                     f"Перенесено агрегатов: {rebound}",
                 ]
+                if moved_rows is not None:
+                    log_lines.append(
+                        f"Перенесено записей параметров: {moved_rows}. "
+                        "Исходная группа очищена: VED=0 во все годы, тип группы – прочерк."
+                    )
                 machine_ids = result.get("machine_ids") or []
                 if machine_ids:
                     log_lines.append(
@@ -5214,7 +5311,7 @@ def equipment_group_edit(equipment_group_id):
     )
     fuel_param_ved_labels = sorted(FUEL_PARAM_VED_LABELS.items())
     # nust/nr/e – мощность и выработка ЭЭ, даже если в выбранных годах NULL
-    # (иначе строку нельзя ни увидеть, ни заполнить; как hfix и расчётные строки).
+    # (иначе строку нельзя ни увидеть, ни заполнить; как hfix и расчетные строки).
     # Пустые строки не отбрасываем: на карточке их прячет кнопка «Пустые строки».
     table1_params_grid, table1_attrs, table1_empty_flags = _filter_empty_zero_rows(
         _build_grid(EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS),
@@ -6031,11 +6128,12 @@ def import_equipment_group_specific_fuel_consumption_calculated():
         flash(result["message"], "success")
         clear_station_aggregation_cache("после импорта расчетных значений удельных показателей")
         current_app.logger.info(
-            "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_CALC] done user=%s filename=%s created=%s updated=%s skipped=%s",
+            "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_CALC] done user=%s filename=%s created=%s updated=%s deleted=%s skipped=%s",
             user,
             getattr(file, "filename", None),
             result.get("created"),
             result.get("updated"),
+            result.get("deleted"),
             result.get("skipped"),
         )
     except ValueError as e:
@@ -6437,7 +6535,7 @@ def export_stations_equipment_groups():
 
         excel_file = export_stations_equipment_groups_to_excel(filters, start_year, end_year)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"Группы_оборудования_электростанций_{timestamp}.xlsx"
+        filename = f"Словарь_группы_оборудования_электростанций_{timestamp}.xlsx"
 
         excel_file.seek(0)
         return send_file(
@@ -6502,7 +6600,7 @@ def export_stations_equipment_group_fuel_params():
 @fuel_bp.route("/stations_equipment_group_natural_fuel/export", methods=["GET"])
 @login_required
 def export_stations_equipment_group_natural_fuel():
-    """Экспорт калорийных эквивалентов топлива групп оборудования в Excel с учётом фильтров."""
+    """Экспорт калорийных эквивалентов топлива групп оборудования в Excel с учетом фильтров."""
     try:
         filters = extract_filters_from_args(request.args)
         filters.pop("page", None)
@@ -6841,73 +6939,8 @@ def _get_import_fuel_db_redirect_args():
 @fuel_bp.route("/stations_turbines/import_fuel_db", methods=["POST"])
 @login_required
 def import_fuel_db_turbines():
-    """Загрузка данных БД Топливо на странице «Турбины»: тот же сервис, что и для groups, редирект на stations_turbines."""
-    user = session.get("username", "Неизвестный пользователь")
-    log_to_db(user, "Начата загрузка данных БД Топливо (турбины)")
-    current_app.logger.info(
-        "[IMPORT_FUEL_DB_TURBINES] start user=%s filename=%s mimetype=%s remote_addr=%s",
-        user,
-        getattr(request.files.get("file"), "filename", None),
-        getattr(request.files.get("file"), "mimetype", None),
-        request.remote_addr,
-    )
-
     redirect_args = {k: v for k, v in request.form.items() if k not in ("file", "csrf_token", "redirect_to")}
-
-    if "file" not in request.files:
-        flash("Файл не найден.", "danger")
-        return redirect(url_for("fuel_bp.stations_turbines", **redirect_args))
-
-    file = request.files["file"]
-    if file.mimetype not in [
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ]:
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_turbines", **redirect_args))
-
-    if not file.filename.endswith((".xlsx", ".xls")):
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_turbines", **redirect_args))
-
-    try:
-        result = import_fuel_db_equipment_groups_from_excel(file, user, build_report=False)
-        flash(result["message"], "success")
-        clear_station_aggregation_cache("после импорта БД Топливо")
-        current_app.logger.info(
-            "[IMPORT_FUEL_DB_TURBINES] done user=%s filename=%s processed=%s updated=%s errors=%s",
-            user,
-            getattr(file, "filename", None),
-            result.get("processed_rows"),
-            result.get("updated_machines"),
-            result.get("errors_count"),
-        )
-    except ValueError as e:
-        current_app.logger.warning(
-            "[IMPORT_FUEL_DB_TURBINES] validation error user=%s filename=%s: %s",
-            user,
-            getattr(file, "filename", None),
-            str(e),
-            exc_info=True,
-        )
-        flash(str(e), "danger")
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-    except Exception as e:
-        current_app.logger.exception(
-            "[IMPORT_FUEL_DB_TURBINES] import failed user=%s filename=%s",
-            user,
-            getattr(file, "filename", None),
-        )
-        flash("Ошибка загрузки данных БД Топливо.", "danger")
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-
-    return redirect(url_for("fuel_bp.stations_turbines", **redirect_args))
+    return start_fuel_db_import("fuel_bp.stations_turbines", redirect_args)
 
 
 @fuel_bp.route("/stations_equipment_groups/import_report/<token>", methods=["GET"])
@@ -6921,73 +6954,8 @@ def import_fuel_db_report_download(token):
 @fuel_bp.route("/stations_equipment_groups/import_fuel_db", methods=["POST"])
 @login_required
 def import_fuel_db_equipment_groups():
-    """Загрузка данных БД Топливо: привязка групп оборудования к агрегатам по external_code."""
-    user = session.get("username", "Неизвестный пользователь")
-    log_to_db(user, "Начата загрузка данных БД Топливо")
-    current_app.logger.info(
-        "[IMPORT_FUEL_DB_ROUTE] start user=%s filename=%s mimetype=%s remote_addr=%s",
-        user,
-        getattr(request.files.get("file"), "filename", None),
-        getattr(request.files.get("file"), "mimetype", None),
-        request.remote_addr,
-    )
-
     redirect_endpoint, redirect_args = _get_import_fuel_db_redirect_args()
-
-    if "file" not in request.files:
-        flash("Файл не найден.", "danger")
-        return redirect(url_for(redirect_endpoint, **redirect_args))
-
-    file = request.files["file"]
-    if file.mimetype not in [
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ]:
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for(redirect_endpoint, **redirect_args))
-
-    if not file.filename.endswith((".xlsx", ".xls")):
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for(redirect_endpoint, **redirect_args))
-
-    try:
-        result = import_fuel_db_equipment_groups_from_excel(file, user, build_report=False)
-        flash(result["message"], "success")
-        clear_station_aggregation_cache("после импорта БД Топливо")
-        current_app.logger.info(
-            "[IMPORT_FUEL_DB_ROUTE] done user=%s filename=%s processed=%s updated=%s errors=%s",
-            user,
-            getattr(file, "filename", None),
-            result.get("processed_rows"),
-            result.get("updated_machines"),
-            result.get("errors_count"),
-        )
-    except ValueError as e:
-        current_app.logger.warning(
-            "[IMPORT_FUEL_DB_ROUTE] validation error user=%s filename=%s: %s",
-            user,
-            getattr(file, "filename", None),
-            str(e),
-            exc_info=True,
-        )
-        flash(str(e), "danger")
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-    except Exception as e:
-        current_app.logger.exception(
-            "[IMPORT_FUEL_DB_ROUTE] import failed user=%s filename=%s",
-            user,
-            getattr(file, "filename", None),
-        )
-        flash("Ошибка загрузки данных БД Топливо.", "danger")
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-
-    return redirect(url_for(redirect_endpoint, **redirect_args))
+    return start_fuel_db_import(redirect_endpoint, redirect_args)
 
 
 @fuel_bp.route("/stations_equipment_groups/soft_import_composite_flags", methods=["POST"])
@@ -7017,7 +6985,7 @@ def soft_import_composite_flags():
         flash("Нужен Excel (.xlsx / .xls) – выгрузка Access «Имена_станций».", "danger")
         return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
 
-    # Явный флаг записи; без него – только отчёт (безопасно по умолчанию).
+    # Явный флаг записи; без него – только отчет (безопасно по умолчанию).
     apply_changes = request.form.get("apply_changes") in ("1", "on", "true", "yes")
     include_phase_b = request.form.get("include_phase_b") in ("1", "on", "true", "yes")
     create_missing_numbs = request.form.get("create_missing_numbs") in (
@@ -7060,14 +7028,14 @@ def soft_import_composite_flags():
             "matched_numb": result.matched_numb,
             "skipped_not_in_db": result.skipped_not_in_db,
         }
-        # Полный отчёт – в жёлтом блоке на странице (не в куче flash).
+        # Полный отчет – в желтом блоке на странице (не в куче flash).
         if dry_run:
             flash(
-                "Проверка флагов и словарных полей завершена – полный отчёт на странице. "
+                "Проверка флагов и словарных полей завершена – полный отчет на странице. "
                 "Запись не выполнялась."
-                + (" Phase B в режиме отчёта (галка выкл)." if not include_phase_b else "")
+                + (" Phase B в режиме отчета (галка выкл)." if not include_phase_b else "")
                 + (
-                    " Отсутствующие NUMB в режиме отчёта (галка выкл)."
+                    " Отсутствующие NUMB в режиме отчета (галка выкл)."
                     if not create_missing_numbs
                     else ""
                 ),
@@ -7087,7 +7055,7 @@ def soft_import_composite_flags():
                     if create_missing_numbs
                     else " (отсутствующие NUMB пропущены)"
                 )
-                + ". Полный отчёт – на странице.",
+                + ". Полный отчет – на странице.",
                 "success",
             )
         current_app.logger.info(

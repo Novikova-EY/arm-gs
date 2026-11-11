@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Юнит-тесты расчёта ЧЧИ на сводке /power_demand/summary/oes/."""
+"""Юнит-тесты расчета ЧЧИ на сводке /power_demand/summary/oes/."""
 
 import pytest
 
@@ -531,7 +531,7 @@ def test_south_fd_with_nt_chi_uses_res_aggregate_plus_nt_subjects():
 
 
 def test_south_fd_with_nt_chi_empty_until_nt_subjects_have_data():
-    """Южный ФО с НТ: пусто, пока нет данных по субъектам НТ (не жёстко с 2023)."""
+    """Южный ФО с НТ: пусто, пока нет данных по субъектам НТ (не жестко с 2023)."""
     south_fd_id = 125
     years = [2021, 2022, 2023]
     anchor = {

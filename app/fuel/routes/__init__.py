@@ -10,6 +10,7 @@ from .calculation.distribution_stage_routes import *  # noqa: F401,F403
 from .calculation.fuel_stage_routes import *  # noqa: F401,F403
 from .equipment_group_fuel_batch_ui_routes import *  # noqa: F401,F403
 from .equipment_group_fuel_formula_routes import *  # noqa: F401,F403
+from .equipment_group_binding_transfer_routes import *  # noqa: F401,F403
 from .fuel_formulas_routes import *  # noqa: F401,F403
 from .fuel_totals_summary_routes import *  # noqa: F401,F403
 from .ecology_summary_routes import *  # noqa: F401,F403

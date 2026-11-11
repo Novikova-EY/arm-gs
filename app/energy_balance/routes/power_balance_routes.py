@@ -101,7 +101,7 @@ def _require_sheet(slug: str) -> dict:
     if sheet is not None:
         return sheet
     wanted = str(slug or "").strip()
-    # Ручной ввод keyed by slug: не отдаём HTML 404, если лист sz-112 есть в URL,
+    # Ручной ввод keyed by slug: не отдаем HTML 404, если лист sz-112 есть в URL,
     # а каталог на этом воркере временно запасной.
     if is_persistable_power_balance_slug(wanted):
         return {"slug": wanted, "sheet_name": wanted}

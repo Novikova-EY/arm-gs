@@ -3,7 +3,7 @@
  * - qotr: (qotr/nt)*1000 >= 8000
  * - q: (q/nt_sum)*1000 >= 8000
  * - h (ЧЧИУМ): h >= 8000
- * - qotr: nust изменился к предыдущему году и qotr тот же
+ * - qotr: nust изменился к предыдущему году и положительный qotr тот же
  * - data-parts-sum-mismatch-msg: Σ групп ≠ значение родителя (|Δ|>0.5)
  */
 (function (global) {
@@ -74,6 +74,16 @@
     var inp = td.querySelector(
       "input.fuel-param-input, input.fuel-hier-sum-input, input.fuel-detail-sync-input",
     );
+    // Округление на экране не должно создавать изменение мощности или часов.
+    if (td.hasAttribute("data-warning-value")) {
+      if (
+        !inp ||
+        (inp.hasAttribute("data-initial") &&
+          parseFuelNum(inp.value) === parseFuelNum(inp.getAttribute("data-initial")))
+      ) {
+        return parseFuelNum(td.getAttribute("data-warning-value"));
+      }
+    }
     if (inp) return parseFuelNum(inp.value);
     return parseFuelNum(td.textContent);
   }
@@ -245,7 +255,7 @@
     var compositionWarn = false;
     if (prev.hasPrev) {
       nustChanged = !numsEqual(prev.nust, nust);
-      compositionWarn = nustChanged && numsEqual(prev.qotr, qotr);
+      compositionWarn = nustChanged && qotr > 0 && numsEqual(prev.qotr, qotr);
     }
 
     var yearTd = getYearTd(tr);

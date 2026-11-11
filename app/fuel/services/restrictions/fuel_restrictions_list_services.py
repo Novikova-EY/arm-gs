@@ -106,7 +106,7 @@ def get_fuel_restrictions_list(
     """
     Список ограничений. Сортировка как в Access Form_Open: OrderBy = \"obl\".
 
-    - year_number / year_numbers: фильтр по полю year (год расчёта); None – все.
+    - year_number / year_numbers: фильтр по полю year (год расчета); None – все.
     - oes_codes / union_energy_system_ids: фильтр по ОЭС (код Access или id справочника).
     - obl_codes / regional_energy_system_ids: фильтр по РЭС (код Access или id справочника).
     """

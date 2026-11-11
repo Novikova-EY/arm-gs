@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-# Модели электроёмкости (долгосрочный спрос, схема gs_ei).
+# Модели электроемкости (долгосрочный спрос, схема gs_ei).
 from app.electrical_intensity.models import (  # noqa: F401
     federal_district_electrical_intensity_year_parameter_model,
     russia_federation_electrical_intensity_year_parameter_model,

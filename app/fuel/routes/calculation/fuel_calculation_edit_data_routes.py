@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Страница «Редактировать данные» для блока «Коэфф» расчётного модуля."""
+"""Страница «Редактировать данные» для блока «Коэфф» расчетного модуля."""
 
 from __future__ import annotations
 
@@ -564,7 +564,7 @@ def equipment_group_fuel_params_edit_data():
         equipment_group_fuel_params_hierarchy
     )
 
-    # Интервал как у ТЭП: start=базовый, end=расчётный → «Назад к расчёту».
+    # Интервал как у ТЭП: start=базовый, end=расчетный → «Назад к расчету».
     calculation_back_url = fuel_calculation_form_url_from_tep_edit_args(request.args)
 
     data = {
@@ -801,7 +801,7 @@ def equipment_group_fuel_params_edit_data_save():
             for msg in errs[:25]:
                 flash(msg, "danger")
             if len(errs) > 25:
-                flash(f"… и ещё ошибок: {len(errs) - 25}.", "danger")
+                flash(f"… и еще ошибок: {len(errs) - 25}.", "danger")
         else:
             recalc_n = 0
             if changed > 0:
@@ -820,7 +820,7 @@ def equipment_group_fuel_params_edit_data_save():
                 )
 
                 clear_station_aggregation_cache(
-                    "после сохранения топливных параметров (модуль расчёта), пересчёт удельных"
+                    "после сохранения топливных параметров (модуль расчета), пересчет удельных"
                 )
             if changed == 0:
                 flash(
@@ -830,7 +830,7 @@ def equipment_group_fuel_params_edit_data_save():
             else:
                 msg = f"Сохранены изменения по группам оборудования: {changed}."
                 if recalc_n:
-                    msg += f" Пересчитаны расчётные удельные показатели: {recalc_n}."
+                    msg += f" Пересчитаны расчетные удельные показатели: {recalc_n}."
                 flash(msg, "success")
     except Exception as exc:
         db.session.rollback()
@@ -847,7 +847,7 @@ def equipment_group_fuel_params_edit_data_save():
 def equipment_group_fuel_params_edit_data_recalc_composite_parts():
     """Access «Сумма»: записать на родителя составной станции Σ детей за год и пересчитать удельные."""
     if not getattr(current_user, "has_admin", False):
-        flash("Недостаточно прав для пересчёта.", "danger")
+        flash("Недостаточно прав для пересчета.", "danger")
         return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
     if not _csrf_ok():
         flash("Ошибка проверки CSRF.", "danger")
@@ -856,17 +856,17 @@ def equipment_group_fuel_params_edit_data_recalc_composite_parts():
     gid = request.form.get("equipment_group_id", type=int)
     year_number = request.form.get("year_number", type=int)
     if gid is None:
-        flash("Не указана группа оборудования для пересчёта.", "danger")
+        flash("Не указана группа оборудования для пересчета.", "danger")
         return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
     if year_number is None:
-        flash("Не указан год для пересчёта по составным ГО.", "danger")
+        flash("Не указан год для пересчета по составным ГО.", "danger")
         return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
 
     try:
         result = recalculate_composite_parent_from_children(gid, year_number)
         if not result.get("ok"):
             db.session.rollback()
-            flash(result.get("error") or "Не удалось выполнить пересчёт.", "warning")
+            flash(result.get("error") or "Не удалось выполнить пересчет.", "warning")
             return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
 
         specific_ids = [int(gid)]
@@ -886,7 +886,7 @@ def equipment_group_fuel_params_edit_data_recalc_composite_parts():
         )
 
         clear_station_aggregation_cache(
-            "после пересчёта составной станции по дочерним ГО"
+            "после пересчета составной станции по дочерним ГО"
         )
         msg = (
             f"Пересчитаны параметры составной станции за {year_number} год "
@@ -894,13 +894,13 @@ def equipment_group_fuel_params_edit_data_recalc_composite_parts():
         )
         if recalc_n:
             msg += (
-                f" Пересчитаны расчётные удельные показатели "
+                f" Пересчитаны расчетные удельные показатели "
                 f"(станция и дочерние ГО): {recalc_n}."
             )
         flash(msg, "success")
     except Exception as exc:
         db.session.rollback()
-        flash(f"Ошибка при пересчёте по составным ГО: {exc}", "danger")
+        flash(f"Ошибка при пересчете по составным ГО: {exc}", "danger")
 
     return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
 
@@ -996,12 +996,12 @@ def _specific_fc_ref_year_range_error(n_lo: int, n_hi: int) -> str | None:
 
 
 def _redirect_specific_fc_interval_only(*, y_min: int, y_max: int):
-    """Access U.Seek: строк не создаём, только расширяем интервал таблицы."""
+    """Access U.Seek: строк не создаем, только расширяем интервал таблицы."""
     md = _md_from_heat_add_form()
     _merge_interval_onto_md(md, y_min=int(y_min), y_max=int(y_max))
     flash(
         f"Интервал таблицы расширен до {md.get('start_year')}–{md.get('end_year')}. "
-        "Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.",
+        "Удельные не копируются: расчет берет последнюю строку year ≤ расчетного.",
         "success",
     )
     return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
@@ -1182,8 +1182,8 @@ def equipment_group_specific_fuel_consumption_edit_data():
         equipment_group_specific_fuel_consumption_hierarchy
     )
 
-    # Только фильтры формы расчёта – без equipment_group_ids со ссылки «Без удельника».
-    # Интервал ТЭП: start=базовый, end=расчётный → обратно на форму расчёта маппим end→start_year.
+    # Только фильтры формы расчета – без equipment_group_ids со ссылки «Без удельника».
+    # Интервал ТЭП: start=базовый, end=расчетный → обратно на форму расчета маппим end→start_year.
     calculation_back_url = fuel_calculation_form_url_from_tep_edit_args(request.args)
 
     data = {
@@ -1303,7 +1303,7 @@ def equipment_group_specific_fuel_consumption_edit_data_save():
             for msg in errs[:25]:
                 flash(msg, "danger")
             if len(errs) > 25:
-                flash(f"… и ещё ошибок: {len(errs) - 25}.", "danger")
+                flash(f"… и еще ошибок: {len(errs) - 25}.", "danger")
         else:
             db.session.commit()
             if changed == 0:

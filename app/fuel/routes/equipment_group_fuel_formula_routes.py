@@ -71,7 +71,7 @@ _BULK_FUEL_FORMULA_FIELD_RE = re.compile(r"^g(\d+)_fuel_formula_\d+_v\d+_formtxt
 
 
 def _resolve_year_interval():
-    """Как на ТЭП edit_data: start_year / end_year из query (базовый / расчётный с формы расчёта)."""
+    """Как на ТЭП edit_data: start_year / end_year из query (базовый / расчетный с формы расчета)."""
     sy = request.args.get("start_year", type=int)
     ey = request.args.get("end_year", type=int)
     if sy is None and ey is None:
@@ -287,7 +287,7 @@ def equipment_group_fuel_formulas_page():
 
     formtxt_editable_years = formtxt_editable_year_numbers_for_version()
 
-    # Жёлтая подсветка при изменении Nуст к предыдущему году – как на ТЭП
+    # Желтая подсветка при изменении Nуст к предыдущему году – как на ТЭП
     fuel_params_data = get_equipment_groups_with_fuel_params_data(
         filters=filters,
         per_page="all",
@@ -303,7 +303,7 @@ def equipment_group_fuel_formulas_page():
         "nust_changed_from_prev_year_rows"
     ]
 
-    # Интервал как у ТЭП: start=базовый, end=расчётный → «Назад к расчёту»
+    # Интервал как у ТЭП: start=базовый, end=расчетный → «Назад к расчету»
     calculation_back_url = fuel_calculation_form_url_from_tep_edit_args(request.args)
 
     data = {
@@ -560,7 +560,7 @@ def equipment_group_fuel_formulas_save():
             for msg in errs[:25]:
                 flash(msg, "danger")
             if len(errs) > 25:
-                flash(f"… и ещё ошибок: {len(errs) - 25}.", "danger")
+                flash(f"… и еще ошибок: {len(errs) - 25}.", "danger")
         else:
             db.session.commit()
             if changed == 0:

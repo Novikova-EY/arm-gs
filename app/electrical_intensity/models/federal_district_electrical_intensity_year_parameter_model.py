@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
-"""Электроёмкость по годам для федерального округа (долгосрочный прогноз)."""
-from sqlalchemy import Numeric, String
+"""Электроемкость по годам для федерального округа (долгосрочный прогноз)."""
+from sqlalchemy import Boolean, Numeric, String
 from sqlalchemy.sql import func
 
 from app.extensions import db
@@ -57,6 +57,9 @@ class FederalDistrictElectricalIntensityYearParameter(db.Model, AuditMixin):
     )
     # Значение показателя за год (кВтч/тыс. руб., зависит от row_kind)
     parameter_value = db.Column(Numeric(25, 10), nullable=True)
+    is_excluded_from_calculation = db.Column(
+        Boolean, nullable=False, default=False, server_default=db.false()
+    )
     note = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(

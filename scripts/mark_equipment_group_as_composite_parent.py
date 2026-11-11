@@ -12,7 +12,7 @@
 (update_equipment_group_from_form), поэтому проверки comp/main штатные:
 у родителя main должен быть пустым.
 
-Запуск из корня репозитория (БД берётся из переменных окружения, как у приложения):
+Запуск из корня репозитория (БД берется из переменных окружения, как у приложения):
 
   python scripts/mark_equipment_group_as_composite_parent.py --group-id 30555
   python scripts/mark_equipment_group_as_composite_parent.py --group-id 30555 --apply --yes

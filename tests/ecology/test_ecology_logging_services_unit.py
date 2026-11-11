@@ -131,15 +131,28 @@ def test_log_file_upload_and_download_name_the_file(logged):
     assert logged[1]["details"] == "файл=gis_tek_parnikovye_gazy.xlsx"
 
 
-def test_log_changes_limits_long_change_lists(logged):
-    changes = [f"Строка {index}: было 0 → стало {index}" for index in range(150)]
+def test_log_changes_preserves_all_changes_in_numbered_parts(logged):
+    changes = [f"Строка {index}: было 0 → стало {index}" for index in range(250)]
 
     logging_services.log_changes("Акцепт данных", changes, context=["год=2026"])
 
-    details = logged[0]["details"]
-    assert "показаны первые 100 из 150 изменений" in details
-    assert "Строка 99:" in details
-    assert "Строка 100:" not in details
+    assert len(logged) == 3
+    saved_changes = []
+    for index, record in enumerate(logged, start=1):
+        parts = record["details"].split("; ")
+        assert parts[:2] == ["год=2026", f"часть={index}/3"]
+        assert record["entity_type"] == "ecology"
+        saved_changes.extend(parts[2:])
+    assert saved_changes == changes
+
+
+def test_formula_changes_preserve_full_before_and_after_text(logged):
+    before = "исходная формула " * 100 + "старое окончание"
+    after = "исходная формула " * 100 + "новое окончание"
+
+    logging_services.log_cell_change("Тексты формул", "Формула", before, after, number=False)
+
+    assert logged[0]["details"] == f"Формула: было {before} → стало {after}"
 
 
 def test_upsert_coefficient_logs_before_and_after(operating_tes_db, logged):

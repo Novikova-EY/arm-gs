@@ -70,7 +70,7 @@ def test_cached_load_skips_set_when_generation_bumped(app):
 
 
 def test_get_rejects_entry_from_previous_generation_without_redis_delete(app):
-    """После clear get не отдаёт старую запись, даже если ключ остался в memory."""
+    """После clear get не отдает старую запись, даже если ключ остался в memory."""
     with app.app_context():
         cache._memory_cache = {}
         cache._cache_generation = 5

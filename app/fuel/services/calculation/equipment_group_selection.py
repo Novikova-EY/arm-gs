@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Отбор EquipmentGroup для этапов расчёта топлива (Коэфф / Распред / …)."""
+"""Отбор EquipmentGroup для этапов расчета топлива (Коэфф / Распред / …)."""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -21,7 +21,7 @@ def dedupe_equipment_group_ids_prefer_version(
 ) -> list[int]:
     """
     Убирает задвоение: одна и та же станция (numb) часто есть и в версии БД, и с
-    database_version_id=NULL. Для сумм «Базовый год» / этапов расчёта оставляем
+    database_version_id=NULL. Для сумм «Базовый год» / этапов расчета оставляем
     строку текущей версии; NULL – только если для этого numb версии нет.
 
     rows: (id, numb, database_version_id)
@@ -53,7 +53,7 @@ def drop_null_groups_shadowed_by_versioned_numb(
     versioned_numbs: set[int],
 ) -> list[tuple[int, int | None, int | None]]:
     """
-    NULL-копия станции не участвует в расчёте, если в версии БД уже есть
+    NULL-копия станции не участвует в расчете, если в версии БД уже есть
     группа с тем же numb – даже если версионная строка не проходит ved>0.
 
     Иначе в «Нет строки топлива» попадает legacy id (database_version_id IS NULL),
@@ -82,10 +82,10 @@ def select_equipment_group_ids_for_calculation(
     Условия oes/obl/ved из фильтра Access применяются к EquipmentGroupFuelParam
     (рабочая «Станции(Схема).OES/OBL/VED»), а не к справочнику EquipmentGroup.
     При наличии year_numbers строка параметров должна относиться к одному из этих лет
-    (обычно base_year и/или расчётный year параметра распределения).
+    (обычно base_year и/или расчетный year параметра распределения).
 
     Это отбор *группы*: ved>0 хотя бы в одном из лет. В циклах Коэфф/Распред/Топливо
-    Access проверяет ved ещё раз на *строке года* (FindFirst filter1) – см.
+    Access проверяет ved еще раз на *строке года* (FindFirst filter1) – см.
     ``access_ved_filter_year_row_participates``.
 
     При заданной версии в выборку попадают и versioned, и NULL-группы, но
@@ -157,8 +157,8 @@ def access_ved_filter_year_row_participates(param: EquipmentGroupFuelParam | Non
     """
     Access: ``(ved>0)`` на конкретной строке года «Станции(Схема)».
 
-    Строка с ved=0/NULL (оболочка родителя / выключенный ребёнок) не входит
-    в FindFirst/FindNext filter1 – её не пишут Коэфф/Распред/Топливо.
+    Строка с ved=0/NULL (оболочка родителя / выключенный ребенок) не входит
+    в FindFirst/FindNext filter1 – ее не пишут Коэфф/Распред/Топливо.
     """
     return fuel_param_row_participates(param)
 

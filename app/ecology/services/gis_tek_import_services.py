@@ -17,7 +17,13 @@ from app.common.services.database_version_filter import get_current_db_version_i
 from app.ecology.models.pg_report_gis_tek_model import PGReportGisTek
 from app.ecology.models.zv_report_gis_tek_model import ZVReportGisTek
 from app.ecology.services.ecology_decimal_helpers import drop_float_noise
+from app.ecology.services.ecology_logging_services import (
+    change_lines,
+    context_lines,
+    log_changes,
+)
 from app.ecology.services.gis_tek_constants import (
+    PAGE_TITLES,
     REPORT_PG,
     REPORT_ZV,
     SHEET_NAMES,
@@ -330,6 +336,8 @@ def import_gis_tek_from_xlsx_bytes(file_bytes: bytes, kind: str, user: str) -> d
     skipped_no_year = 0
     skipped_no_numb = 0
     unmatched_groups = 0
+    audit_records = []
+    value_labels = dict(VALUE_COLUMNS[kind])
 
     for _, row in df.iterrows():
         station_numb = safe_int(_cell(row, "station_numb"))
@@ -369,6 +377,23 @@ def import_gis_tek_from_xlsx_bytes(file_bytes: bytes, kind: str, user: str) -> d
             existing[key] = param
             created += 1
 
+        text_changes = change_lines(
+            [
+                ("Электростанция (ГИС ТЭК)", param.gis_tek_station_name, gis_name),
+                ("Тип станции", param.station_type, st_type),
+                ("Группа оборудования (ID)", param.equipment_group_id,
+                 group.id if group is not None else None),
+            ],
+            number=False,
+        )
+        numeric_changes = change_lines(
+            (value_labels[attr], getattr(param, attr, None), val)
+            for attr, val in values.items()
+            if attr not in ZV_UNSTORED_ATTRS
+        )
+        if text_changes or numeric_changes:
+            audit_records.append((station_numb, year_number, text_changes + numeric_changes))
+
         changed = is_new
         if param.gis_tek_station_name != gis_name:
             param.gis_tek_station_name = gis_name
@@ -395,6 +420,17 @@ def import_gis_tek_from_xlsx_bytes(file_bytes: bytes, kind: str, user: str) -> d
         db.session.rollback()
         logger.exception("[ECO_GIS_TEK_IMPORT] db error: %s", exc)
         raise ValueError("Ошибка сохранения данных: проверьте корректность файла.") from exc
+
+    for station_numb, year_number, changes in audit_records:
+        log_changes(
+            f"Импорт ГИС ТЭК – {PAGE_TITLES[kind]}",
+            changes,
+            context=context_lines(
+                ("группа оборудования (numb1120)", station_numb),
+                ("год", year_number),
+            ),
+            user=user,
+        )
 
     seeded_params = 0
     if kind == REPORT_PG:
@@ -428,7 +464,7 @@ def import_gis_tek_from_xlsx_bytes(file_bytes: bytes, kind: str, user: str) -> d
         seeded_params,
         elapsed,
     )
-    log_to_db(user, f"Импорт ГИС ТЭК ({kind})", message)
+    log_to_db(user, f"Импорт ГИС ТЭК ({kind})", message, entity_type="ecology")
     return {
         "message": message,
         "created": created,

@@ -239,7 +239,7 @@
                 .map(optionLabel);
         }
 
-        /** Подпись кнопки в шапке – по уже применённому набору (его и считает сервер). */
+        /** Подпись кнопки в шапке – по уже примененному набору (его и считает сервер). */
         function updateButton() {
             var labels = labelsFor(appliedValues(selectEl));
             btn.textContent = "";
@@ -264,7 +264,7 @@
                 ? "Отмечено " + checked.length + " из " + total + " – нажмите «Ок»"
                 : "Ничего не отмечено – сумма не считается";
             var dirty = !sameValues(checked, appliedValues(selectEl));
-            // Подпись всегда «Ок»; не применённые галочки выделяются цветом кнопки.
+            // Подпись всегда «Ок»; не примененные галочки выделяются цветом кнопки.
             okBtn.textContent = "Ок";
             okBtn.classList.toggle("btn-primary", !dirty);
             okBtn.classList.toggle("btn-success", dirty);
@@ -313,7 +313,7 @@
             var viewportH = window.innerHeight;
             var rect = btn.getBoundingClientRect();
 
-            // Ширина: измеряем «естественную» и не даём меню выйти за границы окна.
+            // Ширина: измеряем «естественную» и не даем меню выйти за границы окна.
             menu.style.width = "";
             menu.style.maxWidth = "";
             menu.style.maxHeight = "";

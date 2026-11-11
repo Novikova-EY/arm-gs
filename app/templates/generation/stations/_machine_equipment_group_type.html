@@ -1,0 +1,15 @@
+{% if station.station_type.name|trim|lower not in ('вэс', 'сэс', 'снээ', 'гэс', 'гаэс') %}
+<div class="row g-2 align-items-center mb-2">
+    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
+    <div class="col-7 text-start">
+        {% if equipment_group_editable %}
+            {{ equipment_group_form.id_equipment_group(class="form-select") }}
+        {% else %}
+            {{ equipment_group_machine.equipment_group.name if equipment_group_machine.equipment_group else '–' }}
+        {% endif %}
+    </div>
+</div>
+{% elif equipment_group_editable %}
+<input type="hidden" name="{{ equipment_group_form.id_equipment_group.name }}"
+       value="{{ equipment_group_form.id_equipment_group.data or 0 }}">
+{% endif %}

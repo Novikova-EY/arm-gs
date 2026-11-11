@@ -1,0 +1,2361 @@
+{
+  "document": "АРМ_Справочники_Описание_для_госрегистрации.docx",
+  "catalogs": 25,
+  "html_pages": 51,
+  "figures": 7,
+  "pages": [
+    {
+      "key": "years",
+      "title": "Годы",
+      "list_url": "/refdata/years",
+      "add_url": "/refdata/add_year",
+      "model": "Year",
+      "sources": [
+        "app/refdata/models/years/year_model.py",
+        "app/refdata/routes/years/year_routes.py",
+        "app/refdata/services/years/year_services.py",
+        "app/templates/refdata/years/year/year.html",
+        "app/templates/refdata/years/year/year_add.html"
+      ]
+    },
+    {
+      "key": "federal_district",
+      "title": "Федеральные округа",
+      "list_url": "/refdata/federal_district",
+      "add_url": "/refdata/add_federal_district",
+      "model": "FederalDistrict",
+      "sources": [
+        "app/refdata/models/territories/federal_district_model.py",
+        "app/refdata/routes/territories/federal_district_routes.py",
+        "app/refdata/services/territories/federal_district_services.py",
+        "app/templates/refdata/territories/federal_district/federal_district.html",
+        "app/templates/refdata/territories/federal_district/federal_district_add.html"
+      ]
+    },
+    {
+      "key": "regional_district",
+      "title": "Субъекты РФ",
+      "list_url": "/refdata/regional_district",
+      "add_url": "/refdata/add_regional_district",
+      "model": "RegionalDistrict",
+      "sources": [
+        "app/refdata/models/territories/regional_district_model.py",
+        "app/refdata/routes/territories/regional_district_routes.py",
+        "app/refdata/services/territories/regional_district_services.py",
+        "app/templates/refdata/territories/regional_district/regional_district.html",
+        "app/templates/refdata/territories/regional_district/regional_district_add.html"
+      ]
+    },
+    {
+      "key": "foreign_border_country",
+      "title": "Зарубежные страны, имеющие общие границы с РФ",
+      "list_url": "/refdata/foreign_border_country",
+      "add_url": "/refdata/add_foreign_border_country",
+      "model": "ForeignBorderCountry",
+      "sources": [
+        "app/refdata/models/territories/foreign_border_country_model.py",
+        "app/refdata/routes/territories/foreign_border_country_routes.py",
+        "app/refdata/services/territories/foreign_border_country_services.py",
+        "app/templates/refdata/territories/foreign_border_country/foreign_border_country.html",
+        "app/templates/refdata/territories/foreign_border_country/foreign_border_country_add.html"
+      ]
+    },
+    {
+      "key": "union_energy_system",
+      "title": "Объединенные энергосистемы",
+      "list_url": "/refdata/union_energy_system",
+      "add_url": "/refdata/add_union_energy_system",
+      "model": "UnionEnergySystem",
+      "sources": [
+        "app/refdata/models/energy_systems/union_energy_system_model.py",
+        "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+        "app/refdata/services/energy_systems/union_energy_system_services.py",
+        "app/templates/refdata/energy_systems/union_energy_system/union_energy_system.html",
+        "app/templates/refdata/energy_systems/union_energy_system/union_energy_system_add.html"
+      ]
+    },
+    {
+      "key": "regional_energy_system",
+      "title": "Региональные энергосистемы",
+      "list_url": "/refdata/regional_energy_system",
+      "add_url": "/refdata/add_regional_energy_system",
+      "model": "RegionalEnergySystem",
+      "sources": [
+        "app/refdata/models/energy_systems/regional_energy_system_model.py",
+        "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+        "app/refdata/services/energy_systems/regional_energy_system_services.py",
+        "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system.html",
+        "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system_add.html"
+      ]
+    },
+    {
+      "key": "energy_unit",
+      "title": "Энергорайоны",
+      "list_url": "/refdata/energy_units",
+      "add_url": "/refdata/add_energy_unit",
+      "model": "EnergyUnit",
+      "sources": [
+        "app/refdata/models/energy_systems/energy_unit_model.py",
+        "app/refdata/routes/energy_systems/energy_unit_routes.py",
+        "app/refdata/services/energy_systems/energy_unit_services.py",
+        "app/templates/refdata/energy_systems/energy_unit/energy_unit.html",
+        "app/templates/refdata/energy_systems/energy_unit/energy_unit_add.html"
+      ]
+    },
+    {
+      "key": "energy_area",
+      "title": "Энергоузлы",
+      "list_url": "/refdata/energy_areas",
+      "add_url": "/refdata/add_energy_area",
+      "model": "EnergyArea",
+      "sources": [
+        "app/refdata/models/energy_systems/energy_area_model.py",
+        "app/refdata/routes/energy_systems/energy_area_routes.py",
+        "app/refdata/services/energy_systems/energy_area_services.py",
+        "app/templates/refdata/energy_systems/energy_area/energy_area.html",
+        "app/templates/refdata/energy_systems/energy_area/energy_area_add.html"
+      ]
+    },
+    {
+      "key": "energy_system_type",
+      "title": "Типы энергосистем",
+      "list_url": "/refdata/energy_system_type",
+      "add_url": "/refdata/add_energy_system_type",
+      "model": "EnergySystemType",
+      "sources": [
+        "app/refdata/models/energy_systems/energy_system_type_model.py",
+        "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+        "app/refdata/services/energy_systems/energy_system_type_services.py",
+        "app/templates/refdata/energy_systems/energy_system_type/energy_system_type.html",
+        "app/templates/refdata/energy_systems/energy_system_type/energy_system_type_add.html"
+      ]
+    },
+    {
+      "key": "synchronous_area",
+      "title": "Синхронные зоны",
+      "list_url": "/refdata/synchronous_area",
+      "add_url": "/refdata/add_synchronous_area",
+      "model": "SynchronousArea",
+      "sources": [
+        "app/refdata/models/energy_systems/synchronous_area_model.py",
+        "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+        "app/refdata/services/energy_systems/synchronous_area_services.py",
+        "app/templates/refdata/energy_systems/synchronous_area/synchronous_area.html",
+        "app/templates/refdata/energy_systems/synchronous_area/synchronous_area_add.html"
+      ]
+    },
+    {
+      "key": "energy_zone",
+      "title": "Энергозоны",
+      "list_url": "/refdata/energy_zone",
+      "add_url": "/refdata/add_energy_zone",
+      "model": "EnergyZone",
+      "sources": [
+        "app/refdata/models/energy_systems/energy_zone_model.py",
+        "app/refdata/routes/energy_systems/energy_zone_routes.py",
+        "app/refdata/services/energy_systems/energy_zone_services.py",
+        "app/templates/refdata/energy_systems/energy_zone/energy_zone.html",
+        "app/templates/refdata/energy_systems/energy_zone/energy_zone_add.html"
+      ]
+    },
+    {
+      "key": "gen_company",
+      "title": "Генерирующие компании",
+      "list_url": "/refdata/gen_company",
+      "add_url": "/refdata/add_gen_company",
+      "model": "GenCompany",
+      "sources": [
+        "app/refdata/models/gen_companies/gen_company_model.py",
+        "app/refdata/routes/gen_companies/gen_company_routes.py",
+        "app/refdata/services/gen_companies/gen_company_services.py",
+        "app/templates/refdata/gen_companies/gen_company.html",
+        "app/templates/refdata/gen_companies/gen_company_add.html"
+      ]
+    },
+    {
+      "key": "fuel_type",
+      "title": "Типы топлива",
+      "list_url": "/refdata/fuel_type",
+      "add_url": "/refdata/add_fuel_type",
+      "model": "FuelType",
+      "sources": [
+        "app/refdata/models/fuels/fuel_type_model.py",
+        "app/refdata/routes/fuels/fuel_type_routes.py",
+        "app/refdata/services/fuels/fuel_type_services.py",
+        "app/templates/refdata/fuels/fuel_type/fuel_type.html",
+        "app/templates/refdata/fuels/fuel_type/fuel_type_add.html"
+      ]
+    },
+    {
+      "key": "fuel",
+      "title": "Виды топлива",
+      "list_url": "/refdata/fuel",
+      "add_url": "/refdata/add_fuel",
+      "model": "Fuel",
+      "sources": [
+        "app/refdata/models/fuels/fuel_model.py",
+        "app/refdata/routes/fuels/fuel_routes.py",
+        "app/refdata/services/fuels/fuel_services.py",
+        "app/templates/refdata/fuels/fuel/fuel.html",
+        "app/templates/refdata/fuels/fuel/fuel_add.html"
+      ]
+    },
+    {
+      "key": "station_type",
+      "title": "Типы электростанций",
+      "list_url": "/refdata/station_type",
+      "add_url": "/refdata/add_station_type",
+      "model": "StationType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/station/station_type_model.py",
+        "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+        "app/refdata/services/refdata_for_stations/stations/station_type_services.py",
+        "app/templates/refdata/refdata_for_stations/stations/station_type/station_type.html",
+        "app/templates/refdata/refdata_for_stations/stations/station_type/station_type_add.html"
+      ]
+    },
+    {
+      "key": "condition_type",
+      "title": "Типы состояния оборудования",
+      "list_url": "/refdata/condition_type",
+      "add_url": "/refdata/add_condition_type",
+      "model": "ConditionType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/condition_type_model.py",
+        "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+        "app/refdata/services/refdata_for_stations/condition_type_services.py",
+        "app/templates/refdata/refdata_for_stations/condition_type/condition_type.html",
+        "app/templates/refdata/refdata_for_stations/condition_type/condition_type_add.html"
+      ]
+    },
+    {
+      "key": "machine_type",
+      "title": "Типы агрегатов",
+      "list_url": "/refdata/machine_type",
+      "add_url": "/refdata/add_machine_type",
+      "model": "MachineType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/machine/machine_type_model.py",
+        "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+        "app/refdata/services/refdata_for_stations/machines/machine_type_services.py",
+        "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type.html",
+        "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type_add.html"
+      ]
+    },
+    {
+      "key": "tes_type",
+      "title": "Типы ТЭС",
+      "list_url": "/refdata/tes_type",
+      "add_url": "/refdata/add_tes_type",
+      "model": "TesType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/machine/tes_type_model.py",
+        "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+        "app/refdata/services/refdata_for_stations/machines/tes_type_services.py",
+        "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type.html",
+        "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type_add.html"
+      ]
+    },
+    {
+      "key": "tes_machine_type",
+      "title": "Типы агрегатов ТЭС",
+      "list_url": "/refdata/tes_machine_type",
+      "add_url": "/refdata/add_tes_machine_type",
+      "model": "TesMachineType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py",
+        "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+        "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py",
+        "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type.html",
+        "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type_add.html"
+      ]
+    },
+    {
+      "key": "pgu_tes_machine_type",
+      "title": "Типы агрегатов ПГУ",
+      "list_url": "/refdata/pgu_tes_machine_type",
+      "add_url": "/refdata/add_pgu_tes_machine_type",
+      "model": "PGUTesMachineType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/machine/pgu_tes_machine_type_model.py",
+        "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+        "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py",
+        "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type.html",
+        "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type_add.html"
+      ]
+    },
+    {
+      "key": "equipment_group",
+      "title": "Типы групп оборудования",
+      "list_url": "/refdata/equipment_group",
+      "add_url": "/refdata/add_equipment_group",
+      "model": "EquipmentGroupType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/technologies/equipment_group_model.py",
+        "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+        "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py",
+        "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group.html",
+        "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group_add.html"
+      ]
+    },
+    {
+      "key": "technology_type",
+      "title": "Типы технологий",
+      "list_url": "/refdata/technology_type",
+      "add_url": "/refdata/add_technology_type",
+      "model": "TechnologyType",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py",
+        "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+        "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py",
+        "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type.html",
+        "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html"
+      ]
+    },
+    {
+      "key": "technology_availability",
+      "title": "Доступность технологии",
+      "list_url": "/refdata/technology_availability",
+      "add_url": "/refdata/add_technology_availability",
+      "model": "TechnologyAvailability",
+      "sources": [
+        "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py",
+        "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+        "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py",
+        "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability.html",
+        "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability_add.html"
+      ]
+    },
+    {
+      "key": "electricity_production_cost_type",
+      "title": "Типы затрат на производство ЭЭ и ТЭ",
+      "list_url": "/refdata/electricity_production_cost_type",
+      "add_url": "/refdata/add_electricity_production_cost_type",
+      "model": "ElectricityProductionCostType",
+      "sources": [
+        "app/refdata/models/electricity_production_cost/electricity_production_cost_type_model.py",
+        "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+        "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py",
+        "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type.html",
+        "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type_add.html"
+      ]
+    },
+    {
+      "key": "economic_activity_type",
+      "title": "Виды экономической деятельности (ВЭД)",
+      "list_url": "/refdata/ved",
+      "add_url": "/refdata/add_ved",
+      "model": "EconomicActivityType",
+      "sources": [
+        "app/refdata/models/economic_activity/economic_activity_type_model.py",
+        "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+        "app/refdata/services/economic_activity/economic_activity_type_services.py",
+        "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type.html",
+        "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type_add.html"
+      ]
+    }
+  ],
+  "excerpts": [
+    {
+      "path": "app/refdata/routes/__init__.py",
+      "first": 1,
+      "last": 18,
+      "label": "Регистрация Blueprint и маршрутов"
+    },
+    {
+      "path": "app/refdata/services/refdata_all_versions_common.py",
+      "first": 43,
+      "last": 64,
+      "label": "Разрешение связей между версиями"
+    },
+    {
+      "path": "app/refdata/routes/refdata_all_versions_guard.py",
+      "first": 11,
+      "last": 23,
+      "label": "Серверная проверка межверсионной операции"
+    },
+    {
+      "path": "app/refdata/models/years/year_service_model.py",
+      "first": 13,
+      "last": 34,
+      "label": "Модель параметров периода"
+    },
+    {
+      "path": "app/refdata/routes/refdata_routes.py",
+      "first": 19,
+      "last": 44,
+      "label": "Маршрут главной страницы"
+    },
+    {
+      "path": "app/refdata/routes/refdata_routes.py",
+      "first": 47,
+      "last": 69,
+      "label": "Проверки маршрута изменения года"
+    },
+    {
+      "path": "app/refdata/services/year_management_services.py",
+      "first": 156,
+      "last": 188,
+      "label": "Изменение признаков годов и периода СиПР"
+    },
+    {
+      "path": "app/refdata/services/year_management_services.py",
+      "first": 19,
+      "last": 24,
+      "label": "Правило горизонта Генеральной схемы"
+    },
+    {
+      "path": "app/templates/refdata/refdata.html",
+      "first": 17,
+      "last": 35,
+      "label": "HTML выбора текущего года"
+    },
+    {
+      "path": "app/templates/refdata/refdata.html",
+      "first": 46,
+      "last": 55,
+      "label": "HTML периода Генеральной схемы"
+    },
+    {
+      "path": "app/refdata/models/years/year_model.py",
+      "first": 12,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/years/year_model.py",
+      "first": 36,
+      "last": 36,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/years/year_routes.py",
+      "first": 38,
+      "last": 53,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/years/year_routes.py",
+      "first": 135,
+      "last": 140,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/years/year_services.py",
+      "first": 64,
+      "last": 72,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/years/year_services.py",
+      "first": 149,
+      "last": 158,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/years/year/year.html",
+      "first": 15,
+      "last": 28,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/years/year_model.py",
+      "first": 27,
+      "last": 27,
+      "label": "Модель добавляемого объекта Year – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/years/year_routes.py",
+      "first": 220,
+      "last": 232,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/years/year_routes.py",
+      "first": 251,
+      "last": 260,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/years/year_services.py",
+      "first": 201,
+      "last": 210,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/years/year/year_add.html",
+      "first": 19,
+      "last": 33,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/territories/federal_district_model.py",
+      "first": 13,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/territories/federal_district_model.py",
+      "first": 44,
+      "last": 44,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/territories/federal_district_routes.py",
+      "first": 36,
+      "last": 51,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/territories/federal_district_routes.py",
+      "first": 146,
+      "last": 151,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/territories/federal_district_services.py",
+      "first": 153,
+      "last": 171,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/territories/federal_district_services.py",
+      "first": 263,
+      "last": 272,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/territories/federal_district/federal_district.html",
+      "first": 236,
+      "last": 249,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/territories/federal_district_model.py",
+      "first": 22,
+      "last": 22,
+      "label": "Модель добавляемого объекта FederalDistrict – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/territories/federal_district_routes.py",
+      "first": 190,
+      "last": 202,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/territories/federal_district_routes.py",
+      "first": 235,
+      "last": 245,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/territories/federal_district_services.py",
+      "first": 329,
+      "last": 350,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/territories/federal_district/federal_district_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/territories/regional_district_model.py",
+      "first": 14,
+      "last": 32,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/territories/regional_district_model.py",
+      "first": 46,
+      "last": 46,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/territories/regional_district_routes.py",
+      "first": 42,
+      "last": 57,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/territories/regional_district_routes.py",
+      "first": 175,
+      "last": 180,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/territories/regional_district_services.py",
+      "first": 193,
+      "last": 214,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/territories/regional_district_services.py",
+      "first": 386,
+      "last": 395,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/territories/regional_district/regional_district.html",
+      "first": 493,
+      "last": 506,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/territories/regional_district_model.py",
+      "first": 28,
+      "last": 28,
+      "label": "Модель добавляемого объекта RegionalDistrict – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/territories/regional_district_routes.py",
+      "first": 245,
+      "last": 257,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/territories/regional_district_routes.py",
+      "first": 302,
+      "last": 315,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/territories/regional_district_services.py",
+      "first": 457,
+      "last": 482,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/territories/regional_district/regional_district_add.html",
+      "first": 23,
+      "last": 37,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/territories/foreign_border_country_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/territories/foreign_border_country_routes.py",
+      "first": 37,
+      "last": 52,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/territories/foreign_border_country_routes.py",
+      "first": 147,
+      "last": 152,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/territories/foreign_border_country_services.py",
+      "first": 71,
+      "last": 86,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/territories/foreign_border_country_services.py",
+      "first": 185,
+      "last": 198,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/territories/foreign_border_country/foreign_border_country.html",
+      "first": 164,
+      "last": 177,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/territories/foreign_border_country_model.py",
+      "first": 30,
+      "last": 30,
+      "label": "Модель добавляемого объекта ForeignBorderCountry – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/territories/foreign_border_country_routes.py",
+      "first": 189,
+      "last": 201,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/territories/foreign_border_country_routes.py",
+      "first": 233,
+      "last": 242,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/territories/foreign_border_country_services.py",
+      "first": 272,
+      "last": 286,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/territories/foreign_border_country/foreign_border_country_add.html",
+      "first": 19,
+      "last": 33,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/union_energy_system_model.py",
+      "first": 15,
+      "last": 33,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/union_energy_system_model.py",
+      "first": 60,
+      "last": 63,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+      "first": 40,
+      "last": 55,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+      "first": 155,
+      "last": 160,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/union_energy_system_services.py",
+      "first": 184,
+      "last": 203,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/union_energy_system_services.py",
+      "first": 318,
+      "last": 329,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/union_energy_system/union_energy_system.html",
+      "first": 9,
+      "last": 22,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/union_energy_system_model.py",
+      "first": 25,
+      "last": 25,
+      "label": "Модель добавляемого объекта UnionEnergySystem – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+      "first": 203,
+      "last": 215,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/union_energy_system_routes.py",
+      "first": 258,
+      "last": 269,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/union_energy_system_services.py",
+      "first": 407,
+      "last": 430,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/union_energy_system/union_energy_system_add.html",
+      "first": 23,
+      "last": 37,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/regional_energy_system_model.py",
+      "first": 16,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/regional_energy_system_model.py",
+      "first": 36,
+      "last": 39,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+      "first": 44,
+      "last": 59,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+      "first": 163,
+      "last": 168,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/regional_energy_system_services.py",
+      "first": 123,
+      "last": 143,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/regional_energy_system_services.py",
+      "first": 303,
+      "last": 314,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system.html",
+      "first": 10,
+      "last": 23,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/regional_energy_system_model.py",
+      "first": 23,
+      "last": 23,
+      "label": "Модель добавляемого объекта RegionalEnergySystem – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+      "first": 216,
+      "last": 228,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/regional_energy_system_routes.py",
+      "first": 265,
+      "last": 276,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/regional_energy_system_services.py",
+      "first": 389,
+      "last": 403,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system_add.html",
+      "first": 93,
+      "last": 107,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_unit_model.py",
+      "first": 13,
+      "last": 33,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_unit_model.py",
+      "first": 34,
+      "last": 37,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_unit_routes.py",
+      "first": 47,
+      "last": 62,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_unit_routes.py",
+      "first": 184,
+      "last": 189,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_unit_services.py",
+      "first": 191,
+      "last": 212,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_unit_services.py",
+      "first": 330,
+      "last": 341,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_unit/energy_unit.html",
+      "first": 10,
+      "last": 23,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_unit_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта EnergyUnit – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_unit_routes.py",
+      "first": 252,
+      "last": 264,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_unit_routes.py",
+      "first": 316,
+      "last": 329,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_unit_services.py",
+      "first": 411,
+      "last": 435,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_unit/energy_unit_add.html",
+      "first": 7,
+      "last": 21,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_area_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_area_routes.py",
+      "first": 45,
+      "last": 60,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_area_routes.py",
+      "first": 164,
+      "last": 169,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_area_services.py",
+      "first": 199,
+      "last": 220,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_area_services.py",
+      "first": 311,
+      "last": 322,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_area/energy_area.html",
+      "first": 10,
+      "last": 23,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_area_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта EnergyArea – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_area_routes.py",
+      "first": 228,
+      "last": 240,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_area_routes.py",
+      "first": 284,
+      "last": 297,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_area_services.py",
+      "first": 382,
+      "last": 401,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_area/energy_area_add.html",
+      "first": 7,
+      "last": 21,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_system_type_model.py",
+      "first": 14,
+      "last": 32,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_system_type_model.py",
+      "first": 33,
+      "last": 37,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+      "first": 135,
+      "last": 140,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_system_type_services.py",
+      "first": 82,
+      "last": 99,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_system_type_services.py",
+      "first": 173,
+      "last": 184,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_system_type/energy_system_type.html",
+      "first": 164,
+      "last": 177,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_system_type_model.py",
+      "first": 19,
+      "last": 19,
+      "label": "Модель добавляемого объекта EnergySystemType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+      "first": 174,
+      "last": 186,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_system_type_routes.py",
+      "first": 219,
+      "last": 229,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_system_type_services.py",
+      "first": 238,
+      "last": 253,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_system_type/energy_system_type_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/synchronous_area_model.py",
+      "first": 13,
+      "last": 33,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/synchronous_area_model.py",
+      "first": 36,
+      "last": 40,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+      "first": 167,
+      "last": 172,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/synchronous_area_services.py",
+      "first": 97,
+      "last": 114,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/synchronous_area_services.py",
+      "first": 236,
+      "last": 247,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/synchronous_area/synchronous_area.html",
+      "first": 202,
+      "last": 215,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/synchronous_area_model.py",
+      "first": 21,
+      "last": 21,
+      "label": "Модель добавляемого объекта SynchronousArea – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+      "first": 206,
+      "last": 218,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/synchronous_area_routes.py",
+      "first": 254,
+      "last": 264,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/synchronous_area_services.py",
+      "first": 334,
+      "last": 356,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/synchronous_area/synchronous_area_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_zone_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_zone_model.py",
+      "first": 38,
+      "last": 42,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_zone_routes.py",
+      "first": 33,
+      "last": 48,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_zone_routes.py",
+      "first": 136,
+      "last": 141,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_zone_services.py",
+      "first": 99,
+      "last": 116,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_zone_services.py",
+      "first": 199,
+      "last": 210,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_zone/energy_zone.html",
+      "first": 169,
+      "last": 182,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/energy_systems/energy_zone_model.py",
+      "first": 19,
+      "last": 19,
+      "label": "Модель добавляемого объекта EnergyZone – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_zone_routes.py",
+      "first": 174,
+      "last": 186,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/energy_systems/energy_zone_routes.py",
+      "first": 219,
+      "last": 229,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/energy_systems/energy_zone_services.py",
+      "first": 272,
+      "last": 291,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/energy_systems/energy_zone/energy_zone_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/gen_companies/gen_company_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/gen_companies/gen_company_model.py",
+      "first": 33,
+      "last": 33,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/gen_companies/gen_company_routes.py",
+      "first": 36,
+      "last": 51,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/gen_companies/gen_company_routes.py",
+      "first": 127,
+      "last": 132,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/gen_companies/gen_company_services.py",
+      "first": 90,
+      "last": 107,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/gen_companies/gen_company_services.py",
+      "first": 176,
+      "last": 187,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/gen_companies/gen_company.html",
+      "first": 159,
+      "last": 172,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/gen_companies/gen_company_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта GenCompany – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/gen_companies/gen_company_routes.py",
+      "first": 166,
+      "last": 178,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/gen_companies/gen_company_routes.py",
+      "first": 212,
+      "last": 222,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/gen_companies/gen_company_services.py",
+      "first": 244,
+      "last": 259,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/gen_companies/gen_company_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_type_model.py",
+      "first": 13,
+      "last": 34,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_type_model.py",
+      "first": 37,
+      "last": 37,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_type_routes.py",
+      "first": 37,
+      "last": 52,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_type_routes.py",
+      "first": 151,
+      "last": 156,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_type_services.py",
+      "first": 110,
+      "last": 129,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_type_services.py",
+      "first": 232,
+      "last": 244,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/fuels/fuel_type/fuel_type.html",
+      "first": 261,
+      "last": 274,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_type_model.py",
+      "first": 20,
+      "last": 20,
+      "label": "Модель добавляемого объекта FuelType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_type_routes.py",
+      "first": 212,
+      "last": 224,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_type_routes.py",
+      "first": 260,
+      "last": 270,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_type_services.py",
+      "first": 307,
+      "last": 320,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/fuels/fuel_type/fuel_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_model.py",
+      "first": 13,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_model.py",
+      "first": 36,
+      "last": 41,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_routes.py",
+      "first": 62,
+      "last": 77,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_routes.py",
+      "first": 196,
+      "last": 201,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_services.py",
+      "first": 145,
+      "last": 167,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_services.py",
+      "first": 374,
+      "last": 385,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/fuels/fuel/fuel.html",
+      "first": 326,
+      "last": 339,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/fuels/fuel_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта Fuel – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_routes.py",
+      "first": 290,
+      "last": 302,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_routes.py",
+      "first": 341,
+      "last": 354,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_services.py",
+      "first": 449,
+      "last": 465,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/fuels/fuel/fuel_add.html",
+      "first": 21,
+      "last": 35,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/routes/fuels/fuel_routes.py",
+      "first": 43,
+      "last": 59,
+      "label": "Маршрут JSON-дерева топлива"
+    },
+    {
+      "path": "app/refdata/services/fuels/fuel_services.py",
+      "first": 121,
+      "last": 142,
+      "label": "Проверка допустимости родительского вида топлива"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/station/station_type_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/station/station_type_model.py",
+      "first": 33,
+      "last": 33,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+      "first": 42,
+      "last": 57,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+      "first": 145,
+      "last": 150,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/stations/station_type_services.py",
+      "first": 81,
+      "last": 98,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/stations/station_type_services.py",
+      "first": 187,
+      "last": 199,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/stations/station_type/station_type.html",
+      "first": 192,
+      "last": 205,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/station/station_type_model.py",
+      "first": 20,
+      "last": 20,
+      "label": "Модель добавляемого объекта StationType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+      "first": 185,
+      "last": 197,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py",
+      "first": 231,
+      "last": 241,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/stations/station_type_services.py",
+      "first": 260,
+      "last": 273,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/stations/station_type/station_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/condition_type_model.py",
+      "first": 13,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+      "first": 124,
+      "last": 129,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/condition_type_services.py",
+      "first": 65,
+      "last": 81,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/condition_type_services.py",
+      "first": 149,
+      "last": 161,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/condition_type/condition_type.html",
+      "first": 158,
+      "last": 171,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/condition_type_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта ConditionType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+      "first": 165,
+      "last": 177,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/condition_type_routes.py",
+      "first": 212,
+      "last": 222,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/condition_type_services.py",
+      "first": 215,
+      "last": 230,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/condition_type/condition_type_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/machine_type_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/machine_type_model.py",
+      "first": 32,
+      "last": 32,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+      "first": 124,
+      "last": 129,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/machine_type_services.py",
+      "first": 69,
+      "last": 86,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/machine_type_services.py",
+      "first": 154,
+      "last": 166,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type.html",
+      "first": 160,
+      "last": 173,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/machine_type_model.py",
+      "first": 19,
+      "last": 19,
+      "label": "Модель добавляемого объекта MachineType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+      "first": 164,
+      "last": 176,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py",
+      "first": 210,
+      "last": 220,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/machine_type_services.py",
+      "first": 213,
+      "last": 226,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_type_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_type_model.py",
+      "first": 33,
+      "last": 37,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+      "first": 42,
+      "last": 57,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+      "first": 145,
+      "last": 150,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_type_services.py",
+      "first": 82,
+      "last": 99,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_type_services.py",
+      "first": 188,
+      "last": 200,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type.html",
+      "first": 192,
+      "last": 205,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_type_model.py",
+      "first": 20,
+      "last": 20,
+      "label": "Модель добавляемого объекта TesType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+      "first": 185,
+      "last": 197,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py",
+      "first": 231,
+      "last": 241,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_type_services.py",
+      "first": 261,
+      "last": 274,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py",
+      "first": 33,
+      "last": 37,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+      "first": 42,
+      "last": 57,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+      "first": 145,
+      "last": 150,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py",
+      "first": 81,
+      "last": 98,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py",
+      "first": 187,
+      "last": 199,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type.html",
+      "first": 192,
+      "last": 205,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py",
+      "first": 20,
+      "last": 20,
+      "label": "Модель добавляемого объекта TesMachineType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+      "first": 185,
+      "last": 197,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py",
+      "first": 231,
+      "last": 241,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py",
+      "first": 263,
+      "last": 276,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/pgu_tes_machine_type_model.py",
+      "first": 13,
+      "last": 35,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+      "first": 124,
+      "last": 129,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py",
+      "first": 69,
+      "last": 86,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py",
+      "first": 154,
+      "last": 166,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type.html",
+      "first": 160,
+      "last": 173,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/machine/pgu_tes_machine_type_model.py",
+      "first": 18,
+      "last": 18,
+      "label": "Модель добавляемого объекта PGUTesMachineType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+      "first": 164,
+      "last": 176,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py",
+      "first": 210,
+      "last": 220,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py",
+      "first": 218,
+      "last": 231,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/equipment_group_model.py",
+      "first": 14,
+      "last": 32,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+      "first": 58,
+      "last": 73,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+      "first": 186,
+      "last": 193,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py",
+      "first": 345,
+      "last": 366,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py",
+      "first": 496,
+      "last": 508,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group.html",
+      "first": 333,
+      "last": 346,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/equipment_group_model.py",
+      "first": 21,
+      "last": 21,
+      "label": "Модель добавляемого объекта EquipmentGroupType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+      "first": 244,
+      "last": 256,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py",
+      "first": 290,
+      "last": 302,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py",
+      "first": 590,
+      "last": 610,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group_add.html",
+      "first": 22,
+      "last": 36,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py",
+      "first": 13,
+      "last": 32,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py",
+      "first": 34,
+      "last": 34,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+      "first": 137,
+      "last": 142,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py",
+      "first": 80,
+      "last": 97,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py",
+      "first": 223,
+      "last": 235,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type.html",
+      "first": 193,
+      "last": 206,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py",
+      "first": 21,
+      "last": 21,
+      "label": "Модель добавляемого объекта TechnologyType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+      "first": 177,
+      "last": 189,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py",
+      "first": 230,
+      "last": 240,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py",
+      "first": 312,
+      "last": 325,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py",
+      "first": 32,
+      "last": 32,
+      "label": "Связь модели с другой сущностью"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+      "first": 124,
+      "last": 129,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py",
+      "first": 69,
+      "last": 86,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py",
+      "first": 154,
+      "last": 166,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability.html",
+      "first": 160,
+      "last": 173,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py",
+      "first": 19,
+      "last": 19,
+      "label": "Модель добавляемого объекта TechnologyAvailability – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+      "first": 164,
+      "last": 176,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py",
+      "first": 210,
+      "last": 220,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py",
+      "first": 213,
+      "last": 226,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/electricity_production_cost/electricity_production_cost_type_model.py",
+      "first": 14,
+      "last": 37,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+      "first": 31,
+      "last": 46,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+      "first": 132,
+      "last": 137,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py",
+      "first": 78,
+      "last": 91,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py",
+      "first": 221,
+      "last": 234,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type.html",
+      "first": 165,
+      "last": 178,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/electricity_production_cost/electricity_production_cost_type_model.py",
+      "first": 27,
+      "last": 27,
+      "label": "Модель добавляемого объекта ElectricityProductionCostType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+      "first": 174,
+      "last": 186,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py",
+      "first": 227,
+      "last": 237,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py",
+      "first": 331,
+      "last": 345,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type_add.html",
+      "first": 19,
+      "last": 33,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/models/economic_activity/economic_activity_type_model.py",
+      "first": 13,
+      "last": 31,
+      "label": "Модель данных – фрагмент объявления"
+    },
+    {
+      "path": "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+      "first": 35,
+      "last": 50,
+      "label": "Маршрут списка – вход и параметры"
+    },
+    {
+      "path": "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+      "first": 166,
+      "last": 171,
+      "label": "Маршрут списка – передача изменений сервису"
+    },
+    {
+      "path": "app/refdata/services/economic_activity/economic_activity_type_services.py",
+      "first": 111,
+      "last": 128,
+      "label": "Сервис списка – выборка и пагинация"
+    },
+    {
+      "path": "app/refdata/services/economic_activity/economic_activity_type_services.py",
+      "first": 273,
+      "last": 285,
+      "label": "Сервис изменения – сохранение и журналирование"
+    },
+    {
+      "path": "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type.html",
+      "first": 214,
+      "last": 227,
+      "label": "HTML/Jinja2 списка – элементы формы"
+    },
+    {
+      "path": "app/refdata/models/economic_activity/economic_activity_type_model.py",
+      "first": 30,
+      "last": 30,
+      "label": "Модель добавляемого объекта EconomicActivityType – основной реквизит"
+    },
+    {
+      "path": "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+      "first": 206,
+      "last": 218,
+      "label": "Маршрут добавления – вход в форму"
+    },
+    {
+      "path": "app/refdata/routes/economic_activity/economic_activity_type_routes.py",
+      "first": 260,
+      "last": 270,
+      "label": "Маршрут добавления – вызов сервиса"
+    },
+    {
+      "path": "app/refdata/services/economic_activity/economic_activity_type_services.py",
+      "first": 368,
+      "last": 381,
+      "label": "Сервис добавления – создание сущности"
+    },
+    {
+      "path": "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type_add.html",
+      "first": 20,
+      "last": 34,
+      "label": "HTML/Jinja2 формы добавления"
+    },
+    {
+      "path": "app/refdata/services/territories/regional_district_services.py",
+      "first": 48,
+      "last": 69,
+      "label": "Вызов синхронизации модуля электропотребления"
+    },
+    {
+      "path": "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py",
+      "first": 84,
+      "last": 109,
+      "label": "Объединение дублирующихся типов групп – фрагмент"
+    }
+  ],
+  "source_sha256": {
+    "app/refdata/routes/__init__.py": "e4e62ceb63b9d0b9da4cf31e34f75708c9459c81be020a82b03b1d07a91e6f46",
+    "app/refdata/services/refdata_all_versions_common.py": "2c1f18d9cb3cf56ec61514153e7d83115ea1a2d44918824d89ee930910888941",
+    "app/refdata/routes/refdata_all_versions_guard.py": "14c9fded265abc8ddbe76185a165b2b44fccbec823466197317b8f9f291bbf54",
+    "app/refdata/models/years/year_service_model.py": "167ff9ff8ded4618a00e1d4463ea149660264aed0a5a05213746ff308e46e174",
+    "app/refdata/routes/refdata_routes.py": "8826bcb9e9ec354a78b3e1c7309ed9a4497a70323b1a40ad2bf594352b2cc6d0",
+    "app/refdata/services/year_management_services.py": "36cac6d0dfda852022f6be547ebc0ce6c2d684bafa8b2217ee40845e07a0089f",
+    "app/templates/refdata/refdata.html": "c9df4227a5701cd48c2e41a1cefdeae5917ec978fdd470663be57599fcbadced",
+    "app/refdata/routes/years/year_routes.py": "e8a79d7b1bcb97f9ac1a978573cb18a13a720e33dd0db73687b4600658e426d6",
+    "app/refdata/models/years/year_model.py": "a7c54b3f7e94c76a072d51db7320b094e0012a2d0aebbc432a319b44a35e2b9c",
+    "app/templates/refdata/years/year/year.html": "f487b8fea44bb351f24031f483ea63e82266bdcd7ed8f0153ac15bd788b755de",
+    "app/refdata/services/years/year_services.py": "08516ce543b5c9d642b3b0494d328b3159c27db4560089a712d410dc04e28449",
+    "app/templates/refdata/years/year/year_add.html": "16184aa97e41aa91303d942232fc62a211a7ce85ebae69b7660c7556b108ba3f",
+    "app/refdata/forms/years/year_forms.py": "8fe9484c58659c86aefca733057cdc8d455b441e17e8b271f9051b493f3faa5b",
+    "app/refdata/routes/territories/federal_district_routes.py": "f9319488509230d509cb90ff6447ad4effe853ae70ebbf6cc5837d8a90be4cb0",
+    "app/refdata/models/territories/federal_district_model.py": "102ec9b94b55631b6495c9634ce9b727f5ae369a933e4b08bffd7751eb2bcbdc",
+    "app/templates/refdata/territories/federal_district/federal_district.html": "601b34a394ad54403da793a31cbbdcd92b46f99d768d3091de03dc6b75d74ba8",
+    "app/refdata/services/territories/federal_district_services.py": "36ed806941ec2d0fc25aedd14b1389e604c3acd2fd0d6a326fc79fd396439da8",
+    "app/templates/refdata/territories/federal_district/federal_district_add.html": "53a8ea8e9fd5630941b015f64380eca2c671636df1feb6d4ce1b5064d9b1fc51",
+    "app/refdata/forms/territories/federal_district_forms.py": "9fc56cd441fec40b63fa998277a2fe5345e13f0d3985fa37ed8ac5f01c6375a9",
+    "app/refdata/routes/territories/regional_district_routes.py": "6da353869cdd14d321d234f8a63e1181eed7aa73b231a19197480cfb37fd5f49",
+    "app/refdata/models/territories/regional_district_model.py": "22053945b5fea15551654808e1931655c3aa358c99bd0cfe6a00b0ccf0e0610b",
+    "app/templates/refdata/territories/regional_district/regional_district.html": "c9447fe8aae6b6f3d16caec4d9fb23875ec55cf6a79826f8be4fc8af7ab829c9",
+    "app/refdata/services/territories/regional_district_services.py": "af1cb476b6a3ba45644c1ed63a16475124095bb49d9bbacc53e03824fff90b46",
+    "app/templates/refdata/territories/regional_district/regional_district_add.html": "7f4f0070a2aecc9adb65e891c855e6d03b78e8d93573b3869450f22961f439e3",
+    "app/refdata/forms/territories/regional_district_forms.py": "9aa89f4b2166bf094b2db531d2f8e086df4a8d1342a6b35f72da6d7e63a5e9f0",
+    "app/refdata/routes/territories/foreign_border_country_routes.py": "2910db5af0b9c5861eefad5c465a91b28a101b08767a95592fa80589435c42ee",
+    "app/refdata/models/territories/foreign_border_country_model.py": "c12f7c51f540d1ca48148d3948b5fe851d1490f5ecaa2e284e05cd591fb1b87e",
+    "app/templates/refdata/territories/foreign_border_country/foreign_border_country.html": "9f47114c9b7c70580d5a8f7a6a3b80173826624b061b3a1aaca5698430e5a567",
+    "app/refdata/services/territories/foreign_border_country_services.py": "5e538fecf04f5edb16312563f5b4b39d710485e7d1d92d6de5ea0666a5fa5ef4",
+    "app/templates/refdata/territories/foreign_border_country/foreign_border_country_add.html": "e5677629c2e6617d32e06cbb40a13c4a96bb40bbdd5edcfdb6c375e1e7791a93",
+    "app/refdata/forms/territories/foreign_border_country_forms.py": "5796a2654fe3ae86811832adefdcc6b384a461a572cd87a109d85eb853b4cc2c",
+    "app/refdata/routes/energy_systems/union_energy_system_routes.py": "d3307c3d17e55ae56e3892fb2144a45abb07b04187b5bc9ed697e27e70973040",
+    "app/refdata/models/energy_systems/union_energy_system_model.py": "d72bf7f7cf9a0dd9e7f3b0ba5384a6ca47f5703302e12db12982499a57a5c03a",
+    "app/templates/refdata/energy_systems/union_energy_system/union_energy_system.html": "0d9c3fc20751d667b6571e635e2562847e063dd7ad49fc26301e4da8d4ee5481",
+    "app/refdata/services/energy_systems/union_energy_system_services.py": "9b97f03ba7ddc09650641c1408432cbd7c85183d2211968c20d30e37859fcc27",
+    "app/templates/refdata/energy_systems/union_energy_system/union_energy_system_add.html": "c8403d82dbaefcce15f26d67e93452c5e2efb0b636f55ce02f81877ea4c1f071",
+    "app/refdata/forms/energy_systems/union_energy_system_forms.py": "9678ebf81f10ffcac26a31b14d53d5917b167504be6ab8f3172f36415679a634",
+    "app/refdata/routes/energy_systems/regional_energy_system_routes.py": "6c789c5c197cbdd39bec48e5c2252fda59ceeeee55a9f4bef81e0d09f6782525",
+    "app/refdata/models/energy_systems/regional_energy_system_model.py": "b1f424744312e575772cbd98597f19f9807d5d67874871f7f20fefd2a3100479",
+    "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system.html": "5b40f0daedf990a565157ef81061a0ee930c84290e604b1cd9dea4abc2ac43b4",
+    "app/refdata/services/energy_systems/regional_energy_system_services.py": "ed7783390fde12da7551f6d95fb2e696ef6c8d40dce6151d324936f688dca50a",
+    "app/templates/refdata/energy_systems/regional_energy_system/regional_energy_system_add.html": "645be64eba5bb0feb7f96161f9c04517c7eeb85c979ceb16c9f00fb6047b71fd",
+    "app/refdata/forms/energy_systems/regional_energy_system_forms.py": "6441cfc652b3ff15a465a103fa7f5fef318d1bfa91dea585f1fceb9e5721f96a",
+    "app/refdata/routes/energy_systems/energy_unit_routes.py": "4d9dbdb02a41b07e4b98307e807e7914689e75d1faebe2f957164fe4360b0e18",
+    "app/refdata/models/energy_systems/energy_unit_model.py": "ada52d742cb7d4aef9881ef052e8907d078e006b6964cfc1971a2c7d1be0dc21",
+    "app/templates/refdata/energy_systems/energy_unit/energy_unit.html": "b11164bab81c9d8be199fbbcc0e6f443feccd907d405dfed01bc68f18df366ca",
+    "app/refdata/services/energy_systems/energy_unit_services.py": "f48e9b93062b54e1670f04d96373f097d7e1d9285d24664d7df3aeb040c0e2d2",
+    "app/templates/refdata/energy_systems/energy_unit/energy_unit_add.html": "85f3f4114c446cf8b34cccda3b8b12515bf615635dd5f6ed90723014fc781e76",
+    "app/refdata/forms/energy_systems/energy_unit_forms.py": "15e7efa99390c4dc2a1ba50dfaf03f687f961af8bd3b187008522a5f10926865",
+    "app/refdata/routes/energy_systems/energy_area_routes.py": "238598b55c3371ce2053e98d4f8ff331bc96c3a34d577e11c57963907eec9c5b",
+    "app/refdata/models/energy_systems/energy_area_model.py": "77b3a879224fde7b6e3c896cf2ae07124f24ece20fff40ed1325ba0013e9c055",
+    "app/templates/refdata/energy_systems/energy_area/energy_area.html": "59923ba2aa5f9153089681a4258099e044045c0511350b3d36feaabd9a5a1f9d",
+    "app/refdata/services/energy_systems/energy_area_services.py": "cde8d8e0308ec57ae7329f887faebf90c9074dd73cdf423013824f43249bb966",
+    "app/templates/refdata/energy_systems/energy_area/energy_area_add.html": "6ea6718208ba670aa4ec16d9ea9d06c9c439365b5b8c8b5231547c9263bfe642",
+    "app/refdata/forms/energy_systems/energy_area_forms.py": "b79b0b88ab9c2dbd97a47813d61e705db376eb80107c9ab70ab92a47b8b1c077",
+    "app/refdata/routes/energy_systems/energy_system_type_routes.py": "0eec4f33e8730935f473a4f6c95d18b315822eb6923fa5bf4f39cbce171242d7",
+    "app/refdata/models/energy_systems/energy_system_type_model.py": "a855fee9d717d323ebe795225e33e16ece1ba095b14423dd0f7b5c9574b8e800",
+    "app/templates/refdata/energy_systems/energy_system_type/energy_system_type.html": "97814a457335556d636a39b9c7260dde0ceb4031153265ecea28441c997ee9c3",
+    "app/refdata/services/energy_systems/energy_system_type_services.py": "c36def13af38b8e68055b319e13ba4796e9c791912a892c04d9f050b977184ad",
+    "app/templates/refdata/energy_systems/energy_system_type/energy_system_type_add.html": "6c2a97cd2dcb0445dc78d9f658831aa08584a12430c85c8d75ce6f224ed3517d",
+    "app/refdata/forms/energy_systems/energy_system_type_forms.py": "f4df5872374be7ef9bfb84d0f603b1fdb95215a125632546fac178d36aab6e57",
+    "app/refdata/routes/energy_systems/synchronous_area_routes.py": "906a5b5ea474cb31f695852a3e172e9101cdbfc856f6b345ad45d3ddbdc50580",
+    "app/refdata/models/energy_systems/synchronous_area_model.py": "05ed8acf0715bd9ba80e5e550f87fcc0eb51d7bf21f62729681a9f96bd229222",
+    "app/templates/refdata/energy_systems/synchronous_area/synchronous_area.html": "a32d3b8cd59c15572037abdbddabc2f2a14f0e06bfa6966540028f290bdd94f8",
+    "app/refdata/services/energy_systems/synchronous_area_services.py": "e2d67a6cc4852dd96a6d13ead6cd9e1a4cc0e32df51240f1158ca1c1c2e94bf3",
+    "app/templates/refdata/energy_systems/synchronous_area/synchronous_area_add.html": "100ec4db26ea3ea5e84798af2fda96f37acb7414b5381cecfc4238f2384abd76",
+    "app/refdata/forms/energy_systems/synchronous_area_forms.py": "bf0a12413be8fa00e7bdf7651cda1247e277c20454e98e8e1f10cc93819544c2",
+    "app/refdata/routes/energy_systems/energy_zone_routes.py": "f66b57034dec4487f15a514e992e8ba881f1df9773a0da040ea044ef83ce9a40",
+    "app/refdata/models/energy_systems/energy_zone_model.py": "0fbad438f7a97cfa5703c951e25509b7ba4a611487879221ce8763df2ff4c8de",
+    "app/templates/refdata/energy_systems/energy_zone/energy_zone.html": "5120f87a26c8be2db8828ed6f62b79bac48fd764a228d2da8b44750e91190720",
+    "app/refdata/services/energy_systems/energy_zone_services.py": "a0ed1cda9fd320b1a918fbf6edb1ecec87c9bc8332b5748dabff76495964e4e9",
+    "app/templates/refdata/energy_systems/energy_zone/energy_zone_add.html": "4125c483cd76c86095263e2bb14e2999fc5c8ac10c25d684343f00acbbab9256",
+    "app/refdata/forms/energy_systems/energy_zone_forms.py": "602f94cf5aa76a631620755441db1f34b1b54c50ccb21176baf6647516539204",
+    "app/refdata/routes/gen_companies/gen_company_routes.py": "54986583f792e931067cbca4fcdbcd7aa73835b0d056df803ae7f95d1b50e9d3",
+    "app/refdata/models/gen_companies/gen_company_model.py": "60214c87c2b8e733143c88eab0f89f18ac51f747a1a15e19ff67564b6b0253ea",
+    "app/templates/refdata/gen_companies/gen_company.html": "922aa70b03ad1aa9a76454f6aa78b2ba7506afd1a83e6791f58195c0ed9d9661",
+    "app/refdata/services/gen_companies/gen_company_services.py": "b052b23dab09bdf159178ed47ce6376875b607fa61db451a38af7ce536f71976",
+    "app/templates/refdata/gen_companies/gen_company_add.html": "9a0008c5f484115cb46ecd4541a9bf725bc226831bba37082c33093759089dc9",
+    "app/refdata/forms/gen_companies/gen_company_forms.py": "19380eec6193854fe8ec11ce75e6b092650d034462f6c803b0c29c2ec3e5beb4",
+    "app/refdata/routes/fuels/fuel_type_routes.py": "2767ee4885b7c793f044ebcfee70e366a67d1433eaaa0c9897135c4e9b2da10a",
+    "app/refdata/models/fuels/fuel_type_model.py": "072423a0a1ef23e6b746b5f8d341dde6ea72714fca538cc1197931fbf68b6749",
+    "app/templates/refdata/fuels/fuel_type/fuel_type.html": "eb45cab02f98fd6d0690ad271bf2488a8cc5630bd103f46e9ae3c923719f4bd5",
+    "app/refdata/services/fuels/fuel_type_services.py": "ea5ac6f31fee92801b3629b903e74ea9ff37f6fa17d35519a5496700add1fc34",
+    "app/templates/refdata/fuels/fuel_type/fuel_type_add.html": "94283a1d884fcbb8e8222292eb41c2bf6669d795f49d2c53caaba94a2b32e5ca",
+    "app/refdata/forms/fuels/fuel_type_forms.py": "6956bb8db9f4db0faee5b807b67dab9ef188c2577f5b0df096236d959002a931",
+    "app/refdata/routes/fuels/fuel_routes.py": "db8b1df4eec9b11f28fc809ff244d83d849a345f8735f603cc35abdb93fb8b21",
+    "app/refdata/models/fuels/fuel_model.py": "d386805108e7342434003967a451465a0c2778c9a147780a36c16b1c93566380",
+    "app/templates/refdata/fuels/fuel/fuel.html": "bd5042811fc964b48fe831e14954c066ebebd1fc352b2787fa3f7d25ece081c8",
+    "app/refdata/services/fuels/fuel_services.py": "2031be48e2f7c78eab4cb6853d10e558027e7ae26dcab600eaed61d3d71abd72",
+    "app/templates/refdata/fuels/fuel/fuel_add.html": "3ec5e504e6888f5c05207e20bfc3c277ce47d76b1ecf8442d8fec7dc93e43e3a",
+    "app/refdata/forms/fuels/fuel_forms.py": "feaf603792923126a3f8d3b697810ed10408b06f8f4b91543ba8de2200ec7e8c",
+    "app/refdata/routes/refdata_for_stations/stations/station_type_routes.py": "ffcc7342eb02982709f848be32216e424facec0c6ba717d914cef75f0390dcf4",
+    "app/refdata/models/refdata_for_stations/station/station_type_model.py": "c6a2361e0bf25187c663b210edbf89dd85693ffa31d55439c4511814803d25af",
+    "app/templates/refdata/refdata_for_stations/stations/station_type/station_type.html": "4d6fc7d4beda67b3b08633449fc0ca1ac9df7d613385b696fe60292c1ce9cc8e",
+    "app/refdata/services/refdata_for_stations/stations/station_type_services.py": "dd42fd599568cff042a76d4c8496df84e07ab5a0e1285a456a40eb52b1d2e270",
+    "app/templates/refdata/refdata_for_stations/stations/station_type/station_type_add.html": "88c5b62adb95ba2ad81f2f99bc76ae03cd66b3d1fe0055fb0f5d30b672f36d6e",
+    "app/refdata/forms/refdata_for_stations/stations/station_type_forms.py": "4af141a12474d74909d6d3156585ce01b5b6dfbb426061c6bdaba8d03f9922d2",
+    "app/refdata/routes/refdata_for_stations/condition_type_routes.py": "f2db49a0bd3eacc67e85d4da43acfe6e4b9add3febba134ade2534390cee23a7",
+    "app/refdata/models/refdata_for_stations/condition_type_model.py": "f28c559365afb858c3d43651e4a06d30bb29b0a92ccb972550b57ddb9562bb74",
+    "app/templates/refdata/refdata_for_stations/condition_type/condition_type.html": "ff20c373f8078c38f05332bd1523d8398cc8b2cc75f34e4107316dacf5681e94",
+    "app/refdata/services/refdata_for_stations/condition_type_services.py": "fba280e815ab2dfc0976bbe5b114a2155e2f9d34b8ffb4d9cca66fcb578d1f33",
+    "app/templates/refdata/refdata_for_stations/condition_type/condition_type_add.html": "39db1adff2e267ee3db5fdeba282bc04432ac10e9efc22d2c1fb6ed51d1f692a",
+    "app/refdata/forms/refdata_for_stations/condition_type_forms.py": "766603b348de45f57be97664098f6bc19ac1883d72b4fc3a938968f4bd84c4f8",
+    "app/refdata/routes/refdata_for_stations/machines/machine_type_routes.py": "2dd608fdff52f211eeea6e36e32bb215755d6a408789e60e3610bec544e336b5",
+    "app/refdata/models/refdata_for_stations/machine/machine_type_model.py": "7ff449e97904c3539cc9a4315cddd61eb524cc712ab7ee8c250b42e4985dfc95",
+    "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type.html": "329779f0e04164fe67baa359bf98d0ffa7f0ae1e3b1bcbba2c0deeac4d43b6ae",
+    "app/refdata/services/refdata_for_stations/machines/machine_type_services.py": "77c4ab10259d46c52a6c6c9d31d033a18a410df18c8272cefbd95a24e2dfd45c",
+    "app/templates/refdata/refdata_for_stations/machines/machine_type/machine_type_add.html": "f3eaeeb5fc629b6a2c4e1893b4e036fe0abc26f36e3dae5b2f540327bd37e046",
+    "app/refdata/forms/refdata_for_stations/machines/machine_type_forms.py": "5000400374cd008834af2559c81a24281954e87246f59a4136d1eb09e7c8c0e6",
+    "app/refdata/routes/refdata_for_stations/machines/tes_type_routes.py": "494f5a8278e812fd47a3e05e27beb1930d93386fdbd6d578108c41147f888e65",
+    "app/refdata/models/refdata_for_stations/machine/tes_type_model.py": "8e532eb5c121ee2bee62e06601e00d7fc334c45e993d06338b239251beb604d7",
+    "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type.html": "b9dab0785c7ba160e3c40bf397c18a8f98a2716ed2edecf99d94a756480cc748",
+    "app/refdata/services/refdata_for_stations/machines/tes_type_services.py": "5546bbd55231242b9380fc191e4086766759ec5857826c306b12ad28fcfc090d",
+    "app/templates/refdata/refdata_for_stations/machines/tes_type/tes_type_add.html": "d79b4d52cf8ebb070120eadfc86b204af609978b9a1998843ee411781bddca76",
+    "app/refdata/forms/refdata_for_stations/machines/tes_type_forms.py": "337726d3ebda0fe15c6c9016c045e99a44a47fd7ab1a7a4858fc137e8776479a",
+    "app/refdata/routes/refdata_for_stations/machines/tes_machine_type_routes.py": "56ea4f7b4c9c8482fd34c4a15b5a1decea688aa84bcb4651a06d3b0b63010267",
+    "app/refdata/models/refdata_for_stations/machine/tes_machine_type_model.py": "f65f2cbdff1db65db118f3c4b42c320ef3132a4eae7af3c1117056330ae4197b",
+    "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type.html": "282761fcba31ae74a198351633554f3d41a56187c23e9006ade8d81ef6645fe8",
+    "app/refdata/services/refdata_for_stations/machines/tes_machine_type_services.py": "31ecff25f4622dd0e4d098b4ecf5f3a033cb85f412733b8d3f5978e2c0972cb3",
+    "app/templates/refdata/refdata_for_stations/machines/tes_machine_type/tes_machine_type_add.html": "6e40187c8e4065a32443997a1b62ae4707056693ad904574e4517684a48115b2",
+    "app/refdata/forms/refdata_for_stations/machines/tes_machine_type_forms.py": "0515c840586d616252daf0d5567e81de009a6b555e5e66ca48ac3f4062084055",
+    "app/refdata/routes/refdata_for_stations/machines/pgu_tes_machine_type_routes.py": "bc1253fd04ebdfa677f44d1fc31b0ce151697af921f4c85da997f8083d3e0d79",
+    "app/refdata/models/refdata_for_stations/machine/pgu_tes_machine_type_model.py": "0a12116fb6f61afa189ac6acaaa2942cec04cecf8300fc274c8fea1abdfc84cf",
+    "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type.html": "a8c7295ba2a4c87ed9714aa569cc8ae1efbdc3ce681581069087c6f51a2060ea",
+    "app/refdata/services/refdata_for_stations/machines/pgu_tes_machine_type_services.py": "f5d67a264626c1e01b51f41761ee239e4c21d0651e6131c19473917e0ca36b6a",
+    "app/templates/refdata/refdata_for_stations/machines/pgu_tes_machine_type/pgu_tes_machine_type_add.html": "d1992c5c5585c72456a054a5d0e8ed4f6a53e99d2e9286e5e12c7797daf42d59",
+    "app/refdata/forms/refdata_for_stations/machines/pgu_machine_type_forms.py": "97336749a1a18fa7b1ef22ec57ad527a1a4da58b56e2be8b869589f60f2b1fa2",
+    "app/refdata/routes/refdata_for_stations/technologies/equipment_group_routes.py": "e3b937fa6350b1c70f98b412acab521d13eb05cff2306e84265819dfccb3e9d7",
+    "app/refdata/models/refdata_for_stations/technologies/equipment_group_model.py": "5bdc87e722f1587feeb52c9a9568490470ced8d4c188e0457de521a87345a516",
+    "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group.html": "f99d0a9ff311e13368ec4d070754b69b1cf9d7fe8aa5b244b560397a5f23c630",
+    "app/refdata/services/refdata_for_stations/technologies/equipment_group_services.py": "bcd00f339272f1094b6c057778b57556358259eaef9abecfe8e3d6b0adcdbe18",
+    "app/templates/refdata/refdata_for_stations/technologies/equipment_group/equipment_group_add.html": "c53fce509a1dc9b7a08fa17219703f1716fe20cce7381cb698aaad71ff934c41",
+    "app/refdata/forms/refdata_for_stations/technologies/equipment_group_forms.py": "7e3c7b9c2f5c18cae625aca3ea89fb266c6de23bc3c201f017ddd6957876020d",
+    "app/refdata/routes/refdata_for_stations/technologies/technology_type_routes.py": "67c1108869a5d6d967705c73786f90b2bf43cd5fec9d190baa8a836ea8be47b3",
+    "app/refdata/models/refdata_for_stations/technologies/technology_type_model.py": "14af6b5a2e6da3b5c8204c3e0f75ffa87fb80ad5cc2dc398b7cbe3dc09b526b8",
+    "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type.html": "e1eb938ca992332a8770444dd9dd20d6a72b91457d5f088ce7ab497dc033d4fa",
+    "app/refdata/services/refdata_for_stations/technologies/technology_type_services.py": "2388e63350ff239360d048d6475d4b58c6f3eaee4635d7dfdc0f9b09b25e8c55",
+    "app/templates/refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html": "82e1f40f4b250f69dc52b1c4fd73dd9fc536a66dcc459e4e7461a482fdf8559c",
+    "app/refdata/forms/refdata_for_stations/technologies/technology_type_forms.py": "3fc563443c122998cc4dedab1e93b5c7f734de89065c1a24a5a2bc842d668268",
+    "app/refdata/routes/refdata_for_stations/technologies/technology_availability_routes.py": "8e11a0dfcbf189123d3c1eabd68917f6753eb55d43624b01964e6f504c58683d",
+    "app/refdata/models/refdata_for_stations/technologies/technology_availability_model.py": "85c1c21f4911b6173a748047948bbc6bb848ad1695c6f34729bf90214d95cb4e",
+    "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability.html": "64f153903ea8fda841d6ec94c356fc1731d8832a1a77bc1f813b2a6c119ab13b",
+    "app/refdata/services/refdata_for_stations/technologies/technology_availability_services.py": "23a95b75a5591951e44dbf110e96db212d41f63e6c2dcf4c2e275d3c144cf1ef",
+    "app/templates/refdata/refdata_for_stations/technologies/technology_availability/technology_availability_add.html": "2d88c60e3c4453914df4da93d23689b7cce80c400e719c67b9e2f233951812a8",
+    "app/refdata/forms/refdata_for_stations/technologies/technology_availability_forms.py": "5d02372509d989e418632c08cda8ce776aa18c16375ecefea0a7bcb704dcefa8",
+    "app/refdata/routes/electricity_production_cost/electricity_production_cost_type_routes.py": "89f894ec29972d0c41333fe682af7a6e924a106424456a21159f9908aeb18f39",
+    "app/refdata/models/electricity_production_cost/electricity_production_cost_type_model.py": "eab0e75899e01a6b64190b286cfdd80ff755a8362136cf732938db9131074e66",
+    "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type.html": "2db2fbc3e6d3e22a266a4d59d6146895225d9c15e5752ea6e1839e59a5ae699e",
+    "app/refdata/services/electricity_production_cost/electricity_production_cost_type_services.py": "b41da5ae56520a4d4455b021cc2ed1a122eb728aa0e62025597662beb5eb15c2",
+    "app/templates/refdata/electricity_production_cost/electricity_production_cost_type/electricity_production_cost_type_add.html": "1e5699857370c4f60797f25188d8257ede4997797a41785dc177cacf2835e911",
+    "app/refdata/forms/electricity_production_cost/electricity_production_cost_type_forms.py": "23875fa9f79101ab2cc869df76dc3cc78f0f6b683d1926e71307075d14d64a51",
+    "app/refdata/routes/economic_activity/economic_activity_type_routes.py": "0a759838380e632d8343099177d47d1705670db7af0cf6a1eb32ebd94dfe8b35",
+    "app/refdata/models/economic_activity/economic_activity_type_model.py": "0dadf51986ccea25fafd0ab0f9f2913f8bdfc0c493ee65262bcadd09f747711c",
+    "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type.html": "dfa43cf0a39bf41409921ba07146f3c777f558f477c5a5c88c1d38c1a491f526",
+    "app/refdata/services/economic_activity/economic_activity_type_services.py": "24397c484ea2901795c77282f2ec0e81a52aecd121c8b3dd307642a954bb5a5a",
+    "app/templates/refdata/economic_activity/economic_activity_type/economic_activity_type_add.html": "e011e3472ed71f207187aa3edbc8cd8ad3a29afdb91fccf80bb88b1919c4874e",
+    "app/refdata/forms/economic_activity/economic_activity_type_forms.py": "1d80f3aa62616ea998c0bfbf7d278d02d39e7085411aa56db5de057fc1083e7b"
+  }
+}

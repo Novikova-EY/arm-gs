@@ -1,0 +1,115 @@
+[2026-11-02 15:21:35,880] INFO in __init__: Redis connection established successfully
+[2026-11-02 15:21:35,935] INFO in scheduled_backup_service: Автоматические бэкапы запущены по расписанию: {'hour': 2, 'minute': 0}
+[2026-11-02 15:21:36,614] INFO in __init__: [REFDATA_CACHE] SQLAlchemy session listeners registered
+[2026-11-02 15:21:36,614] INFO in __init__: [CACHE WARMUP] Запущен прогрев кэша в фоновом режиме
+[2026-11-02 15:21:36,614] INFO in __init__: [CACHE REFRESH] Запущено периодическое обновление кэша
+[2026-11-02 15:21:37,436] INFO in __init__: [PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок
+[2026-11-02 15:21:37,459] INFO in pd_summary_warmup: [PD SUMMARY WARMUP] done in 0.03s (warmed=0 skipped=6)
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+Run time of job "Автоматический бэкап БД (trigger: cron[hour='2', minute='0'], next run at: 2026-11-03 02:00:00 MSK)" was missed by 0:00:01.979949
+[2026-11-03 06:45:35,618] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/
+[2026-11-03 06:45:35,622] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /energy_consumption/summary/oes/ HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/energy_consumption_live_save.css?v=6 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/demand_summary_entity_borders.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/css/energy_consumption_summary_entity_borders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/demand_summary_excel_import.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/demand_summary_year_period_mode.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/demand_summary_client_render.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/power_demand/demand_summary_row_paste.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/demand_summary_oes_cascade.js HTTP/1.1" 200 -
+[2026-11-03 06:45:36,603] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes_data, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1
+[2026-11-03 06:45:36,610] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/consumption_live_save.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/summary_row_notes.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:36] "GET /static/js/energy_consumption/year_cell_width.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:41] "GET /energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1 HTTP/1.1" 200 -
+[2026-11-03 06:45:53,243] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=2&pd_page=1&growth_rounding_digits=1
+[2026-11-03 06:45:53,246] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /energy_consumption/summary/oes/?pd_page_size=2&pd_page=1&growth_rounding_digits=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/energy_consumption_live_save.css?v=6 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/css/energy_consumption_summary_entity_borders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/energy_consumption/demand_summary_entity_borders.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/energy_consumption/demand_summary_year_period_mode.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/energy_consumption/demand_summary_client_render.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/energy_consumption/demand_summary_excel_import.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/power_demand/demand_summary_row_paste.js HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/energy_consumption/demand_summary_oes_cascade.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:53] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+[2026-11-03 06:45:53,837] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes_data, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1&growth_rounding_digits=1
+127.0.0.1 - - [03/Nov/2026 06:45:53] "[2026-11-03 06:45:53,842] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/energy_consumption/consumption_live_save.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/energy_consumption/summary_row_notes.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:54] "GET /static/js/energy_consumption/year_cell_width.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:45:58] "GET /energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1&growth_rounding_digits=1 HTTP/1.1" 200 -
+[2026-11-03 06:47:12,156] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: None, URL: http://127.0.0.1:5000/energy_consumption/data-revision/
+[2026-11-03 06:47:12,160] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+[2026-11-03 06:47:12,160] WARNING in __init__: 404 Not Found: GET http://127.0.0.1:5000/energy_consumption/data-revision/ (Referer: (none))
+127.0.0.1 - - [03/Nov/2026 06:47:12] "GET /energy_consumption/data-revision/ HTTP/1.1" 404 -
+[2026-11-03 06:47:12,166] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.hub, URL: http://127.0.0.1:5000/energy_consumption/
+[2026-11-03 06:47:12,170] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [03/Nov/2026 06:47:12] "GET /energy_consumption/ HTTP/1.1" 302 -
+[2026-11-03 06:47:12,194] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_balance_bp.data_revision, URL: http://127.0.0.1:5000/energy_balance/data-revision/
+[2026-11-03 06:47:12,197] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Установлена активная версия: 37 (vСиПР 2026-2031 (РАБОЧАЯ))
+127.0.0.1 - - [03/Nov/2026 06:47:12] "GET /energy_balance/data-revision/ HTTP/1.1" 302 -
+[2026-11-03 06:47:23,252] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/?pd_page_size=2&pd_page=1&growth_rounding_digits=1
+[2026-11-03 06:47:23,255] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /energy_consumption/summary/oes/?pd_page_size=2&pd_page=1&growth_rounding_digits=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/loaders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/change_log_table.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/table_headers.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/fuel_equipment_group_tree.css HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/home.css?v=24 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/common/table_row_paste.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/energy_consumption_live_save.css?v=6 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/css/energy_consumption_summary_entity_borders.css HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/common/user_settings_reset.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/demand_summary_entity_borders.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/power_demand/demand_summary_row_paste.js HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/demand_summary_year_period_mode.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/demand_summary_excel_import.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/demand_summary_client_render.js?v=8 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/demand_summary_oes_cascade.js HTTP/1.1" 200 -
+[2026-11-03 06:47:23,848] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Запрос: energy_consumption_bp.demand_summary_oes_data, URL: http://127.0.0.1:5000/energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1&growth_rounding_digits=1
+[2026-11-03 06:47:23,858] DEBUG in database_version_middleware: [VERSION_MIDDLEWARE] Используется версия из сессии: 37
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/images/ntc-ees_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/common/info_tooltips.js?v=1 HTTP/1.1" 304 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/logs/change_log_table.js HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/common/arm_gs_page_scroll_restore.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/consumption_live_save.js?v=2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/summary_row_notes.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /static/js/energy_consumption/year_cell_width.js?v=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:23] "GET /energy_consumption/summary/oes/data.json?pd_page_size=2&pd_page=1&growth_rounding_digits=1 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Nov/2026 06:47:24] "GET /static/images/ntc-ees_icon_color.ico HTTP/1.1" 200 -

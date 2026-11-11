@@ -194,7 +194,7 @@ def recalculate_prices_for_equipment_group(
     commit: bool = False,
 ) -> tuple[bool, str, list]:
     """
-    Пересчёт удельной цены (xxx_c) для группы за диапазон лет.
+    Пересчет удельной цены (xxx_c) для группы за диапазон лет.
     Не читает price_param_* с формы.
     """
     db.session.flush()

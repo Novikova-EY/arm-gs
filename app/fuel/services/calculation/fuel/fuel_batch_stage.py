@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Тонкая обёртка для UI этапа «Топливо»."""
+"""Тонкая обертка для UI этапа «Топливо»."""
 from __future__ import annotations
 
 from .fuel_stage_services import FuelStageService

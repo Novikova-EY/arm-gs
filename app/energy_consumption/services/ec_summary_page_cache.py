@@ -14,7 +14,7 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-EC_SUMMARY_PAGE_CACHE_KEY_VERSION = 5
+EC_SUMMARY_PAGE_CACHE_KEY_VERSION = 11
 _PAGINATION_QUERY_KEYS = frozenset({"pd_page", "pd_page_size"})
 _CLIENT_ROW_FLAG_QUERY_KEYS = frozenset(
     {

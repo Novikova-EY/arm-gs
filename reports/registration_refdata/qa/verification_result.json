@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "word_document": "АРМ_Справочники_Описание_для_госрегистрации.docx",
+  "word_bytes": 770894,
+  "pdf_pages": 133,
+  "catalogs": 25,
+  "standalone_html_pages": 51,
+  "route_coverage": "50 of 50 list/add routes plus the main page",
+  "template_rows": 12,
+  "embedded_screenshots": 7,
+  "source_excerpts": 307,
+  "source_files_sha256_checked": 157,
+  "field_errors": [],
+  "blank_pages": [],
+  "text_outside_page": [],
+  "limitations": [
+    "No live write operations performed",
+    "Server build identity not established",
+    "Applicant must confirm author/legal/size/completion data"
+  ]
+}

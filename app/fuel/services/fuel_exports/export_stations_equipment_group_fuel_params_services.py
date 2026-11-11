@@ -316,7 +316,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
                                     ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
                                 )
 
-                    # Жёлтая «станция, всего» отключена – итог на строке родителя.
+                    # Желтая «станция, всего» отключена – итог на строке родителя.
 
                 if res_block.get("group_blocks") and not res_block.get("hide_res_summary"):
                     res_nm = res_block.get("res_name") or "–"

@@ -5,6 +5,7 @@ Station model (Электростанция).
 - Добавлены серверные таймстемпы (UTC).
 """
 import uuid
+from app.generation.services.station_services import generation_only_visibility  # noqa: F401
 from sqlalchemy import event, text as sql_text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
@@ -42,6 +43,9 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         db.String(36),
         nullable=False,
     )
+
+    is_generation_only = db.Column(db.Boolean, nullable=False, default=False, server_default=sql_text("false"))
+    created_as_generation_only = db.Column(db.Boolean, nullable=False, default=False, server_default=sql_text("false"))
 
     # FK -> StationGroup
     id_station_group = db.Column(

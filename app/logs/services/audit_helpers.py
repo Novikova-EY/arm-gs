@@ -2,12 +2,36 @@
 from __future__ import annotations
 from typing import Any, Dict, Iterable, Optional, Sequence
 
+from sqlalchemy import inspect, select
+
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import (
     get_field_name_ru,
     format_field_change,
     format_field_value,
 )
+
+AUDIT_METADATA_FIELDS = frozenset({"created_at", "updated_at", "created_by", "modified_by"})
+
+
+def snapshot_columns(mapper, target):
+    return {
+        prop.key: getattr(target, prop.key)
+        for prop in mapper.column_attrs
+        if prop.key not in AUDIT_METADATA_FIELDS
+    }
+
+
+def stored_snapshot(mapper, connection, target):
+    identity = inspect(target).identity
+    condition = [column == value for column, value in zip(mapper.primary_key, identity)]
+    row = connection.execute(select(mapper.local_table).where(*condition)).mappings().one()
+    return {
+        prop.key: row[prop.columns[0].name]
+        for prop in mapper.column_attrs
+        if prop.key not in AUDIT_METADATA_FIELDS
+    }
+
 
 # Глобальный флаг – можно выключить детальные логи централизованно
 AUDIT_DEBUG = True

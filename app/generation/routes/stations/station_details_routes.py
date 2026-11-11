@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from typing import Optional
 from app.logs.services.logging_service import log_to_db
 from flask_login import login_required, current_user
+from werkzeug.datastructures import MultiDict
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
@@ -20,7 +21,7 @@ from app.generation.models.station.station_constants import (
     STATION_SIGN_UNSPECIFIED,
 )
 from app.generation.models.station.station_model import Station
-from app.generation.models.station.station_group_model import StationGroup
+from app.generation.services.station_services.generation_only_visibility import generation_station_card
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.station.station_gaes_charge_consumption_model import (
@@ -98,7 +99,7 @@ def _save_station_meta_from_form(
     can_edit_fuel: bool,
     can_edit_fuel_dz: bool = False,
 ):
-    """Сохраняет поля карточки станции с учётом раздельных прав (генерация / топливо)."""
+    """Сохраняет поля карточки станции с учетом раздельных прав (генерация / топливо)."""
     can_edit_external_code = current_user.is_authenticated and getattr(current_user, "is_admin", False)
 
     if can_edit_fuel_dz and not can_edit:
@@ -139,6 +140,12 @@ def _save_station_meta_from_form(
     if not form.validate():
         print("Ошибки в form (station meta):", form.errors)
         return []
+    visibility_fields = {}
+    if (
+        request.form.get("station_details_unified_save") == "1"
+        and request.form.get("generation_only_toggle_present") == "1"
+    ):
+        visibility_fields["is_generation_only"] = request.form.get("is_generation_only") == "1"
     return update_station_from_form_service(
         user,
         station,
@@ -146,6 +153,7 @@ def _save_station_meta_from_form(
         regional_district_list,
         can_edit_generation=True,
         can_edit_fuel=can_edit_fuel,
+        **visibility_fields,
     )
 
 
@@ -196,7 +204,7 @@ def _rounding_for_station_energy_fragment(primary_param: str) -> int:
 
 
 def _rounding_from_energy_payload(payload: dict) -> int:
-    """Округление из PATCH ячейки; клиент шлёт текущий выбор списка «Округл»."""
+    """Округление из PATCH ячейки; клиент шлет текущий выбор списка «Округл»."""
     try:
         digits = int(payload.get("rounding"))
     except (TypeError, ValueError):
@@ -659,6 +667,7 @@ def _station_prospective_place_tep_links(station: Station, station_version_id: O
 @station_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
 @login_required
 @handle_stale_data
+@generation_station_card
 def station_details(station_id):
     """Маршрут для отображения сведений об  электростанции с логированием изменений."""
 
@@ -787,7 +796,7 @@ def station_details(station_id):
             "name",
             "id_condition_type",
             "id_station_type",
-            "id_station_group",
+            "station_group_name",
             "id_energy_unit",
             "id_regional_energy_system",
             "id_regional_district",
@@ -796,6 +805,7 @@ def station_details(station_id):
             "station_sign",
             "external_code",
             "kto",
+            "generation_only_toggle_present",
         }
     )
     # Признаки формы агрегатов: удаление/архив/поля агрегатов/примечание агрегата/собственник агрегата
@@ -822,10 +832,15 @@ def station_details(station_id):
         f"is_unified_station_page_save = {is_unified_station_page_save}"
     )
 
-    is_gaes_station = _is_gaes_station(station)
-    is_ges_station = _is_ges_station(station)
-    is_ves_or_ses_station = _is_ves_or_ses_station(station)
-    is_snee_station = _is_snee_station(station)
+    if station.is_generation_only and request.method == "POST" and (
+        is_machines_form or is_station_gaes_charge_form or is_station_gaes_combined_energy_form
+    ):
+        abort(400, description="Сначала сохраните электростанцию как обычную")
+
+    is_gaes_station = not station.is_generation_only and _is_gaes_station(station)
+    is_ges_station = not station.is_generation_only and _is_ges_station(station)
+    is_ves_or_ses_station = not station.is_generation_only and _is_ves_or_ses_station(station)
+    is_snee_station = not station.is_generation_only and _is_snee_station(station)
 
     # Используем кэшированные справочники для оптимизации
     form_data = CacheService.get_station_details_form_data()
@@ -834,7 +849,7 @@ def station_details(station_id):
     gen_companies = form_data['gen_companies']
 
     # Итоги мощностей станции считаем из MachinePower (без отдельной таблицы)
-    station.powers_by_year = load_station_powers_by_year(
+    station.powers_by_year = {} if station.is_generation_only else load_station_powers_by_year(
         station.id,
         start_year,
         end_year,
@@ -940,7 +955,6 @@ def station_details(station_id):
     # Приводим к кортежам (int, str), т.к. get_regional_energy_system_choices() возвращает Row-объекты.
     form.id_regional_energy_system.choices = [(int(r[0]), r[1]) for r in regional_energy_system_choices]
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
-    form.id_station_group.choices = choices_cache.get_choices(StationGroup, StationGroup.id)
     
     form_machines.id_gen_company.choices = choices_cache.get_choices_with_default(
         GenCompany,
@@ -961,6 +975,7 @@ def station_details(station_id):
 
     if request.method == "GET":
         form.process(obj=station)
+        form.station_group_name.data = station.group.name if station.group else ""
         if form.id_condition_type.data is None:
             form.id_condition_type.data = 0
         if not form.station_sign.data:
@@ -973,7 +988,7 @@ def station_details(station_id):
             "name",
             "id_condition_type",
             "id_station_type",
-            "id_station_group",
+            "station_group_name",
             "id_energy_unit",
             "id_regional_energy_system",
             "id_regional_district",
@@ -982,6 +997,7 @@ def station_details(station_id):
             "station_sign",
             "external_code",
             "kto",
+            "generation_only_toggle_present",
         }
 
         # Единая отправка: карточка станции + агрегаты + выработка (+ потребление ГАЭС) одной кнопкой / Enter
@@ -1098,7 +1114,7 @@ def station_details(station_id):
                             end_year,
                             request.form,
                         )
-                        hydro_changes = save_station_hydro_forecast_from_form(
+                        hydro_changes = [] if station.is_generation_only else save_station_hydro_forecast_from_form(
                             user, station, request.form
                         )
                         if gen_changes or gaes_changes or hydro_changes:
@@ -1108,7 +1124,7 @@ def station_details(station_id):
                             if gaes_changes:
                                 parts.append("Потребление электроэнергии ГАЭС на заряд сохранено.")
                             if hydro_changes:
-                                parts.append("Прогноз выработки сохранён.")
+                                parts.append("Прогноз выработки сохранен.")
                             flash(" ".join(parts), "success")
                             invalidate_cache("station_full", station_id=station.id)
                             invalidate_cache_pattern("station_list:*")
@@ -1147,7 +1163,7 @@ def station_details(station_id):
                             end_year,
                             request.form,
                         )
-                    hydro_changes = save_station_hydro_forecast_from_form(
+                    hydro_changes = [] if station.is_generation_only else save_station_hydro_forecast_from_form(
                         user, station, request.form
                     )
                     if gen_changes or owner_changes or snee_changes or hydro_changes:
@@ -1159,7 +1175,7 @@ def station_details(station_id):
                         if snee_changes:
                             parts.append("Потребление и КПД СНЭЭ сохранены.")
                         if hydro_changes:
-                            parts.append("Прогноз выработки сохранён.")
+                            parts.append("Прогноз выработки сохранен.")
                         flash(" ".join(parts), "success")
                         invalidate_cache("station_full", station_id=station.id)
                         invalidate_cache_pattern("station_list:*")
@@ -1245,7 +1261,7 @@ def station_details(station_id):
                                 "name",
                                 "id_condition_type",
                                 "id_station_type",
-                                "id_station_group",
+                                "station_group_name",
                                 "id_energy_unit",
                                 "id_regional_energy_system",
                                 "id_regional_district",
@@ -1310,7 +1326,7 @@ def station_details(station_id):
                     end_year,
                     request.form,
                 )
-                hydro_changes = save_station_hydro_forecast_from_form(
+                hydro_changes = [] if station.is_generation_only else save_station_hydro_forecast_from_form(
                     user, station, request.form
                 )
                 if gen_changes or gaes_changes or hydro_changes:
@@ -1320,7 +1336,7 @@ def station_details(station_id):
                     if gaes_changes:
                         parts.append("Потребление электроэнергии ГАЭС на заряд сохранено.")
                     if hydro_changes:
-                        parts.append("Прогноз выработки сохранён.")
+                        parts.append("Прогноз выработки сохранен.")
                     flash(" ".join(parts), "success")
                     invalidate_cache("station_full", station_id=station.id)
                     invalidate_cache_pattern("station_list:*")
@@ -1364,7 +1380,7 @@ def station_details(station_id):
                         end_year,
                         request.form,
                     )
-                hydro_changes = save_station_hydro_forecast_from_form(
+                hydro_changes = [] if station.is_generation_only else save_station_hydro_forecast_from_form(
                     user, station, request.form
                 )
                 if gen_changes or owner_changes or hydro_changes:
@@ -1374,7 +1390,7 @@ def station_details(station_id):
                     if owner_changes:
                         parts.append("Выработка электроэнергии (от собственника) сохранена.")
                     if hydro_changes:
-                        parts.append("Прогноз выработки сохранён.")
+                        parts.append("Прогноз выработки сохранен.")
                     flash(" ".join(parts), "success")
                     invalidate_cache("station_full", station_id=station.id)
                     invalidate_cache_pattern("station_list:*")
@@ -1501,7 +1517,7 @@ def station_details(station_id):
     )
 
     t1 = time.perf_counter()
-    if is_tes_station:
+    if is_tes_station and not station.is_generation_only:
         try:
             from app.fuel.services.stations.stations_equipment_groups_services import (
                 build_station_equipment_groups_v2,
@@ -1525,7 +1541,7 @@ def station_details(station_id):
 
 
     initial_machines_tbody_html = None
-    if request.method == "GET" and not can_edit:
+    if request.method == "GET" and not can_edit and not station.is_generation_only:
         t2 = time.perf_counter()
         cache_bucket = int(time.time() // 120)
         initial_machines_tbody_html = _render_machines_tbody_cached(
@@ -1651,6 +1667,7 @@ def station_details(station_id):
 
 @station_bp.route("/station_logs/<int:station_id>", methods=["GET"])
 @login_required
+@generation_station_card
 def station_logs(station_id):
     """AJAX endpoint для загрузки всех логов электростанции."""
     from flask import jsonify
@@ -1928,6 +1945,7 @@ def delete_station_equipment_group_type_links(station_id):
 
 @station_bp.route("/station_details_tbody/<int:station_id>", methods=["GET"])
 @login_required
+@generation_station_card
 def station_details_tbody(station_id):
     """Возвращает только tbody таблицы агрегатов для ленивой подгрузки.
 
@@ -1981,6 +1999,7 @@ def station_details_tbody(station_id):
 
 @station_bp.route("/station_details/<int:station_id>/station_energy_row", methods=["GET"])
 @login_required
+@generation_station_card
 def station_details_station_energy_row(station_id):
     """HTML одной строки таблицы выработки электроэнергии (для обновления при смене округления)."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
@@ -2018,7 +2037,7 @@ def station_details_station_energy_row(station_id):
         station.id, start_year, end_year, station_version_id
     )
 
-    is_snee = _is_snee_station(station)
+    is_snee = not station.is_generation_only and _is_snee_station(station)
     year_features = get_year_feature_dict()
     if is_snee:
         station.station_snee_energy_consumption_by_year = station_snee_energy_consumption_by_year(
@@ -2028,7 +2047,7 @@ def station_details_station_energy_row(station_id):
             station.id, station_version_id
         )
         _attach_snee_plan_generation(station, start_year, end_year, year_features)
-    if _is_ves_or_ses_station(station):
+    if not station.is_generation_only and _is_ves_or_ses_station(station):
         attach_ves_ses_plan_generation(
             station,
             start_year=start_year,
@@ -2059,6 +2078,7 @@ def station_details_station_energy_row(station_id):
 
 @station_bp.route("/station_details/<int:station_id>/station_gaes_charge_row", methods=["GET"])
 @login_required
+@generation_station_card
 def station_details_station_gaes_charge_row(station_id):
     """HTML строки таблицы потребления ГАЭС на заряд (обновление при смене округления)."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
@@ -2088,7 +2108,7 @@ def station_details_station_gaes_charge_row(station_id):
     )
     if not station:
         abort(404)
-    if not _is_gaes_station(station):
+    if station.is_generation_only or not _is_gaes_station(station):
         return make_response("", 204)
 
     gaes_q = (
@@ -2126,6 +2146,7 @@ def station_details_station_gaes_charge_row(station_id):
 
 @station_bp.route("/station_details/<int:station_id>/station_owner_energy_row", methods=["GET"])
 @login_required
+@generation_station_card
 def station_details_station_owner_energy_row(station_id):
     """HTML строки таблицы выработки от собственника (округление)."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
@@ -2155,7 +2176,7 @@ def station_details_station_owner_energy_row(station_id):
     )
     if not station:
         abort(404)
-    if not _is_ves_or_ses_station(station):
+    if station.is_generation_only or not _is_ves_or_ses_station(station):
         return make_response("", 204)
 
     can_edit_fuel_dz = can_fuel_user_edit_decentralized_station_details(current_user, station)
@@ -2196,11 +2217,11 @@ def _sync_owner_generation_to_plan_cell(
     rounding_digits: int,
 ) -> dict | None:
     """
-    Переносит сохранённую выработку от собственника в план-ячейку таблицы
+    Переносит сохраненную выработку от собственника в план-ячейку таблицы
     «Выработка электроэнергии» (ВЭС/СЭС со вводом в плановом периоде).
 
     Возвращает данные для ответа клиенту ({year, value, rule}) или None,
-    если ячейка показывала не расчёт.
+    если ячейка показывала не расчет.
     """
     from app.common.services.help_services import format_decimal_for_display
 
@@ -2247,6 +2268,7 @@ def _sync_owner_generation_to_plan_cell(
     methods=["PATCH"],
 )
 @login_required
+@generation_station_card
 def station_details_energy_value(station_id):
     """Сохраняет одно значение выработки, потребления или КПД СНЭЭ."""
     payload = request.get_json(silent=True) or {}
@@ -2283,6 +2305,8 @@ def station_details_energy_value(station_id):
     )
     if not can_edit and not can_fuel_user_edit_decentralized_station_details(current_user, station):
         return jsonify(ok=False, error="Недостаточно прав"), 403
+    if station.is_generation_only and kind != "generation":
+        return jsonify(ok=False, error="Для этой станции доступна только выработка электроэнергии"), 400
     if kind in {"snee_consumption", "snee_efficiency"} and not _is_snee_station(station):
         return jsonify(ok=False, error="Поле доступно только для электростанций СНЭЭ"), 400
     if kind == "owner_generation" and not _is_ves_or_ses_station(station):
@@ -2387,6 +2411,7 @@ def station_details_energy_value(station_id):
     methods=["PATCH"],
 )
 @login_required
+@generation_station_card
 def station_details_meta_value(station_id):
     """Сохраняет одно редактируемое поле блока «Общая информация»."""
     payload = request.get_json(silent=True)
@@ -2396,7 +2421,7 @@ def station_details_meta_value(station_id):
     raw_value = payload.get("value")
     if not isinstance(field_name, str) or field_name not in {
         "name",
-        "id_station_group",
+        "station_group_name",
         "id_condition_type",
         "id_station_type",
         "station_sign",
@@ -2449,7 +2474,7 @@ def station_details_meta_value(station_id):
     )
     core_fields = {
         "name",
-        "id_station_group",
+        "station_group_name",
         "id_condition_type",
         "note",
         "id_regional_district",
@@ -2476,10 +2501,6 @@ def station_details_meta_value(station_id):
     if field_name == "id_condition_type":
         form.id_condition_type.choices = choices_cache.get_choices(
             ConditionType, ConditionType.id
-        )
-    elif field_name == "id_station_group":
-        form.id_station_group.choices = choices_cache.get_choices(
-            StationGroup, StationGroup.id
         )
     elif field_name == "id_station_type":
         query = filter_by_explicit_db_version(
@@ -2512,7 +2533,7 @@ def station_details_meta_value(station_id):
     field = getattr(form, field_name)
     raw_value = "" if raw_value is None else str(raw_value)
     try:
-        field.process_formdata([raw_value])
+        field.process(formdata=MultiDict({field_name: raw_value}))
     except (TypeError, ValueError):
         return jsonify(ok=False, error="Некорректное значение поля"), 400
     if not field.validate(form):
@@ -2525,7 +2546,7 @@ def station_details_meta_value(station_id):
 
     current_values = {
         "name": station.name,
-        "id_station_group": station.id_station_group,
+        "station_group_name": station.group.name if station.group else "",
         "id_condition_type": station.id_condition_type or 0,
         "id_station_type": station.id_station_type,
         "station_sign": station.station_sign or STATION_SIGN_UNSPECIFIED,
@@ -2561,7 +2582,7 @@ def station_details_meta_value(station_id):
             invalidate_cache("station_full", station_id=station.id)
             invalidate_cache_pattern("station_list:*")
         saved_values = {
-            "id_station_group": station.id_station_group,
+            "station_group_name": station.group.name if station.group else "",
             "id_condition_type": station.id_condition_type,
             "id_station_type": station.id_station_type,
             "station_sign": station.station_sign or STATION_SIGN_UNSPECIFIED,
@@ -2597,6 +2618,7 @@ def station_details_meta_value(station_id):
     methods=["GET"],
 )
 @login_required
+@generation_station_card
 def station_details_station_snee_energy_consumption_row(station_id):
     """HTML строки потребления СНЭЭ для обновления при смене округления."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
@@ -2623,7 +2645,7 @@ def station_details_station_snee_energy_consumption_row(station_id):
     )
     if not station:
         abort(404)
-    if not _is_snee_station(station):
+    if station.is_generation_only or not _is_snee_station(station):
         return make_response("", 204)
 
     station.station_snee_energy_consumption_by_year = (

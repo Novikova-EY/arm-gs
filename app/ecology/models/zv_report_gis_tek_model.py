@@ -90,7 +90,7 @@ class ZVReportGisTek(db.Model, AuditMixin):
     # Твердые вещества, т
     solid_substances = db.Column(Numeric(36, 16), nullable=True)
 
-    # Газообразные и жидкие вещества, т (расчётное: SO2 + CO + NOx + углеводороды + ЛОС + прочие)
+    # Газообразные и жидкие вещества, т (расчетное: SO2 + CO + NOx + углеводороды + ЛОС + прочие)
     gaseous_and_liquid = db.Column(Numeric(36, 16), nullable=True)
 
     # Диоксид серы, т

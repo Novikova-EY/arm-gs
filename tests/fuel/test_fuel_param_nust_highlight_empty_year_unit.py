@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from types import SimpleNamespace
+
+import pytest
 from unittest.mock import patch
 
 from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
@@ -82,3 +84,32 @@ def test_adjacent_years_still_compare_directly(_mock_load):
     changed = _changed_keys(rows)
     assert "10:2025" in changed
     assert "10:2024" not in changed
+
+
+@pytest.mark.parametrize("previous,current", [(None, None), (0, 0), (None, 0), (0, None)])
+@patch(
+    "app.fuel.services.calculation.fuel_calculation_edit_data_services._bulk_fuel_params_by_group_and_years",
+    return_value={},
+)
+def test_missing_or_zero_qotr_does_not_warn_on_capacity_change(_mock_load, previous, current):
+    eg = _eg(10)
+    warnings = build_fuel_param_row_warn_sets([
+        (eg, _param(2023, nust=160, qotr=previous)),
+        (eg, _param(2024, nust=160.26, qotr=current)),
+    ])
+    assert "10:2024" in warnings["nust_changed_from_prev_year_rows"]
+    assert not warnings["qotr_composition_warn_rows"]
+
+
+@patch(
+    "app.fuel.services.calculation.fuel_calculation_edit_data_services._bulk_fuel_params_by_group_and_years",
+    return_value={},
+)
+def test_thermal_hours_warning_remains_without_capacity_change(_mock_load):
+    eg = _eg(10)
+    warnings = build_fuel_param_row_warn_sets([
+        (eg, _param(2023, nust=160.26, qotr=800, nt=100)),
+        (eg, _param(2024, nust=160.26, qotr=800, nt=100)),
+    ])
+    assert "10:2024" in warnings["qotr_nt_ratio_warn_rows"]
+    assert not warnings["qotr_composition_warn_rows"]

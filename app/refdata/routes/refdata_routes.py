@@ -1,17 +1,16 @@
-from datetime import datetime
-
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from . import refdata_bp
 from app.auth.routes import roles_required
 from app.common.services.database_version_services import get_current_version
+from app.common.services.get_services.years.years_get_services import get_reference_years
 from app.refdata.services.year_management_services import (
     get_current_year_info,
+    get_general_scheme_end_year,
     update_current_year,
     update_sipr_dates,
 )
-from config import Config
 
 @refdata_bp.errorhandler(403)
 def forbidden(error):
@@ -35,16 +34,13 @@ def refdata():
             "date_sipr_end": None,
         }
 
-    system_year = datetime.now().year
-    min_year = system_year - 3
-    max_year = system_year + 3
-    year_select_years = list(range(min_year, max_year + 1))
+    year_select_years = get_reference_years() if version_id else []
 
     return render_template(
         "refdata/refdata.html",
         year_info=year_info,
         year_select_years=year_select_years,
-        general_scheme_end_year=Config.END_YEAR_GENERAL_SCHEME,
+        general_scheme_end_year=get_general_scheme_end_year(year_info["current_year"]),
     )
 
 
@@ -64,7 +60,7 @@ def update_current_year_refdata():
         flash("Некорректное значение года", "danger")
         return redirect(url_for("refdata_bp.refdata"))
 
-    if year < 2000 or year > 2100:
+    if year not in get_reference_years():
         flash("Некорректное значение года", "danger")
         return redirect(url_for("refdata_bp.refdata"))
 

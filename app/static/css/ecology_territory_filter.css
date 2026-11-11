@@ -1,3 +1,11 @@
+.ot-calculation-table [data-fuel-filter-button],
+.ot-calculation-table [data-territory-filter-button] {
+    display: block;
+    max-width: 100%;
+    margin: 0.5rem auto 0;
+    white-space: normal;
+}
+
 .ot-territory-filter-menu {
     position: fixed;
     z-index: 2000;
@@ -20,6 +28,8 @@
 }
 
 .ot-calculation-table [hidden],
-#otTerritoryFilterMenu[hidden] {
+#otTerritoryFilterMenu[hidden],
+#otFuelFilterMenu[hidden],
+#otFuelFilterMenu [hidden] {
     display: none !important;
 }

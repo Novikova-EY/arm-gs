@@ -403,7 +403,7 @@ _EC_SUMMARY_VERIFICATION_PARAMETERS: tuple[tuple[str, str], ...] = tuple(
 )
 _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS = 6
 # Строки «Проверка …» – 6 знаков (см. _format_verification_*); потребление млн кВтч – rounding_digits из URL;
-# в режиме «СиПР» (кнопка) целые значения задаёт syncPdEcSummaryTableSiprIntegerDisplay в шаблоне.
+# в режиме «СиПР» (кнопка) целые значения задает syncPdEcSummaryTableSiprIntegerDisplay в шаблоне.
 
 
 def _display_digits_for_summary_parameter(parameter_key: str, rounding_digits: int) -> int:
@@ -809,7 +809,7 @@ def _nt_group_for_variant_code(code: str) -> str:
 
 def _kaliningrad_group_for_variant_code(code: str) -> str:
     c = str(code or "")
-    # Сначала «без …», иначе ``without_kaliningrad`` попадёт в ветку «с».
+    # Сначала «без …», иначе ``without_kaliningrad`` попадет в ветку «с».
     if "without_kaliningrad" in c:
         return "without_kaliningrad_es"
     if "with_kaliningrad" in c or c.endswith("_kaliningrad"):
@@ -1187,7 +1187,7 @@ def _expand_summary_entities_o1_subject_perimeter_variants(
 def _kaliningrad_sync_area_entity_with_stored_variant(
     entity: SummaryEntity,
 ) -> SummaryEntity:
-    """Одна строка СЗ Калининграда с кодом варианта, сохранённым в БД (если есть)."""
+    """Одна строка СЗ Калининграда с кодом варианта, сохраненным в БД (если есть)."""
     model_cls = _DEMAND_MODEL_CLASS_BY_NAME.get(entity.demand_model_name or "")
     if model_cls is None or entity.parent_fk_column is None or entity.parent_id is None:
         return entity
@@ -1222,15 +1222,15 @@ def _expand_summary_entity_perimeter_variants(
     binding_entity_name: str | None = None,
     use_ees_russia_gaes_variants: bool = False,
 ) -> list[SummaryEntity]:
-    """Дублирует только строку сущности по вариантам периметра, не её дочернюю ветку."""
+    """Дублирует только строку сущности по вариантам периметра, не ее дочернюю ветку."""
     if not expand:
         if binding_entity_kind == "synchronous_area" and is_kaliningrad_sync_area_entity_name(
             binding_entity_name or entity.label
         ):
             return [_kaliningrad_sync_area_entity_with_stored_variant(entity)]
         return [entity]
-    # СЗ Калининграда – одна расчётная строка (не размножаем по привязкам);
-    # код варианта берём из БД, «Год с»/«Год по» – из привязки / кода.
+    # СЗ Калининграда – одна расчетная строка (не размножаем по привязкам);
+    # код варианта берем из БД, «Год с»/«Год по» – из привязки / кода.
     if binding_entity_kind == "synchronous_area" and is_kaliningrad_sync_area_entity_name(
         binding_entity_name or entity.label
     ):
@@ -1791,11 +1791,10 @@ def build_oes_summary_context(
     has_territory_selection = bool(ues_l or res_l or rd_l or eu_l)
 
     if has_territory_selection:
-        base_entities = copy.deepcopy(
-            _build_oes_raw_entities(
-                always_show_subject_row_under_res=bool(rd_l),
-                **oes_raw_kwargs,
-            )
+        # Pruning replaces tree nodes; ORM demand rows must retain their identity.
+        base_entities = _build_oes_raw_entities(
+            always_show_subject_row_under_res=bool(rd_l),
+            **oes_raw_kwargs,
         )
         base_entities = _strip_oes_ees_russia_nt_parent_aggregate(base_entities)
         f_ues = frozenset(ues_l)
@@ -2053,7 +2052,8 @@ def build_energy_zones_summary_context(
         tree_years=years,
     )
     if ez_l or res_l:
-        base_entities = copy.deepcopy(_build_ez_raw_entities(**ez_raw_kwargs))
+        # Pruning replaces tree nodes; do not deepcopy the ORM rows and their session state.
+        base_entities = _build_ez_raw_entities(**ez_raw_kwargs)
         f_ez = frozenset(ez_l)
         f_res = frozenset(res_l)
         ent = prune_summary_entities_ez(base_entities, f_ez, f_res)
@@ -2664,9 +2664,9 @@ def inject_siberia_energy_zone_summary_rows(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Добавляет расчётную строку «Энергозона Сибири» = «ОЭС Сибири» + «ТИТЭС Сибири» в конец списка.
+    """Добавляет расчетную строку «Энергозона Сибири» = «ОЭС Сибири» + «ТИТЭС Сибири» в конец списка.
 
-    Расчёт выполняется по данным, которые уже попали на страницу (с учётом фильтров).
+    Расчет выполняется по данным, которые уже попали на страницу (с учетом фильтров).
     """
     if not summary_rows or not years:
         return
@@ -2867,7 +2867,7 @@ def append_summary_table_hub_energy_zone_footer_rows(
 ) -> None:
     """Добавляет в конец /summary_table/ строки энергозон Сибири и Востока без дерева.
 
-    Расчёт и подписи – как на /summary/energy_zones/ (без строк заряда ГАЭС).
+    Расчет и подписи – как на /summary/energy_zones/ (без строк заряда ГАЭС).
     """
     missing_labels = _summary_table_hub_missing_energy_zone_footer_labels(summary_rows)
     if not missing_labels:
@@ -2992,7 +2992,7 @@ def _chukotka_incoming_energy_unit_block_start_indices(
 
     На энергозонах все ЭУ помечены О-1 и лежат под одной строкой РЭС.
     На ОЭС/ФО: «ЭС Чукотского АО» О-1 без детей, а энергорайоны – под базовой
-    строкой РЭС (часть без метки О-1). Берём все ЭУ под любым блоком Чукотки.
+    строкой РЭС (часть без метки О-1). Берем все ЭУ под любым блоком Чукотки.
     """
     slices = _summary_entity_subtree_slices(summary_rows, _CHUKOTKA_RES_LABEL)
     if not slices:
@@ -4290,7 +4290,7 @@ def _build_tites_summary_entities_for_summary_table(
     expand_entity_perimeter_variants: bool = False,
     tree_years: list[int] | None = None,
 ) -> list[SummaryEntity]:
-    """Корень «ТИТЭС» с развёрнутыми РЭС (без строк ОЭС ТИТЭС); Таймыр/Норильск первыми."""
+    """Корень «ТИТЭС» с развернутыми РЭС (без строк ОЭС ТИТЭС); Таймыр/Норильск первыми."""
     tites_entities = _build_energy_system_type_entities(
         "ТИТЭС",
         _is_tites_branch,
@@ -4375,9 +4375,12 @@ def mask_summary_rows_perimeter_variant_year_display(
     if not years:
         return
     for row in summary_rows:
-        # Первая СЗ: основная строка ввода на все годы.
+        # Первая СЗ без НТ: основная строка ввода на все годы.
         if _is_first_sync_area_summary_table_row(row):
-            row["pd_ec_skip_perimeter_variant_year_bounds"] = True
+            if _nt_group_for_variant_code(row.get("perimeter_variant_code")) == CODE_WITH_NT:
+                row.pop("pd_ec_skip_perimeter_variant_year_bounds", None)
+            else:
+                row["pd_ec_skip_perimeter_variant_year_bounds"] = True
         elif (
             unrestricted_perimeter_variant_input
             and str(row.get("perimeter_variant_code") or "").strip()
@@ -4391,7 +4394,9 @@ def mask_summary_rows_perimeter_variant_year_display(
             row.pop("perimeter_variant_to_year", None)
             continue
         code = row.get("perimeter_variant_code")
-        if code:
+        if _is_first_sync_area_summary_table_row(row) and _nt_group_for_variant_code(code) == CODE_WITH_NT:
+            fy, ty = 2023, None
+        elif code:
             fy, ty = perimeter_variant_year_bounds_for_code(str(code))
             # Код без своих границ – период СЗ Калининграда из привязки.
             if (
@@ -4418,7 +4423,7 @@ def mask_summary_rows_perimeter_variant_year_display(
         while len(rids) < n:
             rids.append(None)
         for ix, yr in enumerate(years):
-            if _year_applies_to_summary_row_perimeter_variant(row, int(yr)):
+            if (fy is None or int(yr) >= int(fy)) and (ty is None or int(yr) <= int(ty)):
                 continue
             yv[ix] = "–"
             tt[ix] = ""
@@ -4426,6 +4431,32 @@ def mask_summary_rows_perimeter_variant_year_display(
         row["year_values"] = yv
         row["year_numeric_tooltips"] = tt
         row["year_row_ids"] = rids
+
+
+def mask_with_nt_summary_year_display(context: dict[str, Any]) -> None:
+    rows = []
+    for row in context.get("summary_rows") or []:
+        code = row.get("perimeter_variant_code")
+        first_sync_area_with_nt = (
+            _is_first_sync_area_summary_table_row(row)
+            and _nt_group_for_variant_code(code) == CODE_WITH_NT
+        )
+        if not first_sync_area_with_nt and legacy_nt_group_for_perimeter_code(code) != CODE_WITH_NT:
+            continue
+        model = row.get("demand_model_name")
+        if not (
+            model == EesRussiaEnergyConsumptionParameter.__name__
+            or (
+                model == EnergySystemTypeEnergyConsumptionParameter.__name__
+                and _summary_row_base_label_cf(row) == EES_UNIFIED_REF_NAME.casefold()
+            )
+            or first_sync_area_with_nt
+        ):
+            continue
+        # Свободный ввод не отменяет начало отображения России и Первой СЗ с НТ.
+        row.pop("pd_ec_skip_perimeter_variant_year_bounds", None)
+        rows.append(row)
+    mask_summary_rows_perimeter_variant_year_display(rows, context.get("years") or [])
 
 
 _SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS = frozenset(
@@ -6428,7 +6459,7 @@ def apply_energy_consumption_summary_table_variant_toggle_rows(
         pk = str(row.get("parameter_key") or "")
         if entity_key != current_entity_key:
             current_entity_key = entity_key
-            # Строка заряда ГАЭС у «ЕЭС России» идёт с другим demand_model, чем варианты
+            # Строка заряда ГАЭС у «ЕЭС России» идет с другим demand_model, чем варианты
             # периметра (EesRussia* vs EnergySystemType*); группу НТ не сбрасываем.
             if pk != GAES_CHARGE_PARAMETER_KEY:
                 current_nt_group = ""
@@ -6577,7 +6608,7 @@ def _entity_has_with_nt_gaes_split_variants(codes: set[str]) -> bool:
 def _mark_summary_table_expanded_nt_gaes_variant_row_rules(
     rows: list[dict[str, Any]],
 ) -> None:
-    """При включённых «+НТ» и «без заряда ГАЭС»: скрыть строку «… с НТ» без разбивки по ГАЭС."""
+    """При включенных «+НТ» и «без заряда ГАЭС»: скрыть строку «… с НТ» без разбивки по ГАЭС."""
     codes_by_entity: dict[tuple[Any, ...], set[str]] = {}
     for row in rows:
         if str(row.get("parameter_key") or "") == GAES_CHARGE_PARAMETER_KEY:
@@ -6678,7 +6709,7 @@ def _plain_labels_for_with_gaes_row_without_stations(row: dict[str, Any]) -> Non
             gaes_detail_on=False,
         )
     )
-    # При включённой «без заряда ГАЭС» тоже без приписки – split убран.
+    # При включенной «без заряда ГАЭС» тоже без приписки – split убран.
     row["pd_ec_entity_label_compact_nt"] = (
         _format_summary_table_entity_label_for_toggle_state(
             base_label,
@@ -6707,7 +6738,7 @@ def collapse_gaes_variant_split_for_entities_without_stations(
 
     Исключение: «ЭЭС России» – в сводной таблице всегда показываем полный набор
     с/без НТ × с/без ГАЭС (как в каталоге /perimeter_variants/).
-    Исключение: СЗ Калининграда – одна расчётная строка; код варианта только для БД.
+    Исключение: СЗ Калининграда – одна расчетная строка; код варианта только для БД.
     """
     if not summary_rows:
         return
@@ -6789,7 +6820,7 @@ def _mark_summary_table_collapsed_nt_gaes_variant_row_rules(
             if _perimeter_variant_entity_key(row) != entity_key:
                 continue
             if _is_kaliningrad_sync_area_summary_table_row(row):
-                # Одна расчётная строка – всегда видна при свёрнутых НТ/ГАЭС.
+                # Одна расчетная строка – всегда видна при свернутых НТ/ГАЭС.
                 row["pd_ec_collapsed_nt_gaes_visible_row"] = True
                 row.pop("pd_ec_collapsed_nt_gaes_redundant_row", None)
                 continue
@@ -7096,12 +7127,12 @@ def _build_nt_ues_under_south_summary_entity(
     ues = db.session.get(UnionEnergySystem, int(nt_ues_id))
     if ues is None:
         return None
-    # Для «Новых территорий» состав субъектов задаётся в справочнике субъектов через ФО.
+    # Для «Новых территорий» состав субъектов задается в справочнике субъектов через ФО.
     # Связи РЭС<->субъект могут быть неполными (например, при редактировании справочников),
     # поэтому используем ФО как источник истины.
     regional_districts = _load_new_territories_regional_districts()
     if not regional_districts:
-        # Фоллбек: если по какой-то причине ФО не найден – берём из связей ОЭС->РЭС->субъекты.
+        # Фоллбек: если по какой-то причине ФО не найден – берем из связей ОЭС->РЭС->субъекты.
         rd_ids = _regional_district_ids_for_union_energy_system(int(nt_ues_id))
         regional_districts = [
             rd
@@ -7116,7 +7147,7 @@ def _build_nt_ues_under_south_summary_entity(
     children: list[SummaryEntity] = []
     for regional_district in regional_districts:
         rd_id = int(regional_district.id)
-        # Предпочитаем фактическую привязку субъекта к РЭС, если она есть и ведёт в ОЭС НТ.
+        # Предпочитаем фактическую привязку субъекта к РЭС, если она есть и ведет в ОЭС НТ.
         valid_res = [
             res
             for res in sorted(getattr(regional_district, "regional_energy_systems", []) or [], key=_sort_by_name)
@@ -7298,7 +7329,7 @@ def inject_south_ues_new_territories_summary_rows(
                     continue
                 if row.get("perimeter_variant_code") in (None, ""):
                     return row
-            # Фоллбек: если базовой строки нет, берём первую попавшуюся по ОЭС НТ.
+            # Фоллбек: если базовой строки нет, берем первую попавшуюся по ОЭС НТ.
             for row in summary_rows:
                 if row.get("parameter_key") != parameter_key:
                     continue
@@ -7418,7 +7449,7 @@ def inject_south_fd_new_territories_summary_rows(
     if south_fd_id is None:
         return
 
-    # Южный ФО на сводке должен быть виден даже при включённом «Пустые строки»,
+    # Южный ФО на сводке должен быть виден даже при включенном «Пустые строки»,
     # иначе при отсутствии данных по конкретным показателям пользователь не увидит сам факт наличия строки.
     # (Особенно важно для проверки поведения вариантов периметра «+НТ».)
     for row in summary_rows:
@@ -7545,7 +7576,7 @@ def recompute_sipr_growth_metrics_for_summary_rows(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Пересчёт прироста (СиПР) по отображаемому ряду потребления (СиПР), в т.ч. после fallback."""
+    """Пересчет прироста (СиПР) по отображаемому ряду потребления (СиПР), в т.ч. после fallback."""
     if not years:
         return
     blocks: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
@@ -7872,7 +7903,7 @@ def _build_ec_summary_verification_rows(
             )
         )
 
-    display_digits = _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS
+    display_digits = 0 if rounding_digits == 0 else _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS
     parameter_maps, tooltip_maps = _build_parameter_maps(
         demand_slices,
         PARAMETERS_ENERGY_CONSUMPTION,
@@ -8008,7 +8039,7 @@ def _ees_russia_gaes_verification_base_year_values(
 ) -> dict[int, Decimal | None]:
     """База проверки: строка сводной таблицы (все годы), иначе сумма по формуле, иначе БД.
 
-    При ``prefer_ees_unified_row`` берём «ЕЭС России» (тип ЭС), иначе «ЭЭС России».
+    При ``prefer_ees_unified_row`` берем «ЕЭС России» (тип ЭС), иначе «ЭЭС России».
     """
     ees_row = None
     if prefer_ees_unified_row:
@@ -8116,7 +8147,7 @@ def _first_sa_without_nt_with_gaes_parameter_year_values(
     allow_db_fallback: bool = True,
 ) -> dict[int, Decimal | None]:
     # 1) legacy/без Калининграда; 2) каталожный ``without_nt_with_gaes_kaliningrad``
-    # (на сводке в нём тоже лежат значения *без* ЭС Калининграда).
+    # (на сводке в нем тоже лежат значения *без* ЭС Калининграда).
     for variant_predicate in (
         _is_without_nt_with_gaes_without_kaliningrad_variant_row,
         lambda row: str(row.get("perimeter_variant_code") or "")
@@ -8221,7 +8252,7 @@ def _first_sa_without_nt_with_gaes_with_kaliningrad_parameter_year_values(
     На сводке код ``without_nt_with_gaes_kaliningrad`` хранит значения *без* ЭС
     Калининграда. Legacy ``*_with_kaliningrad_es`` – настоящие «с Калининградом».
     Если legacy-строки нет: «с Калининградом» = «без» + СЗ Калининграда
-    (СЗ только с года её выделения).
+    (СЗ только с года ее выделения).
     """
     legacy_with_kal_row = _find_sync_area_source_row(
         summary_rows,
@@ -8579,7 +8610,7 @@ def _gaes_verification_year_values_prefer_ec_perimeter(
     """Для проверки «с зарядом ГАЭС» предпочитаем потребление того же периметра.
 
     Колонка СиПР у СЗ/ЕЭС иногда хранит величину другого периметра (без заряда ГАЭС);
-    для сверки ЕЭС = ΣСЗ берём согласованные слагаемые из потребления.
+    для сверки ЕЭС = ΣСЗ берем согласованные слагаемые из потребления.
     """
     out: dict[int, Decimal | None] = {}
     for year in years:
@@ -8982,7 +9013,7 @@ def _new_territories_parameter_year_values(
             if rid not in rd_ids:
                 rd_ids.append(rid)
     except Exception:
-        # best-effort: не ломаем расчёты при проблемах со справочником
+        # best-effort: не ломаем расчеты при проблемах со справочником
         pass
     if not rd_ids:
         return {}
@@ -9404,7 +9435,7 @@ def _first_sa_without_nt_with_gaes_ues_variant_codes_for_ues_id(
     """Варианты ОЭС для первой СЗ «без НТ с зарядом ГАЭС».
 
     Как на странице «Первая синхронная зона без НТ» (по умолчанию без заряда ГАЭС);
-    для ОЭС Юга берём «без НТ с зарядом ГАЭС».
+    для ОЭС Юга берем «без НТ с зарядом ГАЭС».
     """
     return _first_sa_south_special_ues_variant_codes_for_ues_id(
         ues_id,
@@ -9558,7 +9589,7 @@ def _year_values_sum_ues_in_first_sa_without_kaliningrad_es(
     """Сумма ОЭС первой СЗ для варианта «без НТ с зарядом ГАЭС».
 
     Логика как на странице «Первая синхронная зона без НТ» (ОЭС без заряда ГАЭС),
-    кроме ОЭС Юга – берётся «без НТ с зарядом ГАЭС».
+    кроме ОЭС Юга – берется «без НТ с зарядом ГАЭС».
     ОЭС «Новые территории» и ОЭС Востока не входят.
     С года выделения СЗ Калининграда из суммы вычитается ЭС Калининградской области.
     """
@@ -9859,7 +9890,7 @@ def ensure_first_sa_variant_formula_tooltips(
     """Гарантирует tooltip/иконку «i» на всех вариантах Первой СЗ (млн и СиПР).
 
     Даже если конкретная формула не сработала (несовпадение кода и т.п.),
-    строки с каталожными ``*_kaliningrad`` всё равно получают текст формулы.
+    строки с каталожными ``*_kaliningrad`` все равно получают текст формулы.
     """
     if not summary_rows:
         return
@@ -10456,7 +10487,7 @@ def _tites_union_energy_system_ids() -> frozenset[int]:
 
 
 def _is_sakha_yakutia_regional_energy_system_name(name: object) -> bool:
-    normalized = str(name or "").casefold().replace("ё", "е")
+    normalized = str(name or "").casefold().replace("\u0451", "е")
     return all(marker in normalized for marker in _SAKHA_YAKUTIA_RES_NAME_MARKERS_CF)
 
 
@@ -11077,7 +11108,7 @@ def apply_centralized_zone_without_nt_sum_formula(
         wrote_any = True
 
     if not wrote_any:
-        # Даже без пересчёта оставляем подсказку и возможность ручного ввода.
+        # Даже без пересчета оставляем подсказку и возможность ручного ввода.
         for row in target_rows:
             row.pop("pd_ec_formula_derived_row", None)
             if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
@@ -11088,7 +11119,7 @@ def apply_centralized_zone_without_nt_sum_formula(
         return
 
     for row in target_rows:
-        # Значения считаются по формуле, но строка остаётся редактируемой (ручной ввод в БД).
+        # Значения считаются по формуле, но строка остается редактируемой (ручной ввод в БД).
         row.pop("pd_ec_formula_derived_row", None)
         if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
             row["pd_ec_summary_row_formula_tooltip"] = _CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP
@@ -11397,7 +11428,7 @@ def apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
 ) -> None:
     """Общий верх /summary/oes|federal_districts|energy_zones/: ЦЗ / ЭЭС / ЕЭС / СЗ как на /summary_table/.
 
-    Один прогон hub-пайплайна ОЭС – чтобы значения совпадали на всех трёх страницах.
+    Один прогон hub-пайплайна ОЭС – чтобы значения совпадали на всех трех страницах.
     """
     if not summary_rows or not years:
         return
@@ -11716,7 +11747,7 @@ def inject_summary_table_decentralized_zone_row(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Сводная таблица (/summary_table/): расчётная строка после «Россия с НТ»."""
+    """Сводная таблица (/summary_table/): расчетная строка после «Россия с НТ»."""
     if not summary_rows or not years:
         return
     if any(
@@ -11883,7 +11914,7 @@ def _apply_ees_russia_with_gaes_sum_formula(
     include_kaliningrad_sync_area: bool = True,
     eu_source_rows_for_tites: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Пересчёт «ЭЭС России … с зарядом ГАЭС».
+    """Пересчет «ЭЭС России … с зарядом ГАЭС».
 
     Строки «ЕЭС России … с зарядом ГАЭС» (тип энергосистемы) не трогаем –
     они для ручного ввода; сверка с формулой – в строках «Проверка ЕЭС …».
@@ -12008,14 +12039,14 @@ def apply_ees_russia_gaes_aggregate_formulas(
     *,
     eu_source_rows_for_tites: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Пересчёт строк «ЭЭС России» с зарядом ГАЭС (с/без НТ) после готовности ТИТЭС.
+    """Пересчет строк «ЭЭС России» с зарядом ГАЭС (с/без НТ) после готовности ТИТЭС.
 
     «ЕЭС России … с зарядом ГАЭС» заполняются вручную и здесь не пересчитываются.
 
     Важно:
     - с НТ: Первая СЗ уже включает ЭС Калининграда (через ОЭС СЗ), отдельно СЗ
       Калининграда не прибавляем;
-    - без НТ: Первая СЗ на экране – *без* ЭС Калининграда, в ЭЭС берём её
+    - без НТ: Первая СЗ на экране – *без* ЭС Калининграда, в ЭЭС берем ее
       «с ЭС Калининграда» = экранная Первая СЗ + СЗ Калининграда.
     """
     _apply_ees_russia_with_gaes_sum_formula(
@@ -12054,7 +12085,7 @@ def apply_summary_table_formula_calculations(
     *,
     eu_source_rows_for_tites: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Пересчёт строк сводной таблицы с формулами (как на /summary_table/)."""
+    """Пересчет строк сводной таблицы с формулами (как на /summary_table/)."""
     if not summary_rows or not years:
         return
 
@@ -12145,7 +12176,7 @@ def _fo_res_aggregate_variant_code(source_pvc: Any) -> str | None:
     """Агрегаты РЭС обычно считаются только по базовым вариантам НТ.
 
     Для строк ФО/ЭЗ с вариантами, содержащими суффиксы `with_gaes/without_gaes` (и/или другие
-    уточнения), берём базовый вариант НТ, чтобы сумма РЭС корректно находилась.
+    уточнения), берем базовый вариант НТ, чтобы сумма РЭС корректно находилась.
     """
     code = str(source_pvc or "").strip()
     if code == "":
@@ -13151,7 +13182,7 @@ def inject_federal_district_without_gaes_summary_rows(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Строки «ФО … без заряда ГАЭС»: расчёт = потребление ФО − заряд ГАЭС; видимость как у заряда ГАЭС."""
+    """Строки «ФО … без заряда ГАЭС»: расчет = потребление ФО − заряд ГАЭС; видимость как у заряда ГАЭС."""
     if not summary_rows or not years:
         return
 
@@ -14157,7 +14188,7 @@ def inject_regional_district_without_gaes_summary_rows(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Строки «субъект РФ … без заряда ГАЭС»: расчёт = потребление субъекта − заряд ГАЭС; видимость как у заряда ГАЭС."""
+    """Строки «субъект РФ … без заряда ГАЭС»: расчет = потребление субъекта − заряд ГАЭС; видимость как у заряда ГАЭС."""
     if not summary_rows or not years:
         return
 
@@ -15034,7 +15065,7 @@ def build_all_formula_summary_rows_for_version(
     years: list[int],
     rounding_digits: int = 1,
 ) -> list[dict[str, Any]]:
-    """Объединённые расчётные строки сводной таблицы ОЭС и сводки по ФО."""
+    """Объединенные расчетные строки сводной таблицы ОЭС и сводки по ФО."""
     oes_rows = build_summary_table_rows_with_formulas_for_version(
         database_version_id=database_version_id,
         years=years,
@@ -15073,7 +15104,7 @@ def build_all_formula_summary_rows_for_version(
     return merged
 
 
-# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez – только экранный расчёт.
+# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez – только экранный расчет.
 # У OES-стиля perimeter_variant_code=None совпадает с базовой строкой; запись в БД
 # затирала бы ручной ввод (потребление − заряд вместо потребления).
 _DISPLAY_ONLY_WITHOUT_GAES_INJECTED_FLAGS: tuple[str, ...] = (
@@ -15242,8 +15273,23 @@ def _apply_gaes_charge_summary_entity_filter(
     return None
 
 
+def _gaes_charge_cache_generation() -> int:
+    from flask import g, has_request_context
+    from app.energy_consumption.services.ec_summary_page_cache import _get_cache_generation
+
+    if not has_request_context():
+        return _get_cache_generation()
+    if "_ec_gaes_cache_generation" not in g:
+        g._ec_gaes_cache_generation = _get_cache_generation()
+    return g._ec_gaes_cache_generation
+
+
 def clear_gaes_charge_summary_cache() -> None:
     """Сброс LRU-кэша строк заряда ГАЭС после сохранения в БД."""
+    from flask import g, has_request_context
+
+    if has_request_context():
+        g.pop("_ec_gaes_cache_generation", None)
     _entity_has_gaes_charge_stations.cache_clear()
     _gaes_charge_raw_station_values_for_entity.cache_clear()
 
@@ -15282,13 +15328,14 @@ def _gaes_charge_raw_station_values_for_entity(
     parent_fk_column: str | None,
     parent_id: int | None,
     years: tuple[int, ...],
+    cache_generation: int = 0,
 ) -> tuple[tuple[int, str, tuple[tuple[int, Any], ...]], ...]:
     """Потребление ГАЭС на заряд по станциям типа ГАЭС для сущности и годов.
 
     В таблицу попадают все станции типа ГАЭС текущей версии БД в территории сущности,
-    даже если по ним ещё нет сохранённых значений заряда.
+    даже если по ним еще нет сохраненных значений заряда.
     """
-    del current_version_id, parent_fk_column
+    del current_version_id, parent_fk_column, cache_generation
     if not demand_model_name or not years:
         return tuple()
 
@@ -15408,6 +15455,7 @@ def _gaes_charge_rows_for_entity(
             entity.parent_fk_column,
             entity.parent_id,
             tuple(int(y) for y in years),
+            cache_generation=_gaes_charge_cache_generation(),
     )
     if not station_rows:
         # У «Южного ФО» варианты с/без заряда есть в привязках, а станций ГАЭС в ФО нет –
@@ -15720,10 +15768,9 @@ def _write_numeric_year_values_to_summary_row(
             ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
             ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
         ):
-            # Ячейка и hover – одинаково, 2 знака (не полная точность).
-            disp = _format_yoy_pct_for_display(raw)
+            disp = _format_yoy_pct_for_display(raw, rounding_digits)
             values.append(disp)
-            tooltips.append(disp)
+            tooltips.append(_format_full_numeric_tooltip(raw))
         else:
             tooltips.append(_format_full_numeric_tooltip(raw))
             values.append(
@@ -15813,7 +15860,7 @@ def _gaes_without_charge_formula_kind_for_row(row: dict[str, Any]) -> str | None
 
 
 def _is_ees_unified_without_gaes_summary_row(row: dict[str, Any]) -> bool:
-    """«ЕЭС России … без заряда ГАЭС» – расчётная строка (with − заряд), не ручной ввод."""
+    """«ЕЭС России … без заряда ГАЭС» – расчетная строка (with − заряд), не ручной ввод."""
     if row.get("demand_model_name") != EnergySystemTypeEnergyConsumptionParameter.__name__:
         return False
     if _summary_row_base_label_cf(row) != EES_UNIFIED_REF_NAME.casefold():
@@ -15822,12 +15869,12 @@ def _is_ees_unified_without_gaes_summary_row(row: dict[str, Any]) -> bool:
 
 
 def _is_south_ues_without_gaes_formula_row(row: dict[str, Any]) -> bool:
-    """«ОЭС Юга … без заряда ГАЭС» (с НТ / без НТ) – расчётная строка (с зарядом − заряд)."""
+    """«ОЭС Юга … без заряда ГАЭС» (с НТ / без НТ) – расчетная строка (с зарядом − заряд)."""
     return _summary_row_is_south_ues_without_gaes_db_row(row)
 
 
 def _is_south_ues_without_nt_without_gaes_formula_row(row: dict[str, Any]) -> bool:
-    """«ОЭС Юга без НТ без заряда ГАЭС» – расчётная строка на все годы (с зарядом − заряд)."""
+    """«ОЭС Юга без НТ без заряда ГАЭС» – расчетная строка на все годы (с зарядом − заряд)."""
     return _summary_row_is_south_ues_without_nt_without_gaes_db_row(row)
 
 def _gaes_charge_totals_for_summary_row(
@@ -15895,8 +15942,14 @@ def _recompute_growth_rows_from_base_series(
                     yoy_values[int(year)] = None
                     continue
                 yoy_values[int(year)] = _yoy_growth_pct_value(
-                    base_by_year.get(int(year)),
-                    base_by_year.get(int(years[index - 1])),
+                    _rounded_summary_parameter_value(
+                        base_by_year.get(int(year)), base_parameter_key, rounding_digits
+                    ),
+                    _rounded_summary_parameter_value(
+                        base_by_year.get(int(years[index - 1])),
+                        base_parameter_key,
+                        rounding_digits,
+                    ),
                 )
             _write_numeric_year_values_to_summary_row(
                 yoy_row,
@@ -15911,7 +15964,7 @@ def _recompute_growth_rows_from_base_series(
 def _summary_row_is_south_ues_without_gaes_db_row(
     row: dict[str, Any],
 ) -> bool:
-    """ОЭС Юга «… без заряда ГАЭС» (с НТ / без НТ) – идентификация для расчётной формулы."""
+    """ОЭС Юга «… без заряда ГАЭС» (с НТ / без НТ) – идентификация для расчетной формулы."""
     if (
         str(row.get("demand_model_name") or "")
         != UnionEnergySystemEnergyConsumptionParameter.__name__
@@ -15926,7 +15979,7 @@ def _summary_row_is_south_ues_without_gaes_db_row(
 def _summary_row_is_south_ues_without_nt_without_gaes_db_row(
     row: dict[str, Any],
 ) -> bool:
-    """ОЭС Юга «без НТ без заряда ГАЭС» (идентификация строки для расчётной формулы)."""
+    """ОЭС Юга «без НТ без заряда ГАЭС» (идентификация строки для расчетной формулы)."""
     if str(row.get("perimeter_variant_code") or "") != CODE_WITHOUT_NT_WITHOUT_GAES:
         return False
     return _summary_row_is_south_ues_without_gaes_db_row(row)
@@ -16363,22 +16416,38 @@ def _build_parameter_maps(
 
     if ENERGY_CONSUMPTION_YOY_PARAMETER_KEY in result:
         for sk, curr in raw_ec.items():
-            pct = _yoy_growth_pct_value(curr, raw_ec.get(sk - 1))
-            disp = _format_yoy_pct_for_display(pct)
+            pct = _yoy_growth_pct_value(
+                _rounded_summary_parameter_value(
+                    curr, "energy_consumption_mln_kvt_ch", rounding_digits
+                ),
+                _rounded_summary_parameter_value(
+                    raw_ec.get(sk - 1), "energy_consumption_mln_kvt_ch", rounding_digits
+                ),
+            )
+            disp = _format_yoy_pct_for_display(pct, rounding_digits)
             result[ENERGY_CONSUMPTION_YOY_PARAMETER_KEY][sk] = disp
             if ENERGY_CONSUMPTION_YOY_PARAMETER_KEY in tooltips:
                 tooltips[ENERGY_CONSUMPTION_YOY_PARAMETER_KEY][sk] = (
-                    disp if pct is not None else ""
+                    _format_full_numeric_tooltip(pct) if pct is not None else ""
                 )
 
     if ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY in result:
         for sk, curr in effective_sipr.items():
-            pct_s = _yoy_growth_pct_value(curr, effective_sipr.get(sk - 1))
-            disp_s = _format_yoy_pct_for_display(pct_s)
+            pct_s = _yoy_growth_pct_value(
+                _rounded_summary_parameter_value(
+                    curr, "energy_consumption_sipr_mln_kvt_ch", rounding_digits
+                ),
+                _rounded_summary_parameter_value(
+                    effective_sipr.get(sk - 1),
+                    "energy_consumption_sipr_mln_kvt_ch",
+                    rounding_digits,
+                ),
+            )
+            disp_s = _format_yoy_pct_for_display(pct_s, rounding_digits)
             result[ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY][sk] = disp_s
             if ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY in tooltips:
                 tooltips[ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY][sk] = (
-                    disp_s if pct_s is not None else ""
+                    _format_full_numeric_tooltip(pct_s) if pct_s is not None else ""
                 )
 
     return result, tooltips
@@ -16398,12 +16467,48 @@ def _format_summary_parameter_value(
     return _format_numeric(value, digits)
 
 
-def _format_yoy_pct_for_display(value: Any) -> str:
-    """Годовой темп прироста: ровно два знака после запятой (например 2,30)."""
+def _rounded_summary_parameter_value(
+    value: Any,
+    parameter_key: str,
+    rounding_digits: int,
+) -> Decimal | None:
+    """Return the same numeric value shown in a summary cell."""
+    shown = _format_summary_parameter_value(value, parameter_key, rounding_digits)
+    return _decimal_or_none(shown)
+
+
+def _format_yoy_pct_for_display(value: Any, rounding_digits: int | None = None) -> str:
+    """В режиме без округления сохраняем полную точность темпа прироста."""
+    if rounding_digits == 0:
+        return _format_numeric(value, 0)
     if value is None:
         return "–"
     s = format_decimal_for_display(value, digits=_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS)
     return apply_thousand_grouping_to_display(s) if s else "–"
+
+
+def apply_summary_growth_rounding(context: dict[str, Any], digits: int = 2) -> None:
+    context["growth_rounding_digits"] = digits
+    for row in context.get("summary_rows") or []:
+        if row.get("parameter_key") not in (
+            ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+            ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
+        ):
+            continue
+        tooltips = row.get("year_numeric_tooltips") or []
+        values = []
+        for index, shown in enumerate(row.get("year_values") or []):
+            raw = tooltips[index] if index < len(tooltips) and tooltips[index] else shown
+            value = _decimal_or_none(raw)
+            if value is None:
+                values.append("–")
+            elif digits == -1:
+                values.append(_format_numeric(value, digits))
+            else:
+                values.append(apply_thousand_grouping_to_display(
+                    format_decimal_for_display(value, digits=6 if digits == 0 else digits)
+                ))
+        row["year_values"] = values
 
 
 def _dash(value: Any) -> str:

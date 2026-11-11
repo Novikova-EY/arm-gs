@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% set page_title = 'Расчет наработки ЕГО' %}
+{% set pagination_endpoint = 'rational_structure_module_bp.equipment_runtime' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/technical_characteristics.css') }}?v=5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rational_structure/pages.css') }}?v=7">
+{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2 rs-technical-page rs-data-page rs-sticky-toolbar-page{% if sheet == 'calculation' %} rs-runtime-calculation rs-runtime-results-hidden{% endif %}">
+    <div class="d-flex align-items-center justify-content-end gap-2 w-100 pb-1 mb-2">
+        <a class="btn btn-secondary fs-5 text-nowrap flex-shrink-0" href="{{ url_for('rational_structure_module_bp.hub') }}">Модуль «Рациональная структура»</a>
+    </div>
+    <h1 class="text-center mb-2">{{ page_title }}</h1>
+    {% if version_id is none %}
+    <div class="alert alert-warning">Для просмотра данных выберите версию базы данных.</div>
+    {% endif %}
+    <div class="rs-controls rs-data-controls mb-2">
+        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+            <p class="mb-0 fw-bold flex-grow-1 text-center">Найдено записей: {{ total }}</p>
+        </div>
+        <form method="get" id="rs-filter-form">
+            <input type="hidden" name="sheet" value="{{ sheet }}">
+            {% for param, values in header_filter_args.items() %}{% for value in values %}<input type="hidden" name="{{ param }}" value="{{ value }}">{% endfor %}{% endfor %}
+            {% for param, value in filters.items() %}{% if value %}<input type="hidden" name="{{ param }}" value="{{ value }}">{% endif %}{% endfor %}
+            {% if selected_zone %}<input type="hidden" name="energy_zone" value="{{ selected_zone }}">{% endif %}
+            {% if search %}<input type="hidden" name="search" value="{{ search }}">{% endif %}
+        </form>
+    </div>
+    <div class="rs-table-toolbar d-flex align-items-center flex-wrap gap-3 mb-2">
+        <div class="d-flex align-items-center gap-2 flex-nowrap">
+            <label for="rs-year" class="mb-0">Год:</label>
+            <select class="form-select" id="rs-year" name="year" form="rs-filter-form" aria-label="Отчетный год">
+                {% for year in years %}<option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-outline-success" type="submit" form="rs-filter-form">Применить</button>
+            <a class="btn btn-outline-danger" href="{{ url_for(pagination_endpoint, sheet=sheet) }}">Сбросить</a>
+        </div>
+        <div class="rs-pagination flex-grow-1 d-flex justify-content-center align-items-center">
+            {% if per_page != 'all' %}{% include 'generation/includes/pagination_station.html' %}{% endif %}
+        </div>
+        <div class="d-flex align-items-center flex-wrap justify-content-end gap-2 ms-auto">
+            <a class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" href="{{ url_for('rational_structure_module_bp.export_equipment_runtime_excel', **request.args.to_dict(flat=False)) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel</a>
+            {% if sheet == 'calculation' %}<button type="button" class="btn btn-outline-primary" id="rs-runtime-calculation-toggle" aria-pressed="false" aria-controls="rs-runtime-table">Расчет</button>{% endif %}
+            <label for="rs-rounding" class="mb-0">Округл:</label>
+            <select class="form-select rs-rounding" id="rs-rounding" name="rounding_digits" form="rs-filter-form" onchange="this.form.requestSubmit()">
+                {% for digits, label in ((0, 'Не округлять'), (1, '1 знак'), (2, '2 знака'), (3, '3 знака'), (-1, 'Целое число'), (6, '6 знаков')) %}<option value="{{ digits }}" {% if rounding_digits == digits %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <label for="rs-per-page" class="mb-0">Показать:</label>
+            <select class="form-select rs-per-page" id="rs-per-page" name="per_page" form="rs-filter-form" onchange="this.form.requestSubmit()">
+                {% for count in ('10', '25', '50', '100', 'all') %}<option value="{{ count }}" {% if count == per_page %}selected{% endif %}>{{ 'Все' if count == 'all' else count ~ ' записей' }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+    {% if sheet == 'summary' %}<p class="text-muted">Сводка рассчитывается по данным оборудования с учетом выбранных фильтров. Мощность накапливается по годам модернизации и демонтажа до окончания Генеральной схемы.</p>{% endif %}
+    <div id="rs-runtime-table" class="table-responsive rs-table-container" tabindex="0" role="region" aria-label="{{ page_title }}">
+        {% include 'rational_structure/_calculation_table.html' %}
+    </div>
+    {% if per_page != 'all' and pages > 1 %}<div class="mt-3">{% include 'generation/includes/pagination_station.html' %}</div>{% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rational_structure/sticky_table_toolbar.js') }}?v=1"></script>
+<script src="{{ url_for('static', filename='js/rational_structure/equipment_runtime.js') }}?v=4"></script>
+{% endblock %}

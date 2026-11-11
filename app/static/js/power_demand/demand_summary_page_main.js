@@ -303,7 +303,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.classList.add("btn-outline-warning");
                 btn.setAttribute("aria-pressed", "false");
                 if (seg === "reporting") {
-                    btn.title = "Показать отчётный период (сбросить ручной выбор годов)";
+                    btn.title = "Показать отчетный период (сбросить ручной выбор годов)";
                 } else if (seg === "medium") {
                     btn.title = "Показать среднесрочный период (сбросить ручной выбор годов)";
                 } else {
@@ -602,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             tr.querySelectorAll("input.pd-coeff-medium-k-input").forEach(function (kinp) {
                 kinp.removeAttribute("data-pd-medium-k-override");
-                /* Смена «используемого k» – пересчитать превью, в т.ч. поверх ранее сохранённых. */
+                /* Смена «используемого k» – пересчитать превью, в т.ч. поверх ранее сохраненных. */
                 kinp.removeAttribute("data-pd-medium-k-stored");
             });
             persistRow(rowKey, String(inp.value || ""), t.value);
@@ -673,7 +673,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return sign + (frac !== null ? intPart + "," + frac : intPart);
         }
 
-        /** Расчётные максимумы: до 3 знаков после запятой, без лишних нулей, с разделением разрядов. */
+        /** Расчетные максимумы: до 3 знаков после запятой, без лишних нулей, с разделением разрядов. */
         function formatCalculatedMaxMw(num) {
             if (!Number.isFinite(num)) {
                 return "–";
@@ -985,7 +985,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return Number.isFinite(n) ? roundCoeffKCalc(n) : null;
         }
 
-        /** Как :func:`_coeff_union_res_sum_year` (отчётный N−9…N и среднесрочный N+1…N+6). */
+        /** Как :func:`_coeff_union_res_sum_year` (отчетный N−9…N и среднесрочный N+1…N+6). */
         function coeffUnionResSumYear(y, n) {
             return (y >= n - 9 && y <= n) || (y >= n + 1 && y <= n + 6);
         }
@@ -1017,7 +1017,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         /**
-         * Расчётные максимумы ОЭС/ФО/ЭЗ = суммы совмещённых показателей по строкам РЭС
+         * Расчетные максимумы ОЭС/ФО/ЭЗ = суммы совмещенных показателей по строкам РЭС
          * (после fillAndSync среднесрочные МВт РЭС уже k×max; сервер то же в enrich_summary_rows_coeff_k_columns).
          */
         function refreshCoeffAggregatedMwFromRes() {
@@ -1394,11 +1394,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var coeff = getCoeffSourceNumber(tr);
                 var kTrFill = coeffKRowForMwTr(tr) || tr;
                 kTrFill.querySelectorAll('.summary-year-k-cell[data-coeff-year-segment="medium"]').forEach(function (kCell) {
-                    /* Строки «Расчетный …» УЭС: k задаётся МВт/макс (refreshCoeffYearKCells), не из выпадающего «используемого k». */
+                    /* Строки «Расчетный …» УЭС: k задается МВт/макс (refreshCoeffYearKCells), не из выпадающего «используемого k». */
                     if (kCell.querySelector("input.pd-coeff-display-k") || isCoeffResSumCalcMaxRow(tr)) {
                         return;
                     }
-                    /* Плановые годы (пустые МВт): k в среднесрочном периоде всё равно показываем из выбранного коэффициента. */
+                    /* Плановые годы (пустые МВт): k в среднесрочном периоде все равно показываем из выбранного коэффициента. */
                     var kinp = kCell.querySelector("input.pd-coeff-medium-k-input");
                     if (kinp) {
                         if (kinp.getAttribute("data-pd-medium-k-override") === "1") {
@@ -1515,7 +1515,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /** Пересчёт k = МВт / макс. мощность года после правок ячеек. */
+        /** Пересчет k = МВт / макс. мощность года после правок ячеек. */
         function refreshCoeffYearKCells() {
             var rd = getRoundingDigitsK();
             table.querySelectorAll("tr.summary-row-param").forEach(function (tr) {
@@ -1592,7 +1592,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам отчётного периода (10 лет) для столбца «для ГС (10 лет)». */
+        /** Среднее коэффициентов k по годам отчетного периода (10 лет) для столбца «для ГС (10 лет)». */
         function refreshGs10ReportingAvg() {
             var rd = getRoundingDigitsK();
             table.querySelectorAll("tr.summary-row-param").forEach(function (tr) {
@@ -1635,7 +1635,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         /**
-         * Среднее k по отчётному периоду без одного мин. и одного макс. значения
+         * Среднее k по отчетному периоду без одного мин. и одного макс. значения
          * (столбец «для ГС (10 лет без мин и макс)»).
          */
         function refreshGs10ReportingTrimmedAvg() {
@@ -1683,7 +1683,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчётного периода. */
+        /** Среднее коэффициентов k по годам N−4 … N (5 лет), N – базовый год отчетного периода. */
         function refreshGs5N4toNAvg() {
             var rd = getRoundingDigitsK();
             var nRaw = table.getAttribute("data-coeff-base-year");
@@ -1742,7 +1742,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        /** Пересчёт трёх итоговых строк под «ЦЗ России» на coeff/ФО (суммы и небаланс по МВт из текущей таблицы). */
+        /** Пересчет трех итоговых строк под «ЦЗ России» на coeff/ФО (суммы и небаланс по МВт из текущей таблицы). */
         function refreshFoCoeffCzTotals() {
             if (table.getAttribute("data-summary-view") !== "fo") {
                 return;
@@ -3007,7 +3007,7 @@ document.addEventListener("DOMContentLoaded", function () {
             cell.classList.remove("pd-summary-cell-save-success", "pd-summary-cell-save-error");
         }
         try {
-            const vResp = await fetch(req.url, {
+            const vResp = await window.powerDemandSaveFetch(req.url, {
                 method: "POST",
                 credentials: "same-origin",
                 headers: headers,
@@ -3176,7 +3176,7 @@ document.addEventListener("DOMContentLoaded", function () {
         clearSummaryCellFeedback(inp);
         const savePromise = (async function () {
             try {
-                const response = await fetch(saveUrl, {
+                const response = await window.powerDemandSaveFetch(saveUrl, {
                     method: "POST",
                     credentials: "same-origin",
                     headers: headers,
@@ -3206,7 +3206,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return false;
             } finally {
                 cellSavePromises.delete(inp);
-                if (normForCompare(inp.value) !== normForCompare(inp.getAttribute("data-initial") || "")) {
+                if (inp.value !== value) {
                     scheduleSummaryCellSave(inp, 0);
                 }
             }

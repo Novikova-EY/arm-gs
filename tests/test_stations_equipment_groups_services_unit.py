@@ -128,7 +128,7 @@ def test_merge_adjacent_station_entries_does_not_merge_none_stations():
 def test_reapply_display_merges_after_page_slice_restores_station_cells():
     """
     После merge по полной ветке хвост страницы имел show=False.
-    Пересчёт на срезе страницы снова показывает ячейку станции.
+    Пересчет на срезе страницы снова показывает ячейку станции.
     """
     station = _station(1, "Новомосковская ГРЭС")
     blocks = [
@@ -356,7 +356,7 @@ def test_prepare_marks_composite_parent_and_orders_parent_first():
 
 
 def test_prepare_inherits_station_for_composite_child_boiler():
-    """Котельная с main→родитель и station=None берёт станцию родителя в колонке «Станция»."""
+    """Котельная с main→родитель и station=None берет станцию родителя в колонке «Станция»."""
     station = _station(6622, "Шатурская ГРЭС")
     parent_block = {
         "equipment_group": _equipment_group(
@@ -405,7 +405,7 @@ def test_prepare_inherits_station_for_composite_child_boiler():
     assert prepared[1]["equipment_group"].id == 11
     assert prepared[1]["station_entries"][0]["station"] is station
     assert prepared[1]["station_entries"][0]["station"].name == "Шатурская ГРЭС"
-    # rowspan «Станция» объединяет родителя и ребёнка
+    # rowspan «Станция» объединяет родителя и ребенка
     assert prepared[0]["station_entries"][0]["merged_station_rowspan"] == 2
     assert prepared[1]["station_entries"][0]["show_merged_station_cells"] is False
 
@@ -524,7 +524,7 @@ def test_split_standalone_composite_child_inherits_parent_res():
 
 
 def test_split_standalone_composite_child_inherits_parent_station_res():
-    """Если у родителя нет полей РЭС, берём иерархию со станции родителя."""
+    """Если у родителя нет полей РЭС, берем иерархию со станции родителя."""
     rd, res = _territory_chain()
     child = _equipment_group(30052, "ТЭЦ Ижорского з-да(тепл)", main=81, numb=1502)
     child.regional_district = None
@@ -562,7 +562,7 @@ def test_split_standalone_composite_child_inherits_parent_station_res():
 
 
 def test_hierarchy_key_uses_obl_mapping_when_fk_empty():
-    """Калининградская ГРЭС-2 без FK субъекта/РЭС идёт в ветку по obl, не в «Не указано»."""
+    """Калининградская ГРЭС-2 без FK субъекта/РЭС идет в ветку по obl, не в «Не указано»."""
     rd, res = _territory_chain(est_id=207, ues_id=410, res_id=2775, rd_id=3082)
     group = _equipment_group(29071, "Калининградская ГРЭС-2", main=None, comp=1, numb=88)
     group.regional_district = None
@@ -626,7 +626,7 @@ def test_hierarchy_key_fk_wins_over_obl_mapping():
 
 
 def test_split_uses_station_res_when_group_key_unspecified():
-    """Если у группы нет РЭС, а у станции есть – строка идёт в РЭС станции."""
+    """Если у группы нет РЭС, а у станции есть – строка идет в РЭС станции."""
     est = SimpleNamespace(id=207)
     ues = SimpleNamespace(id=410, energy_system_type=est)
     res = SimpleNamespace(id=2775, union_energy_system=ues)
@@ -689,7 +689,7 @@ def test_split_uses_station_res_when_group_key_unspecified():
 
 
 def test_split_does_not_override_child_own_res():
-    """Своя РЭС ребёнка (другой регион) не подменяется родительской."""
+    """Своя РЭС ребенка (другой регион) не подменяется родительской."""
     parent_rd, parent_res = _territory_chain(res_id=581, rd_id=701)
     child_rd, child_res = _territory_chain(
         est_id=2, ues_id=20, res_id=100, rd_id=200
@@ -717,7 +717,7 @@ def test_split_does_not_override_child_own_res():
 
 def test_parent_groups_from_blocks_indexes_composite_parent_by_numb():
     parent = _equipment_group(13130, "Родитель", comp=1, numb=81)
-    child = _equipment_group(30052, "Ребёнок", main=81, numb=1502)
+    child = _equipment_group(30052, "Ребенок", main=81, numb=1502)
     found = _parent_groups_from_blocks(
         [
             {"equipment_group": child},
@@ -911,7 +911,7 @@ def _group_block(group_id, *, name, numb, version_id, station_id=29462, type_id=
 
 
 def test_drop_legacy_duplicate_group_cell_blocks_drops_legacy_shell():
-    """Улан-Удэнская ТЭЦ-2: оболочка без версии даёт ту же строку, что и группа версии 37."""
+    """Улан-Удэнская ТЭЦ-2: оболочка без версии дает ту же строку, что и группа версии 37."""
     legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
     current = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
     other = _group_block(30557, name="Улан-Удэнская ТЭЦ-2 (ТЭЦ-130 ата)", numb=1164, version_id=37)
@@ -936,7 +936,7 @@ def test_drop_legacy_duplicate_group_cell_blocks_keeps_unmatched_legacy():
 
 
 def test_drop_legacy_duplicate_group_cell_blocks_requires_all_slots_covered():
-    """У legacy-блока есть ещё тип группы, которого нет у блока версии – строку не убираем."""
+    """У legacy-блока есть еще тип группы, которого нет у блока версии – строку не убираем."""
     legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
     legacy["station_entries"][0]["links"].append(
         {"equipment_group_type": SimpleNamespace(id=1055)}

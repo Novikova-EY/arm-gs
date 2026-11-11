@@ -489,7 +489,7 @@ def peek_stored_perimeter_variant_code_for_parent(
     fk_column_name: Optional[str],
     parent_id: Optional[int],
 ) -> str | None:
-    """Сохранённый код варианта периметра у родителя (метка year IS NULL или любая строка)."""
+    """Сохраненный код варианта периметра у родителя (метка year IS NULL или любая строка)."""
     if not model_supports_perimeter_variant(demand_model):
         return None
     if fk_column_name is None or parent_id is None:
@@ -684,7 +684,7 @@ def resolve_max_power_mw_for_save(
 ) -> Optional[Decimal]:
     """
     Видимое поле может быть округлено относительно БД. Если текст совпадает с отображением
-    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввёл пользователь.
+    снимка БД при текущем rounding_digits, сохраняем полное значение из снимка; иначе – то, что ввел пользователь.
     """
     vis = parse_decimal(visible_raw if visible_raw is not None else "")
     if not str(db_snapshot_raw or "").strip():
@@ -799,20 +799,20 @@ def validate_demand_post_complete(
 
         if require_combined_oe_ees:
             if not _field_nonempty(oes):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на ОЭС».")
+                issues.append(f"{row_label}: не заполнено «Совмещенный на ОЭС».")
             elif parse_decimal(oes) is None:
-                issues.append(f"{row_label}: некорректное число в «Совмещённый на ОЭС».")
+                issues.append(f"{row_label}: некорректное число в «Совмещенный на ОЭС».")
             if not _field_nonempty(ees):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на ЕЭС».")
+                issues.append(f"{row_label}: не заполнено «Совмещенный на ЕЭС».")
             elif parse_decimal(ees) is None:
-                issues.append(f"{row_label}: некорректное число в «Совмещённый на ЕЭС».")
+                issues.append(f"{row_label}: некорректное число в «Совмещенный на ЕЭС».")
 
         if require_combined_on_ez:
             if not _field_nonempty(ez_s):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на энергозону, МВт».")
+                issues.append(f"{row_label}: не заполнено «Совмещенный на энергозону, МВт».")
             elif parse_decimal(ez_s) is None:
                 issues.append(
-                    f"{row_label}: некорректное число в «Совмещённый на энергозону, МВт»."
+                    f"{row_label}: некорректное число в «Совмещенный на энергозону, МВт»."
                 )
 
     if issues:
@@ -1796,7 +1796,7 @@ def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> boo
     if pk.startswith("coeff_k_"):
         return True
     dm = demand_model_name or ""
-    # РЭС на странице ОЭС: совмещённые строки и сохранённые k.
+    # РЭС на странице ОЭС: совмещенные строки и сохраненные k.
     if dm == "RegionalEnergySystemDemandParameter":
         return pk in (
             "combined_on_oes",
@@ -1808,7 +1808,7 @@ def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> boo
     # Субъекты РФ внутри РЭС на странице ОЭС: значения на час максимума ОЭС/ЕЭС.
     if dm == "RegionalDistrictDemandParameter":
         return pk in ("combined_on_oes", "combined_on_ees")
-    # Строка объекта объединённой энергосистемы на странице ОЭС.
+    # Строка объекта объединенной энергосистемы на странице ОЭС.
     if dm == "UnionEnergySystemDemandParameter":
         return pk in (
             "combined_on_ees",
@@ -1905,7 +1905,7 @@ def save_demand_summary_cell(
     summary_log_scope: Optional[str] = None,
 ) -> str:
     """
-    Создаёт или обновляет одно поле строки параметров нагрузки (сводная таблица).
+    Создает или обновляет одно поле строки параметров нагрузки (сводная таблица).
     Запись выполняется во всех версиях БД (по ref_uuid справочников).
     Для РЭС с одним субъектом РФ дублирует показатель в параметры этого субъекта.
     """

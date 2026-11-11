@@ -1,0 +1,100 @@
+{
+  "version": "ГС 2023-2042 (утвержденная)",
+  "version_id": 46,
+  "sources": {
+    "equipment_runtime": {
+      "source": "Расчет наработки ЕГО.xlsx",
+      "sha256": "a9d7d15fef34da272132e22440268641debb3cc15f91a6027ea5e2d2c28eb483",
+      "all_values_formulas_and_error_flags_equal": true,
+      "sheets": {
+        "calculation": {
+          "rows": 1915,
+          "columns": 61,
+          "error_cells": 174
+        },
+        "summary": {
+          "rows": 80,
+          "columns": 21,
+          "error_cells": 0
+        }
+      }
+    },
+    "marginal_price": {
+      "source": "Расчет замыкающей станции.xlsx",
+      "sha256": "5bee082b117fc462cbcf8e9bab48d3d22c3a1b92e5f75363e5f5bcc7b5560663",
+      "all_values_formulas_and_error_flags_equal": true,
+      "sheets": {
+        "europe": {
+          "rows": 180,
+          "columns": 17,
+          "error_cells": 0
+        },
+        "south": {
+          "rows": 180,
+          "columns": 17,
+          "error_cells": 0
+        },
+        "ural": {
+          "rows": 180,
+          "columns": 17,
+          "error_cells": 0
+        },
+        "siberia": {
+          "rows": 180,
+          "columns": 17,
+          "error_cells": 0
+        },
+        "east": {
+          "rows": 180,
+          "columns": 20,
+          "error_cells": 0
+        }
+      }
+    }
+  },
+  "render_checks": [
+    {
+      "url": "/rational_structure/",
+      "rendered": true,
+      "html_bytes": 51789
+    },
+    {
+      "url": "/rational_structure/equipment_runtime",
+      "rendered": true,
+      "html_bytes": 645823
+    },
+    {
+      "url": "/rational_structure/equipment_runtime?sheet=summary",
+      "rendered": true,
+      "html_bytes": 566456
+    },
+    {
+      "url": "/rational_structure/marginal_price?territory=europe&year=2025",
+      "rendered": true,
+      "html_bytes": 85063
+    },
+    {
+      "url": "/rational_structure/marginal_price?territory=south&year=2025",
+      "rendered": true,
+      "html_bytes": 84856
+    },
+    {
+      "url": "/rational_structure/marginal_price?territory=ural&year=2025",
+      "rendered": true,
+      "html_bytes": 84910
+    },
+    {
+      "url": "/rational_structure/marginal_price?territory=siberia&year=2025",
+      "rendered": true,
+      "html_bytes": 84866
+    },
+    {
+      "url": "/rational_structure/marginal_price?territory=east&year=2025",
+      "rendered": true,
+      "html_bytes": 89341
+    }
+  ],
+  "targeted_tests_passed": 38,
+  "migration": "rs26102605 applied directly; existing alembic marker preserved",
+  "calculation_mode": "Saved Excel results; formulas shown as reference, not executed"
+}

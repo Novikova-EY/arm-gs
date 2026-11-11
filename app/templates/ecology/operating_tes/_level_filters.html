@@ -1,0 +1,22 @@
+{% if sheet.layout == 'chars' %}
+<nav class="d-flex flex-nowrap gap-2 mb-2 overflow-auto pb-1" aria-label="Территория расчета">
+  {% for item in level_territories %}
+  <a href="{{ url_for(table_endpoint, territory_slug=item.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), specific_rounding_digits=specific_rounding_digits|default(none), affiliation=affiliation) }}"
+     class="btn {{ 'btn-success' if item.slug == territory.slug else 'btn-outline-success' }} text-nowrap flex-shrink-0"
+     {% if item.slug == territory.slug %}aria-current="page"{% endif %}>{{ item.sheet_name }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+{% if not show_affiliation_columns %}
+<nav class="d-flex flex-wrap align-items-center gap-2 mb-2" aria-label="Принадлежность данных">
+  <span class="fw-bold">Принадлежность:</span>
+  <a href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), specific_rounding_digits=specific_rounding_digits|default(none), affiliation='all') }}"
+     class="btn {{ 'btn-success' if affiliation == 'all' else 'btn-outline-success' }} text-nowrap"
+     {% if affiliation == 'all' %}aria-current="page"{% endif %}>Все принадлежности</a>
+  {% for item in coefficient_affiliations %}
+  <a href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, view_year=view_year, rounding_digits=rounding_digits, coefficient_rounding_digits=coefficient_rounding_digits|default(none), specific_rounding_digits=specific_rounding_digits|default(none), affiliation=item.slug) }}"
+     class="btn {{ 'btn-success' if affiliation == item.slug else 'btn-outline-success' }} text-nowrap"
+     {% if affiliation == item.slug %}aria-current="page"{% endif %}>{{ item.label }}</a>
+  {% endfor %}
+</nav>
+{% endif %}

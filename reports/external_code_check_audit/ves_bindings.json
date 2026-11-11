@@ -1,0 +1,706 @@
+[
+  {
+    "database_version_id": 20,
+    "version_number": "СиПР 2026-2031 (ТОПЛИВО)",
+    "machine_id": 27381,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 7661,
+    "station_external_code": "9d12ba11-a79b-48a8-8bb1-aede00990e65",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28508,
+        "equipment_group_id": 30567
+      }
+    ]
+  },
+  {
+    "database_version_id": 22,
+    "version_number": "СиПР 2026-2031 сходится УМ",
+    "machine_id": 28502,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 8071,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.278,
+        "p_ust": 62.278,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28924,
+        "equipment_group_id": 30710
+      }
+    ]
+  },
+  {
+    "database_version_id": 37,
+    "version_number": "СиПР 2026-2031 (РАБОЧАЯ)",
+    "machine_id": 66605,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 29760,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.278,
+        "p_ust": 62.278,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28985,
+        "equipment_group_id": 30723
+      }
+    ]
+  },
+  {
+    "database_version_id": 39,
+    "version_number": "СиПР 2026-2031 (архив раб)",
+    "machine_id": 75111,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 32526,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.278,
+        "p_ust": 62.278,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29046,
+        "equipment_group_id": 30736
+      }
+    ]
+  },
+  {
+    "database_version_id": 40,
+    "version_number": "СиПР 2026-2031 (архив раб 2)",
+    "machine_id": 79364,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 33909,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.278,
+        "p_ust": 62.278,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29107,
+        "equipment_group_id": 30749
+      }
+    ]
+  },
+  {
+    "database_version_id": 41,
+    "version_number": "СиПР 2026-2031 (архив раб 3)",
+    "machine_id": 83617,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 35292,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.278,
+        "p_ust": 62.278,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29168,
+        "equipment_group_id": 30762
+      }
+    ]
+  },
+  {
+    "database_version_id": 46,
+    "version_number": "ГС 2023-2042 (утвержденная)",
+    "machine_id": 94297,
+    "machine_external_code": "0819acca-716d-46e7-8bf9-67ffedaaf3f5",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 38500,
+    "station_external_code": "9d12ba11-a79b-48a8-8bb1-aede00990e65",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29230,
+        "equipment_group_id": 30775
+      }
+    ]
+  },
+  {
+    "database_version_id": 20,
+    "version_number": "СиПР 2026-2031 (ТОПЛИВО)",
+    "machine_id": 23411,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 6729,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21729,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 22,
+    "version_number": "СиПР 2026-2031 сходится УМ",
+    "machine_id": 28499,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 8071,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": null
+  },
+  {
+    "database_version_id": 37,
+    "version_number": "СиПР 2026-2031 (РАБОЧАЯ)",
+    "machine_id": 63452,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 28786,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": null
+  },
+  {
+    "database_version_id": 39,
+    "version_number": "СиПР 2026-2031 (архив раб)",
+    "machine_id": 71961,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 31552,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": null
+  },
+  {
+    "database_version_id": 40,
+    "version_number": "СиПР 2026-2031 (архив раб 2)",
+    "machine_id": 76214,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 32935,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": null
+  },
+  {
+    "database_version_id": 41,
+    "version_number": "СиПР 2026-2031 (архив раб 3)",
+    "machine_id": 80467,
+    "machine_external_code": "0d2d1dab-9641-5624-99ea-fbc412b18853",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 34318,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": null
+  },
+  {
+    "database_version_id": 20,
+    "version_number": "СиПР 2026-2031 (ТОПЛИВО)",
+    "machine_id": 27379,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 7659,
+    "station_external_code": "361beef8-7e3f-4037-80c4-1262fac031c8",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.3,
+        "p_ust": 62.3,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28509,
+        "equipment_group_id": 30568
+      }
+    ]
+  },
+  {
+    "database_version_id": 22,
+    "version_number": "СиПР 2026-2031 сходится УМ",
+    "machine_id": 28500,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 8071,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28923,
+        "equipment_group_id": 30711
+      }
+    ]
+  },
+  {
+    "database_version_id": 37,
+    "version_number": "СиПР 2026-2031 (РАБОЧАЯ)",
+    "machine_id": 66603,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 29758,
+    "station_external_code": "c91d7256-8584-41a1-9084-7f47e7b2b123",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28984,
+        "equipment_group_id": 30724
+      }
+    ]
+  },
+  {
+    "database_version_id": 39,
+    "version_number": "СиПР 2026-2031 (архив раб)",
+    "machine_id": 75109,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 32524,
+    "station_external_code": "c91d7256-8584-41a1-9084-7f47e7b2b123",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29045,
+        "equipment_group_id": 30737
+      }
+    ]
+  },
+  {
+    "database_version_id": 40,
+    "version_number": "СиПР 2026-2031 (архив раб 2)",
+    "machine_id": 79362,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 33907,
+    "station_external_code": "c91d7256-8584-41a1-9084-7f47e7b2b123",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29106,
+        "equipment_group_id": 30750
+      }
+    ]
+  },
+  {
+    "database_version_id": 41,
+    "version_number": "СиПР 2026-2031 (архив раб 3)",
+    "machine_id": 83615,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3415)",
+    "station_id": 35290,
+    "station_external_code": "c91d7256-8584-41a1-9084-7f47e7b2b123",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29167,
+        "equipment_group_id": 30763
+      }
+    ]
+  },
+  {
+    "database_version_id": 46,
+    "version_number": "ГС 2023-2042 (утвержденная)",
+    "machine_id": 94295,
+    "machine_external_code": "5d8eedf4-e62a-4ca5-81f4-d707fb54c8cb",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3417)",
+    "station_id": 38498,
+    "station_external_code": "361beef8-7e3f-4037-80c4-1262fac031c8",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.3,
+        "p_ust": 62.3,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29228,
+        "equipment_group_id": 30776
+      }
+    ]
+  },
+  {
+    "database_version_id": 20,
+    "version_number": "СиПР 2026-2031 (ТОПЛИВО)",
+    "machine_id": 27380,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 7660,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 28507,
+        "equipment_group_id": 30566
+      }
+    ]
+  },
+  {
+    "database_version_id": 22,
+    "version_number": "СиПР 2026-2031 сходится УМ",
+    "machine_id": 28501,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 8071,
+    "station_external_code": "ac9ee92e-1020-55f3-bfc7-81c2cfbb5621",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21730,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 37,
+    "version_number": "СиПР 2026-2031 (РАБОЧАЯ)",
+    "machine_id": 66604,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 29759,
+    "station_external_code": "8755a5ec-cbef-443b-b41b-c7da4f0ed6fd",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21731,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 39,
+    "version_number": "СиПР 2026-2031 (архив раб)",
+    "machine_id": 75110,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 32525,
+    "station_external_code": "8755a5ec-cbef-443b-b41b-c7da4f0ed6fd",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21732,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 40,
+    "version_number": "СиПР 2026-2031 (архив раб 2)",
+    "machine_id": 79363,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 33908,
+    "station_external_code": "8755a5ec-cbef-443b-b41b-c7da4f0ed6fd",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21733,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 41,
+    "version_number": "СиПР 2026-2031 (архив раб 3)",
+    "machine_id": 83616,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3416)",
+    "station_id": 35291,
+    "station_external_code": "8755a5ec-cbef-443b-b41b-c7da4f0ed6fd",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "ЭС Пензенской области",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 21734,
+        "equipment_group_id": null
+      }
+    ]
+  },
+  {
+    "database_version_id": 46,
+    "version_number": "ГС 2023-2042 (утвержденная)",
+    "machine_id": 94296,
+    "machine_external_code": "f4a7946e-d625-4296-9641-62af1b0bb0ae",
+    "machine_name": "Ветровые агрегаты (код ГТП GVIE3414)",
+    "station_id": 38499,
+    "station_external_code": "766e84ca-10fe-44ad-a62a-dc489107c65b",
+    "station_name": "ВЭС",
+    "regional_district": "Пензенская область",
+    "regional_district_uuid": "2b5e8db7-1b7a-497f-9b47-43fe0d9a4049",
+    "regional_energy_system": "не указано",
+    "power_2031": [
+      {
+        "year": 2031,
+        "p_ogr": 62.5,
+        "p_ust": 62.5,
+        "p_rasp": 0.0
+      }
+    ],
+    "fuel_bindings": [
+      {
+        "id": 29229,
+        "equipment_group_id": 30774
+      }
+    ]
+  }
+]

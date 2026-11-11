@@ -35,7 +35,7 @@ def resolve_equipment_group_ids_for_machines(
 ) -> List[int]:
     """
     Для составной станции (comp=1) агрегаты берутся из самой группы и из дочерних
-    (MAIN=parent.NUMB): иначе агрегаты, ещё висящие на родителе, пропадают с карточки.
+    (MAIN=parent.NUMB): иначе агрегаты, еще висящие на родителе, пропадают с карточки.
     """
     from app.fuel.services.equipment_groups.composite_station_semantics import (
         _as_int,

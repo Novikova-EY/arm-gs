@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <nav class="d-flex flex-wrap gap-2 flex-grow-1" aria-label="Рассчитанные значения">
+            {% for key, definition in result_datasets.items() %}
+            <a class="btn {{ 'btn-primary' if key == dataset_key else 'btn-outline-primary' }}"
+               {% if key == dataset_key %}aria-current="page"{% endif %}
+               href="{{ url_for('rational_structure_module_bp.calculated_values', dataset_key=key) }}">{{ definition.title }}</a>
+            {% endfor %}
+        </nav>
+        <a class="btn btn-secondary" href="{{ url_for('rational_structure_module_bp.hub') }}">Модуль «Рациональная структура»</a>
+    </div>
+    <h1>{{ page_title }}</h1>
+    <p>Последнее выбранное пользователем итоговое решение по каждому расчету. Показаны все расчеты без фильтрации; для мощностей решение детализировано по технологиям и районам.</p>
+    <div data-calculated-values>
+        <button class="btn btn-outline-primary mb-3" type="button" data-load-results
+                data-url="{{ url_for('rational_structure_module_bp.calculated_values', dataset_key=dataset_key) }}"
+                aria-controls="rs-result-content-{{ dataset_key }}">Получить данные из API</button>
+        <p class="mb-2 {{ 'text-danger' if error else '' }}" data-result-status role="status" aria-live="polite">{{ error or '' }}</p>
+        <div id="rs-result-content-{{ dataset_key }}" data-result-content aria-busy="false">
+            {% with definition=result_datasets[dataset_key] %}
+            {% include 'rational_structure/_calculated_values_table.html' %}
+            {% endwith %}
+        </div>
+        <noscript><a class="btn btn-outline-primary mb-3" href="{{ url_for('rational_structure_module_bp.calculated_values', dataset_key=dataset_key, load=1) }}">Получить данные из API</a></noscript>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/rational_structure/calculated_values.js') }}?v=1" defer></script>
+{% endblock %}

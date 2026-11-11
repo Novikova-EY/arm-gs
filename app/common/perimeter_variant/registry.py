@@ -147,7 +147,7 @@ def perimeter_variant_codes_for_entity(
     entity_kind: str | None,
     entity_name: str | None,
 ) -> tuple[str, ...]:
-    """Разрешённые коды для сущности: только явно заведённые привязки в БД."""
+    """Разрешенные коды для сущности: только явно заведенные привязки в БД."""
     if not entity_kind or not (entity_name or "").strip():
         return ()
     binding = resolve_entity_perimeter_variants(str(entity_kind), entity_name)
@@ -198,7 +198,7 @@ def perimeter_variant_options_for_ees_unified_summary_nt_group(
 
 
 def validate_ees_unified_summary_perimeter_variant_code(raw: object) -> str | None:
-    """Разрешённые коды для «ЕЭС России» на сводке: все варианты с/без заряда ГАЭС в НТ-группе."""
+    """Разрешенные коды для «ЕЭС России» на сводке: все варианты с/без заряда ГАЭС в НТ-группе."""
     pvc = normalize_perimeter_variant_code(raw, known_only=True) if raw not in (None, "") else None
     if pvc is None:
         return None
@@ -210,7 +210,7 @@ def validate_ees_unified_summary_perimeter_variant_code(raw: object) -> str | No
         return pvc
     labels = ", ".join(sorted(allowed))
     raise ValueError(
-        f"Вариант периметра {pvc} не разрешён для «ЕЭС России». "
+        f"Вариант периметра {pvc} не разрешен для «ЕЭС России». "
         f"Разрешены: {labels}."
     )
 
@@ -262,7 +262,7 @@ def validate_perimeter_variant_for_summary_entity(
             "Настройте привязку на странице вариантов периметра."
         )
     raise ValueError(
-        f"Вариант периметра {pvc} не разрешён для «{label}». "
+        f"Вариант периметра {pvc} не разрешен для «{label}». "
         f"Разрешены: {', '.join(sorted(allowed))}."
     )
 
@@ -274,7 +274,7 @@ def validate_perimeter_variant_for_entity(
 ) -> str | None:
     pvc = normalize_perimeter_variant_code(raw)
     allowed = perimeter_variant_codes_for_entity(entity_kind, entity_name)
-    # СЗ Калининграда: привязка задаёт «Год с»/«Год по», но «не указано» остаётся допустимым.
+    # СЗ Калининграда: привязка задает «Год с»/«Год по», но «не указано» остается допустимым.
     if (
         entity_kind == "synchronous_area"
         and is_kaliningrad_sync_area_entity_name(entity_name)
@@ -297,7 +297,7 @@ def validate_perimeter_variant_for_entity(
     labels = ", ".join(str(code) for code in allowed)
     label = entity_name or "выбранной сущности"
     raise ValueError(
-        f"Вариант периметра {pvc} не разрешён для «{label}». "
+        f"Вариант периметра {pvc} не разрешен для «{label}». "
         f"Разрешены только: {labels}."
     )
 
@@ -314,7 +314,7 @@ def variant_label_for_entity(binding: EntityPerimeterBinding, variant: Perimeter
 
 
 def ordered_tree_variants_for_display(binding: EntityPerimeterBinding) -> tuple[PerimeterVariantDefinition, ...]:
-    """Порядок вариантов периметра для дерева сводки задаётся порядком привязок."""
+    """Порядок вариантов периметра для дерева сводки задается порядком привязок."""
     return tuple(v for v in binding.variants if is_tree_display_variant_code(v.code))
 
 
@@ -341,7 +341,7 @@ def perimeter_variant_display_label_for_entity(
     entity_kind: str | None,
     entity_name: str | None,
 ) -> str:
-    """Подпись варианта периметра с учётом привязки сущности (``entity_kind`` + имя)."""
+    """Подпись варианта периметра с учетом привязки сущности (``entity_kind`` + имя)."""
     if code is None:
         return ""
     s = str(code).strip()
@@ -406,7 +406,7 @@ def is_kaliningrad_sync_area_entity_name(name: str | None) -> bool:
 def kaliningrad_sync_area_year_bounds() -> tuple[int | None, int | None]:
     """Год с/по для строки СЗ Калининграда.
 
-    Берётся из привязки сущности на /perimeter_variants/ (min «Год с» / max «Год по»
+    Берется из привязки сущности на /perimeter_variants/ (min «Год с» / max «Год по»
     по вариантам). Если привязки нет или годы не заданы – с
     ``KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR``.
     """
@@ -463,7 +463,7 @@ def is_o1_perimeter_variant_code(code: object) -> bool:
 
 
 def resolve_catalog_o1_perimeter_variant_code() -> str:
-    """Код варианта О-1, как он заведён в текущем справочнике."""
+    """Код варианта О-1, как он заведен в текущем справочнике."""
     defs = _catalog().variants_by_code
     if CODE_O1 in defs:
         return CODE_O1
@@ -692,7 +692,7 @@ ENTITY_KIND_CHOICES: tuple[tuple[str, str], ...] = (
         "Часть энергосистемы России (ЕЭС России, ТИТЭС, …)",
     ),
     ("synchronous_area", "Синхронная зона"),
-    ("union_energy_system", "ОЭС (объединённая энергосистема)"),
+    ("union_energy_system", "ОЭС (объединенная энергосистема)"),
     ("federal_district", "Федеральный округ"),
     ("regional_energy_system", "Региональная энергосистема"),
     ("regional_district", "Субъект РФ"),

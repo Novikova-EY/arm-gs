@@ -1,4 +1,6 @@
-{% extends 'base.html' %} {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
+{% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+ {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
@@ -43,7 +45,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option
                 value="{{ year }}"
                 {% if start_year == year %}selected{% endif %}
@@ -61,7 +63,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option
                 value="{{ year }}"
                 {% if end_year == year %}selected{% endif %}
@@ -160,7 +162,7 @@ block content %} {% if current_user.is_authenticated %}
               id="pbShowFlowRowsToggle"
               class="btn btn-primary text-nowrap flex-shrink-0"
               aria-pressed="true"
-              title="Скрыть строки перетока электрической энергии и дефицита с учётом перетока"
+              title="Скрыть строки перетока электрической энергии и дефицита с учетом перетока"
             >
               +Перетоки
             </button>
@@ -177,6 +179,9 @@ block content %} {% if current_user.is_authenticated %}
               class="d-flex align-items-center gap-1 flex-shrink-0"
               style="min-width: 11rem"
             >
+              {% if energy_balance_refresh %}
+              {% include 'energy_balance/_data_refresh.html' %}
+              {% endif %}
               <label
                 for="rounding_digits"
                 class="mb-0 flex-shrink-0"
@@ -671,7 +676,7 @@ block content %} {% if current_user.is_authenticated %}
               data-bs-toggle="tooltip"
               data-bs-placement="top"
               title="{{ row.formula_tooltip|e }}"
-              aria-label="Формула расчёта выработки ТЭС"
+              aria-label="Формула расчета выработки ТЭС"
             ><i class="bi bi-info-circle text-primary" aria-hidden="true"></i></button>
             {% elif row.key in ('generation_ges', 'generation_tes') and
             row.value_save_kind != 'generation' and
@@ -682,8 +687,8 @@ block content %} {% if current_user.is_authenticated %}
               target="_blank"
               rel="noopener noreferrer"
               data-no-preloader
-              title="Помесячный расчёт прогнозной выработки ГЭС и ТЭС"
-              aria-label="Помесячный расчёт прогнозной выработки ГЭС и ТЭС"
+              title="Помесячный расчет прогнозной выработки ГЭС и ТЭС"
+              aria-label="Помесячный расчет прогнозной выработки ГЭС и ТЭС"
               ><i class="bi bi-calculator" aria-hidden="true"></i
             ></a>
             {% endif %}{% if row.key == 'generation_aes' %}
@@ -752,7 +757,7 @@ block content %} {% if current_user.is_authenticated %}
               data-bs-placement="top"
               title="{{ row.formula_tooltip|e }}"
               style="cursor: help; font-size: 0.9em; vertical-align: -0.1em"
-              aria-label="Формула расчёта"
+              aria-label="Формула расчета"
             ></i
             >{% endif %} {% if can_edit_energy_balance and row.can_add_custom_flow %}
             <span class="pb-row-actions">
@@ -1063,8 +1068,8 @@ block content %} {% if current_user.is_authenticated %}
       btn.classList.toggle('btn-primary', on);
       btn.classList.toggle('btn-outline-primary', !on);
       btn.title = on
-        ? 'Скрыть строки перетока электрической энергии и дефицита с учётом перетока'
-        : 'Показать строки перетока электрической энергии и дефицита с учётом перетока';
+        ? 'Скрыть строки перетока электрической энергии и дефицита с учетом перетока'
+        : 'Показать строки перетока электрической энергии и дефицита с учетом перетока';
     }
 
     function setFormulaCell(tr, year, rawValue) {

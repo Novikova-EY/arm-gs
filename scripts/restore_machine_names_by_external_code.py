@@ -4,7 +4,7 @@
 Восстановление MachineName из других версий по external_code.
 
 - заполняет пустые name у существующих строк;
-- создаёт недостающие годы (по machine_tes_types / machine_powers / годам донора).
+- создает недостающие годы (по machine_tes_types / machine_powers / годам донора).
 
 Запуск:
   python scripts/restore_machine_names_by_external_code.py --dry-run

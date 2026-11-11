@@ -68,16 +68,16 @@ NETWORK_XLSX_PATH = Path(
 COMPARISON_SHEETS: tuple[dict[str, Any], ...] = (
     {
         "slug": "zv-vse",
-        "excel_name": "ЗВ_всё",
-        "sheet_name": "ЗВ_всё",
+        "excel_name": "ЗВ_все",
+        "sheet_name": "ЗВ_все",
         "nav_label": "С котельными",
         "page_title": "Загрязняющие вещества (с котельными)",
         "group": COMPARISON_GROUP_ZV,
     },
     {
         "slug": "pg-vse",
-        "excel_name": "ПГ_всё",
-        "sheet_name": "ПГ_всё",
+        "excel_name": "ПГ_все",
+        "sheet_name": "ПГ_все",
         "nav_label": "С котельными",
         "page_title": "Парниковые газы (с котельными)",
         "group": COMPARISON_GROUP_PG,
@@ -213,7 +213,7 @@ ZV_SOLID_FUEL_KEYS = frozenset({"TVERD_TOPL_6tp", "TvTopl_6tp"})
 ZV_EE_SPECIFIC_KEY = "normir_ZV_na_ee"
 ZV_EE_SPECIFIC_AFTER_KEY = "udel_na_energ"
 DIFF_HIGHLIGHT_COLUMN_KEYS = frozenset({"d_mazut", "d_gaz", "d_tv"})
-# Расчётные столбцы: только на лету (не из Excel / не хранятся в PGParamCalc).
+# Расчетные столбцы: только на лету (не из Excel / не хранятся в PGParamCalc).
 PG_DERIVED_COLUMN_KEYS = frozenset(COLUMN_FORMULA_KEYS)
 # «Коэффициент эмиссии»: округляются отдельным селектором «Округл (k эмис)».
 EMISSION_COEFFICIENT_COLUMN_KEYS = frozenset({"K_gaz_ek", "K_mazut_ek", "K_ugol_ek"})
@@ -278,10 +278,10 @@ FUEL_TCE_HEADER_LABELS: dict[str, str] = {
 # Nust / W_en / Teplo: подписи и серый фон шапки как на stations_equipment_group_fuel_params.
 FUEL_TEP_HEADER_KEYS = frozenset({"nust", "NUST", "W_en", "Teplo"})
 
-# Приведённая энергия: 1 кВт·ч ≈ 859,8 ккал → тыс. Гкал / 859,8 · 1000 = млн кВт·ч.
+# Приведенная энергия: 1 кВт·ч ≈ 859,8 ккал → тыс. Гкал / 859,8 · 1000 = млн кВт·ч.
 KCAL_PER_KWH = 859.8
 
-# Страницы анализа ПГ: параметры (PGParamCalc) / отчётные ПГ (PGReportGisTek).
+# Страницы анализа ПГ: параметры (PGParamCalc) / отчетные ПГ (PGReportGisTek).
 PG_ANALYSIS_SHEET_SLUGS = frozenset({"pg-vse", "pg-bez-kot"})
 ZV_ANALYSIS_SHEET_SLUGS = frozenset({"zv-vse", "zv-bez-kot"})
 ANALYSIS_SHEET_SLUGS = PG_ANALYSIS_SHEET_SLUGS | ZV_ANALYSIS_SHEET_SLUGS
@@ -345,7 +345,7 @@ ZV_EXCEL_KEY_BY_GIS_TEK_ATTR: dict[str, str] = {
     "other_gaseous_and_liquid": "PROCH_ekol",
 }
 
-# Отчётные ЗВ (ZVReportGisTek) → ключи Excel. Итоги «всего» считаются на странице.
+# Отчетные ЗВ (ZVReportGisTek) → ключи Excel. Итоги «всего» считаются на странице.
 ZV_ECOLOGY_OVERLAY_BY_KEY: dict[str, str] = {
     "TVERD_V": "solid_substances",
     "SO2_gaz": "sulfur_dioxide",
@@ -412,7 +412,7 @@ PG_ECOLOGY_EDITABLE_KEYS = frozenset(PG_ECOLOGY_OVERLAY_BY_KEY)
 PG_ECOLOGY_VALUE_FIELDS: tuple[str, ...] = tuple(
     dict.fromkeys(PG_ECOLOGY_OVERLAY_BY_KEY.values())
 )
-# После правки столбца пересчитываем все расчётные ячейки (d_*/K_*/CO2/UD_*).
+# После правки столбца пересчитываем все расчетные ячейки (d_*/K_*/CO2/UD_*).
 PG_ECOLOGY_EDIT_RELATED_KEYS: dict[str, tuple[str, ...]] = {
     key: (key,) + tuple(COLUMN_FORMULA_KEYS)
     for key in (
@@ -473,7 +473,7 @@ def zv_specific_emission_header_group() -> tuple[str, tuple[str, ...], dict[str,
 
 
 def zv_normir_ingredient_header_group() -> tuple[str, tuple[str, ...], dict[str, str]]:
-    """Группа шапки: нормируемые ЗВ на приведённую энергию по ингредиентам."""
+    """Группа шапки: нормируемые ЗВ на приведенную энергию по ингредиентам."""
     return (
         "в том числе по ингредиентам",
         ("normir_TVERD_na_energ", "normir_SO2_na_energ", "normir_NOx_na_energ"),

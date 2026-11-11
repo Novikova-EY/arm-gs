@@ -10,7 +10,7 @@
 """
 
 from __future__ import annotations
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.logs.services.logging_service import log_to_db
@@ -26,6 +26,7 @@ from app.auth.services.users_services import (
     bulk_delete_users,
     create_user,
 )
+from app.auth.services.user_settings_services import reset_user_settings
 from . import users_bp
 
 # Список пользователей (GET + POST/сохранение)
@@ -228,6 +229,37 @@ def delete_user(user_id: int):
         "users_bp.list_users",
         q=q, sort_by=sort_by, sort_dir=sort_dir, page=page, per_page=per_page
     ))
+
+
+@users_bp.route("/<int:user_id>/reset-settings", methods=["POST"])
+@login_required
+@roles_required(["admin"])
+def reset_settings(user_id: int):
+    form = UsersBulkForm()
+    return_url = url_for(
+        "users_bp.list_users",
+        q=request.form.get("q", ""),
+        sort_by=request.form.get("sort_by", "id"),
+        sort_dir=request.form.get("sort_dir", "asc"),
+        page=request.form.get("page", "1"),
+        per_page=request.form.get("per_page", "50"),
+    )
+    if not form.validate_on_submit():
+        flash("Сессия изменилась. Обновите страницу и попробуйте снова.", "warning")
+        return redirect(return_url)
+    try:
+        username = reset_user_settings(current_user, user_id)
+    except OSError:
+        current_app.logger.exception("Не удалось сохранить маркер сброса настроек")
+        flash("Не удалось сбросить настройки. Попробуйте снова.", "danger")
+    else:
+        flash(
+            f"Сброс настроек пользователя «{username}» запланирован. "
+            "Фильтры и настройки отображения сбросятся при следующем открытии страницы. "
+            "Вход и выбранная версия БД сохранятся.",
+            "success",
+        )
+    return redirect(return_url)
 
 
 @users_bp.after_request

@@ -15,9 +15,11 @@
   для ЕЭС «Потребление мощности на час прохождения максимума ЕЭС» =
   «Максимальное потребление мощности»; для СЗ – combined_on_ees той же строки;
 - /power_demand/ozp_maxima/ – максимум ОЗП и дата/время максимума ОЗП
-  (только строки ЕЭС; у остальных зон 0).
+  (только строки ЕЭС; у остальных зон 0);
+- /ecology/calculation_summary/vsego/russia/ – объемы выбросов из таблицы
+  «Всего», тыс. т → млн т; ЭЭС – колонка «Всего», ЕЭС – сумма ОЭС.
 
-Зоны: ЕЭС + все СЗ + все ОЭС версии (без «не указано» / «Новые территории»),
+Зоны: ЭЭС + ЕЭС + все СЗ + все ОЭС версии (без «не указано» / «Новые территории»),
 энергорайоны ТИТЭС Востока и РЭС ТИТЭС (Востока и Сибири).
 Годы: [current_year − 6 … period_end] той же версии, что в /api/database_versions.
 """
@@ -40,12 +42,21 @@ from app.api.services.exchange_common_services import (
 from app.api.services.generation_objects_exchange_services import (
     json_number,
 )
+from app.ecology.services.calculation_summary_services import build_calculation_summary_context
+from app.ecology.services.ecology_decimal_helpers import decimal_or_none
+from app.ecology.services.operating_tes_constants import TERRITORIES
+from app.ecology.services.operating_tes_fuel_input_services import (
+    match_special_slug,
+    match_ues_slug,
+)
 from app.energy_balance.services.ee_balance_consumption_services import (
     load_ee_balance_consumption_inputs,
 )
 from app.energy_balance.services.ee_balance_export_services import (
     load_ee_balance_export_inputs,
 )
+from app.energy_balance.services.ee_balance_gaes_charge_services import GAES_CHARGE_ROW_KEY
+from app.energy_balance.services.ee_balance_page_services import build_ee_balance_table_context
 from app.energy_balance.services.power_balance_custom_flow_services import (
     load_power_balance_custom_flows,
 )
@@ -63,8 +74,12 @@ from app.energy_balance.services.power_balance_installed_capacity_services impor
     installed_type_keys,
 )
 from app.energy_balance.services.power_balance_page_services import (
+    EES_RUSSIA_WITH_TITES_NAME,
+    EES_RUSSIA_WITH_TITES_SLUG,
     GROUP_EES,
     GROUP_SZ,
+    _ees_russia_with_tites_sheet,
+    build_power_balance_table_context,
     get_power_balance_sheets,
 )
 from app.extensions import db
@@ -132,44 +147,13 @@ KEY_OZP_MAX = "Максимум потребления мощности ОЗП, 
 KEY_OZP_PEAK_DT = (
     "ОЗП. Дата и время прохождения максимума потребления мощности, дд.мм чч:мм"
 )
+KEY_ASH = "твердые частицы (зола), млн т"
+KEY_SO2 = "диоксид серы (SO2), млн т"
+KEY_NOX = "оксиды азота (NOx), млн т"
+KEY_CO2 = "диоксид углерода (CO2), млн т"
+_EMISSION_FIELDS = {KEY_ASH: "ash", KEY_SO2: "so2", KEY_NOX: "nox", KEY_CO2: "co2"}
 KEY_ZONE_CODE = "external_code"
-GENTYPES_INFO_COMMENT = (
-    "ЧЧИУМ, дата/время максимума, ТНВ и потребление на час максимума ЕЭС "
-    "берутся со сводки /power_demand/summary/oes/ из строк «… без НТ» "
-    "(ЕЭС России без НТ, Первая синхронная зона без НТ и т.д.). "
-    "Для ЕЭС потребление на час максимума ЕЭС = «Максимальное потребление мощности, МВт» "
-    "той же строки; для синхронных зон – «Совмещенное потребление… на час максимума ЕЭС».\n\n"
-    "Максимум потребления мощности ОЗП и дата/время максимума ОЗП – "
-    "/power_demand/ozp_maxima/ (одно значение на период ОЗП, не в разрезе зоны) "
-    "и пишутся только в строки ЕЭС России; у остальных зон – 0. "
-    "Если на странице ОЗП пусто – 0.\n\n"
-    "Для ТИТЭС Востока своей строки на сводках ОЭС нет "
-    "(/power_demand/summary/oes/?ds_ues=317, "
-    "/energy_consumption/summary/oes/?ds_ues=317): в JSON пишется сумма "
-    "по РЭС этой ТИТЭС – «Максимальное потребление мощности, МВт» "
-    "и потребление ЭЭ (млн кВт·ч → млрд в JSON). "
-    "Потребление ЭЭ для ТИТЭС (Восток и Сибирь, РЭС и энергорайоны) – "
-    "со сводки /energy_consumption/summary/oes/ из строки с вариантом периметра "
-    "«не указано» (не «без НТ» и не О-1). "
-    "ЧЧИУМ для ТИТЭС Востока и её РЭС/энергорайонов – как на той же сводке "
-    "при кнопке «ЧЧИ»: (потребление, млн кВт·ч) / (максимум, МВт) × 1000, целое. "
-    "Дата/время максимума и ТНВ у ТИТЭС Востока – с РЭС этой ТИТЭС "
-    "с наибольшим «Максимальное потребление мощности» "
-    "(на сводке у самой ОЭС этих полей нет). "
-    "«Потребление мощности на час прохождения максимума ЕЭС России» "
-    "для ТИТЭС Востока и её РЭС/энергорайонов – "
-    "«Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» "
-    "со сводки /power_demand/summary/oes/?ds_ues=317; "
-    "у самой ТИТЭС Востока – сумма этого показателя по РЭС.\n\n"
-    "«Максимальная мощность, МВт» – Руст агрегационной строки своего уровня "
-    "на /generation/stations/station_list?show_totals=1 "
-    "(для ТИТЭС Востока – «ТИТЭС Востока, всего», для РЭС – «ЭС …, всего», "
-    "для энергорайона – строка энергорайона; не сумма Руст+Ррасп).\n\n"
-    "Поле «Прогнозируемые объемы капитальных вложений, млрд руб.» в набор не входит: "
-    "такого показателя в разрезе зоны в АРМ нет.\n\n"
-    "Поле external_code – это ref_uuid зоны из справочника "
-    "(тип энергосистемы, синхронная зона, ОЭС, РЭС или энергорайон)."
-)
+GENTYPES_INFO_COMMENT = ""
 
 _KIND_DEMAND = {
     "est": (EnergySystemTypeDemandParameter, "id_energy_system_type"),
@@ -181,7 +165,7 @@ _KIND_DEMAND = {
 
 
 def _norm(text: str | None) -> str:
-    return (text or "").casefold().replace("ё", "е").replace(" ", "").strip()
+    return (text or "").casefold().replace("\u0451", "е").replace(" ", "").strip()
 
 
 def select_gentypes_sheets(sheets: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -201,7 +185,7 @@ def select_gentypes_sheets(sheets: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def append_tites_res_sheets(sheets: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """После каждой ТИТЭС вставляет её РЭС (на балансе их нет, там энергорайоны)."""
+    """После каждой ТИТЭС вставляет ее РЭС (на балансе их нет, там энергорайоны)."""
     from app.energy_balance.services.power_balance_page_services import (
         GROUP_OES,
         _is_tites_east_name,
@@ -330,7 +314,7 @@ def _chi_as_on_oes_summary(consumption: Any, gaes: Any, demand_max: Any) -> int:
 
 
 def _tites_east_branch_slugs(sheets: list[dict[str, Any]]) -> set[str]:
-    """ТИТЭС Востока и её листы РЭС/энергорайонов (как ?ds_ues=317)."""
+    """ТИТЭС Востока и ее листы РЭС/энергорайонов (как ?ds_ues=317)."""
     from app.energy_balance.services.power_balance_page_services import (
         GROUP_EU,
         GROUP_OES,
@@ -664,7 +648,7 @@ def _fill_tites_ues_combined_from_res(
     extras: dict[str, dict[str, dict[int, Any]]],
     years: list[int],
 ) -> None:
-    """ТИТЭС Востока: совмещённое на час ЕЭС = сумма РЭС со сводки ОЭС."""
+    """ТИТЭС Востока: совмещенное на час ЕЭС = сумма РЭС со сводки ОЭС."""
     maps: dict[str, dict[str, dict[int, Any]]] = {}
     for slug, payload in extras.items():
         comb = (payload or {}).get("combined_on_ees") or {}
@@ -717,7 +701,7 @@ def _fill_tites_east_peak_temp_from_res(
     """ТИТЭС Востока: дата максимума и ТНВ со сводки ОЭС – с РЭС с наибольшим максимумом.
 
     На /power_demand/summary/oes/?ds_ues=317 у самой ОЭС этих строк нет;
-    берём РЭС (иначе энергорайон) с датой максимума и наибольшим max_power.
+    берем РЭС (иначе энергорайон) с датой максимума и наибольшим max_power.
     """
     from app.energy_balance.services.power_balance_page_services import (
         GROUP_EU,
@@ -853,6 +837,65 @@ def _load_ozp_rows_for_years(
     return {year: by_end.get(year) for year in wanted}
 
 
+def _load_emissions_by_sheet(
+    sheets: list[dict[str, Any]], years: list[int],
+) -> dict[str, dict[int, dict[str, float]]]:
+    oes_slugs = tuple(
+        item["slug"] for item in TERRITORIES
+        if item["group"] == "territory" and item["slug"] != "vsego"
+    )
+
+    def territory_slug(sheet):
+        territory = sheet.get("territory") or {}
+        if territory.get("kind") in {"res", "eu"} or sheet.get("group") in {"res", "eu"}:
+            return None
+        if sheet["slug"] == "2-sz-ees-vostok":
+            return "vostok"
+        name = territory.get("name") or sheet.get("sheet_name")
+        return match_special_slug(name, None) or match_ues_slug(name)
+
+    territories = {sheet["slug"]: territory_slug(sheet) for sheet in sheets}
+    result = {sheet["slug"]: {} for sheet in sheets}
+    for year in years:
+        context = build_calculation_summary_context(
+            "vsego", "russia", start_year=year, end_year=year, view_year=year,
+        )
+        # Фильтр страницы может ограничить год справочником: соседний год не подставляем.
+        if context is None or context["view_year"] != year:
+            continue
+        rows = {row["key"]: row for row in context["rows"]}
+        amounts = {
+            metric: {
+                column["territory_slug"]: decimal_or_none(
+                    rows[metric]["col_values_raw"][column["slug"]]
+                ) or Decimal(0)
+                for column in context["value_columns"]
+            }
+            for metric in _EMISSION_FIELDS.values()
+        }
+        for sheet in sheets:
+            slug = sheet["slug"]
+            if slug == EES_RUSSIA_WITH_TITES_SLUG:
+                sources = ("vsego",)
+            elif slug == "ees-rossii" or sheet.get("group") == GROUP_EES:
+                sources = oes_slugs
+            elif sheet.get("group") == GROUP_SZ and sheet.get("source_slugs"):
+                sources = tuple(territories.get(source, source) for source in sheet["source_slugs"])
+            else:
+                sources = (territories[slug],)
+            subtract = tuple(
+                territories.get(source, source) for source in sheet.get("subtract_slugs", ())
+            ) if sheet.get("group") == GROUP_SZ else ()
+            result[slug][year] = {
+                key: float((
+                    sum((amounts[metric].get(source, Decimal(0)) for source in sources), Decimal(0))
+                    - sum((amounts[metric].get(source, Decimal(0)) for source in subtract), Decimal(0))
+                ) / Decimal(1000))
+                for key, metric in _EMISSION_FIELDS.items()
+            }
+    return result
+
+
 def build_gentypes_year_row(
     *,
     year: int,
@@ -873,6 +916,7 @@ def build_gentypes_year_row(
     ozp_max: Any,
     ozp_peak_dt: Any,
     external_code: str | None,
+    emissions: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     return {
         KEY_YEAR: int(year),
@@ -892,8 +936,52 @@ def build_gentypes_year_row(
         KEY_COMBINED: combined,
         KEY_OZP_MAX: ozp_max,
         KEY_OZP_PEAK_DT: ozp_peak_dt,
+        **{key: (emissions or {}).get(key, 0.0) for key in _EMISSION_FIELDS},
         KEY_ZONE_CODE: external_code or "",
     }
+
+
+def _build_ees_russia_rows(
+    years: list[int], emissions: dict[int, dict[str, float]],
+    source_rows: list[dict[str, Any]], source_slugs: tuple[str, ...],
+    sheets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    filters = {"start_year": min(years), "end_year": max(years)}
+    power = build_power_balance_table_context(EES_RUSSIA_WITH_TITES_SLUG, **filters)
+    energy = build_ee_balance_table_context(EES_RUSSIA_WITH_TITES_SLUG, **filters)
+    power_rows = {row["key"]: row for row in power["rows"]} if power else {}
+    energy_rows = {row["key"]: row for row in energy["rows"]} if energy else {}
+
+    def amount(rows, key, year):
+        return decimal_or_none((rows.get(key) or {}).get("year_values_raw", {}).get(year))
+
+    source_names = {sheet["sheet_name"] for sheet in sheets if sheet["slug"] in source_slugs}
+    rows = []
+    for year in years:
+        consumption = amount(energy_rows, "consumption", year)
+        gaes = amount(energy_rows, GAES_CHARGE_ROW_KEY, year)
+        demand = amount(power_rows, "demand_max", year)
+        combined = sum(
+            (Decimal(str(row[KEY_COMBINED])) for row in source_rows
+             if row[KEY_YEAR] == year and row[KEY_ZONE] in source_names), Decimal(0),
+        )
+        rows.append(build_gentypes_year_row(
+            year=year, zone=EES_RUSSIA_WITH_TITES_NAME,
+            consumption=_consumption_mlrd(consumption),
+            installed=_as_int(amount(power_rows, "installed_total", year)),
+            demand_max=_as_int(demand),
+            power_export=_as_int(amount(power_rows, "export", year)),
+            constraints=_as_int(amount(power_rows, "constraints", year)),
+            q4=_as_int(amount(power_rows, "commissioning_after_max", year)),
+            flow=_as_int(amount(power_rows, "flow_total", year)),
+            gaes=_as_int(gaes),
+            ee_export=_as_fixed(amount(energy_rows, "ee_export", year), 2),
+            chi=_chi(consumption, gaes, demand),
+            peak_dt=0, temp=0, combined=_as_int(combined),
+            ozp_max=0, ozp_peak_dt=0, external_code="",
+            emissions=emissions.get(year),
+        ))
+    return rows
 
 
 def build_gentypes_info_rows(
@@ -905,6 +993,11 @@ def build_gentypes_info_rows(
     if not years or not sheets:
         return []
 
+    aggregate_sheet = next(
+        (sheet for sheet in sheets if sheet["slug"] == EES_RUSSIA_WITH_TITES_SLUG), None,
+    )
+    emission_sheets = sheets
+    sheets = [sheet for sheet in sheets if sheet["slug"] != EES_RUSSIA_WITH_TITES_SLUG]
     consumption = load_ee_balance_consumption_inputs(years, sheets)
     _fill_tites_ues_consumption_from_res(sheets, consumption, years)
     demand_max = load_power_balance_demand_max_inputs(years, sheets)
@@ -919,6 +1012,7 @@ def build_gentypes_info_rows(
     gaes_map = _load_gaes_by_sheet(sheets, years, version_id)
     ozp_by_year = _load_ozp_rows_for_years(version_id, years)
     zone_codes = _load_territory_external_codes(version_id)
+    emissions = _load_emissions_by_sheet(emission_sheets, years)
     tites_east_chi_slugs = _tites_east_branch_slugs(sheets)
 
     all_sheets = get_power_balance_sheets()
@@ -987,7 +1081,7 @@ def build_gentypes_info_rows(
             combined = ((extras.get(slug) or {}).get("combined_on_ees") or {}).get(year)
             is_sz = sheet.get("group") == GROUP_SZ
             if is_ees:
-                # Сводка ОЭС: у «ЕЭС России без НТ» совмещённое на час ЕЭС =
+                # Сводка ОЭС: у «ЕЭС России без НТ» совмещенное на час ЕЭС =
                 # «Максимальное потребление мощности, МВт».
                 combined = dem
             elif not is_sz and combined is None:
@@ -1024,8 +1118,14 @@ def build_gentypes_info_rows(
                     ozp_max=_as_int(ozp_max),
                     ozp_peak_dt=_format_ozp_peak_dt(ozp_peak),
                     external_code=_sheet_external_code(sheet, zone_codes),
+                    emissions=emissions[slug].get(year),
                 )
             )
+    if aggregate_sheet is not None:
+        rows = _build_ees_russia_rows(
+            years, emissions[EES_RUSSIA_WITH_TITES_SLUG], rows,
+            tuple(aggregate_sheet["source_slugs"]), sheets,
+        ) + rows
     return rows
 
 
@@ -1052,9 +1152,11 @@ def load_gentypes_info_dataset(
             start_year=start_year,
             end_year=end_year,
         )
-        sheets = append_tites_res_sheets(
-            select_gentypes_sheets(get_power_balance_sheets())
-        )
+        base_sheets = select_gentypes_sheets(get_power_balance_sheets())
+        aggregate_sheet = _ees_russia_with_tites_sheet(base_sheets)
+        sheets = append_tites_res_sheets(base_sheets)
+        if aggregate_sheet is not None:
+            sheets.insert(0, aggregate_sheet)
         rows = build_gentypes_info_rows(
             years=years,
             sheets=sheets,

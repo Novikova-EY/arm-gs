@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Общие хелперы маршрутов электроёмкости."""
+"""Общие хелперы маршрутов электроемкости."""
 
 from __future__ import annotations
 
@@ -54,6 +54,20 @@ def parse_rounding_digits() -> int:
     if v in (0, 1, 2, 3, -1):
         return v
     return 1
+
+
+def parse_coefficient_rounding_digits() -> int:
+    """Точность отображения коэффициентов A, X и k; 0 сохраняет все знаки."""
+    raw = request.args.get("coefficient_rounding_digits")
+    if request.method == "POST" and (raw is None or str(raw).strip() == ""):
+        raw = request.form.get("coefficient_rounding_digits")
+    if raw is None or str(raw).strip() == "":
+        return 2
+    try:
+        digits = int(raw)
+    except (ValueError, TypeError):
+        return 2
+    return digits if digits == -1 or 0 <= digits <= 10 else 2
 
 
 def parse_ei_export_years_list(full_years: list[int]) -> list[int] | None:

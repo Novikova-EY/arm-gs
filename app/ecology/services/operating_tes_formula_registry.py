@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Справочник текстов формул (иконка «i») расчёта по действующим ТЭС."""
+"""Справочник текстов формул (иконка «i») расчета по действующим ТЭС."""
 
 from __future__ import annotations
 
@@ -123,8 +123,8 @@ class OperatingTesFormulaDef:
     def page_label_lines(self) -> tuple[str, ...]:
         if self.pages == ALL_CALC_PAGES:
             return (
-                "Все листы расчёта по действующим ТЭС",
-                "Все листы расчёта по новым ТЭС",
+                "Все листы расчета по действующим ТЭС",
+                "Все листы расчета по новым ТЭС",
             )
         if self.key.startswith("nt_"):
             return tuple(

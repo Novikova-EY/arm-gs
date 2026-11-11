@@ -1,0 +1,22 @@
+<div class="dropdown d-inline-block">
+    <button class="btn btn-link dropdown-toggle territory-equipment-toggle" type="button"
+            data-bs-toggle="dropdown" data-bs-boundary="viewport"
+            data-bs-config='{"popperConfig":{"strategy":"fixed"}}'
+            aria-expanded="false" aria-controls="equipment-{{ row.key }}-{{ cell_year }}"
+            aria-label="Состав суммы: {{ row.label }}, {{ cell_year }}, {{ value|format_decimal(row_rounding_digits) if value != '' else '0' }} {{ row.unit }}">
+        {{ value|format_decimal(row_rounding_digits) if value != '' else '' }}
+    </button>
+    <div class="dropdown-menu territory-equipment-menu" id="equipment-{{ row.key }}-{{ cell_year }}">
+        <div class="fw-bold mb-2">Учтенные агрегаты – {{ cell_year }} год</div>
+        {% for component in equipment_details %}
+        {% if component.label %}<div class="fw-bold mb-1">{{ component.label }}</div>{% endif %}
+        <ul class="territory-equipment-list">
+            {% for aggregate in component.aggregates %}
+            {% set station_url = url_for('station_bp.station_details', station_id=aggregate.station_id, start_year=start_year, end_year=end_year) %}
+            {% set machine_url = url_for('station_bp.pgu_machine_details', station_id=aggregate.station_id, machine_id=aggregate.machine_id, pgu_machine_id=aggregate.pgu_machine_id, start_year=start_year, end_year=end_year) if aggregate.pgu_machine_id else url_for('station_bp.machine_details', station_id=aggregate.station_id, machine_id=aggregate.machine_id, start_year=start_year, end_year=end_year) %}
+            <li>{% if aggregate.year is not none %}{{ aggregate.year }}: {% endif %}<a href="{{ station_url }}" target="_blank" rel="noopener">{{ aggregate.station }}</a>, <a href="{{ machine_url }}" target="_blank" rel="noopener">{{ aggregate.number }} – {{ aggregate.name }}</a>, Руст <span title="{{ aggregate.power|trim_decimal if aggregate.power is not none else 'Мощность не указана' }}">{{ aggregate.power|trim_decimal if aggregate.power is not none else '–' }}</span> МВт</li>
+            {% endfor %}
+        </ul>
+        {% endfor %}
+    </div>
+</div>

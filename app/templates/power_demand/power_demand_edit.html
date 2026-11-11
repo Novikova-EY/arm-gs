@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set data_refresh_inline = true %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -21,7 +22,8 @@
 
     <h1 class="text-center mb-4">{{ page_title }}</h1>
 
-    <div class="d-flex justify-content-end mb-2 align-items-center">
+    <div class="d-flex justify-content-end mb-2 align-items-center flex-wrap gap-2">
+        {% include 'power_demand/_data_refresh.html' %}
         <div class="d-inline-flex align-items-center flex-nowrap gap-2">
             <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
             <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 150px; width: auto;">
@@ -54,14 +56,14 @@
                         <th class="text-center align-middle">Дата и время (мск)<br><small class="text-muted">ДД.ММ.ГГГГ ЧЧ:ММ</small></th>
                         <th class="text-center align-middle">Среднесуточная ТНВ, °C</th>
                         {% if show_oe %}
-                        <th class="text-center align-middle">Совмещённый на ОЭС</th>
-                        <th class="text-center align-middle">Совмещённый на ЕЭС</th>
+                        <th class="text-center align-middle">Совмещенный на ОЭС</th>
+                        <th class="text-center align-middle">Совмещенный на ЕЭС</th>
                         {% endif %}
                         {% if show_ez %}
                         <th class="text-center align-middle">Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт</th>
                         {% endif %}
                         {% if show_es %}
-                        <th class="text-center align-middle">Совмещённый на ЭС, МВт</th>
+                        <th class="text-center align-middle">Совмещенный на ЭС, МВт</th>
                         {% endif %}
                         <th class="text-center align-middle" data-no-sort>Удалить</th>
                     </tr>
@@ -276,7 +278,7 @@
 
 <script src="{{ url_for('static', filename='js/power_demand/table_sort.js') }}"></script>
 <script src="{{ url_for('static', filename='js/power_demand/slice_year_exclusive.js') }}"></script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_save_validate.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_detail_live_save.js') }}?v=1"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("rounding_digits")?.addEventListener("change", function () {

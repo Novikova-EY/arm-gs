@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Помесячный ввод расчёта прогнозной выработки ТЭС (Магадан)."""
+"""Помесячный ввод расчета прогнозной выработки ТЭС (Магадан)."""
 from sqlalchemy.sql import func
 from sqlalchemy import Index, Numeric, text
 

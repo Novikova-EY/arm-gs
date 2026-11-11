@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Коэффициенты A и X блока «Население» на странице электроёмкости (ФО)."""
+"""Коэффициенты A и X блока «Население» на странице электроемкости (ФО)."""
 from sqlalchemy import Numeric
 from sqlalchemy.sql import func
 

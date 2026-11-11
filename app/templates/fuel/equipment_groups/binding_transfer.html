@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+
+{% block title %}Перенос связей из другой версии базы данных{% endblock %}
+
+{% block content %}
+{% include 'fuel/equipment_groups/_binding_transfer.html' %}
+<script src="{{ url_for('static', filename='js/fuel/equipment_group_binding_transfer.js') }}?v=4"></script>
+{% endblock %}

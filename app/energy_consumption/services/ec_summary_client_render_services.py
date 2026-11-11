@@ -114,9 +114,9 @@ def _json_safe(value: Any) -> Any:
 
 def _parameter_tooltip_for_row(row: dict[str, Any]) -> str:
     for field in (
+        "pd_parameter_formula_tooltip",
         "pd_ec_summary_row_formula_tooltip",
         "pd_ec_verification_formula_tooltip",
-        "pd_parameter_formula_tooltip",
     ):
         raw = row.get(field)
         if raw:
@@ -131,7 +131,7 @@ def _request_flag(name: str) -> bool:
 
 
 def parse_ec_client_row_flags() -> dict[str, bool]:
-    """Флаги видимости строк из GET – по умолчанию всё выключено (как на странице)."""
+    """Флаги видимости строк из GET – по умолчанию все выключено (как на странице)."""
     return {
         "sipr": _request_flag("pd_ec_sipr"),
         "gaes": _request_flag("pd_ec_gaes"),
@@ -230,7 +230,9 @@ def filter_ec_summary_rows_for_client_flags(
                 rc = dict(r)
                 rc["show_entity_cell"] = j == 0
                 rc["entity_rowspan"] = len(kept)
-                if j == 0 and note_source is not None:
+                if rc.get("pd_ec_note_key"):
+                    rc["show_entity_note_cell"] = True
+                elif j == 0 and note_source is not None:
                     rc["show_entity_note_cell"] = True
                     if "entity_note_text" in note_source:
                         rc["entity_note_text"] = note_source.get("entity_note_text")

@@ -1,4 +1,6 @@
-{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+{% extends 'base.html' %}
+{% set data_refresh_inline = true %}
+ {% block title %}{{ page_title }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
@@ -43,7 +45,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
               {% endfor %}
             </select>
@@ -56,7 +58,7 @@ block content %} {% if current_user.is_authenticated %}
               class="form-select"
               style="width: auto; min-width: 5.5rem"
             >
-              {% for year in filter_year_list %}
+              {% for year in get_reference_years() %}
               <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
               {% endfor %}
             </select>
@@ -107,6 +109,9 @@ block content %} {% if current_user.is_authenticated %}
               class="d-flex align-items-center gap-1 flex-shrink-0"
               style="min-width: 11rem"
             >
+              {% if energy_balance_refresh %}
+              {% include 'energy_balance/_data_refresh.html' %}
+              {% endif %}
               <label
                 for="rounding_digits"
                 class="mb-0 flex-shrink-0"
@@ -407,7 +412,7 @@ block content %} {% if current_user.is_authenticated %}
               data-bs-placement="top"
               title="{{ row.formula_tooltip|e }}"
               style="cursor: help; font-size: 0.9em; vertical-align: -0.1em"
-              aria-label="Формула расчёта"
+              aria-label="Формула расчета"
             ></i>
             {% endif %}
           </td>

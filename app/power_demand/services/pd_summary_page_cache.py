@@ -239,7 +239,7 @@ def get_cached_oes_national_prefix_sources(
     cached = get_cached_value(key)
     if cached is None:
         return None
-    # Формулы мутируют строки на месте – отдаём копию.
+    # Формулы мутируют строки на месте – отдаем копию.
     return copy.deepcopy(cached)
 
 

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title | default('Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных') }}{% endblock %}
+{% block title %}{{ page_title | default('Проверка взаимосвязей электростанций, групп оборудования и агрегатов во всех версиях баз данных') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -9,16 +9,11 @@
         <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
             <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
             <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-            <a href="{{ url_for('station_bp.external_code_check') }}" class="btn btn-secondary fs-5">Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных</a>
+            <a href="{{ url_for('station_bp.external_code_check') }}" class="btn btn-secondary fs-5">Проверка взаимосвязей электростанций, групп оборудования и агрегатов во всех версиях баз данных</a>
         </div>
 
         <div class="col-12 mb-2">
-            <h1 class="text-center mb-4">Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных</h1>
-            <p class="text-center text-muted mb-0">
-                Сравнение external_code станций и агрегатов по всем версиям базы данных
-                (выборка объединяет записи из всех версий, текущая версия в сессии используется только для отображения названий).
-                Ячейки с расхождениями подсвечены. Код можно изменить прямо в таблице и сохранить.
-            </p>
+            <h1 class="text-center mb-4">Проверка взаимосвязей электростанций, групп оборудования и агрегатов во всех версиях баз данных</h1>
         </div>
 
         <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
@@ -34,25 +29,62 @@
             table-layout: fixed;
             width: 100%;
         }
+        .external-code-equipment-group-legend {
+            background-color: #ede7f6;
+            color: #4c2c73;
+        }
+        #externalCodeCheckTable .external-code-equipment-group-row {
+            --bs-table-bg: #ede7f6;
+            --bs-table-color: #4c2c73;
+            --bs-table-striped-bg: #e8def5;
+            --bs-table-striped-color: #4c2c73;
+            --bs-table-hover-bg: #e2d6f0;
+            --bs-table-hover-color: #4c2c73;
+        }
         #externalCodeCheckTable .external-code-station-tbody td,
         #externalCodeCheckTable thead th {
             overflow-wrap: anywhere;
         }
+        #externalCodeVersionMenu {
+            position: fixed;
+            z-index: 2000;
+            width: 340px;
+            max-width: calc(100vw - 16px);
+            max-height: calc(100vh - 16px);
+            overflow-y: auto;
+        }
+        #externalCodeVersionList {
+            max-height: 240px;
+            overflow-y: auto;
+        }
         </style>
 
-        <div class="table-responsive" id="externalCodeTableContainer">
+        <div class="small text-muted mb-2" id="externalCodeStatusLegend">
+            <span class="badge bg-warning text-dark">Код отличается</span> – от кода записи, открываемой по ссылке в строке.
+            <span class="badge bg-secondary">– нет записи</span> – запись отсутствует в этой версии БД.
+            Совпадающие коды не выделяются.
+        </div>
+        <div class="table-responsive power-demand-summary-scroll" id="externalCodeTableContainer">
             <table class="table table-hover table-striped table-bordered table-responsive" id="externalCodeCheckTable">
                 <thead class="table-success">
                     <tr class="text-center align-middle">
-                        <th colspan="3">Агрегат</th>
-                        <th colspan="{{ database_versions|length }}">Версии базы данных (external_code)</th>
+                        <th colspan="3">Станция / группа оборудования / агрегат</th>
+                        <th colspan="{{ database_versions|length }}" id="externalCodeVersionsHeading">
+                            Версии базы данных (external_code)
+                            <button type="button" id="externalCodeVersionFilter" class="btn btn-sm btn-outline-secondary ms-2"
+                                    aria-label="Выбрать отображаемые версии баз данных" aria-expanded="false"
+                                    aria-controls="externalCodeVersionMenu" aria-haspopup="dialog">
+                                <i class="bi bi-funnel" aria-hidden="true"></i>
+                                <span id="externalCodeVersionCount">Все версии</span>
+                            </button>
+                        </th>
                     </tr>
                     <tr class="text-center align-middle">
                         <th style="width: 50px;">гр.</th>
                         <th style="width: 80px;">cт. №</th>
-                        <th style="width: 260px;">Тип агрегата</th>
+                        <th style="width: 260px;">Группа оборудования / тип агрегата</th>
                         {% for version in database_versions %}
-                            <th style="min-width: 140px; word-break: break-word;">{{ version.version_number }}</th>
+                            <th data-external-code-version="{{ version.id if version.id is not none else 'legacy' }}" style="min-width: 140px; word-break: break-word;">{{ version.version_number }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -101,7 +133,7 @@
 
                                             {% for station in rd_group %}
                                             <tbody class="external-code-station-tbody">
-                                                {% include 'generation/stations/external_code_station_rows.html' %}
+                                                {% include 'generation/stations/_external_code_display_blocks.html' %}
                                             </tbody>
                                             {% endfor %}
                                         {% endfor %}
@@ -111,11 +143,36 @@
                     {% else %}
                         {% for station in stations %}
                         <tbody class="external-code-station-tbody">
-                            {% include 'generation/stations/external_code_station_rows.html' %}
+                            {% include 'generation/stations/_external_code_display_blocks.html' %}
                         </tbody>
                         {% endfor %}
                     {% endif %}
             </table>
+        </div>
+
+        <div id="externalCodeVersionMenu" class="d-none border rounded bg-body shadow p-3" role="dialog" aria-label="Отображаемые версии баз данных">
+            <input id="externalCodeVersionSearch" type="search" class="form-control form-control-sm mb-2"
+                   placeholder="Поиск версии" aria-label="Поиск версии" autocomplete="off">
+            <label class="d-flex gap-2 align-items-center border-bottom pb-2 mb-2">
+                <input id="externalCodeVersionSelectAll" type="checkbox" class="form-check-input m-0">
+                <span>Выбрать все найденные</span>
+            </label>
+            <div id="externalCodeVersionList">
+                {% for version in database_versions %}
+                <label class="d-flex gap-2 align-items-start py-1">
+                    <input type="checkbox" class="form-check-input flex-shrink-0" checked
+                           value="{{ version.id if version.id is not none else 'legacy' }}">
+                    <span>{{ version.version_number }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <p id="externalCodeVersionEmpty" class="small text-muted d-none">Версии не найдены</p>
+            <p id="externalCodeVersionError" class="small text-danger d-none" role="alert">Выберите хотя бы одну версию.</p>
+            <div class="d-flex justify-content-between gap-2 border-top pt-2 mt-2">
+                <button type="button" id="externalCodeVersionReset" class="btn btn-sm btn-outline-secondary">Все версии</button>
+                <button type="button" id="externalCodeVersionCancel" class="btn btn-sm btn-outline-secondary">Отмена</button>
+                <button type="button" id="externalCodeVersionApply" class="btn btn-sm btn-primary">Применить</button>
+            </div>
         </div>
 
         <div class="d-flex justify-content-end align-items-center gap-2 mt-2 mb-2" id="externalCodeSaveBar">
@@ -188,5 +245,6 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 <script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
 <script src="{{ url_for('static', filename='js/generation/stations/external_code_check.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/external_code_version_filter.js') }}"></script>
 {% endif %}
 {% endblock %}

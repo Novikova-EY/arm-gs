@@ -91,7 +91,7 @@ def main() -> None:
             ues = UnionEnergySystem.query.get(int(ues_id))
             ues_name = ues.name if ues else str(ues_id)
             if int(ues_id) in exclude:
-                print(f"  [исключён] {ues_name}")
+                print(f"  [исключен] {ues_name}")
                 continue
 
             variant_codes = svc._first_sa_with_nt_with_gaes_ues_variant_codes_for_ues_id(
@@ -202,7 +202,7 @@ def main() -> None:
         print()
 
         print("=" * 72)
-        print("4. Значения, сохранённые в БД (если есть)")
+        print("4. Значения, сохраненные в БД (если есть)")
         print("=" * 72)
         for code, label in (
             ("with_nt_with_gaes_kaliningrad", "с НТ с зарядом ГАЭС"),

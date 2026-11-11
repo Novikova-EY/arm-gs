@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-"""Страница текстов формул электроёмкости: /electrical_intensity/formulas/."""
+"""Страница текстов формул электроемкости: /electrical_intensity/formulas/."""
 
 from __future__ import annotations
 
